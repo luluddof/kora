@@ -23,12 +23,17 @@ livrée dans toute sa dimension (simulation + interface + IA + carte + événeme
 - Le jeu est déterministe : `tools/empreinte.py check empreinte.json` prouve qu'une
   optimisation ne change rien ; ré-enregistrer quand le jeu change volontairement.
 - Tests : `python -m pytest -q` (test_balance juge sur 4 graines).
-- Dépôt git (branche `main`) : **github.com/luluddof/kora** (privé, compte `luluddof`).
-  Committer et pousser à la fin d'un chantier. Deux comptes gh sont connectés ; le compte actif
-  habituel est `votre compte habituel` : pour pousser, `gh auth switch --user luluddof`, puis
-  `git -c credential.helper= -c "credential.helper=!gh auth git-credential" push`, puis revenir
-  avec `gh auth switch --user votre compte habituel`.
-  Le passage en « mode cloud » viendra plus tard, à sa demande.
+- Dépôt git (branche `main`) : **github.com/luluddof/kora** (PUBLIC depuis le 2026-09-26, pour que
+  des amis testent). Committer et pousser à la fin d'un chantier, en tant que `luluddof` (identité
+  git locale : l'adresse privée GitHub de luluddof ; ne jamais publier d'e-mail ni de chemin
+  personnel). Deux comptes gh sont connectés : pour pousser, `gh auth switch --user luluddof`,
+  `git -c credential.helper= -c "credential.helper=!gh auth git-credential" push`, puis revenir au
+  compte actif habituel (son nom est dans la mémoire locale, pas dans ce dépôt public).
+- Publier une version pour les testeurs : `__version__` dans `src/kora/__init__.py`, commit, puis
+  `git tag -a vX.Y.Z -m "..."` et pousser l'étiquette : GitHub Actions (`.github/workflows/release.yml`)
+  teste, construit l'exe et met `Kora-windows.zip` dans les Releases. Si rien ne démarre :
+  `gh workflow run release.yml -R luluddof/kora --ref vX.Y.Z`.
+- Le passage en « mode cloud » viendra plus tard, à sa demande.
 
 ## En fin de chantier
 Mettre à jour docs/VISION-KORA.txt (sections 3 et 5), la spec du chantier,

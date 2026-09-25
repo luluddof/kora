@@ -11,7 +11,8 @@ cultiver, commercer, lever des troupes… et voir vos clans partir fonder leurs 
 
 ## Installer (Windows 10 ou 11, 64 bits)
 
-1. Allez dans **[Releases](../../releases/latest)** (à droite sur la page du projet) et téléchargez **`Kora-windows.zip`**.
+1. Téléchargez **[Kora-windows.zip](https://github.com/luluddof/kora/releases/latest/download/Kora-windows.zip)**
+   (ou allez dans **[Releases](https://github.com/luluddof/kora/releases/latest)**, à droite sur la page du projet).
 2. Faites un clic droit sur le fichier → **Extraire tout…**, et choisissez un dossier (par exemple le Bureau).
 3. Ouvrez le dossier **`Kora`** et double-cliquez sur **`Kora.exe`**.
 

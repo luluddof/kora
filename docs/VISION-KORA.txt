@@ -177,7 +177,12 @@ lente, bandes dessinees petites a taille fixe.
 
 2026-09-26
   - "Fais en sorte qu'on puisse depuis GitHub installer facilement le exe,
-    comme ca je le fais tester a des potes."                    EN COURS
+    comme ca je le fais tester a des potes."
+    FAIT : depot rendu PUBLIC (son choix), historique signe luluddof avec son
+    adresse privee GitHub (son choix : e-mail masque), README en francais
+    (installer, touches, ou est la partie, signaler un bug), version 0.1.0
+    affichee au menu et dans kora_erreur.txt, GitHub Actions qui teste,
+    construit et publie Kora-windows.zip a chaque etiquette vX.Y.Z.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
