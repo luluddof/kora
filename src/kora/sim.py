@@ -687,30 +687,61 @@ def can_split(state: GameState, band_id: int) -> bool:
     return tribe_band_count(state, band.tribe_id) < max_bands_of(state, band.tribe_id)
 
 
+def civ_band_cap(state: GameState, civ: int) -> int:
+    """Le plafond COMMUN d'une civilisation (bandes et villages de tous ses
+    peuples, le joueur compris) : celui de son peuple d'origine, selon ses
+    savoirs (8, 12 avec la Chefferie ; un petit peuple 4 de moins). Le
+    peuple d'origine disparu : le mieux loti de ses peuples."""
+    from src.kora.peoples import MINOR_BAND_CUT, civ_of
+
+    def cap_of(t) -> int:
+        cut = MINOR_BAND_CUT if t.minor and not t.origin else 0
+        return bonus_of(state, t.id).max_bands - cut
+
+    alive = {b.tribe_id for b in state.bands.values() if b.population > 0}
+    root = state.tribes.get(civ)
+    if root is not None and root.id in alive:
+        return max(1, cap_of(root))
+    members = [t for t in state.tribes.values() if t.id in alive and civ_of(state, t) == civ]
+    return max(1, max((cap_of(t) for t in members), default=1))
+
+
+def civ_band_count(state: GameState, civ: int) -> int:
+    """Bandes (clans et villages, pas les troupes) de tous les peuples d'une
+    civilisation."""
+    from src.kora.peoples import civ_of
+
+    civs: dict = {}
+    n = 0
+    for b in state.bands.values():
+        if b.population <= 0 or b.kind == "armee":
+            continue
+        c = civs.get(b.tribe_id)
+        if c is None:
+            tribe = state.tribes.get(b.tribe_id)
+            c = civs[b.tribe_id] = civ_of(state, tribe) if tribe is not None else 0
+        if c == civ:
+            n += 1
+    return n
+
+
 def max_bands_of(state: GameState, tribe_id: int) -> int:
-    from src.kora.peoples import MINOR_BAND_CUT
-
-    limit = bonus_of(state, tribe_id).max_bands
+    """Bandes que ce peuple peut avoir : les siennes, plus les places libres
+    de sa civilisation (plafond commun : les peuples independants d'une
+    culture le partagent avec le peuple d'origine, joueur compris)."""
     tribe = state.tribes.get(tribe_id)
-    if tribe is not None and tribe.minor:
-        limit -= MINOR_BAND_CUT
-    if tribe is not None and state.sites:
-        # Chaque village de la civilisation : une bande de moins pour chacun de
-        # ses peuples (les chasseurs ne se dupliquent plus a l'infini).
-        from src.kora.peoples import civ_of, civ_villages
-
-        limit -= civ_villages(state, civ_of(state, tribe))
-    if tribe is not None:
-        # Chaque clan parti fonder son peuple : une bande de moins, tant que ce
-        # peuple vit (la sedentarisation avancee, on ne forme plus de bandes).
-        from src.kora.peoples import children_alive
-
-        limit -= children_alive(state, tribe_id)
-    if tribe is not None and settler_people(state, tribe):
+    own = tribe_band_count(state, tribe_id)
+    if tribe is None:
+        return max(1, own)
+    if settler_people(state, tribe):
         # Ne d'une civilisation qui a des villages, sans village a lui : il
         # n'a qu'a fonder le sien, il ne se divise plus en tribus.
-        return 1
-    return max(1, limit)
+        return max(1, own)
+    from src.kora.peoples import civ_of
+
+    civ = civ_of(state, tribe)
+    free = civ_band_cap(state, civ) - civ_band_count(state, civ)
+    return max(1, own + max(0, free))
 
 
 def settler_people(state: GameState, tribe) -> bool:

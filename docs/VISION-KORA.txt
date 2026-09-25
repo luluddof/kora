@@ -158,6 +158,15 @@ lente, bandes dessinees petites a taille fixe.
   - Mettre le tout sur GitHub pour passer en mode cloud ("plus tard, pas
     tout de suite" : le depot d'abord, le passage au cloud plus tard).
 
+2026-09-25 (nuit)
+  - "Pour eviter les problemes dus au trop grand nombre de tribus : les
+    tribus independantes d'une culture PARTAGENT le maximum de clans avec
+    la tribu d'origine, meme pour le joueur : au plus 12 tribus/villes
+    (avec les savoirs) pour toute cette culture."             EN COURS
+  - Profondeur : "reflechis PLUS, a des fonctionnalites interessantes ou a
+    etendre celles deja en place."                              EN COURS
+  - GitHub : compte luluddof.                                   EN COURS
+
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------

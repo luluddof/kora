@@ -85,7 +85,14 @@ def band_actions(state, band_id: int) -> dict[str, str]:
         elif band.population < SPLIT_MIN_POP:
             out["split"] = f"Il faut {SPLIT_MIN_POP} personnes"
         else:
-            out["split"] = f"Deja {tribe_band_count(state, band.tribe_id)}/{max_bands_of(state, band.tribe_id)} bandes"
+            from src.kora.peoples import civ_of
+            from src.kora.sim import civ_band_cap, civ_band_count
+
+            civ = civ_of(state, state.tribes[band.tribe_id])
+            out["split"] = (
+                f"Votre civilisation est au complet : {civ_band_count(state, civ)}/{civ_band_cap(state, civ)} "
+                "bandes et villages (tous ses peuples)"
+            )
     out["merge"] = INDOCILE if not listens else retreat or ("" if _mates(state, band) else "Aucune bande de votre peuple a 5 cases")
     out["next"] = "" if own > 1 else "Une seule bande"
     out["chief"] = chiefs.can_move_chief(state, band_id)

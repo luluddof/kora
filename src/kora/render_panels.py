@@ -173,15 +173,13 @@ def draw_tribe(r, state, layout, ui) -> None:
     know = tech.bonuses(tribe)
     camps = len(sites.of_tribe(state, PLAYER_TRIBE_ID, "camp"))
     caches = len(sites.of_tribe(state, PLAYER_TRIBE_ID, "cache"))
-    from src.kora.peoples import children_alive, civ_of, civ_villages
+    from src.kora.peoples import civ_of
+    from src.kora.sim import civ_band_cap, civ_band_count, tribe_band_count
 
-    cut = civ_villages(state, civ_of(state, tribe))
-    gone = children_alive(state, PLAYER_TRIBE_ID)
-    from src.kora.sim import tribe_band_count
-
+    civ = civ_of(state, tribe)
     stats = (
         f"Prestige {tribe.prestige}  ·  {pop} personnes  ·  {tribe_band_count(state, PLAYER_TRIBE_ID)}/{max_bands_of(state, PLAYER_TRIBE_ID)} bandes"
-        + (f" (-{cut} village{'s' if cut > 1 else ''}" + (f", -{gone} parti{'s' if gone > 1 else ''}" if gone else "") + ")" if cut or gone else "")
+        + f" (civilisation {civ_band_count(state, civ)}/{civ_band_cap(state, civ)})"
         + f"  ·  campements {camps}/{know.camps}  ·  caches {caches}/{know.caches}"
     )
     _text(r, r.tiny, stats, NOTE, bx + 18, by + 40)

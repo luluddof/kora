@@ -81,25 +81,34 @@ def test_the_chief_goes_to_govern_the_first_village():
     assert chiefs.chief_band(st, 1) is founder and founder.leader is chief
 
 
-def test_each_village_of_a_civilisation_costs_every_people_of_it_one_band():
-    from src.kora.sim import max_bands_of
+def test_a_civilisation_shares_one_band_cap_between_all_its_peoples():
+    from src.kora.sim import civ_band_cap, civ_band_count, max_bands_of
 
     st = _tribe(settled=False)
-    before = max_bands_of(st, 1)
+    cap = civ_band_cap(st, 1)
+    assert cap == tech.bonuses(st.tribes[1]).max_bands
+    # Chefferie : 12 pour toute la culture.
+    st.tribes[1].knowledge.add("chefferie")
+    assert civ_band_cap(st, 1) == 12
+    assert civ_band_count(st, 1) == 3 and max_bands_of(st, 1) == 12
+    # Un clan qui prend son independance reste dans la reserve commune :
+    # ses bandes comptent pour le peuple d'origine, joueur compris.
     sites.make_camp(st, 1)
     villages.found(st, 1)
-    assert max_bands_of(st, 1) == before - 1
-    kin = st.tribes[chiefs.secede(st, 3)]
-    kin_max = max_bands_of(st, kin.id)
-    st.tribes[1].knowledge.add("maisons")
-    band2 = st.bands[2]
-    sites.make_camp(st, 2)
-    assert villages.found(st, 2) is not None
-    # Un village de plus dans la civilisation : une bande de moins pour tous ;
-    # et le clan parti en coute une aussi, tant que son peuple vit.
-    assert max_bands_of(st, 1) == before - 3
-    assert max_bands_of(st, kin.id) == max(1, kin_max - 1)
-    assert band2.village
+    kin = chiefs.emancipate(st, 3)
+    assert civ_band_count(st, 1) == 3
+    st.bands[40] = Band(40, kin, offset_to_axial(70, 20), 30, 100.0)
+    st.bands[41] = Band(41, kin, offset_to_axial(72, 20), 30, 100.0)
+    assert civ_band_count(st, 1) == 5
+    assert max_bands_of(st, 1) == 2 + (12 - 5)
+    # La civilisation au complet : personne ne se divise plus.
+    for k in range(7):
+        st.bands[50 + k] = Band(50 + k, kin, offset_to_axial(10 + 2 * k, 5), 30, 100.0)
+    assert civ_band_count(st, 1) == 12
+    st.bands[1].population = 120
+    from src.kora.sim import can_split
+
+    assert not can_split(st, 1) and max_bands_of(st, 1) == 2
 
 
 def test_a_clan_that_leaves_founds_a_people_of_your_stock():
@@ -220,17 +229,47 @@ def test_an_old_save_seats_the_chief_in_its_village(tmp_path):
     assert heart is not None and heart.village
 
 
-def test_every_people_born_from_us_costs_a_band_while_it_lives():
-    from src.kora.sim import max_bands_of
+def test_a_people_born_from_us_frees_its_places_when_it_dies():
+    from src.kora.sim import civ_band_count, max_bands_of
 
     st = _tribe()
     before = max_bands_of(st, 1)
     kin = chiefs.secede(st, 3)
+    # Le clan parti garde sa place dans la reserve commune.
     assert max_bands_of(st, 1) == before - 1
     st.bands[3].population = 0
     del st.bands[3]
     assert max_bands_of(st, 1) == before
+    assert civ_band_count(st, 1) == 2
     assert kin in st.tribes
+
+
+def test_a_full_civilisation_sends_its_restless_families_to_a_kin_village():
+    from src.kora import villages as v
+    from src.kora.sim import civ_band_cap, civ_band_count
+
+    st = _tribe()
+    village = st.bands[1]
+    site = v.site_of(st, village)
+    kin = chiefs.emancipate(st, 3)
+    st.bands[3].position = offset_to_axial(40, 15)
+    sites.make_camp(st, 3)
+    v.found(st, 3)
+    for k in range(civ_band_cap(st, 1) - civ_band_count(st, 1)):
+        st.bands[60 + k] = Band(60 + k, kin, offset_to_axial(10 + 2 * k, 5), 20, 50.0)
+    assert civ_band_count(st, 1) == civ_band_cap(st, 1)
+    other = st.bands[3]
+    before = other.population
+    st.tribes[1].prestige = 0
+    site.data["burned"] = True
+    for month in range(1, 40):
+        st.tick_count = 4 * month
+        village.famine_tick = st.tick_count
+        v._unrest(st, site, village)
+        if other.population > before:
+            break
+    assert other.population > before
+    assert civ_band_count(st, 1) == civ_band_cap(st, 1)
 
 
 def test_an_emancipated_clan_leaves_to_find_land_away_from_villages():

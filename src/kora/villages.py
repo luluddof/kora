@@ -595,6 +595,9 @@ UNREST = 30.0
 UNREST_SHARE = 0.15
 UNREST_MIN_POP = 40
 CROWD_POP = 150
+# Civilisation au complet : les familles d'un village agite rejoignent un
+# village de leur civilisation a UNREST_JOIN_RANGE cases au plus.
+UNREST_JOIN_RANGE = 40
 
 
 def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
@@ -677,6 +680,32 @@ def _unrest(state, site, band) -> None:
         return
     moved = max(10, int(band.population * UNREST_SHARE))
     stock = band.stock * moved / band.population
+    from src.kora.peoples import civ_of
+    from src.kora.sim import civ_band_cap, civ_band_count, stock_max
+
+    civ = civ_of(state, state.tribes[band.tribe_id])
+    if civ_band_count(state, civ) >= civ_band_cap(state, civ):
+        # La civilisation est au complet : pas de nouvelle tribu. Les familles
+        # rejoignent un autre village de leur civilisation, sinon se dispersent.
+        homes = [
+            other
+            for s2 in sorted(state.sites.values(), key=lambda s2: s2.id)
+            if s2.kind == "village" and s2.id != site.id
+            for other in [band_of(state, s2)]
+            if other is not None and civ_of(state, state.tribes[other.tribe_id]) == civ
+        ]
+        band.population -= moved
+        band.stock -= stock
+        target = min(homes, key=lambda o: (state.world.distance(o.position, band.position), o.id)) if homes else None
+        if target is not None and state.world.distance(target.position, band.position) <= UNREST_JOIN_RANGE:
+            target.population += moved
+            target.stock = min(stock_max(target, state), target.stock + stock)
+            if state.tribes[band.tribe_id].is_player or state.tribes[target.tribe_id].is_player:
+                where = name(site_of(state, target))
+                _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes partent vivre a {where}.", site.hex)
+        elif state.tribes[band.tribe_id].is_player:
+            _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes s'en vont et se dispersent.", site.hex)
+        return
     band.population -= moved
     band.stock -= stock
     nid = new_band_id(state)
