@@ -31,7 +31,7 @@ livrée dans toute sa dimension (simulation + interface + IA + carte + événeme
   compte actif habituel (son nom est dans la mémoire locale, pas dans ce dépôt public).
 - Publier une version pour les testeurs : `__version__` dans `src/kora/__init__.py`, commit, puis
   `git tag -a vX.Y.Z -m "..."` et pousser l'étiquette : GitHub Actions (`.github/workflows/release.yml`)
-  teste, construit l'exe et met `Kora-windows.zip` dans les Releases. Si rien ne démarre :
+  teste, construit l'exe et met `Kora.exe` (un seul fichier, `Kora-unfichier.spec`) et `Kora-windows.zip` (le dossier) dans les Releases. Si rien ne démarre :
   `gh workflow run release.yml -R luluddof/kora --ref vX.Y.Z`.
 - Le passage en « mode cloud » viendra plus tard, à sa demande.
 

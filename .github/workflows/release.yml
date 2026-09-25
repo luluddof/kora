@@ -1,4 +1,6 @@
-# Construit l'exe Windows de Kora et le publie dans les Releases.
+# Construit l'exe Windows de Kora et le publie dans les Releases, de deux
+# facons : Kora.exe (un seul fichier, tout dedans) et Kora-windows.zip (le
+# dossier : demarre plus vite).
 # Publier une version : mettre __version__ a jour dans src/kora/__init__.py,
 # puis `git tag vX.Y.Z` et `git push --tags`.
 # "Run workflow" (onglet Actions) construit l'exe sans rien publier : le zip
@@ -44,8 +46,11 @@ jobs:
       - name: Tests
         run: python -m pytest -q
 
-      - name: Construire l'exe
+      - name: Construire l'exe (dossier)
         run: python -m PyInstaller Kora.spec --noconfirm
+
+      - name: Construire l'exe (un seul fichier)
+        run: python -m PyInstaller Kora-unfichier.spec --noconfirm --distpath dist-unfichier --workpath build-unfichier
 
       - name: Zipper le dossier du jeu
         shell: pwsh
@@ -54,7 +59,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Kora-windows
-          path: Kora-windows.zip
+          path: |
+            Kora-windows.zip
+            dist-unfichier/Kora.exe
 
       - name: Publier la version
         if: startsWith(github.ref, 'refs/tags/')
@@ -63,7 +70,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" Kora-windows.zip --clobber
+            gh release upload "$GITHUB_REF_NAME" dist-unfichier/Kora.exe Kora-windows.zip --clobber
           else
-            gh release create "$GITHUB_REF_NAME" Kora-windows.zip --title "Kora $GITHUB_REF_NAME" --notes-file .github/release-notes.md
+            gh release create "$GITHUB_REF_NAME" dist-unfichier/Kora.exe Kora-windows.zip --title "Kora $GITHUB_REF_NAME" --notes-file .github/release-notes.md
           fi

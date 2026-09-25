@@ -11,19 +11,23 @@ cultiver, commercer, lever des troupes… et voir vos clans partir fonder leurs 
 
 ## Installer (Windows 10 ou 11, 64 bits)
 
-1. Téléchargez **[Kora-windows.zip](https://github.com/luluddof/kora/releases/latest/download/Kora-windows.zip)**
-   (ou allez dans **[Releases](https://github.com/luluddof/kora/releases/latest)**, à droite sur la page du projet).
-2. Faites un clic droit sur le fichier → **Extraire tout…**, et choisissez un dossier (par exemple le Bureau).
-3. Ouvrez le dossier **`Kora`** et double-cliquez sur **`Kora.exe`**.
+**Le plus simple : téléchargez [Kora.exe](https://github.com/luluddof/kora/releases/latest/download/Kora.exe)
+et double-cliquez dessus.** Un seul fichier, rien à installer : rangez-le où vous voulez (le Bureau, par exemple).
+Le lancement prend quelques secondes (le jeu se décompresse à chaque fois).
 
-Rien d'autre à installer : tout est dans le dossier. Pour désinstaller, supprimez le dossier.
+Autre possibilité, qui démarre un peu plus vite :
+[Kora-windows.zip](https://github.com/luluddof/kora/releases/latest/download/Kora-windows.zip) → clic droit →
+**Extraire tout…** → ouvrez le dossier `Kora` et lancez `Kora.exe`. Dans ce cas, gardez tout le dossier :
+cet exe-là a besoin du dossier `_internal` posé à côté de lui.
+
+Toutes les versions : **[Releases](https://github.com/luluddof/kora/releases)**.
 
 **Windows affiche « Windows a protégé votre ordinateur » ?** C'est normal pour un petit jeu qui n'est pas signé.
 Cliquez sur **Informations complémentaires**, puis **Exécuter quand même**. Si votre antivirus bloque le fichier,
 autorisez-le (c'est un jeu fait avec Python et PyInstaller, ces programmes sont souvent signalés à tort).
 
-**Mise à jour :** téléchargez le nouveau `Kora-windows.zip` et remplacez l'ancien dossier. Votre partie est gardée
-ailleurs (voir plus bas), vous la retrouvez.
+**Mise à jour :** téléchargez le nouveau `Kora.exe` (ou le nouveau zip) et remplacez l'ancien. Votre partie est
+gardée ailleurs (voir plus bas), vous la retrouvez.
 
 ---
 
@@ -83,7 +87,8 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 python -m pip install -r requirements.txt
 python main.py                      # lancer le jeu
 python -m pytest -q                 # les tests
-python -m PyInstaller Kora.spec     # l'exe, dans dist/Kora
+python -m PyInstaller Kora.spec     # l'exe en dossier, dans dist/Kora
+python -m PyInstaller Kora-unfichier.spec --distpath dist-unfichier   # l'exe en un seul fichier
 ```
 
 Publier une version : mettre à jour `__version__` dans `src/kora/__init__.py`, puis
