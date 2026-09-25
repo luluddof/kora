@@ -187,6 +187,13 @@ lente, bandes dessinees petites a taille fixe.
     (vrai : l'exe en dossier a besoin de _internal). FAIT (0.1.1) : Kora.exe
     en UN SEUL FICHIER (Kora-unfichier.spec), publie avec le zip ; le README
     le recommande (telecharger, double-cliquer).
+  - "Moyen d'eviter le message d'alerte Windows ?" L'alerte (SmartScreen)
+    vient des fichiers telecharges par un navigateur et non signes. FAIT :
+    README et notes de version donnent une ligne Windows+R (curl, livre avec
+    Windows) qui telecharge et lance le jeu SANS la marque du Web, donc sans
+    alerte (verifie), et la case Debloquer des Proprietes. La vraie solution
+    (signer l'exe : SignPath Foundation gratuit pour l'open source, ou un
+    certificat payant) attend SON choix.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
