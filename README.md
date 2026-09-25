@@ -22,9 +22,26 @@ cet exe-là a besoin du dossier `_internal` posé à côté de lui.
 
 Toutes les versions : **[Releases](https://github.com/luluddof/kora/releases)**.
 
-**Windows affiche « Windows a protégé votre ordinateur » ?** C'est normal pour un petit jeu qui n'est pas signé.
-Cliquez sur **Informations complémentaires**, puis **Exécuter quand même**. Si votre antivirus bloque le fichier,
-autorisez-le (c'est un jeu fait avec Python et PyInstaller, ces programmes sont souvent signalés à tort).
+### Sans l'alerte « Windows a protégé votre ordinateur »
+
+Windows affiche cette alerte pour tout programme téléchargé avec un navigateur qui n'est pas signé (c'est le cas de
+ce petit jeu). Trois façons de faire :
+
+- **Une commande qui télécharge et lance le jeu, sans alerte.** Appuyez sur **Windows + R**, collez cette ligne, puis
+  **Entrée** :
+
+  ```
+  cmd /c curl -L -o "%USERPROFILE%\Downloads\Kora.exe" https://github.com/luluddof/kora/releases/latest/download/Kora.exe && start "" "%USERPROFILE%\Downloads\Kora.exe"
+  ```
+
+  Le jeu est rangé dans votre dossier **Téléchargements** ; les fois suivantes, lancez-le de là (ou refaites la commande
+  pour avoir la dernière version).
+- **Débloquer le fichier téléchargé.** Clic droit sur `Kora.exe` → **Propriétés** → en bas de l'onglet **Général**,
+  cochez **Débloquer** → **OK**. Ensuite, un double-clic suffit.
+- **Ou laisser passer l'alerte** : **Informations complémentaires**, puis **Exécuter quand même**.
+
+Si votre antivirus bloque le fichier, autorisez-le : les jeux faits avec Python et PyInstaller sont souvent signalés à
+tort.
 
 **Mise à jour :** téléchargez le nouveau `Kora.exe` (ou le nouveau zip) et remplacez l'ancien. Votre partie est
 gardée ailleurs (voir plus bas), vous la retrouvez.

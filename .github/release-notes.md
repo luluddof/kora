@@ -7,8 +7,15 @@ Autre possibilité, qui démarre un peu plus vite : `Kora-windows.zip` → clic 
 dossier `Kora` et lancez `Kora.exe` (dans ce cas, gardez tout le dossier : l'exe a besoin du dossier `_internal`
 posé à côté de lui).
 
-Si Windows affiche « Windows a protégé votre ordinateur » : **Informations complémentaires** → **Exécuter quand même**
-(le jeu n'est pas signé, c'est normal).
+**Sans l'alerte « Windows a protégé votre ordinateur »** (le jeu n'est pas signé) :
+- appuyez sur **Windows + R**, collez cette ligne, **Entrée** : le jeu se télécharge dans *Téléchargements* et se lance,
+  sans alerte :
+
+  ```
+  cmd /c curl -L -o "%USERPROFILE%\Downloads\Kora.exe" https://github.com/luluddof/kora/releases/latest/download/Kora.exe && start "" "%USERPROFILE%\Downloads\Kora.exe"
+  ```
+- ou, après l'avoir téléchargé : clic droit sur `Kora.exe` → **Propriétés** → cochez **Débloquer** → **OK** ;
+- ou, dans l'alerte : **Informations complémentaires** → **Exécuter quand même**.
 
 Mise à jour : remplacez simplement l'ancien fichier ; votre partie est gardée dans `%APPDATA%\Kora\saves`.
 
