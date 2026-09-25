@@ -516,8 +516,10 @@ Fusion des clans, anciens           sim.py _absorb, merge_bands, WELD_* ;
 Emancipation apres le village       chiefs.py AUTONOMY_*, emancipate,
                                     secede ; villages._chief_takes_the_village,
                                     seat_chiefs (anciennes sauvegardes)
-Civilisation, limite de bandes      peoples.py civ_of, civ_villages,
-                                    children_alive ; sim.py max_bands_of
+Civilisation, limite de bandes      sim.py civ_band_cap, civ_band_count
+                                    (plafond COMMUN a la culture),
+                                    max_bands_of, settler_people ;
+                                    peoples.py civ_of
 Ou l'IA se fixe (espacement)        ai.py VILLAGE_SPACING, FOREIGN_VILLAGE_ROOM,
                                     find_new_land, head_for_new_land
 Stabilite des villages              villages.py stability_parts, STABILITY_*,

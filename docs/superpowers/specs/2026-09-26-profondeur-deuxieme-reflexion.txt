@@ -1,0 +1,239 @@
+Kora - Profondeur des deux ages : deuxieme reflexion (plus loin)
+===============================================================
+Date : 2026-09-26. Statut : PROPOSITIONS a choisir, rien n'est code.
+Demande : "je t'invite a reflechir plus, a des fonctionnalites
+interessantes ou a etendre des fonctionnalites deja en place".
+Premiere reflexion : 2026-09-25-profondeur-deux-ages-propositions.txt (ses
+idees sont reprises ici, approfondies et reliees). Vision : VISION-KORA.txt.
+
+
+0. CE QUI REND UN JEU DE GRANDE STRATEGIE PROFOND
+------------------------------------------------
+  - Des systemes qui SE PARLENT : une decision ici a un effet la-bas.
+  - Une politique INTERIEURE : le peuple n'est pas un bloc qui obeit.
+  - Des richesses rares qu'on se DISPUTE (pas seulement de la nourriture).
+  - Des arcs LONGS : generations, memoire, rancunes, heritages.
+  - Des choix SANS bonne reponse (chaque avantage a un prix).
+  - Des HISTOIRES qui emergent (on raconte sa partie).
+  - La LISIBILITE : on voit pourquoi ca arrive.
+
+  Kora a deja beaucoup : saisons locales, faim, bandes qu'on divise et
+  reunit, chefs, anciens et emprise, zone d'influence, savoirs "vecus",
+  diplomatie, 49 evenements en chaines, villages (champs, sol, batiments,
+  serments, stabilite), metiers, routes commerciales, troupes en
+  compagnies, batailles, emancipation en proto-pays, plafond commun d'une
+  civilisation.
+  Ce qui lui manque surtout :
+    a. la politique INTERIEURE (qui veut quoi, dans le peuple) ;
+    b. une richesse qui se VOLE et se TRANSMET (betail, parures, terres
+       des ancetres) : la guerre n'a pas encore d'enjeu propre ;
+    c. la MEMOIRE (morts, mythes, rancunes, chronique) ;
+    d. des BUTS a long terme ;
+    e. un age tribal qui soit une LECTURE DU MONDE (le gibier ne vit pas,
+       l'annee se ressemble).
+
+
+1. ETENDRE CE QUI EXISTE, SYSTEME PAR SYSTEME
+---------------------------------------------
+  1.1 Saisons et migrations -> le CYCLE DE L'ANNEE
+    - Ordre "Tournee" : une bande suit un cycle de lieux par saison
+      (printemps ici, ete la-bas, hiver au campement), d'annee en annee ;
+      moins de clics, plus de strategie. La tournee dessine la "route du
+      clan" en mode de carte Zones.
+    - Lieux nommes : les bonnes places (le gue aux aurochs, la source
+      chaude, la colline aux silex, l'abri d'hiver) se decouvrent (les
+      evenements "source" et "grotte" existent deja) et prennent un nom ;
+      elles donnent leur bonus a la bonne saison ; en perdre une au profit
+      d'un voisin coute du prestige.
+    - Hivernage commun : plusieurs clans hivernent ensemble (reserves
+      partagees, attachement, recits) mais les fievres y passent.
+
+  1.2 Le rassemblement : l'evenement existant devient un systeme
+    Chaque ete, au lieu choisi : les clans du peuple, les peuples amis
+    invites. Mariages (des alliances naissent), dons (biens de prestige),
+    recits (des savoirs passent), jeux (prestige), reglement des
+    querelles (l'evenement "querelle" existe). Trois ans sans
+    rassemblement : les clans s'eloignent (emprise, independance).
+
+  1.3 Chefs, anciens, successions -> la politique (voir F1)
+    - Les anciens (deja la) prennent un ROLE selon leurs traits : chaman,
+      maitre chasseur, conteur, chef de guerre, maitre potier.
+    - La succession suit une coutume (le plus renomme, l'aine, l'elu des
+      anciens) ; les successions contestees (evenement existant) peuvent
+      finir en secession ou en guerre des clans.
+
+  1.4 Savoirs
+    - Des VOIES qui s'excluent : l'aurochs sacre ou le boeuf de trait ; le
+      culte des ancetres ou le culte du soleil. Les savoirs dessinent une
+      culture, pas seulement des bonus.
+    - Des savoirs PORTES par des gens : un ancien maitre potier fait
+      avancer la Poterie ; s'il meurt, on ralentit ; un captif, un conjoint
+      venu d'ailleurs apportent un savoir.
+
+  1.5 Zone d'influence -> les TERRES DES ANCETRES
+    Les morts sont enterres aux campements et aux villages. Une terre ou
+    reposent vos ancetres vous est chere : stabilite, moral quand on la
+    defend ; un voisin qui s'y installe fait chuter la relation et vous
+    donne une raison de guerre ("reprendre la terre des peres"). La carte
+    prend des enjeux sans que l'on possede des cases (P1).
+
+  1.6 Diplomatie
+    - Mariages de PERSONNES (la fille du chef epouse l'heritier voisin) ;
+      otages ; serment de sang ; mediation d'un tiers ; coalitions contre
+      le plus fort.
+    - L'EMBARGO : couper le sel a un voisin (routes commerciales) devient
+      une arme.
+
+  1.7 Villages
+    - Ce qu'on seme : cereales (vivres), legumineuses (le sol se refait),
+      lin (des etoffes sans chevres) : la repartition des champs.
+    - DEPLACER le village quand les terres s'epuisent (les villages
+      rubanes bougeaient) : on garde les batiments legers, on perd les
+      lourds, on repart sur une terre neuve.
+    - La SPECIALITE d'un village (potiers, sauniers) qui le fait connaitre.
+    - Les FETES d'automne : redistribuer le surplus (prestige, stabilite,
+      voisins invites) ou garder les greniers pleins.
+
+  1.8 Troupes et batailles -> la guerre avec des buts (voir F4)
+
+  1.9 Metiers et commerce
+    - Biens de PRESTIGE (ambre, coquillages, obsidienne, puis cuivre
+      natif) : ils ne nourrissent pas, ils font la renommee, les dots, les
+      tributs ; rares et lointains, ils font les longues routes ; le cuivre
+      annonce l'age suivant.
+    - CENTRES d'echange : un village ou arrivent plusieurs routes devient
+      un marche (prix de la region, prestige, convoitise).
+    - Des porteurs ATTAQUABLES par un tiers en guerre ; des MONOPOLES
+      (seul a avoir le sel de la region : levier sur les voisins).
+
+  1.10 Proto-pays et civilisations -> la civilisation vivante (voir F5)
+
+
+2. SIX GRANDES FONCTIONNALITES
+------------------------------
+F1. LES VOIX DU PEUPLE ET LES COUTUMES (politique interieure, a la Victoria 3)
+  Idee. Le peuple n'est pas un bloc. Des VOIX pesent selon ce que font les
+  gens :
+    age tribal   : Chasseurs, Anciens (gardiens des rites), Jeunes
+                   guerriers ;
+    neolithique  : + Cultivateurs (champs), Artisans (equipes de metier),
+                   Eleveurs (betail).
+  Poids d'une voix : la part des gens qui font son activite (les equipes
+  de metier, les champs, les troupes existent deja), plus la renommee de
+  ses meneurs (les anciens). Chaque voix a une humeur et des attentes.
+  Coutumes : 2 a 4 choix par theme, qu'on change par un debat de quelques
+  mois :
+    partage du gibier (a tous / au chasseur) ; mariage (dans le clan /
+    hors du clan) ; succession (le plus renomme / l'aine / l'elu des
+    anciens) ; terres (communes / par maisonnee) ; morts (enterres au camp
+    / au village / brules) ; guerre (vengeance due / compensation).
+  Effets. Chaque coutume plait a des voix et en fache d'autres. L'humeur des
+  voix joue sur la stabilite, l'attachement des clans, la vitesse
+  d'emancipation, le moral. Une voix furieuse AGIT : les jeunes guerriers
+  raident sans ordre, les anciens bloquent une union, les artisans partent
+  pour un village frere, les chasseurs emmenent un clan.
+  Ce que le joueur decide : quelles coutumes, quelle voix favoriser. La
+  transition neolithique devient POLITIQUE : quand on seme, les chasseurs
+  perdent leur poids, et c'est une crise a gerer.
+  S'appuie sur : chiefs (anciens, traits), stabilite, emancipation, metiers,
+  troupes, evenements.
+  Interface : onglet "Le peuple" (a la Victoria 3 : poids des voix en
+  camembert, jauges d'humeur, fiches des coutumes et leurs effets).
+  IA : chaque peuple IA a ses coutumes et ses voix ; leurs crises font sa
+  vie.
+  Taille : G. MA PREMIERE RECOMMANDATION : c'est ce qui fera de Kora un jeu
+  de grande strategie, et pas seulement de survie.
+
+F2. LE CYCLE DE L'ANNEE (age tribal)
+  Tournees (1.1), lieux nommes, rassemblement d'ete (1.2), hivernage commun,
+  GIBIER QUI MIGRE (des troupeaux d'aurochs, de chevaux, de rennes qui se
+  deplacent avec les saisons, qu'on peut trop chasser et qui mettent des
+  annees a revenir), PRESAGES (les evenements existent) qui annoncent
+  l'annee (hiver dur, secheresse, annee grasse).
+  Ce que le joueur decide : ou etre a chaque saison ; suivre la migration
+  ou tenir le rassemblement ; croire les presages et faire des reserves.
+  S'appuie sur : saisons locales, campements, caches, influence,
+  ressources, evenements.
+  Taille : G (le gibier qui bouge) / M (le reste).
+
+F3. LE BETAIL, LA RICHESSE QUI SE VOLE (neolithique)
+  Des TROUPEAUX possedes (en tetes) par chaque village : ils paturent
+  (steppe, plaine, collines), se reproduisent, demandent du fourrage
+  l'hiver (une part de la recolte), donnent lait, viande, laine
+  (Tisserands), cuir (Pelletiers), fumier (les champs). Surtout, ils se
+  VOLENT : la razzia de betail devient la guerre du neolithique ; ils se
+  gardent (bergers, chiens, enclos), se donnent (dots, tributs en tetes).
+  Les maladies du betail passent aux gens. Plus tard, une VOIE PASTORALE :
+  des peuples de pasteurs sans village, riches en betes, redoutables.
+  Ce que le joueur decide : grain ou betail ; des bras aux champs ou aux
+  paturages ; razzier ou proteger ; payer en tetes.
+  S'appuie sur : villages (Enclos, Chevres et moutons, Boeufs), metiers,
+  battle (butin), diplo (tributs), IA.
+  Taille : G.
+
+F4. LA GUERRE AVEC DES BUTS
+  On declare un BUT : razzia de betail, vengeance d'un mort, reprendre la
+  terre des ancetres, soumettre a tribut, chasser d'un lieu nomme. Un CHEF
+  DE GUERRE (un ancien, ses traits). Une TACTIQUE avant la bataille
+  (embuscade, tenir la palissade, charger, harceler a la fronde) qui change
+  les passes d'armes. Des SIEGES de plusieurs semaines (encercler, affamer).
+  Des CAPTIFS (adoptes dans le peuple, avec leurs savoirs). La LASSITUDE
+  de la guerre. Une PAIX JUREE (otages, compensation en betail).
+  S'appuie sur : battle (passes, moral), units, diplo (raisons, treve), F1
+  (les jeunes guerriers), F3 (le betail).
+  Taille : G.
+
+F5. LA CIVILISATION VIVANTE (proto-pays)
+  Entre les peuples d'une meme culture : la FRATERNITE (entraide contre un
+  etranger, dons en famine), les QUERELLES DE FRERES (pour une terre, un
+  lieu nomme), le CONSEIL DE LA CIVILISATION (au rassemblement de la
+  culture : guerre commune, grand travail, arbitrage), la DERIVE (au fil
+  des generations et des coutumes, les peuples s'eloignent : plus
+  differents, moins freres), et le CHEMIN VERS L'AGE SUIVANT : le peuple le
+  plus prestigieux peut rallier ses freres (mariages, prestige, force) ->
+  la premiere cite qui domine.
+  S'appuie sur : peoples (civilisation), diplo, commerce, plafond commun
+  (les peuples d'une culture partagent deja leurs places), F1 (coutumes).
+  Taille : M a G.
+
+F6. LA MEMOIRE DU PEUPLE
+  TOMBES et terres des ancetres (1.5) ; MYTHES : les grands moments (la
+  chasse legendaire, l'hiver terrible, la victoire, la fondation)
+  deviennent des mythes qui donnent un petit effet durable ; la CHRONIQUE
+  (le livre du peuple : villages fondes, chefs, guerres, famines, dates),
+  lisible dans une fenetre ; des AMBITIONS (1 a 3 buts choisis, tenus sur
+  des annees : dix hivers sans famine, un rassemblement de cinq clans,
+  trois villages, une pierre levee, cinq peuples partenaires) qui donnent
+  prestige et traits au chef.
+  S'appuie sur : journal, evenements (drapeaux), chiefs (renommee).
+  Taille : M.
+
+
+3. COMMENT CA SE PARLE : DES HISTOIRES QUI EN SORTENT
+----------------------------------------------------
+  - Les Cultivateurs prennent du poids (F1) ; les Chasseurs, humilies,
+    poussent un jeune chef a partir : un clan s'emancipe (existe) avec la
+    coutume du gibier partage, devient un peuple de pasteurs (F3) qui
+    razzie vos boeufs (F4). Au conseil de la civilisation (F5), vous
+    demandez justice ; vos freres refusent ; la querelle devient un mythe
+    (F6) et une raison de guerre pour vos enfants.
+  - Vous seuls avez le sel de la region (commerce, monopole) : vous
+    exigez un tribut ; un voisin forme une coalition ; vous gagnez en
+    tenant la palissade (tactique, F4) ; les captifs adoptes apportent
+    leur savoir des filets (savoirs portes par des gens).
+  - Les presages annoncent un hiver terrible (F2) : vous tenez un
+    hivernage commun ; la fievre y passe ; les Anciens (F1) exigent un
+    rite ; la pierre levee batie ensemble devient votre lieu de
+    rassemblement et le mythe fondateur du peuple (F6).
+
+
+4. PAR OU COMMENCER (ma recommandation)
+---------------------------------------
+  Phase 1  F1 Les Voix et les Coutumes : le socle politique, relie tout ce
+           qui existe (stabilite, emancipation, metiers, troupes).
+  Phase 2  F3 Le betail et F4 La guerre avec des buts : l'economie et la
+           guerre du neolithique.
+  Phase 3  F2 Le cycle de l'annee : l'age tribal vivant.
+  Phase 4  F5 La civilisation vivante et F6 La memoire : vers la cite.
+  En continu : les petites extensions de la partie 1 (cultures des champs,
+  fetes, embargo, biens de prestige, lieux nommes, mariages de personnes).

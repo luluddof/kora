@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-09-25 (soir).
+Derniere mise a jour : 2026-09-26.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -45,9 +45,10 @@ lente, bandes dessinees petites a taille fixe.
       perdent le lien, deviennent independants et fondent LEURS PROPRES
       VILLAGES, de la meme culture/civilisation mais sous d'autres
       autorites : des PROTO-PAYS. Plus on a de villages, plus vite les
-      clans s'eloignent. A terme : plus de bandes nomades (anti-spam :
-      chaque village d'une civilisation -1 bande pour tous ses peuples,
-      chaque clan parti -1 a son peuple d'origine tant qu'il vit).
+      clans s'eloignent. A terme : plus de bandes nomades. Anti-spam
+      (2026-09-25 nuit, sa regle) : tous les peuples d'une culture, le
+      joueur compris, PARTAGENT un seul plafond de bandes et de villages,
+      celui du peuple d'origine (8, 12 avec les savoirs).
       La domination d'une cite, puis d'un pays, sur d'autres villages :
       PLUS TARD (mais tout doit y preparer).
   P4  Les villages ne doivent pas stagner : ils grandissent avec les
@@ -162,10 +163,17 @@ lente, bandes dessinees petites a taille fixe.
   - "Pour eviter les problemes dus au trop grand nombre de tribus : les
     tribus independantes d'une culture PARTAGENT le maximum de clans avec
     la tribu d'origine, meme pour le joueur : au plus 12 tribus/villes
-    (avec les savoirs) pour toute cette culture."             EN COURS
+    (avec les savoirs) pour toute cette culture."
+    FAIT (spec 2026-09-26-plafond-commun-civilisation.txt) : sim.civ_band_cap
+    / civ_band_count ; verifie dans sa partie (an 51) : chaque culture se
+    remplit jusqu'a 12 (8 sans Chefferie) puis ne cree plus rien.
   - Profondeur : "reflechis PLUS, a des fonctionnalites interessantes ou a
-    etendre celles deja en place."                              EN COURS
-  - GitHub : compte luluddof.                                   EN COURS
+    etendre celles deja en place."
+    FAIT (propositions, a choisir) : 2026-09-26-profondeur-deuxieme-reflexion.txt
+    (etendre chaque systeme ; six grandes fonctionnalites : Voix du peuple et
+    Coutumes, Cycle de l'annee, Betail, Guerre avec des buts, Civilisation
+    vivante, Memoire du peuple).
+  - GitHub : compte luluddof. FAIT : github.com/luluddof/kora (prive).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -199,10 +207,9 @@ lente, bandes dessinees petites a taille fixe.
 (mis a jour a la fin de chaque chantier)
   Fait le 2026-09-25 apres-midi : emancipation sans impasse, proto-pays
   lisibles, commerce en routes (voir section 3).
-  En attente de SON choix : les propositions de profondeur des deux ages
-  (docs/superpowers/specs/2026-09-25-profondeur-deux-ages-propositions.txt :
-  betail et razzias, rassemblements, grands travaux, chefferie, gibier qui
-  migre, climat et presages, fetes, ambitions, graphes...).
+  En attente de SON choix : les propositions de profondeur des deux ages,
+  deuxieme reflexion (docs/superpowers/specs/2026-09-26-profondeur-deuxieme-reflexion.txt ;
+  ma recommandation : F1 Les Voix du peuple et les Coutumes d'abord).
   Autres pistes qui suivent la vision (a proposer, rien n'est decide) :
   - Commerce : caravanes attaquables par un tiers en guerre, evenements de
     route (marchand, porteurs perdus), biens de prestige (parures, ambre),

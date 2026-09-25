@@ -1,0 +1,36 @@
+Kora - Un plafond de bandes commun a chaque civilisation
+=======================================================
+Date : 2026-09-26. Statut : en place.
+Demande : "pour eviter les problemes dus au trop grand nombre de tribus, les
+tribus independantes d'une culture partagent le maximum de clans avec la
+tribu d'origine, meme joueur, pour qu'il y ait au plus, avec les savoirs,
+12 tribus/villes de cette culture."
+
+Regle (sim.py)
+  - civ_band_cap(civ) : le plafond du peuple d'origine de la culture, selon
+    ses savoirs (8 de base, 12 avec la Chefferie ; un petit peuple d'origine
+    4 de moins) ; peuple d'origine disparu : le mieux loti de ses peuples.
+  - civ_band_count(civ) : bandes (clans ET villages, pas les troupes) de
+    TOUS les peuples de la culture, le joueur compris.
+  - max_bands_of(peuple) = ses bandes + les places libres de sa culture ;
+    on ne se divise que s'il reste une place. Remplace les anciennes regles
+    (-1 par village de la culture, -1 par clan parti).
+  - Garde : un peuple ne d'un autre, sans village, ne se divise pas (il va
+    fonder) ; les clans d'un peuple fixe (IA) ne se divisent pas ; les
+    colons ne partent que pour fonder.
+  - Village agite d'une culture au complet : ses familles rejoignent un
+    village de leur culture a 40 cases au plus, sinon se dispersent (pas de
+    nouvelle tribu).
+  - Interface : Tribu "N/M bandes (civilisation X/Y)" ; Former une bande :
+    "Votre civilisation est au complet : X/Y bandes et villages".
+  - L'emancipation ne cree pas de bande (un clan change de peuple) : elle
+    continue meme quand la culture est au complet.
+
+Mesures
+  - Sa partie (copie, an 51 -> 55) : Kora 7 -> 12/12, Akor 9 -> 12/12,
+    Natao 10 -> 12/12, Senra 8/8 (sans Chefferie), puis plus rien ; Manile
+    reste a 17/12 (villages d'avant la regle) sans rien creer.
+  - 30 ans (IA seule) : 48 villages, au plus 12 par culture, 7 900
+    habitants, 27 accords commerciaux, ~34 ms par semaine.
+Tests : tests/test_emancipation.py (plafond commun, place rendue a la mort
+d'un peuple, familles vers un village frere) ; 408 en tout.

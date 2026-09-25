@@ -23,8 +23,11 @@ livrée dans toute sa dimension (simulation + interface + IA + carte + événeme
 - Le jeu est déterministe : `tools/empreinte.py check empreinte.json` prouve qu'une
   optimisation ne change rien ; ré-enregistrer quand le jeu change volontairement.
 - Tests : `python -m pytest -q` (test_balance juge sur 4 graines).
-- Dépôt git local (branche `main`) depuis le 2026-09-25 : committer à la fin d'un chantier.
-  Pas encore de dépôt distant : deux comptes GitHub sont connectés (demander lequel au joueur).
+- Dépôt git (branche `main`) : **github.com/luluddof/kora** (privé, compte `luluddof`).
+  Committer et pousser à la fin d'un chantier. Deux comptes gh sont connectés ; le compte actif
+  habituel est `votre compte habituel` : pour pousser, `gh auth switch --user luluddof`, puis
+  `git -c credential.helper= -c "credential.helper=!gh auth git-credential" push`, puis revenir
+  avec `gh auth switch --user votre compte habituel`.
   Le passage en « mode cloud » viendra plus tard, à sa demande.
 
 ## En fin de chantier
