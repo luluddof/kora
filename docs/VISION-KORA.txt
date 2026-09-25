@@ -183,6 +183,10 @@ lente, bandes dessinees petites a taille fixe.
     (installer, touches, ou est la partie, signaler un bug), version 0.1.0
     affichee au menu et dans kora_erreur.txt, GitHub Actions qui teste,
     construit et publie Kora-windows.zip a chaque etiquette vX.Y.Z.
+  - "Mais la ca installe tout ; si on prend que le exe ca marche pas ?"
+    (vrai : l'exe en dossier a besoin de _internal). FAIT (0.1.1) : Kora.exe
+    en UN SEUL FICHIER (Kora-unfichier.spec), publie avec le zip ; le README
+    le recommande (telecharger, double-cliquer).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
