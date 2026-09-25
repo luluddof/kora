@@ -1455,8 +1455,12 @@ class Renderer:
         pygame.draw.rect(
             self.screen, (196, 150, 60), (bx, by, bw, bh), 1, border_radius=6
         )
+        from src.kora import __version__
+
         title = self.font.render("Kora", True, (230, 228, 220))
         self.screen.blit(title, (bx + (bw - title.get_width()) // 2, by + 18))
+        version = self.tiny.render(f"version {__version__}", True, (150, 150, 146))
+        self.screen.blit(version, (bx + bw - version.get_width() - 10, by + bh - version.get_height() - 6))
         mx, my = pygame.mouse.get_pos()
         labels = dict(MENU_ITEMS)
         for key, rect in layout["items"].items():

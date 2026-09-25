@@ -175,6 +175,10 @@ lente, bandes dessinees petites a taille fixe.
     vivante, Memoire du peuple).
   - GitHub : compte luluddof. FAIT : github.com/luluddof/kora (prive).
 
+2026-09-26
+  - "Fais en sorte qu'on puisse depuis GitHub installer facilement le exe,
+    comme ca je le fais tester a des potes."                    EN COURS
+
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
