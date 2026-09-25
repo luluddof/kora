@@ -1,0 +1,47 @@
+SAISONS SUR CARTE, SAUVEGARDE, ATLAS
+Date    : 2026-08-15
+Statut  : en place (corrige)
+
+Portee : proto Kora, depart petit, saisons, sauvegarde, atlas.
+
+Carte du code : docs/code/carte-du-depot.txt
+Suite possible : docs/code/suite-possible.txt
+
+
+1. DEPART
+---------
+
+Une seule tribu joueur au depart : un groupe de 40 personnes, stocks 160.
+Trois tribus voisines (IA), une bande chacune, plus loin sur la carte.
+
+
+2. SAISONS SUR LA CARTE
+-----------------------
+
+Le HUD affiche la saison du calendrier.
+Sur la carte, la saison se propage de case en case.
+Hiver et automne partent des poles (nord et sud).
+Printemps et ete partent du milieu de la carte.
+La nourriture suit la saison locale de la case.
+
+
+3. SAUVEGARDE ET MENU
+---------------------
+
+Echap ouvre un menu : Reprendre, Sauvegarder, Nouvelle partie, Quitter.
+La croix de la fenetre enregistre puis ferme.
+
+Fichier unique : saves/kora.json (a cote de l'exe).
+F5 sauvegarde aussi.
+
+
+4. PLANETE SPHERE
+-----------------
+
+La carte reste une sphere a tous les zooms (face visible, face cachee).
+Clic droit : on la fait tourner. Molette : on s'approche.
+De pres, la courbure se voit a peine : ca a l'air plat a cause de l'echelle,
+mais on ne repasse jamais sur un rectangle.
+Le terrain est dessine a la resolution des hex, pas en gros carres.
+
+Plusieurs continents separes par des oceans, pas une seule masse equatoriale.

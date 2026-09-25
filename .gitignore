@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Construction de l'exe (PyInstaller) : se refait avec Kora.spec
+build/
+dist/
+
+# Sauvegardes locales (code en .zip, partie du joueur)
+*.zip
+sauvegarde-partie-*.json

@@ -1,0 +1,125 @@
+OPTIMISATION, IA PRUDENTE ET SOLIDAIRE, NOUVELLE PLANETE
+Date    : 2026-09-23
+Statut  : en place
+
+Portee : proto Kora. Trois demandes :
+  1. optimiser code et jeu SANS changer le jeu ;
+  2. une carte bien plus grande et plus interessante ;
+  3. une IA qui ne lance pas un combat qu'elle risque de perdre, et qui
+     appelle ou rejoint une bande soeur si ca fait basculer le combat.
+
+
+1. OPTIMISATION SANS CHANGER LE JEU
+-----------------------------------
+
+Preuve : tools/empreinte.py rejoue deux parties (robot 8 ans, joueur
+immobile 6 ans) et compare l'etat complet semaine par semaine. Avant /
+apres le refactoring : IDENTIQUE sur 730 semaines, 2,4 fois plus vite.
+
+Simulation (python pur, memes flottants, meme ordre) :
+  - World._index, distance, food_production, enter_cost_for sans Hex
+    intermediaires ; table des rendements (terrain, saison, troupeau) ;
+  - disques de cases en cache (petits et grands rayons), avec leurs
+    distances (hexes_and_distances) ; memo de l'eau littorale ;
+  - A* sur cases entieres (memes voisins, meme ordre, meme departage) ;
+  - vision recalculee seulement si une bande du joueur a bouge ;
+  - snapshot : seules les cases epuisees et les listes sont copiees.
+Tick de fin de partie (30 bandes) : 24 -> 17 ms.
+
+Rendu (numpy, nouveau module globe_draw.py) :
+  - loin / moyen : lancer de rayons par pixel, case hexagonale sous
+    chaque pixel (meme regle que le clic : globe.lonlat_to_colrow) ;
+  - pres : polygones, geometrie calculee en bloc ;
+  - calque de la planete en cache : repeint seulement si la vue, le
+    brouillard ou les saisons changent ; image rapide pendant qu'on
+    tourne, nette des qu'on s'arrete ;
+  - le cout depend de l'ecran, plus de la taille de la carte.
+Zoom moyen : 28 ms -> 17 ms en rotation, 9 ms a l'arret.
+Le clic et le dessin designent toujours la meme case (test).
+
+Infrastructure :
+  - numpy ajoute (requirements.txt), inclus dans l'exe ;
+  - sauvegarde illisible (autre carte, autre version) : renommee
+    kora-ancienne-<date>.json au lieu d'etre ecrasee ;
+  - la carte n'est chargee qu'une fois au demarrage ;
+  - code mort retire (ancienne carte plate du renderer).
+
+
+2. IA PRUDENTE ET SOLIDAIRE (ai_war.py)
+---------------------------------------
+
+Les forces sont comptees la ou le combat aura lieu : l'attaquant + ses
+bandes deja a portee de renfort de la cible, contre la cible + ses
+renforts (side_force). Marge exigee : AI_RAID_EDGE = 1.25.
+
+Trop faible seule, l'IA cherche une bande soeur libre a AI_CALL_RANGE
+(10) cases ou moins qui ferait basculer le combat :
+  - a AI_MERGE_RANGE (3) cases ou moins : elle la rejoint (fusion) ;
+  - plus loin : elle l'appelle et l'attend ; quand l'allie est sur sa
+    case, elles partent ensemble (meme chemin, meme semaine d'arrivee).
+Le plan expire apres AI_PLAN_WEEKS (8). "Des X se regroupent" au
+journal si le joueur les voit.
+
+Chaque semaine :
+  - un raid en cours est annule si la cible s'est renforcee ou est a
+    l'abri (recheck_hunts) ;
+  - l'IA ne finit pas sa marche a 2 cases d'une bande plus forte
+    (accrochage perdu d'avance).
+
+Consequence de jeu : l'IA gagne presque tous les combats qu'elle lance.
+La parade du joueur : garder ses bandes a 2 cases les unes des autres
+(renforts) ; une grosse bande seule n'est presque jamais attaquee.
+Sur le banc, le robot (qui s'eparpille) est raide ~6 fois par an ; le
+joueur immobile (une grosse bande) jamais.
+
+
+3. NOUVELLE PLANETE (mapgen.py, data/kora_map.json)
+---------------------------------------------------
+
+768 x 384 hexagones (4 fois l'ancienne), graine 42.
+Recuire : .venv/Scripts/python.exe -m src.kora.mapgen 42
+(~20 s ; ecrit la carte ET les noms de l'atlas dans le JSON).
+
+Generation, tout sur la sphere (bruit 3D : pas de couture a la ligne
+de date, pas d'etirement aux poles) :
+  - 18 a 24 plaques aux frontieres deformees ; 4 a 6 continents, parfois
+    soudes a une plaque voisine ; deux continents differents ne se
+    touchent jamais (au moins une plaque oceanique entre eux) ;
+  - plateau continental continu (pas de liseré de cote au large) ;
+  - relief : chaines de collision sinueuses, cordilleres cotieres en
+    retrait de la cote, rifts, arcs d'iles morceles, chapelets
+    volcaniques ; sommets rares (des cols restent en montagne) ;
+  - climat : temperature (latitude, altitude) ; pluie portee par les
+    alizes et les vents d'ouest (fondus selon la latitude), ombre
+    pluviometrique derriere les reliefs, convection tropicale ;
+  - bassins versants : cuvettes -> lacs, l'eau coule vers la mer, les
+    gros debits creusent des vallees, les grands fleuves des plaines
+    alluviales, les embouchures restent des deltas (vallee) ;
+  - calottes aux bords dechiquetes.
+
+Graine 42 : 8 terres de plus de 400 cases, le plus grand continent
+~30 % des terres, ~100 iles, lacs et mers fermees, 17 noms d'atlas
+(continents, 2 banquises, 6 bassins oceaniques, mers interieures).
+
+Atlas : calottes a part, un nom par bassin du grand ocean, mers
+fermees nommees ; noms precalcules dans le JSON (plus de gel de 2 s au
+premier dezoom).
+
+Departs : le voisin Steppe part sur la steppe convenable la plus
+proche a plus de 24 cases du joueur (hors de vue, quelques semaines de
+marche), les autres tribus sur d'autres continents.
+
+Les anciennes sauvegardes (384 x 192) ne se chargent plus : elles sont
+mises de cote et une nouvelle partie commence.
+
+
+4. TESTS
+--------
+
+  test_ai_war.py      pas de raid perdu d'avance, fusion, appel puis
+                      depart groupe, raid annule, pas d'accrochage
+  test_mapgen.py      + rivieres / lacs / chaines / archipels, atlas
+                      (chaque planete n'est generee qu'une fois)
+  test_globe.py       + le clic et le dessin s'accordent
+  test_persist.py     + sauvegarde illisible mise de cote
+  tools/empreinte.py  preuve "le jeu n'a pas change" (a lancer a la main)

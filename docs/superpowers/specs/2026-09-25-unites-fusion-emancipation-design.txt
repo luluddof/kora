@@ -1,0 +1,180 @@
+Kora - Unites, fusion des bandes, emancipation des clans
+========================================================
+Date : 2026-09-25. Statut : en place (voir la fin).
+Suite de 2026-09-24-villages-armees-batailles-design.txt.
+
+Demande : "retravaille la fusion des groupements d'unite/tribu [troupes en
+piles d'unites ; bandes et clans de la tribu]. Une fois notre premier
+village fait, on perd plus vite de l'influence sur les autres clans et a
+terme on les perd a mesure qu'ils prennent leur independance et fondent des
+villages de notre culture, pas sous la domination de notre village (cite,
+pays : plus tard). Le village leve en armee une partie de sa population qui,
+une fois dissoute, revient au village ; les armees appartiennent a
+differents types d'unites qui peuvent changer avec les ages."
+
+
+1. Unites (units.py)
+--------------------
+Une troupe est une PILE de compagnies. Une compagnie : un type, des hommes,
+son village. Chaque type a un role ; a chaque age, un role a son meilleur
+type (le savoir le debloque) :
+
+  Role         Age tribal                    Neolithique
+  Melee        Guerriers, Guerriers a        Guerriers a la hache polie
+               l'epieu (Chasse a l'epieu)    (Haches polies)
+  Tir          Frondeurs, Archers (Arc)      -
+  Garde        -                             Porteurs de boucliers (Palissades)
+  Eclaireurs   Pisteurs et chiens (Chiens)   -
+
+  Valeurs : attaque, tenue (pertes subies), tir (volee d'ouverture avant
+  le choc), poursuite, moral, bonus en foret. Au combat, les tireurs sont
+  moins exposes ; la garde tient ; les eclaireurs poursuivent.
+  Un age nouveau apporte de nouveaux types : une compagnie au village peut
+  etre REEQUIPEE (3 vivres par homme) vers le meilleur type de son role.
+
+2. Lever, reunir, detacher, dissoudre
+-------------------------------------
+  - Lever (ecran du village) : un type et une taille (1/5, 1/3, 1/2). Si
+    une troupe du village est deja au village, la compagnie la rejoint.
+    Deux compagnies par village au plus (trois avec la Maison des
+    guerriers).
+  - Reunir [F] deux troupes sur la meme case : une seule pile.
+  - Detacher [S] : la derniere compagnie forme une troupe a part.
+  - Dissoudre [L] : n'importe ou. Chaque compagnie RENTRE A PIED a son
+    village et y redevient villageoise a l'arrivee (on ne la commande
+    plus en route ; elle peut etre attaquee). Au village : tout de suite.
+    Village disparu : les hommes forment un clan errant.
+
+3. Fusion des bandes et des clans
+---------------------------------
+  - [F] Reunir : les bandes de la case rejoignent CELLE QUI EST CHOISIE,
+    dont le chef mene le groupe (Maj+clic : on rejoint la bande visee).
+  - Les chefs des clans reunis ne disparaissent plus : ils deviennent les
+    ANCIENS du clan (3 au plus, les plus renommes). Au prochain
+    fractionnement, un ancien mene le nouveau clan ; a la mort du chef de
+    clan, un ancien lui succede. Un ancien ambitieux trouble le clan.
+  - Panneau Tribu : "Lui confier le clan" donne le clan a un ancien.
+  - Attachement du groupe : moyenne ponderee par le nombre de gens.
+  - Un groupe reuni n'est pas soude tout de suite : 4 semaines de moral
+    -8 au combat, pas de nouvelle scission.
+
+4. Le village divise le peuple (revu le meme jour, voir 7)
+----------------------------------------------------------
+  Une premiere version faisait seulement baisser l'attachement des clans
+  nomades ; le joueur voulait une vraie scission, pour TOUS les peuples.
+  Voir la section 7.
+
+5. Demandes suivantes (meme jour)
+---------------------------------
+  - Le village est un CARRE sur la carte (couleur du peuple, cadre de bois
+    s'il a une palissade) ; la selection l'entoure d'un carre.
+  - Un clic sur un de vos villages ouvre son ecran (plus de fiche de
+    bande) ; l'ecran a "Former une bande [S]".
+  - Menu Armee (onglet a droite, touche A), des le premier village : pour
+    chaque village, type et taille de la compagnie, Lever ; la liste des
+    troupes (voir, dissoudre).
+  - Campements : des qu'aucune bande du peuple n'y est, le campement est
+    leve ; sa reserve reste en cache (si le peuple a encore une place de
+    cache), sinon elle est perdue. L'IA n'y depose plus ses vivres.
+  - Caches : une bande IA sans pacte qui en voit une a 8 cases va la
+    vider (sur la case, elle la trouve toujours ; en passant a cote, une
+    fois sur quatre).
+  - Le monde est grand : bandes dessinees a taille fixe (le nombre de
+    gens s'affiche a cote). CORRIGE ensuite (le joueur voulait l'inverse de
+    ce qui avait ete fait) : vue 8 cases (etait 16 ; Guetteurs +4), marche
+    40 points par semaine (4 cases de plaine, etait 6). L'IA cherche ses
+    proies a portee de marche (4 cases par semaine de raid).
+
+6. Regroupement facile, partie plus longue (meme jour, suite)
+-----------------------------------------------------------
+  - [F] Reunir ne demande plus la meme case : les bandes du meme genre
+    (clans / troupes) qui obeissent, a 2 cases ou moins, rejoignent tout de
+    suite la bande choisie ; celles a 5 cases ou moins viennent a pied et
+    se fondent a l'arrivee (rejoindre = etre a 1 case). Un village n'accueille
+    que les bandes sur sa case ou juste a cote.
+  - Le chef ne quitte jamais son peuple (une carte "un clan veut partir"
+    decidee apres coup visait parfois la bande devenue celle du chef).
+  - Partie plus longue : les savoirs coutent deux fois plus (40, 90, 160,
+    240, 360 points par palier) ; la population croit de 1,8 % par mois
+    (etait 2,5 %).
+
+7. Le village divise le peuple (version en place)
+------------------------------------------------
+Demande : "la creation d'un village cree une division : le chef prend peu a
+peu le pouvoir sur le village et perd l'influence sur les clans, qui
+deviennent progressivement, pour toute civilisation, independants jusqu'a
+ce qu'ils creent leur propre village, de la meme culture/civilisation mais
+gouverne par des autorites differentes. Chaque village d'une culture reduit
+de 1 la capacite a creer des bandes de tous ses dirigeants."
+  - Fondation du premier village : le chef vient gouverner le village (s'il
+    menait une autre bande, les deux chefs de bande echangent).
+  - Chaque clan nomade d'un peuple fixe (ni village, ni troupe, ni la bande
+    du chef) a une INDEPENDANCE (Band.autonomy, 0 a 100) qui monte chaque
+    mois : 1,5 ; +1 loin de tout village du peuple (8 cases) ; moitie
+    moins pres d'un village ; +0,5 hors de l'emprise du chef. Environ 3 ans
+    loin, 10 ans pres du village. Honorer : -15. A 75 : alerte au journal.
+    A 100 : le clan s'emancipe (chiefs.emancipate), sans rancune.
+  - Il fonde un nouveau peuple de la MEME CIVILISATION (Tribe.civ,
+    peoples.civ_of : le peuple d'origine de la lignee), sous son propre
+    chef ; pour le joueur, culture "souche" (vos noms, vos gouts). L'IA de
+    ce peuple campe sur une terre correcte et y fonde son village des 20
+    personnes. Le monde
+    plein (48 peuples vivants) : le clan attend a 100 % qu'il y ait la
+    place (rejoindre un peuple frere deja fixe le refaisait partir sans
+    fin : 558 departs en 27 ans dans un essai). Le nouveau peuple prend une
+    nuance de la couleur de sa civilisation : les civilisations se lisent
+    en familles de couleurs.
+  - Pour tous les peuples : l'IA subit la meme regle (l'honneur ne fait que
+    retarder).
+  - Garder un clan : le faire entrer au village (Reunir), l'installer dans
+    un autre village si les savoirs le permettent, l'honorer, le garder
+    pres du village.
+  - Limite de bandes : chaque village de la civilisation (tous ses
+    peuples) retire 1 a la limite de bandes de chacun de ses peuples
+    (1 au moins) : les chasseurs-cueilleurs ne se dupliquent plus a
+    l'infini.
+  - Panneaux : Tribu (barre orange d'independance sous l'attachement,
+    fiche du clan, limite de bandes expliquee), Peuples (civilisation).
+  - Ancienne sauvegarde : un peuple qui a deja un village y installe son
+    chef au chargement (villages.seat_chiefs).
+  - Essai de 30 ans (IA seule) : premier village vers l'an 11, puis les
+    clans s'emancipent ; a l'an 31, 35 villages dont 31 fondes par des
+    peuples emancipes, les nomades passent de 64 a 38 ; 48 peuples vivants
+    (plafond), ~25 ms par semaine grace aux relations gardees le temps
+    d'une phase (diplo.frozen_relations) ; l'IA ne cherche un savoir
+    qu'une semaine sur quatre.
+  - A venir : la domination d'un village sur d'autres (cite), puis d'un
+    pays ; la civilisation en sera le socle.
+
+8. Plus de bandes, bots qui collent, stabilite (meme jour, suite)
+----------------------------------------------------------------
+  - Chaque clan parti fonder son peuple coute une bande a la limite de son
+    peuple d'origine, tant que ce peuple vit (peoples.children_alive) : la
+    sedentarisation avancee, on ne forme plus de bandes.
+  - "Les bots nous collent" : mesure sur la sauvegarde du joueur, les
+    bandes a 8 cases ou moins etaient surtout un peuple ne d'un de ses
+    clans, qui campait puis fondait son village au pied du sien (l'IA se
+    fixe la ou elle est, sur une bonne terre). Desormais : le clan emancipe
+    part vers une terre a 12 cases ou plus de tout village
+    (ai.find_new_land) ; l'IA ne fonde plus de village a moins de 10 cases
+    d'un autre (VILLAGE_SPACING) ; une bande IA ne campe plus a moins de 4
+    cases du village d'un autre peuple.
+  - Les savoirs du neolithique qui donnaient de l'attachement (Culte des
+    ancetres, Villages freres, Pierres levees) donnent la STABILITE des
+    villages (+10, +10, +15) ; les nomades n'en profitent plus. Stabilite
+    (villages.stability) : 50 + savoirs + batiments (autel 8, pierre 10,
+    puits, grenier, maison longue 4) + serment du feu 10 + chef present 10
+    (loin du chef : jusqu'a -20) + prestige ; famine recente -20, champs
+    brules -10, trop de monde (plus de 150). Effets : croissance x0,85 a
+    x1,15, moral de defense -10 a +10, attachement d'un village qui n'est
+    pas celui du chef ; sous 30, chaque mois, des familles peuvent partir
+    (15 %) former un clan nomade.
+
+Statut
+------
+En place le 2026-09-25 : units.py, villages.py, battle.py, sim.py,
+chiefs.py, orders.py, ai.py, render_village.py, render_panels.py.
+Tests : tests/test_units.py, tests/test_merge.py, tests/test_emancipation.py,
+tests/test_camps_caches.py. test_balance juge la croissance sur 4 graines
+(une seule partie etait une piece qu'on lance). Regroupement a distance :
+tests/test_merge.py.

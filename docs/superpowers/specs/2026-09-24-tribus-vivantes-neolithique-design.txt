@@ -1,0 +1,288 @@
+TRIBUS VIVANTES ET PIVOT NEOLITHIQUE
+Date    : 2026-09-24
+Statut  : en place (phases 0 a 8 faites le 2026-09-24)
+
+Portee : proto Kora. Suite de la feuille de route "du tribal aux
+civilisations". Les choix de l'utilisateur (reponse du 24 sept.) :
+
+  A1  zone d'influence visible - PAS un territoire possede : la zone
+      ou la tribu vit, chasse et se souvient. Ses effets passent par
+      les savoirs.
+  A2  campements et caches : oui, debloques par les savoirs.
+  A3  diplomatie : oui, avec une belle interface.
+  A4  plus de peuples : oui, sans en mettre trop sur la carte.
+  A5  evenements : qui ont du sens, en chaines avec embranchements ;
+      une suite possible n'est jamais garantie.
+  A6  traditions : difficiles tant qu'on peut scinder -> mis de cote.
+  A7  chef : il dirige UNE bande ; il faut garder de l'emprise sur les
+      autres bandes, sinon elles deviennent independantes, voire
+      passent a un autre peuple.
+  B   neolithique : oui, mais pas de jeu dependant des cases : une case
+      produit plusieurs choses ; un village peut couvrir plusieurs
+      cases. Les problemes des sedentaires et la transition difficile
+      sont voulus.
+  C   villes, Etats : plus tard.
+
+
+1. ORDRE DES TRAVAUX
+--------------------
+
+  0. Peuples en donnees (fin des 4 identifiants ecrits en dur)
+  1. Zone d'influence : calcul, calque "Zones", effets par savoirs
+  2. Campements et caches
+  3. Chefs, clans, emprise, secession
+  4. Diplomatie : relations, pactes, diffusion des savoirs, panneau
+  5. Petits peuples sur la carte
+  6. Evenements en chaines
+  7. Ressources du pays (plusieurs par case)
+  8. Villages (zone de plusieurs cases) et savoirs du Neolithique (sur le
+     meme arbre vertical que l'age tribal, apres une bande d'age)
+Chaque phase : tests, puis banc d'equilibrage (tests/test_balance.py).
+
+
+2. PEUPLES EN DONNEES (phase 0)
+-------------------------------
+
+Tribe porte sa culture (peoples.CULTURES) : terrains de depart, gout
+de l'IA (terrains preferes, audace, raids), savoirs de depart, ordre de
+preference des savoirs. Couleur et nom propres (plus de TRIBE_COLORS par
+identifiant). Les identifiants 1 a 4 restent (joueur, steppe, foret,
+cote) pour les anciennes sauvegardes et les tests.
+Noms : syllabes par culture, tires au hasard du recit (state.story_rng,
+separe du hasard de l'IA pour ne pas bousculer ses choix).
+
+
+3. ZONE D'INFLUENCE (phase 1)
+-----------------------------
+
+Ce n'est pas une propriete : c'est la ou la tribu vit. Pas de frontiere
+qui bloque, pas d'achat de case.
+
+Calcul (mensuel, pur Python) :
+  - chaque semaine, la position de chaque bande est notee ;
+  - toutes les 4 semaines : l'influence decroit (x 0,94 par mois, soit
+    une demi-vie d'environ un an), puis chaque position notee etend
+    l'influence de sa tribu sur un disque (0,02 par semaine de presence
+    d'une bande de 40 : ~6 semaines au meme endroit font une zone) ;
+  - rayon : 2 de base, + savoirs (Pistes et reperes +1, Grand
+    campement +1...) ; les campements et villages ancrent l'influence
+    meme sans bande.
+  Zone de la tribu : influence >= 0,12. Coeur : >= 0,4.
+
+Calque "Zones" (touche Z, pastilles en haut a droite) : teinte legere de
+la couleur de la tribu dominante, bord plus marque ; seulement sur les
+terres explorees.
+
+Effets, TOUS par savoirs :
+  Pistes et reperes     nourriture +8 % dans sa zone, rayon +1
+  Guetteurs et signaux  defense +15 % dans sa zone
+  Chefferie, Rites...   emprise du chef plus loin (section 5)
+Effets naturels, sans savoir :
+  - deux zones qui se chevauchent : relation qui se degrade (section 6) ;
+  - une bande loin de sa zone, dans celle d'un autre : attachement en
+    baisse, tentation de changer de peuple (section 5).
+
+
+4. CAMPEMENTS ET CACHES (phase 2)
+---------------------------------
+
+Cache de vivres (savoir Fumage et sechage) :
+  - bouton de la fiche de bande : deposer (tout sauf 4 semaines de
+    reserve) ou reprendre (ce qui tient dans le stock) ;
+  - capacite 300 (+ Salaison, + Poterie), jusqu'a 3 caches ;
+  - elle se gate (1,5 %/semaine ; moins avec Salaison, Poterie) ;
+  - une bande etrangere qui passe a cote peut la trouver et la piller.
+
+Campement (savoir Huttes et campements) :
+  - "Camper ici" : un lieu fixe de la tribu (2 au plus, +1 Grand
+    campement, +1 Chefferie) ;
+  - abri : en hiver, une bande au campement perd 40 % de morts en moins ;
+  - reserve du campement (comme une cache, 600) ;
+  - ancre l'influence (rayon 3) meme vide ;
+  - destination de repli preferee apres une defaite ;
+  - abandonne apres 3 ans sans visite.
+Un campement est la graine du village (section 9).
+
+
+5. CHEFS, CLANS ET EMPRISE (phase 3)
+------------------------------------
+
+Chaque bande a un chef de bande (nom, age, traits, renommee). Le chef de
+la tribu est le chef d'UNE de ces bandes : sa bande est le coeur.
+
+Attachement de chaque bande (0 a 100 ; la bande du chef : 100).
+Chaque mois il va vers une cible (25 % de l'ecart) :
+  70 de base
+  - 0,8 par case au-dela de l'emprise du chef (12 cases de base,
+    + Recits, Rites, Pistes, Chefferie...)
+  + 10 dans la zone de la tribu, + 15 dans son coeur
+  - 10 dans la zone d'un autre peuple
+  + (prestige - 40) x 0,2
+  + traits (chef rassembleur, chef de bande fidele / ambitieux...)
+  - 10 si la bande est plus nombreuse que celle du chef
+  - 10 apres une famine ; - 2 par bande au-dela de 4
+  + savoirs (Rites +6, Chefferie +8...)
+Leviers du joueur :
+  - rapprocher la bande du chef (visite a 3 cases : +10) ;
+  - Honorer le clan : -5 prestige, +20 attachement (une fois par
+    6 mois et par bande) ;
+  - designer l'heritier (+10 pour son clan) ;
+  - le chef change de bande (deux bandes sur la meme case).
+Seuils :
+  >= 40   obeit
+  20-40   indocile : n'obeit plus, vit seule (l'IA la mene), ne vient
+          plus en renfort
+  < 20    risque de depart chaque mois : evenement "Le clan veut partir"
+Depart : nouveau peuple (meme savoirs, relation "meme souche"), ou, si
+la bande vit dans la zone d'un peuple plus prestigieux, elle le rejoint.
+Plafond de peuples vivants : au-dela, pas de nouveau peuple (elle
+rejoint un voisin ou reste).
+Mort des chefs : risque qui monte avec l'age, et au combat. Succession :
+l'heritier, sinon le plus renomme ; le joueur choisit (evenement). Les
+ambitieux ecartes se detachent.
+
+
+6. DIPLOMATIE (phase 4)
+-----------------------
+
+Relation entre deux peuples en contact (-100 a +100), somme de raisons
+lisibles, chacune avec sa valeur et son usure (a la maniere de CK) :
+  raid (-25), cadeau (+), meme souche (+25), separation (-15),
+  trahison (-50), treve (+10), alliance (+25), mariage (+15),
+  terres qui se chevauchent (jusqu'a -25), ennemi commun (+10)...
+Niveaux : Ennemis <= -50 < Hostiles <= -15 < Mefiants < 15 <= Cordiaux
+< 50 <= Amis ; Allies avec un pacte.
+
+Pactes :
+  Treve (2 ans)      pas de raid entre eux ; les bandes se croisent
+  Alliance           treve + renforts mutuels + savoirs partages plus vite
+  Tribut (2 ans)     le plus faible paie une semaine de vivres par saison
+Rompre un pacte (raider un allie) : trahison, prestige -10, et tous les
+peuples vous en veulent (-10).
+
+Actions (panneau Peuples, touche P) :
+  Offrir des vivres     toujours accepte ; porte par la bande la plus
+                        proche ; + Dons et palabres
+  Proposer une treve    l'IA juge : relation, forces, raids recents
+  Proposer une alliance (Mariages entre clans)
+  Exiger un tribut      il faut etre bien plus fort pres d'eux
+  Inviter un clan       debaucher une bande indocile d'un autre peuple
+  Proposer l'union      (Confederation) un petit peuple ami se fond
+                        dans le votre
+Chaque bouton montre la reponse probable et ses raisons (+/-) avant de
+cliquer. L'IA propose aussi (treve, alliance par mariage, tribut) :
+cela arrive comme un evenement.
+
+Diffusion des savoirs : un savoir connu d'un voisin en contact (pas
+ennemi) s'apprend 35 % plus vite par voisin (70 % par allie, plafond
++100 %), et ses conditions "semaines vecues" sont divisees par deux.
+
+
+7. PETITS PEUPLES (phase 5)
+---------------------------
+
+6 petits peuples au depart (une bande de 18 a 26), sur d'autres
+continents et, pour un ou deux, loin sur le votre. Culture tiree du
+biome (steppe, foret, cote, vallee, collines, desert, nord). Moins
+audacieux. Plafond de peuples vivants : 14 (secessions comprises).
+
+
+8. EVENEMENTS EN CHAINES (phase 6)
+----------------------------------
+
+Moteur en donnees (events.py) :
+  - un evenement : conditions, texte, options ;
+  - une option : effets immediats, OU plusieurs issues tirees au sort
+    (chances modifiees par les savoirs, traits, forces), et des suites
+    possibles : (evenement, probabilite, delai) ;
+  - une suite n'est jamais sure : tiree au sort, puis ses conditions
+    sont revues au moment ou elle arrive ;
+  - memoire (drapeaux) : un choix passe peut revenir des annees apres ;
+  - le texte des effets est tire des donnees, comme les savoirs.
+Declencheurs : tirage mensuel par tribu (avec delai entre deux
+evenements), et crochets de la simulation (premier contact, raid,
+famine, mort d'un chef, hiver...).
+Joueur : une carte "A decider" apparait (le temps continue) ; l'ouvrir
+met en pause ; sans reponse avant l'echeance, l'option par defaut est
+prise. L'IA vit les memes evenements et choisit seule.
+44 evenements (events_data.py) : les loups (jusqu'aux chiens), le grand
+troupeau, la rivalite, le clan qui part, les etrangers, la fievre,
+l'hiver terrible, la grotte ornee, l'etranger blesse, la succession, les
+presages, les caches, les rassemblements, les jeunes qui partent, la vie
+de tous les jours (idee neuve, querelle, famille errante, source chaude,
+orage, dernier des anciens), les propositions des autres peuples (treve,
+alliance, tribut), et les villages (crue, semences, fievre du village,
+belle recolte, nomades qui rodent).
+Rythme mesure : un evenement "au hasard" au plus tous les 16 semaines
+pour le joueur (30 pour l'IA), plus les suites et les crochets.
+Touche E : ouvrir la premiere carte en attente.
+
+
+9. RESSOURCES DU PAYS ET VILLAGES (phases 7-8)
+----------------------------------------------
+
+Ressources : des couches continues sur toute la carte (0 a 1 par case),
+PLUSIEURS par case : cereales sauvages, racines, aurochs, chevres
+sauvages, chevaux, rennes, poisson, silex, argile, sel. Cuites avec la
+carte (flux aleatoire separe : la carte ne change pas).
+Elles comptent :
+  - un peu dans la collecte (gibier, plantes) ;
+  - dans les conditions des savoirs (semaines vecues pres du sel, des
+    chevres, des cereales...) : la geographie fait l'histoire ;
+  - dans les champs et les troupeaux des villages.
+
+Village : un campement devient village (Premieres semailles, bouton
+Village [V] sur le campement). Ce n'est pas une case : un centre, et des
+champs repartis sur les meilleures cases autour (rayon 3 ; fertilite du
+terrain x cereales/racines sauvages x sol), un champ par 25 habitants
+(12 au plus).
+Dans le code, les villageois sont une bande INSTALLEE (Band.village) :
+chef, attachement, raids, collecte, croissance, zone d'influence marchent
+comme pour une bande ; elle ne marche plus. Le lieu (Site "village")
+porte les champs, le sol, les semences, la palissade.
+  - semailles au printemps LOCAL (des semences, 120 par champ, gardees a
+    part du grenier) ; recolte a l'automne local : ~700 par champ plein
+    (fertilite 1, sol neuf), soit un peu plus de la moitie de ce que
+    mangent ses 25 travailleurs ; le reste vient encore de la chasse et
+    de la cueillette ;
+  - on garde d'abord les semences de l'an prochain ; en famine, on peut
+    les manger (evenement) : pas de champs au printemps ;
+  - le sol d'un champ perd 0,08 par recolte, celui d'une case au repos
+    gagne 0,12 : le village deplace ses champs de lui-meme (Jachere :
+    epuisement divise par deux) ;
+  - grenier : + 20 semaines de reserve (Greniers + 8) ; le grain se perd
+    un peu (rats) ;
+  - naissances x1,4 ; fievres a partir de 80 habitants ; crues en vallee
+    (6 % par printemps) ;
+  - un village ne fuit pas : pille, il perd du grain et ses champs
+    brulent (recolte x0,6) ; palissade (savoir Palissades) : 12 semaines
+    et 4 semaines de vivres, puis defense x1,6 ;
+  - il forme des bandes (Former bande [S]) et accueille les bandes qui
+    le rejoignent (Reunir [F]) ; quitter un village se confirme.
+Mesure (village seul, bonne vallee, 10 ans) : sans savoirs neolithiques
+il plafonne vers 100 habitants ; avec Champs, Jachere, Greniers, Chevres
+il monte a 150-220. Les IA fondent leurs premiers villages vers l'an 8.
+
+
+10. SAUVEGARDE, TESTS, PERFORMANCE
+----------------------------------
+
+Sauvegarde : champs nouveaux optionnels ; une ancienne partie recoit des
+chefs, des relations vides (contacts = peuples deja apercus), et les
+petits peuples naissent hors de ce que le joueur a explore (verifie sur
+la partie de l'utilisateur, an 6).
+Tick : les nouveaux systemes tournent surtout une fois par mois ; la
+simulation reste en Python pur (numpy pour le rendu et la carte).
+Optimisations du chantier : Hex en tuple nomme et hachage en C des
+terrains et saisons, bonus des savoirs gardes pendant le tick, grille de
+voisinage et forces memorisees pendant l'IA, carte d'influence
+reconstruite (pas de copie de secours), epuisement des terres sans
+calcul inutile. Mesure : ~20 ms par semaine vers l'an 10 (54 bandes),
+~47 ms vers l'an 15 (80 bandes, 12 peuples).
+Tests par systeme (test_peoples, test_influence, test_sites, test_chiefs,
+test_diplo, test_events, test_resources, test_villages, test_panels) +
+banc tests/test_balance.py.
+
+Touches : T savoirs, B tribu, P peuples, J journal, Z zones, R
+ressources, E evenement, S scinder, F reunir, C camper, K deposer,
+H honorer, V village, Tab bande suivante.

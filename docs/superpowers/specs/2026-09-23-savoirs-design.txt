@@ -1,0 +1,426 @@
+SAVOIRS (ARBRE) - AGE TRIBAL ET NEOLITHIQUE
+Date    : 2026-09-23 (etendu le 2026-09-24)
+Statut  : en place
+
+Portee : proto Kora. Remplace les "decisions" (cabotage, troupeau) et le
+"Feu : connu" affiche seul. Code : src/kora/tech.py.
+Le tableau de la section 5 est genere depuis les donnees du jeu :
+  python tools/arbre_savoirs.py --spec
+
+24 sept. : 8 branches (+ "Pays et campements", "Voisins"), 26 savoirs
+pour l'age tribal, puis le neolithique (paliers 4 et 5, 14 savoirs) sur
+le MEME arbre, vertical : les paliers descendent, une colonne par
+branche ; une bande verte marque le passage au neolithique, ou les
+colonnes prennent leur nouveau nom (Reserves -> Greniers et artisans,
+Pays et campements -> Villages...). Les nouveaux savoirs font vivre la zone
+d'influence, les campements et caches, les chefs, la diplomatie et les
+villages (spec 2026-09-24-tribus-vivantes-neolithique-design.txt).
+Conditions nouvelles : semaines pres d'une RESSOURCE du pays (sel,
+cereales, chevres, argile...), un drapeau d'evenement (les louveteaux
+donnent les Chiens), un campement ou un village tenu N ans, des voisins
+connus, cordiaux ou allies. Un savoir connu d'un voisin s'apprend plus
+vite et ses semaines vecues comptent double (diffusion).
+
+
+1. INTENTION
+------------
+
+Point de depart : on vient de maitriser le feu et les outils de pierre.
+Pendant l'age tribal, la tribu progresse jusqu'a l'aube du neolithique
+(semailles, poterie, chefferie). Chaque savoir dit exactement ce qu'il
+fait.
+
+Ce n'est pas un 4X a points de recherche (la suite-possible le
+deconseillait) : un savoir s'acquiert en VIVANT. Il devient disponible
+quand la tribu connait ses prerequis ET a vecu ce qu'il faut (semaines
+en foret, hivers traverses, taille du peuple...). Il faut ensuite
+l'apprendre, un a la fois, pendant des semaines.
+
+
+2. REGLES
+---------
+
+Etats d'un savoir :
+  connu        la tribu le sait
+  en cours     il s'apprend (un seul a la fois)
+  disponible   prerequis connus + conditions vecues : on peut l'apprendre
+  pas encore   prerequis connus, conditions pas encore vecues
+  verrouille   un prerequis manque
+
+Apprentissage : points par semaine = 1 + peuple / 120 (clans obeissants
+  seulement ; x chef "Sage" ; + diffusion des voisins).
+  Cout (double le 2026-09-25 : une partie plus longue) : palier 1 = 40,
+  palier 2 = 90, palier 3 = 160, palier 4 = 240, palier 5 = 360 points.
+  (40 personnes : ~30 semaines pour un premier savoir ; 200 personnes :
+  ~60 semaines pour un savoir de l'aube du neolithique.)
+  Changer de savoir garde l'avancement du precedent.
+
+Vecu (Tribe.practice), compte chaque semaine :
+  - une semaine de plus pour chaque terrain ou se tient au moins une bande ;
+  - "hiver local" si une bande est en hiver sur sa case ;
+  - "hivers traverses" a chaque fin d'hiver ;
+  - rivage / steppe en vue (16 cases) comme avant.
+
+Le joueur choisit (onglet Savoirs, touche T ; un seul arbre). L'IA choisit seule selon le gout de sa culture
+(peoples.CULTURES), avec les memes regles. Le joueur n'apprend jamais
+rien sans choisir.
+
+Depart :
+  tout le monde : Feu, Outils de pierre ;
+  Steppe : + Chasse a l'epieu, Troupeau ;
+  Foret  : + Cueillette savante ;
+  Cote   : + Peche au harpon, Pirogue.
+Pirogue = l'ancien cabotage (tribe.cabotage) ; Troupeau = l'ancien
+troupeau (tribe.troupeau) ; memes conditions qu'avant, avec un prerequis.
+
+
+3. EFFETS (ou ils agissent)
+---------------------------
+
+  nourriture par terrain   world.food_production(bonus=)
+  eau pres des rives       food_production (peche, filets)
+  collines en hiver        food_production
+  reserves                 sim.stock_max
+  famine en hiver          sim.collect_food
+  force au combat          sim.band_force
+  renforts (rayon)         sim.side_force, ai_war.force_at
+  marche par terrain       enter_cost_for / astar / travel_weeks (costs=)
+  vue                      vision.recompute_vision
+  terres qui se refont     sim.update_exhaustion
+  naissances               sim.update_population
+  nombre de bandes         sim.can_split
+  prestige d'hiver         sim.update_prestige
+Le texte "Effets" de chaque savoir est tire de ces memes donnees
+(tech.effect_lines) : ce qui est ecrit est ce qui est simule.
+
+
+4. RYTHME (banc, robot raisonnable, 15 ans)
+-------------------------------------------
+
+  premiers savoirs      an 0 a 2
+  savoirs du clan       an 3 a 4 (troupeau vers l'an 6)
+  aube du neolithique   an 6 a 9, filets et chefferie plus tard
+Les IA suivent le meme rythme et finissent l'arbre vers l'an 9-14.
+Test : tests/test_balance.py (au moins 6 savoirs en 6 ans, dont 2 du
+clan) et tests/test_tech.py (chaque effet agit).
+
+
+5. L'ARBRE
+----------
+
+=== Age tribal ===
+
+Palier 0 - Connu
+------------------------------------------------------------
+  Outils de pierre   [Terre et cueillette]
+    Bifaces, racloirs, pieux : la cueillette et la chasse de base.
+    -> Deja pris en compte dans le jeu de base.
+
+  Feu   [Foyer et societe]
+    Chaleur, cuisson, lumiere. Sans lui, aucun hiver n'est possible.
+    -> Deja pris en compte dans le jeu de base.
+
+Palier 1 - Premiers savoirs  (apprentissage : 40 points)
+------------------------------------------------------------
+  Chasse a l'epieu   [Chasse et guerre]
+    Des pieux durcis au feu et des chasseurs qui rabattent ensemble le gros gibier.
+    Il faut connaitre : Outils de pierre
+    Il faut avoir vecu : Peuple 30 ; 6 sem. en plaine ou steppe
+    -> Plaine et steppe : +10 % de nourriture
+    -> Force au combat : +10 %
+
+  Cueillette savante   [Terre et cueillette]
+    Savoir quelles baies, racines et noix se mangent, et ou les trouver selon la saison.
+    Il faut connaitre : Outils de pierre
+    Il faut avoir vecu : 8 sem. en foret ou vallee
+    -> Foret : +12 % de nourriture
+    -> Vallee : +6 % de nourriture
+
+  Fumage et sechage   [Reserves]
+    La viande et le poisson fumes se gardent des mois : on prepare l'hiver, on cache des vivres.
+    Il faut connaitre : Feu
+    Il faut avoir vecu : 1 hiver traverse
+    -> Reserves : +4 semaines de stock par personne
+    -> Caches de vivres : jusqu'a 3 (bouton Deposer de la bande)
+    -> Chaque cache garde +300 de vivres
+
+  Peche au harpon   [Eau]
+    Harpons d'os et pieges a poissons au bord de l'eau.
+    Il faut connaitre : Outils de pierre
+    Il faut avoir vecu : Rivage en vue ; 4 sem. en cote ou vallee
+    -> Cote : +8 % de nourriture
+    -> Eau pres des rives (mer, lacs) : +0,5 nourriture par case (printemps)
+    -> Metier du village : pecheurs (poisson des terres)
+
+  Vetements de peau   [Froid et voyage]
+    Aiguilles d'os et peaux cousues : on survit au froid.
+    Il faut connaitre : Feu, Outils de pierre
+    Il faut avoir vecu : 10 sem. d'hiver local
+    -> Collines et montagnes en hiver : nourriture x1,5
+    -> Famine pendant l'hiver local : -30 % de morts
+
+  Huttes et campements   [Pays et campements]
+    Des huttes de branches et de peaux qu'on retrouve chaque saison : un lieu a soi.
+    Il faut connaitre : Feu
+    Il faut avoir vecu : 1 hiver traverse ; Peuple 30
+    -> Campements : jusqu'a 2 (bouton Camper ici)
+    -> En hiver au campement : -40 % de morts de faim
+
+  Rites et sepultures   [Foyer et societe]
+    Ocre, parures, morts enterres avec leurs outils : les clans partagent les memes ancetres.
+    Il faut connaitre : Feu
+    Il faut avoir vecu : 2 hivers traverses ; Peuple 40
+    -> Attachement des clans a la tribu : +6
+    -> Emprise du chef : +3 cases
+
+  Dons et palabres   [Voisins]
+    Echanger des presents, s'asseoir autour du meme feu : on parle avant de se battre.
+    Il faut connaitre : Feu
+    Il faut avoir vecu : Connaitre 1 autre peuple
+    -> Cadeaux aux autres peuples : +50 % d'effet
+    -> Vos propositions aux autres peuples : +10 d'acceptation
+
+Palier 2 - Savoirs du clan  (apprentissage : 90 points)
+------------------------------------------------------------
+  Arc et fleches   [Chasse et guerre]
+    Tuer de loin : le petit gibier des forets, et l'ennemi avant qu'il n'approche.
+    Il faut connaitre : Chasse a l'epieu
+    Il faut avoir vecu : Peuple 80 ; 12 sem. en foret
+    -> Foret : +6 % de nourriture
+    -> Force au combat : +15 %
+
+  Troupeau   [Terre et cueillette]
+    Suivre et garder un troupeau plutot que le chasser : la steppe devient un garde-manger.
+    Il faut connaitre : Chasse a l'epieu
+    Il faut avoir vecu : Steppe en vue ; 4 sem. en steppe ; Peuple 10
+    -> Steppe : nourriture x1,35 au printemps, x1,65 en ete, x1,5 en automne et en hiver
+
+  Salaison   [Reserves]
+    Le sel garde la viande et le poisson : des reserves plus grandes, des caches qui durent.
+    Il faut connaitre : Fumage et sechage
+    Il faut avoir vecu : 10 sem. pres du sel ; 2 hivers traverses
+    -> Reserves : +3 semaines de stock par personne
+    -> Chaque cache garde +200 de vivres
+    -> Les caches se gatent 2 fois moins vite
+    -> Metier du village : sauniers (sel des terres)
+
+  Pirogue   [Eau]
+    Un tronc creuse au feu : on longe les rives, on traverse les lacs et les detroits.
+    Il faut connaitre : Peche au harpon
+    Il faut avoir vecu : Rivage en vue ; 4 sem. en cote ; Peuple 50
+    -> Vos bandes peuvent longer l'eau pres des rives (mer et lacs)
+
+  Raquettes et portage   [Froid et voyage]
+    Raquettes, traineaux, sentiers battus : la foret et les collines ralentissent moins.
+    Il faut connaitre : Vetements de peau
+    Il faut avoir vecu : 14 sem. en foret ou collines
+    -> Marche en foret : 4 cases/semaine (au lieu de 3)
+    -> Marche en colline : 5 cases/semaine (au lieu de 4)
+    -> Marche en montagne : 1,3 cases/semaine (au lieu de 1)
+
+  Pistes et reperes   [Pays et campements]
+    Chaque source, chaque gue, chaque passage des betes a un nom : on connait son pays.
+    Il faut connaitre : Huttes et campements
+    Il faut avoir vecu : Avoir eu 2 bandes ; 3 hivers traverses
+    -> Zone d'influence : +1 case autour de vos bandes et camps
+    -> Dans votre zone d'influence : +8 % de nourriture
+    -> Emprise du chef : +4 cases
+
+  Recits autour du feu   [Foyer et societe]
+    Les anciens racontent les hivers passes : la tribu se souvient et se tient.
+    Il faut connaitre : Feu
+    Il faut avoir vecu : 3 hivers traverses ; Peuple 70
+    -> Naissances : +5 %
+    -> Emprise du chef : +3 cases
+    -> Prestige a la fin de l'hiver : +6 sans famine, -4 avec (au lieu de +4 / -6)
+
+  Mariages entre clans   [Voisins]
+    On donne ses filles et ses fils aux voisins : les alliances se scellent par le sang.
+    Il faut connaitre : Dons et palabres
+    Il faut avoir vecu : Peuple 80 ; 1 peuple cordial (relation 20)
+    -> Attachement des clans a la tribu : +4
+    -> Vous pouvez proposer une alliance (mariages entre les chefs)
+
+Palier 3 - Aube du neolithique  (apprentissage : 160 points)
+------------------------------------------------------------
+  Guetteurs et signaux   [Chasse et guerre]
+    Des veilleurs sur les hauteurs et des signaux de fumee : on voit venir, on s'entraide.
+    Il faut connaitre : Arc et fleches, Recits autour du feu
+    Il faut avoir vecu : Avoir eu 4 bandes ; Peuple 160
+    -> Defense dans votre zone d'influence : +15 %
+    -> Vue : +4 cases autour de vos bandes
+    -> Renforts : vos bandes s'entraident jusqu'a 3 cases (au lieu de 2)
+
+  Premieres semailles   [Terre et cueillette]
+    Replanter les graines des meilleures plantes pres du camp : le debut des champs.
+    Il faut connaitre : Cueillette savante, Fumage et sechage
+    Il faut avoir vecu : Peuple 160 ; 5 hivers traverses ; 20 sem. pres de cereales ou de racines sauvages
+    -> Vallee : +20 % de nourriture
+    -> Plaine : +10 % de nourriture
+    -> Terres epuisees autour de vos camps : se refont 2 fois plus vite
+    -> Vous pouvez fonder un village sur un de vos campements (bouton Village)
+
+  Poterie   [Reserves]
+    Des pots d'argile cuite : grain et graisse a l'abri de l'humidite et des rongeurs.
+    Il faut connaitre : Fumage et sechage
+    Il faut avoir vecu : Peuple 180 ; 6 hivers traverses ; 8 sem. pres de l'argile
+    -> Famine pendant l'hiver local : -15 % de morts
+    -> Reserves : +6 semaines de stock par personne
+    -> Caches de vivres : +2
+    -> Chaque cache garde +300 de vivres
+    -> Les caches se gatent 2 fois moins vite
+    -> Metier du village : potiers (argile des terres)
+
+  Filets et nasses   [Eau]
+    Filets tresses et nasses en osier : la mer et les lacs nourrissent vraiment.
+    Il faut connaitre : Pirogue
+    Il faut avoir vecu : Peuple 140 ; 30 sem. en cote
+    -> Cote : +8 % de nourriture
+    -> Eau pres des rives (mer, lacs) : +0,3 nourriture par case (printemps)
+
+  Chiens de chasse   [Froid et voyage]
+    Les louveteaux d'autrefois sont devenus des chiens : ils rabattent le gibier et veillent la nuit.
+    Il faut connaitre : Chasse a l'epieu
+    Il faut avoir vecu : Avoir apprivoise des louveteaux (evenement)
+    -> Foret, plaine et steppe : +6 % de nourriture
+    -> Vue : +2 cases autour de vos bandes
+
+  Grand campement   [Pays et campements]
+    Un camp tenu d'annee en annee, avec ses reserves et ses tombes : le coeur du pays.
+    Il faut connaitre : Pistes et reperes
+    Il faut avoir vecu : Un campement tenu 3 ans ; Peuple 150
+    -> Campements : +1
+    -> Naissances des bandes au campement : +10 %
+    -> Zone d'influence : +1 case autour de vos bandes et camps
+
+  Chefferie   [Foyer et societe]
+    Un chef reconnu par plusieurs clans : la tribu peut s'etendre sans se defaire.
+    Il faut connaitre : Recits autour du feu
+    Il faut avoir vecu : Peuple 250 ; Prestige 50 ; 8 hivers traverses
+    -> Campements : +1
+    -> Naissances : +5 %
+    -> Bandes : jusqu'a 12 (au lieu de 8)
+    -> Attachement des clans a la tribu : +8
+    -> Emprise du chef : +8 cases
+
+  Confederation   [Voisins]
+    Plusieurs peuples sous les memes serments : les petits se joignent aux grands.
+    Il faut connaitre : Mariages entre clans
+    Il faut avoir vecu : 1 allie ; Prestige 40
+    -> Vous pouvez proposer l'union a un petit peuple ami
+    -> Savoirs connus des voisins : +15 % d'apprentissage en plus
+
+=== Neolithique ===
+
+Palier 4 - Premiers villages  (apprentissage : 240 points)
+------------------------------------------------------------
+  Palissades   [Guerre et defense]
+    Des pieux plantes en cercle autour des maisons : le village ne fuit pas, il se defend.
+    Il faut connaitre : Premieres semailles
+    Il faut avoir vecu : 1 village
+    -> Vos villages peuvent batir une palissade (defense x1,6) et une maison des guerriers
+
+  Champs cultives   [Champs]
+    On choisit les meilleures graines, on desherbe, on garde les oiseaux : les champs rendent enfin.
+    Il faut connaitre : Premieres semailles
+    Il faut avoir vecu : Un village tenu 2 ans ; 20 sem. pres de cereales ou de racines
+    -> Recolte des champs : +40 %
+
+  Greniers   [Greniers et artisans]
+    Des greniers sureleves, a l'abri des rats et de l'eau : le grain dure.
+    Il faut connaitre : Poterie
+    Il faut avoir vecu : 1 village ; 8 hivers traverses
+    -> Greniers des villages : +8 semaines de reserve
+    -> Grain perdu au grenier (rats, humidite) : -50 %
+
+  Chevres et moutons   [Troupeaux]
+    Des betes qui suivent le berger : du lait, de la laine, de la viande sur pied.
+    Il faut connaitre : Chasse a l'epieu
+    Il faut avoir vecu : 20 sem. pres des chevres sauvages ; Peuple 120
+    -> Colline et montagne : +20 % de nourriture
+    -> Plaine : +5 % de nourriture
+    -> Famine pendant l'hiver local : -10 % de morts
+    -> Collecte autour des villages (troupeaux) : +10 %
+
+  Maisons de terre   [Villages]
+    Des murs de terre et de bois, des toits de chaume : on vit mieux, on tombe moins malade.
+    Il faut connaitre : Grand campement
+    Il faut avoir vecu : Un village tenu 3 ans
+    -> Villages : +1
+    -> Fievres dans les villages : -40 %
+    -> Naissances dans les villages : +10 %
+
+  Culte des ancetres   [Esprits et pouvoir]
+    Les morts reposent sous les maisons : le village appartient a ceux qui y sont nes.
+    Il faut connaitre : Rites et sepultures
+    Il faut avoir vecu : 1 village ; 10 hivers traverses
+    -> Stabilite de vos villages : +10
+    -> Prestige a la fin de l'hiver : +6 sans famine, -6 avec (au lieu de +4 / -6)
+
+  Echanges lointains   [Echanges]
+    Du silex contre du sel, des perles contre des peaux : les biens voyagent de main en main.
+    Il faut connaitre : Dons et palabres
+    Il faut avoir vecu : Connaitre 3 autre peuples ; Peuple 150
+    -> Cadeaux aux autres peuples : +25 % d'effet
+    -> Vos propositions aux autres peuples : +5 d'acceptation
+    -> Savoirs connus des voisins : +10 % d'apprentissage en plus
+    -> Accords commerciaux : vos villages echangent leurs biens
+
+Palier 5 - Villages prosperes  (apprentissage : 360 points)
+------------------------------------------------------------
+  Haches polies   [Guerre et defense]
+    La pierre polie abat les arbres et les ennemis : la foret recule devant les champs.
+    Il faut connaitre : Palissades
+    Il faut avoir vecu : 20 sem. pres du silex ; Peuple 200
+    -> Force au combat : +10 %
+    -> Les villages peuvent defricher la foret pour y faire des champs
+    -> Metier du village : tailleurs de haches (silex des terres)
+
+  Jachere   [Champs]
+    Laisser reposer la terre une annee sur trois : le sol ne s'epuise plus.
+    Il faut connaitre : Champs cultives
+    Il faut avoir vecu : Un village tenu 5 ans
+    -> Recolte des champs : +20 %
+    -> Epuisement des champs : -50 %
+
+  Tissage   [Greniers et artisans]
+    Le lin et la laine tisses : des vetements chauds, et des etoffes qu'on echange.
+    Il faut connaitre : Poterie
+    Il faut avoir vecu : 1 village ; Peuple 200
+    -> Famine pendant l'hiver local : -20 % de morts
+    -> Prestige a la fin de l'hiver : +5 sans famine, -6 avec (au lieu de +4 / -6)
+    -> Metier du village : tisserands (chevres sauvages des terres)
+
+  Boeufs et vaches   [Troupeaux]
+    L'aurochs dompte : de la viande, du lait, et le fumier qui engraisse les champs.
+    Il faut connaitre : Chevres et moutons
+    Il faut avoir vecu : 30 sem. pres des aurochs ; Peuple 200
+    -> Plaine : +12 % de nourriture
+    -> Vallee : +8 % de nourriture
+    -> Famine pendant l'hiver local : -10 % de morts
+    -> Recolte des champs : +15 %
+    -> Collecte autour des villages (troupeaux) : +15 %
+
+  Villages freres   [Villages]
+    Des villages nes du meme village : un meme sang, un meme chef.
+    Il faut connaitre : Maisons de terre
+    Il faut avoir vecu : 2 villages
+    -> Stabilite de vos villages : +10
+    -> Villages : +2
+
+  Pierres levees   [Esprits et pouvoir]
+    Des pierres dressees que tous les clans ont tirees ensemble : on les voit de loin.
+    Il faut connaitre : Culte des ancetres
+    Il faut avoir vecu : Prestige 60 ; Peuple 300
+    -> Zone d'influence : +1 case autour de vos bandes et camps
+    -> Stabilite de vos villages : +15
+    -> Prestige a la fin de l'hiver : +7 sans famine, -6 avec (au lieu de +4 / -6)
+
+  Routes du sel et du silex   [Echanges]
+    Des sentiers de peuple en peuple, jalonnes de haltes : on se connait, on commerce.
+    Il faut connaitre : Echanges lointains
+    Il faut avoir vecu : 1 allie ; Connaitre 4 autre peuples
+    -> Savoirs connus des voisins : +15 % d'apprentissage en plus
+    -> Relations avec vos voisins : +1 par mois (echanges), jusqu'a +10
+    -> Echanges des accords commerciaux : charges x2, portee x2
+

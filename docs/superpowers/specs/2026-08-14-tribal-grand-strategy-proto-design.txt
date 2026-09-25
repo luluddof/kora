@@ -1,0 +1,475 @@
+PROTO TRIBAL — GRANDE STRATEGIE
+(vision long terme : tribal vers spatial)
+
+Date    : 2026-08-14
+Statut  : en revue
+
+Carte du code (fichiers, tick, ou changer X) :
+  docs/code/carte-du-depot.txt
+Ecart spec / proto et pistes suivantes :
+  docs/code/suite-possible.txt
+
+Portee de ce document : uniquement le prototype age tribal.
+Les ages suivants (antique, medieval, spatial) sont hors spec ;
+ils auront leurs propres documents.
+
+
+1. INTENTION
+------------
+
+Valider le fun d'une simulation profonde : une tribu humaine sur une
+carte qui a faim, froid, et des voisins, en temps reel avec pause,
+comme une grande strategie type Paradox, pas un 4X au tour par tour.
+
+Le joueur ne construit pas. Il deplace des groupes de gens, lit les
+saisons, et decide de rester, migrer ou raider.
+
+Succes du proto :
+- envie de relancer apres une famine ou un raid mal cadre
+- la simulation tient sans triche
+- un .exe Windows se lance par double-clic
+
+Hors proto : arbre techno, villes, frontieres dessinees, dynasties,
+religions, diplomatie complexe, combat tactique, multi, espace,
+planete entiere.
+
+
+2. CONTRAINTES DE LIVRAISON
+---------------------------
+
+- Le joueur n'installe rien et ne configure rien.
+- Livrable : executable Windows (double-clic).
+- Pile : Python 3 + affichage 2D (pygame-ce) + tests (pytest)
+  + empaquetage (PyInstaller).
+- Tout le depot, les dependances, les tests et l'export .exe sont
+  faits dans ce projet, sans action requise du joueur.
+- Fenetre (pas plein ecran force), pour pouvoir garder un chat ou
+  un editeur a cote.
+- Interface en francais.
+- Aucun reseau, aucun compte.
+- Sauvegarde locale unique (saves/kora.json), reprise au lancement.
+
+Pourquoi Python plutot qu'un moteur type Godot : le proto doit pouvoir
+etre ecrit, teste sans fenetre, et exporte depuis cet environnement,
+sans pipeline editeur / templates.
+
+
+3. BOUCLE DE JEU
+----------------
+
+Le joueur incarne une tribu (plusieurs bandes). Le temps avance tout seul.
+
+Quatre piliers, et seulement ceux-la :
+
+1. Nourriture
+   Rendement du terrain selon biome + saison.
+   Surplus = stocks. Deficit = famine.
+
+2. Population
+   Entier par bande. C'est la richesse reelle.
+   Trop de monde au mauvais endroit en hiver = crise.
+
+3. Climat
+   4 saisons. L'hiver casse les rendements
+   (surtout collines / nord de la region).
+
+4. Prestige
+   Jauge de tribu, pas un score de victoire cache.
+   Modifie l'agressivite des raids (joueur et IA) :
+   haut prestige = raids un peu plus efficaces, et IA un peu moins
+   encline a te tomber dessus sans avantage.
+   La famine et les defaites en font perdre.
+   Survivre un hiver, gagner un raid, entretenir beaucoup de monde
+   en font gagner.
+
+Leviers du joueur :
+- ou sont les gens
+- quand ils marchent
+- quand ils restent prelever
+- quand ils marchent vers une bande adverse
+
+Pas de condition de victoire type Civilization.
+La partie continue jusqu'a extinction de la tribu joueur, ou jusqu'a
+ce qu'on quitte.
+Objectif souple affiche : survivre et faire vivre du monde.
+
+
+4. CARTE : MICRO-HEXAGONES
+--------------------------
+
+La carte n'est pas un damier a batiments, ni une carte politique
+a provinces.
+
+- Grille hexagonale fine : 150 colonnes x 100 rangees (15 000 hexagones).
+- Coordonnees axiales (q, r) ; pathfinding A* sur les 6 voisins.
+- Role des hexagones : generation du terrain, couleur du biome,
+  cout de marche, nourriture, influence (calculee, pas dessinee).
+- Le joueur ne pose rien sur un hexagone.
+
+Echelle de lecture : une bande a une vitesse en hexagones par semaine.
+L'affichage du chemin montre le temps en semaines, pas le nombre de cases.
+
+Terrains
+  Terrain            Passable    Vitesse (hex/semaine)    Nourriture (indice)
+  Plaine             oui         6                        1.0
+  Rive / vallee      oui         6                        1.4
+  Steppe             oui         6                        0.7
+  Foret              oui         3                        0.9
+  Colline            oui         4                        0.6
+  Montagne           oui         1                        0.2
+  Sommet             non         -                        0
+  Eau profonde       non         -                        0
+  Cote praticable    oui         5                        0.8
+
+Saisons (multiplient la nourriture de l'hexagone)
+  Saison       Semaines de l'annee    Multiplicateur
+  Printemps    1 a 13                 1.0
+  Ete          14 a 26                1.2
+  Automne      27 a 39                0.9
+  Hiver        40 a 52                0.35
+
+L'hiver en colline et montagne : multiplicateur 0.20 au lieu de 0.35
+(le froid tape plus haut).
+
+Monde : region fictive faite main, nom de travail Kora.
+Pas la Terre, pas de generation procedurale dans ce proto.
+
+Contenu impose :
+- Vallee fluviale centrale (riche, tentante, dangereuse si on y reste
+  l'hiver sans stocks).
+- Steppe au sud.
+- Foret a l'est.
+- Collines / montagnes au nord.
+- Cote a l'ouest.
+
+Depart joueur : vallee, printemps de l'an 1.
+- Bande principale : 40 personnes, stock 160 (4 semaines).
+- Petite bande     : 18 personnes, stock 72 (4 semaines).
+
+Departs IA (une bande chacune, stock = 4 semaines de conso) :
+- steppe 36
+- foret  32
+- cote   32
+
+
+5. BANDES, NOURRITURE, POPULATION
+---------------------------------
+
+Une bande = position (hexagone actuel + chemin restant), population
+(entier >= 1), stock de nourriture, ordre en cours.
+
+- Le joueur a 2 bandes au depart, chaque IA 1.
+  Pas de scinder / fusionner dans ce proto.
+  (Un plafond de 8 bandes par tribu est reserve a plus tard.)
+
+- Production d'un hexagone, en unites de nourriture par semaine :
+    2.0 x indice_biome x multiplicateur_saison x epuisement
+  epuisement entre 0.5 et 1.0, depart 1.0.
+
+- Prelevement : chaque semaine, la bande collecte dans un rayon de 2
+  (19 hexagones si tout est passable).
+  Sur une plaine au printemps, ca nourrit environ 38 personnes ;
+  une vallee, environ 53 ; la meme plaine en hiver, environ 13.
+
+- Si plusieurs bandes (n'importe quelle tribu) ont un hexagone dans
+  leur rayon, la production de cet hexagone est partagee au prorata
+  des populations.
+
+- Pression sur un hexagone = somme, pour chaque bande qui le preleve,
+  de (population / 19).
+  Epuisement si pression > 2 x production : epuisement passe a 0.5
+  la semaine suivante.
+  Sinon epuisement = min(1.0, epuisement + 0.1).
+  Une seule bande de 40 en plaine au printemps n'epuise pas ;
+  deux bandes de 40 au meme endroit, ou une bande de 40 en plaine
+  l'hiver, si.
+
+- Stock max d'une bande = 4 x population.
+  1 personne consomme 1 unite par semaine.
+
+- Famine : si stock = 0 et collecte < conso, la difference tue du monde
+  (pertes = deficit, minimum 1 si deficit > 0).
+
+- Population (toutes les 4 semaines) :
+  si la bande a ete nourrie chaque semaine de la periode :
+    gain = max(1, partie entiere de population x 0.02)
+  si au moins une semaine de famine : pas de croissance
+  (les pertes de famine suffisent).
+
+Ordres possibles (joueur et IA) :
+- Rester / prelever (defaut).
+- Aller a un hexagone passable : A* evite l'impassable ;
+  recalcul si le but devient invalide.
+- Marcher vers une bande (y compris raid) : la cible est une bande ;
+  le chemin vise sa position actuelle et se met a jour chaque semaine
+  tant que l'ordre tient.
+
+Arrivee sur une bande d'une autre tribu = raid (voir section 7).
+Arrivee sur une bande amie (meme tribu) = rien de special
+(elles peuvent occuper le meme hexagone ; le partage de nourriture
+s'applique).
+
+
+6. INFLUENCE (INVISIBLE DANS LE PROTO)
+--------------------------------------
+
+Chaque hexagone a une emprise par tribu (nombre 0.0 a 1.0).
+
+- Chaque semaine, pour chaque bande : les hexagones dans le rayon
+  de prelevement (2) gagnent 0.08 x (population / 50),
+  puis influence = min(1.0, influence).
+- Decroissance : x 0.97 par semaine sur tout hexagone sans bande
+  de cette tribu dans le rayon 2.
+- Pas dessinee (pas de frontieres, pas de teinte d'emprise).
+- Role present : tests, et prise pour plus tard :
+  ville = un point qui irradie ces hexagones ;
+  frontieres = ligne de contact d'influences.
+  Aucune ville dans ce proto.
+
+
+7. PRESTIGE ET RAIDS
+--------------------
+
+Prestige de tribu : entier, depart 20, borne 0 a 100.
+
+- Fin d'hiver si population tribu > 0 et aucune famine les 4 dernieres
+  semaines de l'hiver : +4.
+- Fin d'hiver avec famine : -6.
+- Raid gagne : +5 (vainqueur) / -4 (perdant).
+- Chaque 4 semaines : +1 si population tribu >= 80 ;
+  -1 si population tribu < 20.
+
+Raid (resolu a l'arrivee, une seule fois par rencontre, puis l'ordre
+"marcher vers" est consomme) :
+
+- Force = population x (1 + prestige/200).
+- Gagnant : force strictement superieure (egalite : defenseur).
+- Pertes gagnant : partie entiere de 10% de sa population, minimum 0.
+- Pertes perdant : partie entiere de 25% de sa population,
+  minimum 1 s'il avait au moins 1.
+- Le perdant fuit d'un hexagone vers un voisin passable eloigne
+  de l'attaquant (choisi par la sim).
+  S'il n'y a nulle part : pertes supplementaires (partie entiere de 10%).
+- Pas de butin d'hexagones.
+  Le gagnant prend min(stock_perdant, partie entiere de stock_perdant x 0.5)
+  de nourriture.
+
+Pas de declaration de guerre, pas de paix, pas de diplomatie.
+
+
+8. BROUILLARD DE GUERRE
+-----------------------
+
+Trois etats par hexagone, cote joueur seulement.
+L'IA n'a pas de brouillard : elle sent la nourriture et les positions,
+mais ne triche pas sur les rendements, stocks, ou forces.
+
+- Inexplore       : noir.
+- Explore, hors vue : terrain visible, aucune bande adverse.
+- En vue          : terrain + bandes.
+
+Rayon de vision d'une bande : 16 hexagones.
+Union des rayons de toutes les bandes du joueur.
+
+L'IA simule en entier hors ecran (deplacements, famines, raids entre IA).
+
+
+9. INTERFACE ET COMMANDES
+-------------------------
+
+- Carte = presque tout l'ecran ; couleurs de biomes ;
+  bandes = petits groupes (points / silhouettes), pas des sprites de villes.
+- Bandeau : annee, saison, semaine, pause, x1 / x2 / x5,
+  prestige, population totale, stock total.
+- Camera : glisser (clic droit ou milieu), zoom molette, pas de rotation.
+- Clic gauche sur une bande alliee = selection.
+  Clic gauche sur un hexagone passable = ordre Aller a.
+  Clic sur une bande adverse = ordre marcher vers (raid a l'arrivee).
+- Espace = pause / reprise.
+  Touches 1, 2, 5 = vitesses.
+  Echap = menu quitter.
+- Chemin de la bande selectionnee : ligne + duree en semaines.
+- Pas de mini-carte dans le proto. Pas de construction.
+  Pas de calque frontieres.
+
+Vitesses :
+- x1 = 2 ticks de simulation par seconde
+- x2 = 4
+- x5 = 10
+- pause = 0 tick
+
+
+10. IA ET TRIBUS
+----------------
+
+Quatre tribus au total : 1 joueur + 3 IA.
+Memes regles de nourriture, mouvement, raids, prestige.
+
+Comportement IA, evalue chaque semaine, sans triche de stats.
+L'IA connait les positions (pas de brouillard pour elle) mais utilise
+les vraies populations, stocks et rendements — pas de bonus cache.
+
+1. Si stock < 2 semaines de conso et meilleur rendement saisonnier
+   dans un rayon 24 -> ordre Aller a cet hexagone.
+2. Sinon si hiver dans 4 semaines ou moins et stock < 6 semaines
+   et une vallee / rive dans un rayon 24 -> y aller.
+3. Sinon si une bande etrangere plus faible est a R semaines de marche
+   ou moins, et (stock IA < 4 semaines ou prestige IA >= P)
+   -> marcher vers (raid).
+4. Sinon rester / prelever.
+
+Parametres par IA :
+
+- Steppe (sud) : R = 4, P = 25.
+  Si le cas 4 s'applique, 50 % des semaines elle choisit quand meme
+  un hexagone steppe/plaine dans un rayon 12 (rester mobile).
+
+- Foret (est) : R = 3, P = 40.
+  Si le rendement local (moyenne rayon 2) >= 0.8, elle saute le cas 3
+  sauf si stock < 2 semaines.
+
+- Cote (ouest) : R = 3, P = 40.
+  Au cas 1 et 2, elle prefere un hexagone cote ou rive s'il existe
+  dans le rayon 24.
+
+Pas de script d'evenements au-dela des saisons.
+
+
+11. HORLOGE ET FLUX DE DONNEES
+------------------------------
+
+1 tick = 1 semaine. 52 semaines = 1 an. Saison = 13 semaines.
+
+Ordre strict d'un tick :
+
+ 1. Avancer le calendrier (semaine, saison, annee).
+ 2. Avancer les deplacements (consommer la vitesse de la semaine
+    sur le chemin).
+ 3. Resoudre les arrivees (raids si bande etrangere sur le meme hexagone).
+ 4. Epuisement / recuperation des hexagones
+    (selon la surcharge de la semaine precedente).
+ 5. Collecte de nourriture + consommation + stocks + famines.
+ 6. Toutes les 4 semaines : croissance de population.
+ 7. Mise a jour influence.
+ 8. Prestige (uniquement aux moments definis en section 7).
+ 9. Recalcul vision joueur.
+10. Decisions IA (nouveaux ordres pour la semaine suivante).
+
+L'affichage lit l'etat apres le tick ; il n'ecrit que des ordres joueur
+et le controle du temps (pause / vitesse).
+Les ordres joueur s'appliquent immediatement a la bande
+(remplacent l'ordre en cours), meme en pause.
+
+
+12. ARCHITECTURE LOGICIELLE
+---------------------------
+
+Unites isolees (chacune testable sans fenetre) :
+
+  world   Grille, terrains, adjacence, carte Kora.
+          Depend de : rien.
+
+  clock   Semaine, saison, vitesse, pause.
+          Depend de : rien.
+
+  path    A*, temps de trajet.
+          Depend de : world.
+
+  sim     Nourriture, epuisement, population, influence, raids, prestige.
+          Depend de : world, path.
+
+  vision  Brouillard joueur.
+          Depend de : world, sim.
+
+  ai      Decisions des 3 tribus.
+          Depend de : sim, path.
+
+  render  Camera, biomes, bandes, HUD.
+          Lit sim et vision.
+
+  app     Fenetre pygame, input, boucle pause/vitesses,
+          branchement des ordres.
+          Depend de : tout.
+
+Regle : sim n'importe jamais render ni pygame.
+Les tests appellent sim + world a la chaine.
+L'aleatoire IA (steppe) passe par un RNG seedable ;
+les tests imposent la graine.
+
+Arborescence :
+
+  src/kora/world.py
+  src/kora/clock.py
+  src/kora/path.py
+  src/kora/sim.py
+  src/kora/vision.py
+  src/kora/ai.py
+  src/kora/render.py
+  src/kora/app.py
+  data/kora_map.json     (carte faite main, biome par hex)
+  tests/
+  main.py
+
+Export : PyInstaller -> un dossier / un .exe lance par double-clic,
+assets de carte inclus.
+
+
+13. ERREURS ET CAS LIMITES
+--------------------------
+
+- Ordre vers un hexagone impassable ou hors carte : ignore,
+  bande inchangee.
+- Chemin devenu coupe (ne doit pas arriver sur Kora statique) :
+  ordre annule, bande reste.
+- Population arrive a 0 : bande retiree.
+  Tribu joueur a 0 bande : ecran "votre peuple n'est plus",
+  pause, quitter.
+- Exception dans un tick : pause forcee, dernier etat avant le tick
+  conserve ; message dans le bandeau, pas de crash silencieux.
+- Deux raids le meme hexagone la meme semaine : resoudre par
+  identifiant de bande croissant, un apres l'autre.
+
+
+14. TESTS (SANS FENETRE)
+------------------------
+
+Obligatoires avant de declarer le proto jouable :
+
+- En hiver sur colline, une bande sans stock perd du monde
+  en 4 semaines ou moins.
+- En vallee au printemps, une petite bande ne meurt pas en 4 semaines.
+- Un chemin plaine de 12 hexagones = 2 semaines (vitesse 6).
+- Influence monte sous une bande immobile, redescend si elle part
+  (apres assez de semaines).
+- Une bande adverse a distance 20 n'est pas en vue (rayon 16) ;
+  a distance 8 elle l'est.
+- Un raid avec force attaquant superieure reduit la population
+  du defenseur et le fait fuir.
+- L'IA affamee avec une meilleure case dans le rayon 24 recoit
+  un ordre de mouvement (test de decision, pas de "l'IA gagne").
+
+
+15. PLUS TARD (HORS CETTE SPEC)
+-------------------------------
+
+- Villes = points poses n'importe ou ; elles irradient les
+  micro-hexagones (controle, nourriture), sans devoir etre sur une case.
+- Frontieres = contours d'influence.
+- Age antique et suivants, jusqu'a l'espace : nouveaux specs,
+  meme tapis d'hexagones si possible.
+- Sauvegarde, scinder/fusionner les bandes, mini-carte,
+  calque d'influence visible.
+
+
+16. CRITERES D'ACCEPTATION
+--------------------------
+
+1. Double-clic sur le .exe -> fenetre, carte Kora, pause, x1/x2/x5.
+2. On selectionne une bande, on lui donne une destination,
+   le temps s'affiche en semaines, elle marche.
+3. L'hiver change la nourriture ; une mauvaise position fait
+   perdre du monde.
+4. Une bande ennemie apparait / disparait selon le brouillard.
+5. Les tests de la section 14 passent sans ouvrir de fenetre.
+6. Aucune action manuelle (install moteur, editeur, config)
+   n'est demandee au joueur.

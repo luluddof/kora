@@ -1,0 +1,26 @@
+CABOTAGE — PLAN D'IMPL
+Date    : 2026-08-15
+Spec    : docs/superpowers/specs/2026-08-15-cabotage-decisions-design.txt
+
+Goal : eau littorale via decision de tribu (joueur menu, IA auto).
+
+Fichiers
+  types.py     champs Tribe
+  world.py     is_inshore, enter_cost_for
+  path.py      astar / travel_weeks water_ok
+  sim.py       progress, adopt, tick, mouvement, fuite
+  ai.py        passable / astar avec drapeau
+  persist.py   JSON tribu
+  render.py    bouton + panneau
+  app.py       clics
+  tests        test_inshore.py, test_cabotage.py, test_hud.py
+
+Taches (TDD, pas de commit sauf demande)
+  1. is_inshore + cout
+  2. astar water_ok
+  3. conditions / adopt / IA / tick
+  4. set_goto et mouvement
+  5. persist
+  6. HUD hits
+  7. app + rendu
+  8. pytest puis exe

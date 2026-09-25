@@ -1,0 +1,204 @@
+KORA - LA VISION DU JEU (document de reference)
+===============================================
+Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
+Derniere mise a jour : 2026-09-25 (soir).
+
+Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
+docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
+carte du code est docs/code/carte-du-depot.txt.
+
+L'auteur est francophone ; il fait construire le jeu par des IA et joue
+lui-meme ses parties (sa sauvegarde : %APPDATA%\Kora\saves\kora.json).
+Il juge sur SA partie, dans l'exe, pas sur les tests.
+
+
+1. LE JEU
+---------
+Un jeu de GRANDE STRATEGIE "a la Paradox" (temps reel avec pause, pas un
+4X au tour par tour), qui va du tout debut (on vient de maitriser le feu
+et les outils de pierre) jusqu'aux civilisations (vision longue :
+"du tribal vers le spatial"). La simulation doit etre profonde, credible
+et lisible. Le joueur deplace des groupes de gens, lit les saisons,
+decide de rester, migrer, raider, s'installer, commercer.
+
+Interfaces : inspiration VICTORIA 3 (graphes, cartes, cadres dores,
+tuiles, belles fenetres). Tout en francais.
+
+Le monde doit paraitre GRAND : peu de vue (brouillard epais), marche
+lente, bandes dessinees petites a taille fixe.
+
+
+2. PRINCIPES NON NEGOCIABLES (tires de ses demandes)
+----------------------------------------------------
+  P1  Pas de jeu "a la Civ" dependant des cases : une case produit
+      plusieurs choses ; un village couvre plusieurs cases (ses terres).
+      L'influence est une ZONE D'INFLUENCE, pas un territoire possede.
+      Les batiments appartiennent au village, pas a une case.
+  P2  Tout passe par les savoirs (techs) : camps, caches, influence,
+      metiers, unites, diplomatie avancee. Chaque savoir dit ce qu'il fait.
+      Un savoir (ou un batiment) commence se FINIT.
+      Un peuple ne doit JAMAIS se retrouver sans savoir possible parce
+      qu'il s'est fixe (verifier sur une vraie partie !).
+  P3  Le premier village est un TOURNANT (choix important, interface
+      propre, batiments) et il DIVISE le peuple, pour TOUTES les
+      civilisations : le chef gouverne le village ; les clans nomades
+      perdent le lien, deviennent independants et fondent LEURS PROPRES
+      VILLAGES, de la meme culture/civilisation mais sous d'autres
+      autorites : des PROTO-PAYS. Plus on a de villages, plus vite les
+      clans s'eloignent. A terme : plus de bandes nomades (anti-spam :
+      chaque village d'une civilisation -1 bande pour tous ses peuples,
+      chaque clan parti -1 a son peuple d'origine tant qu'il vit).
+      La domination d'une cite, puis d'un pays, sur d'autres villages :
+      PLUS TARD (mais tout doit y preparer).
+  P4  Les villages ne doivent pas stagner : ils grandissent avec les
+      savoirs, exploitent des RESSOURCES (avec des savoirs), et
+      ECHANGENT avec les peuples lies par un ACCORD COMMERCIAL. Le
+      commerce doit etre un vrai systeme visible et jouable, pas un
+      calcul cache.
+  P5  Combats : jamais de pause ni de saut de camera ; le vaincu perd des
+      ressources et se replie A PIED (ordres bloques) ; pas d'attaques en
+      chaine sur la meme bande ; une armee peut etre ANEANTIE. L'IA
+      n'attaque pas si elle perdrait, appelle ou rejoint ses allies.
+  P6  Avec les villages viennent les premieres ARMEES : on leve une part
+      de la population, en types d'unites qui changent avec les AGES ;
+      dissoute, l'armee RENTRE au village.
+  P7  Evenements qui ont du sens, en chaines avec embranchements, une
+      suite n'est jamais garantie.
+  P8  Diplomatie avec une BELLE interface. Plus de peuples, mais pas trop
+      sur la carte. Les IA ne doivent pas "coller" le joueur.
+  P9  Le chef dirige UNE bande ; il faut garder de l'emprise sur les
+      autres, sinon elles deviennent independantes ou passent ailleurs.
+      Les savoirs du neolithique donnent la STABILITE des villages.
+  P10 Partie LONGUE (savoirs chers, croissance lente).
+  P11 Optimiser ne doit jamais changer le jeu sans le vouloir
+      (tools/empreinte.py).
+  P12 Regroupement facile : il suffit d'etre proche.
+
+
+3. SES DEMANDES, DANS L'ORDRE (ses mots, raccourcis) ET OU C'EN EST
+------------------------------------------------------------------
+2026-09-23
+  - Avis sur le jeu fait par Opus 5 ; "je te laisse faire".   FAIT
+  - Combats : le visuel se teleporte, gestion du temps, une tribu
+    attaquee plusieurs fois ; le vaincu perd des ressources et se replie
+    vers une bande de son groupe ou vers le meilleur endroit decouvert
+    (loin des autres / bonne nourriture).                      FAIT
+  - Optimiser sans changer le jeu ; carte bien plus grande et
+    interessante ; l'IA ne lance pas un combat perdu, appelle un allie
+    proche ou fusionne.                                         FAIT
+  - Arbre des savoirs retravaille et etendu (depart : feu + outils),
+    evolution pendant l'epoque, chaque savoir detaille.         FAIT
+2026-09-24
+  - Mecaniques pour une grande strategie jusqu'aux civilisations :
+    influence (zone, sous savoirs), campements/caches (savoirs),
+    diplomatie (belle interface), plus de peuples (pas trop), evenements
+    en chaines, chef + emprise sur les bandes ; neolithique sans cases.
+    Traditions : de cote. Ages suivants : plus tard.             FAIT
+  - Un seul arbre des savoirs vertical, marqueur d'age ; visuels
+    Victoria 3.                                                  FAIT
+  - Interface propre au village, choix important, batiments ; combat
+    plus profond (aneantir une armee) ; premieres armees.        FAIT
+2026-09-25 (nuit)
+  - Fusion des groupements retravaillee ; apres le premier village, les
+    clans s'eloignent et fondent des villages de notre culture, pas sous
+    notre domination ; armees levees dans le village, rentrent a la
+    dissolution, types d'unites par age.                         FAIT
+  - Vue et marche REDUITES (monde grand) ; regroupement de proche ; le
+    menu tribu ne doit pas disparaitre ; partie plus longue.     FAIT
+  - Le village cree une DIVISION (pour toute civilisation) ; limite de
+    bandes par village de la culture.                            FAIT
+  - -1 bande par clan parti tant qu'il vit ; les bots collent (pourquoi ?) ;
+    savoirs du neolithique -> stabilite des villages.            FAIT
+2026-09-25 (matin)
+  - Savoirs impossibles apres le village ; profondeur du village ;
+    commence = fini ; onglet Tribu -> Village quand plus de nomades ;
+    les villes stagnent ; exploitation de ressources par savoirs ;
+    echange de ressources avec les pays ayant un accord commercial.
+    Fait dans le code (metiers, accord commercial, lignee) MAIS livre
+    au minimum : l'exe du joueur n'etait pas a jour, le commerce restait
+    un calcul automatique peu visible.                          A REPRENDRE
+2026-09-25 (13 h) - MECONTENT
+  "J'ai l'impression que tu fais le minimum voire moins. J'ai fait 4
+  villages, ce qui devrait accelerer l'eloignement avec les clans, mais
+  ils restent, juste indisciplines ; ils devraient former leur propre
+  village et donc leur propre proto-pays. Ou est le commerce que je t'ai
+  demande ? J'attends le maximum, que tu relises pour avoir la vision,
+  que tu tiennes rigoureusement des notes pour le toi du futur, et que le
+  jeu suive vraiment la vision que j'ai creee."
+    Cause trouvee : le monde etait PLEIN (48 peuples vivants sur 48
+    permis, peoples.MAX_LIVING_TRIBES) : ses 7 clans etaient a 100 %
+    d'independance et ATTENDAIENT une place, pour toujours.
+    FAIT (spec 2026-09-25-commerce-proto-pays-design.txt) : emancipation
+    sans impasse (un depart par mois, x2,5 avec 4 villages, indociles plus
+    vite, le clan parti ne s'emiette pas et fonde son village), proto-pays
+    lisibles (noms sur la carte, Peuples), commerce en routes commerciales
+    (ecran Commerce [M], prix, troc, convois, IA, routes sur la carte),
+    Pelletiers, Ateliers, Place d'echange ; et la vraie cause de la
+    stagnation : 30 villages sur 37 de son monde n'avaient plus de
+    semences (ils semaient plus jamais) -> on seme le grain du grenier ou
+    des graines sauvages. Verifie dans sa partie (copie) : ses 7 clans
+    partent en 7 mois et fondent 7 villages ; 3 proto-pays lui vendent des
+    poteries ; 1 village sans recolte sur 59 ; ses villages 119 a 145.
+
+2026-09-25 (soir) - "j'aime beaucoup, mais :"
+  - Le visuel du commerce merite un MODE DE CARTE rien que pour lui ; pas
+    besoin de le montrer de base.
+  - Reflechir a comment ajouter de la PROFONDEUR au jeu sur ces deux ages
+    (tribal, neolithique).
+  - Refaire le visuel des savoirs comme dans Victoria 3 : tout n'est pas
+    forcement visible a l'ecran ; on s'y deplace a la souris, on zoome et
+    dezoome pour voir l'arbre.
+  - Bug : des civilisations qui ont forme des villes forment ensuite des
+    tribus (bandes nomades).
+    FAIT (spec 2026-09-25-carte-commerce-arbre-savoirs-design.txt) : bug
+    corrige (verifie sur sa partie : nomades des civilisations fixees 55
+    -> 13 en 4 ans), mode de carte Commerce [X], arbre des savoirs en
+    toile (glisser, molette, mini-carte, Recentrer). Profondeur : des
+    PROPOSITIONS a choisir (2026-09-25-profondeur-deux-ages-propositions.txt).
+  - Mettre le tout sur GitHub pour passer en mode cloud ("plus tard, pas
+    tout de suite" : le depot d'abord, le passage au cloud plus tard).
+
+
+4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
+----------------------------------------------------
+  R1  Relire ce document, puis la derniere spec, AVANT de coder.
+  R2  Prendre chaque phrase de la demande et en faire un point a livrer ;
+      a la fin, repondre point par point avec la preuve (essai, capture).
+  R3  Toujours regarder SA partie : copier %APPDATA%\Kora\saves\kora.json
+      dans le scratchpad (JAMAIS toucher l'original), la charger, et
+      verifier que le probleme qu'il decrit est regle DANS SA PARTIE.
+  R4  Donner au systeme demande sa pleine dimension (interface, IA,
+      evenements, carte, equilibrage, sauvegarde), pas un calcul cache.
+      Si c'est "commerce", on doit VOIR et JOUER le commerce.
+  R5  Livrer l'exe : dist/Kora reconstruit (PyInstaller, Kora.spec) et
+      teste avec un APPDATA isole. Si Kora.exe tourne, ne pas ecraser
+      dist/Kora : construire a part et DIRE clairement au joueur que son
+      exe n'est pas encore le nouveau et comment l'avoir.
+  R6  Essais longs (IA seule 30 ans, scratchpad probe_civ.py) pour voir
+      ce que le systeme devient en partie ; chercher les impasses (un
+      plafond, une attente sans fin, un savoir hors d'atteinte).
+  R7  Un choix de reglage ambigu (augmenter/reduire) : verifier le sens
+      avec lui (il a deja ete mal compris : "monde grand" = PEU de vue).
+  R8  Mettre a jour : ce document (section 3 et 5), la spec du chantier,
+      docs/code/carte-du-depot.txt, la memoire.
+  R9  Tests (pytest), test_balance (4 graines), empreinte re-enregistree
+      quand le jeu change volontairement.
+
+
+5. CHANTIER EN COURS / A FAIRE
+------------------------------
+(mis a jour a la fin de chaque chantier)
+  Fait le 2026-09-25 apres-midi : emancipation sans impasse, proto-pays
+  lisibles, commerce en routes (voir section 3).
+  En attente de SON choix : les propositions de profondeur des deux ages
+  (docs/superpowers/specs/2026-09-25-profondeur-deux-ages-propositions.txt :
+  betail et razzias, rassemblements, grands travaux, chefferie, gibier qui
+  migre, climat et presages, fetes, ambitions, graphes...).
+  Autres pistes qui suivent la vision (a proposer, rien n'est decide) :
+  - Commerce : caravanes attaquables par un tiers en guerre, evenements de
+    route (marchand, porteurs perdus), biens de prestige (parures, ambre),
+    echange de vivres en famine, "marche" regional qui fixe les prix.
+  - Proto-pays : frontieres de zone d'influence dessinees par peuple fixe,
+    relations entre peuples d'une meme civilisation (entraide, rivalite).
+  - Plus tard (demande explicite) : domination d'une cite puis d'un pays
+    sur d'autres villages ; ages suivants.

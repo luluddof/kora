@@ -1,0 +1,87 @@
+Kora - Mode de carte Commerce, arbre des savoirs navigable, fin des tribus renaissantes
+====================================================================================
+Date : 2026-09-25 (soir). Statut : en place (voir la fin).
+Suite de 2026-09-25-commerce-proto-pays-design.txt. Vision : docs/VISION-KORA.txt.
+
+Demande : "j'aime beaucoup, mais : le visuel du commerce meriterait un mode
+de carte rien que pour lui (pas besoin de le rendre visible de base) ;
+reflechis a comment ajouter de la profondeur sur ces deux ages ; refais le
+visuel des savoirs comme dans Victoria 3 : tout n'est pas forcement visible
+a l'ecran, on s'y deplace a la souris, on zoome et dezoome ; enfin je crois
+qu'il y a un bug ou des civilisations qui ont forme des villes forment des
+tribus ensuite."
+
+
+1. Le bug : des civilisations fixees qui refont des tribus
+----------------------------------------------------------
+  Mesure sur sa partie (copie, an 20) : la civilisation Senra avait 2
+  villages et 22 bandes nomades, reparties entre 5 peuples nes d'elle
+  (3 a 6 bandes chacun) ; des peuples fixes voyaient aussi leurs clans
+  nomades se diviser encore. Causes :
+  - la limite de bandes (8 de base, +4 avec la Chefferie, -1 par village de
+    la civilisation) laissait 6 a 10 bandes a un peuple ne d'une
+    civilisation fixee ;
+  - les clans nomades d'un peuple fixe (IA) se divisaient ;
+  - un village IA envoyait des "colons" meme sans pouvoir fonder un autre
+    village (ils erraient) ;
+  - les familles qui quittent un village agite formaient une tribu errante.
+  Corrige :
+  - sim.settler_people : un peuple ne d'un autre, dont la civilisation a
+    des villages, sans village a lui : UNE bande (il va fonder le sien) ;
+  - ai._should_split : les clans nomades d'un peuple fixe ne se divisent
+    plus (ils s'eloignent et s'emancipent, chiefs) ;
+  - colons (ai._village_ai) : seulement si le peuple a le droit de fonder un
+    village de plus, et vers une terre ou ils le pourront (ai.good_land,
+    24 cases au plus) ; memes regles de terre pour tous les villages ;
+  - agitation (villages._unrest) : les familles qui partent fondent leur
+    propre peuple (chiefs.emancipate), un proto-pays de la meme
+    civilisation, et vont chercher leur terre.
+  Verifie sur sa partie (copie) : en 4 ans, bandes nomades des
+  civilisations fixees 55 -> 13, villages 28 -> 58, plus aucune division
+  chez un peuple fixe.
+
+2. Mode de carte Commerce [X]
+-----------------------------
+  - Les routes ne s'affichent plus dans les autres modes.
+  - Le terrain s'efface (gris sombre) ; les routes qui ont porte le mois
+    dernier sont des traits pleins a la couleur du bien, epais selon la
+    charge, avec un porteur blanc par convoi qui marche du vendeur a
+    l'acheteur ; celles qui n'ont rien porte sont en pointilles pales.
+  - Sur chaque village connu : des pastilles des biens que son peuple a en
+    reserve (plus grosses quand il en a de trop) ; anneau dore autour des
+    villages de vos partenaires, bleu autour de ceux a portee de vos
+    porteurs ; la portee (40 cases, 80 avec les Routes) en pointilles bleus
+    autour du village du chef.
+  - Legende : les biens et leurs couleurs, ce que disent les traits, vos
+    routes (dont actives), ventes et achats du mois, rappel [M].
+
+3. L'arbre des savoirs, une toile a la Victoria 3
+-------------------------------------------------
+  - Une toile a l'echelle 1 (render.tech_world : 170 de marge, 250 par
+    colonne, 118 par palier, cartes 214 x 82) vue par une camera
+    (x, y, zoom) gardee dans ui["tech_cam"] ; tout n'est pas a l'ecran.
+  - Glisser avec n'importe quel bouton (un clic sans bouger choisit un
+    savoir), molette : zoom autour du curseur (de "tout l'arbre" a x1,6),
+    fleches, + et - ; barre au-dessus : l'aide, le zoom en %, boutons -, +,
+    Recentrer (sur la recherche en cours) ; mini-carte cliquable dans un
+    coin (cachee quand tout l'arbre tient a l'ecran).
+  - A la premiere ouverture, la vue se pose sur la recherche en cours.
+  - Le detail des cartes suit le zoom : medaillon et nom ; puis l'etat
+    (cout et semaines, avancement, ce qui manque : "Il faut : ...", "30 sem.
+    en cote (18/30)") ; puis le premier effet.
+  - L'en-tete (recherche en cours) et la fiche du savoir choisi restent
+    fixes.
+
+4. Profondeur des deux ages
+---------------------------
+  Propositions a choisir : 2026-09-25-profondeur-deux-ages-propositions.txt.
+
+Statut
+------
+En place le 2026-09-25 soir : sim.py (settler_people), ai.py (divisions,
+colons), villages.py (agitation), render.py (mode Commerce, toile des
+savoirs : tech_world, clamp_cam, cam_on, zoom_at, pan, tech_panel_layout),
+render_tech.py (dessin de la toile, focus_cam, mini-carte), globe_draw.py
+(terrain efface), app.py (souris, clavier, touche X).
+Tests : tests/test_hud.py (toile), tests/test_goods.py (mode de carte),
+tests/test_emancipation.py (plus de tribus) ; 407 en tout.

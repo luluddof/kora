@@ -1,0 +1,51 @@
+JOURNAL, TOASTS, INSPECTER UNE CASE
+Date    : 2026-08-15
+Statut  : implemente
+
+Portee : proto Kora. Faire parler la sim deja en place.
+Pas de nouvelles regles de nourriture / combat.
+
+
+1. JOURNAL + TOASTS
+-------------------
+
+Chaque evenement : un toast (quelques secondes, sous le HUD)
+ET la meme ligne dans l'onglet Journal.
+
+Onglet a droite, sous Decisions (meme logique CK3).
+Un seul panneau ouvert a la fois.
+
+Lignes : 80 max, plus recent en haut par defaut.
+
+Evenements :
+  - famine (pertes), tribu joueur seulement
+  - raid si le joueur y participe ou voit l'hex
+  - bande detruite (joueur, ou ennemi visible)
+  - ennemi apercu (premiere fois pour cette tribu)
+  - changement de saison calendaire
+  - cabotage adopte par le joueur
+
+Dans le panneau :
+  Pastilles (une a la fois) : Tous, Combats, Survie, Saisons, Decouverte.
+  Ordre : Plus recent / Plus ancien.
+
+
+2. INSPECTER
+------------
+
+Hex inexplore : rien.
+Explore hors vue : biome + saison locale.
+En vue : + nourriture estimee (prod de la case) + bande visible.
+
+Survol : infobulle.
+Clic case : fiche en bas a gauche (reste).
+Clic bande alliee : selection / ordre, comme aujourd'hui
+(le clic destination epingle aussi la case).
+
+
+3. PERF DEZOOM + VITESSE 5
+--------------------------
+
+Loin : ne plus dessiner chaque terre.
+Saut de cases selon la distance camera, cercles un peu plus gros.
+Ne pas reconstruire toute la palette a chaque semaine de saison.

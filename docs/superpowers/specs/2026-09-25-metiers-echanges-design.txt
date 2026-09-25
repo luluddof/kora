@@ -1,0 +1,135 @@
+Kora - Metiers, echanges, villages qui grandissent
+=================================================
+Date : 2026-09-25. Statut : en place (voir la fin).
+Suite de 2026-09-25-unites-fusion-emancipation-design.txt.
+
+Demande : "certaines techs ne sont plus possibles apres etre devenu un
+village / ajouter de la profondeur au gameplay village, cherche ce qu'on
+pourrait faire / quand on commence une tech ou un batiment, meme si les
+prerequis ne sont plus la, on le finit / quand on n'a plus de nomades,
+l'onglet Tribu devient Ville ou Village / les villes ont tendance a
+stagner : un systeme d'exploitation de certaines ressources avec
+certaines techs et la capacite d'echanger des ressources avec les pays
+ayant un accord commercial."
+
+
+1. Savoirs d'un peuple fixe
+---------------------------
+  Constat : les conditions "semaines vecues" ne comptaient que la case de
+  chaque bande. Un village ne bouge plus : Chasse a l'epieu, Cueillette,
+  Peche, Arc, Portage, Filets... ne venaient plus. "Avoir 2 / 4 bandes"
+  (Pistes et reperes, Guetteurs) devenait impossible une fois la limite
+  de bandes tombee avec les villages.
+  - Un village vit de toutes ses terres (villages.FIELD_RADIUS, 3 cases) :
+    chaque semaine, chaque terrain et chaque ressource de ses terres
+    comptent (villages.land_profile, memorise).
+  - "Avoir eu N bandes" : le record du peuple (practice "bandes"), ou ses
+    bandes plus ses clans partis fonder leur peuple.
+  - "Peuple N" : les gens du peuple ET des peuples nes de lui (ses clans
+    partis fonder le leur, et leurs propres enfants). Mesure sur la partie
+    du joueur (an 35, un seul village de 122 personnes, plus de nomades) :
+    AUCUN savoir n'etait disponible, les seuils de 150 a 300 personnes
+    etaient hors d'atteinte. Avec la lignee : Guetteurs, Poterie,
+    Chefferie, Echanges lointains, Pierres levees redeviennent possibles.
+  - Un bien importe (echanges, colporteurs) compte comme sa ressource dans
+    les conditions : sel -> "pres du sel", poteries -> argile, haches ->
+    silex, etoffes -> chevres. Un village sans sel apprend la Salaison par
+    le commerce.
+  - Un savoir commence se finit : s'il est en cours, ou deja entame, ses
+    conditions ne comptent plus (tech.status). Les chantiers des villages
+    allaient deja jusqu'au bout.
+
+2. Des villages qui grandissent
+-------------------------------
+  Mesure (un village seul, bonne vallee) : 90 <-> 145 habitants en boucle ;
+  le grain de l'automne ne tenait pas jusqu'a l'ete, famine, et ca
+  recommence. Les champs ne nourrissaient que 80 % de leurs travailleurs,
+  meme avec tous les savoirs.
+  - Champs cultives : recolte x1,4 (etait 1,25) ; Jachere x1,2 (etait
+    1,1) ; Boeufs et vaches : le fumier, recolte x1,15.
+  - Les naissances suivent les vivres A VENIR : le village estime ce qu'il
+    lui restera a la prochaine recolte (grenier + collecte moyenne de
+    chaque saison + pecheurs - ce qu'il mange ; villages.food_outlook).
+    Pleine croissance avec 6 semaines de marge, aucune s'il sera vide.
+  - Resultat : 104 a 124 au lieu de 90 a 145, petites disettes au lieu de
+    grandes famines ; avec les savoirs des champs, ~300 habitants (le
+    village plafonnait vers 150).
+  - Rang du village : hameau (moins de 50), village, gros village (150).
+
+3. Metiers (goods.py)
+---------------------
+  Un village met des EQUIPES (10 villageois) a un metier : une ressource
+  de ses terres et un savoir.
+
+    Metier        Ressource             Savoir            Bien, effet (peuple pourvu)
+    Potiers       argile                Poterie           poteries : grain gate x0,6,
+                                                          grenier +4 semaines
+    Sauniers      sel                   Salaison          sel : famines d'hiver x0,8,
+                                                          grenier +3 sem., stabilite +3
+    Tisserands    chevres sauvages ou   Tissage           etoffes : stabilite +6, famines
+                  vos troupeaux                           d'hiver x0,85, +1 prestige/hiver
+    Tailleurs     silex                 Haches polies     haches : recolte +10 %, troupes
+                                                          x1,1, chantiers -25 %
+    Pecheurs      poisson               Peche au harpon   12 vivres par equipe et par
+                                                          semaine (Filets : x1,5)
+
+  - Une equipe par gisement (case de la ressource, 3 au plus par metier),
+    une equipe par 30 habitants en tout. Production : 0,5 + richesse de la
+    ressource (0,9 a 1,5 charge par equipe et par semaine).
+  - Les biens vont a la RESERVE DU PEUPLE (Tribe.goods, 80 au plus) ; tous
+    ses villages en consomment 0,5 par 100 habitants et par semaine. Tant
+    qu'il en reste, le peuple est pourvu : l'effet joue.
+  - Le prix : les gens de metier ne sont pas aux champs (bras de la
+    recolte) et chassent moins (collecte du village -40 % de leur part).
+  - Village IA : il met aux metiers les bras dont ses champs n'ont pas
+    besoin (le sel et les pots d'abord), des pecheurs quand le grenier
+    est bas.
+
+4. Accord commercial (diplo.py, pacte "commerce")
+-------------------------------------------------
+  - Peuples : "Proposer des echanges". Il faut Echanges lointains, un
+    village de chaque cote, 40 cases au plus entre les villages, une
+    relation de -15 au moins. Ils acceptent mieux s'ils manquent de ce
+    que vous avez, s'ils connaissent les echanges, s'ils sont voisins.
+  - Un accord est un pacte : pas de raid entre partenaires (le rompre en
+    attaquant est une trahison). Relation +8 ; "Echanges reguliers"
+    monte a chaque mois d'echanges (jusqu'a +15).
+  - Chaque mois : chacun garde 12 semaines de son besoin ; le reste part
+    chez l'autre s'il en manque (4 charges par bien et par mois). Le solde
+    se paie en vivres (poteries 6, sel, etoffes, haches 12 par charge), sur
+    ce qui depasse 6 semaines de grenier ; qui ne peut pas payer prend
+    moins. Routes du sel et du silex : charges et portee x2.
+  - L'IA en conclut entre elle et en propose au joueur (evenement "Une
+    offre d'echanges").
+
+5. Interface
+------------
+  - Ecran du village : deux onglets, "Le village" et "Metiers et
+    echanges" (une carte par metier : gisements, equipes -/+, production,
+    effets ; a droite, la reserve du peuple et ce qu'on consomme, les
+    bras, les partenaires et leurs echanges du mois).
+  - Onglet Tribu : quand le peuple n'a plus de clans nomades, il devient
+    "Village" (ou "Villages") : le chef, chaque village (rang, gens,
+    stabilite, grenier, disette en vue, metiers, chantier ; Voir, Ouvrir),
+    la reserve du peuple, les accords.
+  - Peuples : le bouton, la ligne "Echanges du mois".
+  - Correction : dans les panneaux, un bouton dans une rangee gagne sur la
+    rangee (Voir, Honorer, Heritier du panneau Tribu ne repondaient pas).
+
+6. Evenements
+-------------
+  - Des colporteurs (village sans accord commercial) : du sel ou des
+    haches polies contre du grain.
+  - Une belle veine (village qui a des gens de metier) : des biens en
+    plus, ou du prestige.
+
+Statut
+------
+En place le 2026-09-25 : goods.py (nouveau), tech.py, villages.py,
+diplo.py, sim.py, ai.py, events.py, events_data.py, persist.py (Tribe.goods,
+Tribe.trade), render_village.py, render_panels.py, render.py, app.py.
+Tests : tests/test_goods.py (388 tests en tout). Empreinte
+re-enregistree (tools/empreinte.py ; elle suit aussi Tribe.goods,
+Tribe.trade et le vecu des savoirs). Essai de 30 ans (IA seule) : 29
+equipes aux metiers, 16 accords commerciaux, villages de 55 (mediane) a
+~240 habitants.

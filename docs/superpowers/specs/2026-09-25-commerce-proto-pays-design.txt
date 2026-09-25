@@ -1,0 +1,143 @@
+Kora - Proto-pays et commerce (routes commerciales)
+===================================================
+Date : 2026-09-25 (apres-midi). Statut : en place (voir la fin).
+Suite de 2026-09-25-metiers-echanges-design.txt. Vision : docs/VISION-KORA.txt.
+
+Demande (le joueur, mecontent) : "J'ai fait 4 villages, ce qui devrait
+accelerer l'eloignement avec les clans, mais ils restent, juste
+indisciplines ; ils devraient former leur propre village et donc leur propre
+proto-pays. Ou est le commerce que je t'ai demande ? Donne le maximum."
+
+
+1. Pourquoi ses clans restaient
+-------------------------------
+  Mesure sur SA partie (copie, an 24) : 48 peuples vivants sur 48 permis
+  (peoples.MAX_LIVING_TRIBES). Ses 7 clans nomades etaient a 100 %
+  d'independance et ATTENDAIENT une place, pour toujours (loyaute bloquee a
+  30 : "indisciplines"). Le plafond avait ete pose contre un emballement de
+  departs ; il bloquait tout le monde des l'an ~20.
+  Et quand un clan partait, il ne fondait presque jamais son village : il se
+  divisait en groupes de 15 (il en faut 20), campait dans la steppe sans
+  terre cultivable, et partout un village etait a moins de 10 cases.
+
+2. Emancipation sans impasse (chiefs.py, ai.py, peoples.py)
+-----------------------------------------------------------
+  - Plafond : 120 peuples vivants (une securite, plus un frein).
+  - Un depart par peuple et par mois (le clan le plus independant) : les
+    clans s'en vont l'un apres l'autre.
+  - Independance par mois (chiefs.autonomy_parts, affichee) : +1,5 le chef
+    gouverne le village ; +1 loin des villages ; +0,5 hors de l'emprise du
+    chef ; +1 si le clan est INDOCILE ; x0,5 pres d'un village ; x(1 + 0,5
+    par village de plus) : 4 villages = x2,5.
+  - Un clan qui quitte un peuple fixe fonde toujours son propre peuple de la
+    meme civilisation (jamais chez un voisin).
+  - Le clan parti (ai._settler) ne se divise pas avant d'avoir son village ;
+    il cherche une terre qui remplit les regles de fondation (ai.good_land :
+    2 bonnes terres, fertilite 0,6, dans ses terres ; pas de village trop
+    pres), d'abord a 12 cases de tout village, puis plus loin (50 cases),
+    puis a 6 cases ; il y campe et fonde a la belle saison. Passe un an sans
+    village, il se contente de 6 cases (ai.settle_spacing).
+  - Resultat sur sa partie (copie) : ses 7 clans partent en 7 mois ; l'ete
+    suivant, les 7 ont fonde leur village : 7 proto-pays de sa
+    civilisation, qui deviennent ses partenaires commerciaux.
+    Sur 30 ans (IA seule) : plus aucun clan n'attend ; nomades 64 -> ~17 a
+    l'an 19 ; 33 villages fondes par des peuples emancipes.
+  - Un village fonde remet l'independance de sa bande a 0.
+
+3. Proto-pays lisibles
+----------------------
+  - Carte : le nom de chaque peuple fixe (en capitales espacees, a sa
+    couleur) au-dessus de ses villages connus (render.draw_polity_labels).
+  - Peuples : "proto-pays, N villages" dans la liste ; la fiche nomme ses
+    villages.
+  - Plus tard (vision) : domination d'une cite, puis d'un pays.
+
+4. Commerce : routes commerciales (goods.py, diplo.TradeRoute)
+--------------------------------------------------------------
+  Le premier commerce (echanges automatiques, invisibles) est remplace.
+  - Accord commercial (pacte, Peuples ou l'ecran Commerce : "Proposer").
+  - ROUTE : un peuple vend ou achete un bien a un partenaire, avec 1 a 3
+    CONVOIS de porteurs (2 charges par convoi et par mois ; Routes du sel et
+    du silex : x2, portee 40 -> 80 cases). Convois d'un peuple : 1, +1 par
+    village, +2 par Place d'echange, +2 avec les Routes.
+  - Chaque mois : le vendeur envoie ce qu'il a de trop (celui qui a choisi
+    de vendre garde 4 semaines de besoin, sinon 12) ; l'acheteur prend ce
+    qui lui manque (s'il a ouvert la route : jusqu'au plein).
+  - PRIX : chaque peuple a son marche ; une charge vaut sa valeur (poteries
+    6, cuirs 8, sel/etoffes/haches 12) x1,6 quand on n'en a pas, x0,5 quand
+    on en a deux fois sa reserve. La route paie le prix moyen des deux
+    marches (+10 % si le vendeur a une Place d'echange).
+  - TROC : les routes entre deux peuples se compensent ; seul le solde se
+    paie en vivres (sur ce qui depasse 6 semaines de grenier) ; qui ne peut
+    pas payer son solde achete moins.
+  - Les porteurs apportent les savoirs (un partenaire actif enseigne comme
+    un voisin, meme loin) et la carte (le joueur voit le pays entre les deux
+    villages). Relation : "echanges reguliers" +1 par mois (jusqu'a +15).
+  - L'IA ouvre et gere ses routes (y compris avec le joueur : message au
+    journal) ; elle ferme celles qui ne portent plus rien 4 mois ; elle
+    ajoute un convoi a une route pleine. Le joueur peut fermer une route
+    ouverte par l'autre (relation -3).
+  - Accord rompu (ou raid, qui rompt les pactes) : ses routes tombent.
+
+5. Plus de biens et de batiments
+--------------------------------
+  - Metier Pelletiers (cuirs et fourrures) : gibier des terres (aurochs,
+    chevaux, chevres, rennes), savoir Vetements de peau (des le debut).
+    Pourvu : famines d'hiver x0,9, stabilite +2.
+  - Ateliers (savoir Poterie) : metiers du village x1,25.
+  - Place d'echange (savoir Echanges lointains) : +2 convois, ventes +10 %.
+  - La grille des batiments passe a 4 colonnes (11 batiments).
+
+5 bis. La vraie cause de la stagnation : les semences
+-----------------------------------------------------
+  Mesure sur sa partie (copie) : 30 villages sur 37 n'avaient NI semences
+  NI champs. Un village qui mange ses semences en famine (l'IA le fait une
+  fois sur deux), ou fonde sans grain, ne semait plus jamais : il vivait de
+  cueillette, petit, pour toujours.
+  - Aux semailles, faute de semences, on seme le grain du grenier (en
+    gardant 4 semaines de vivres : villages.SOW_KEEP_WEEKS) ; sans grain,
+    les graines sauvages des terres (cereales, racines) donnent de quoi
+    semer un champ. Le journal le dit ("... vivres du grenier semes").
+  - Resultat sur 30 ans (IA seule, derniere version) : village median
+    51 -> 134 habitants, le plus gros 90 -> 388, population du monde
+    2 800 -> 6 400 ; 70 equipes aux metiers, 19 accords commerciaux, 16
+    routes (13 ont porte le dernier mois) ; ~30 ms par semaine (le jeu du
+    joueur tournait en meme temps), pire semaine 412 ms. Sur sa partie :
+    1 village sans recolte sur 59 (etait 30 sur 37).
+  - Perf : la recherche d'une terre (ai.good_land) memorise le compte des
+    bonnes terres par case et ecarte d'abord les cases au centre pauvre
+    (un pic de 919 ms est tombe a ~200).
+
+5 ter. Evenements du commerce
+-----------------------------
+  - Des porteurs disparus (un partenaire dont la route a porte) : les
+    chercher (vivres ; souvent retrouves : relation +6, prestige), ou
+    perdre la charge.
+  - Un marchand venu de loin : parures contre grain (prestige), recit du
+    chemin (une contree apparait), hospitalite (relation avec le
+    partenaire).
+
+6. Interface
+------------
+  - Onglet "Commerce" a droite (des le premier village) et touche [M] :
+    l'ecran du commerce (render_trade.py). Tuiles (biens pourvus, convois,
+    ventes, achats, balance, partenaires) ; MARCHE DU PEUPLE (chaque bien :
+    reserve, production, consommation, prix et "cher/bon marche") et graphe
+    des ventes/achats des 24 derniers mois ; ROUTES (sens, bien, partenaire,
+    convois 1-3, ce qu'elle a porte ou pourquoi rien, fermer) ; OUVRIR UNE
+    ROUTE (partenaire, bien, vendre/acheter, convois, prix et apercu du mois
+    prochain, raison si impossible) ; CHEZ LE PARTENAIRE (ce qu'il a de trop,
+    ce qui lui manque, ses prix) ; PROPOSER DES ECHANGES aux peuples a
+    village proches (avec la reponse probable).
+  - Carte : les routes en pointilles a la couleur du bien, un porteur qui
+    marche quand la route a porte le dernier mois.
+  - Peuples : "Routes commerciales [M]" ; ecran du village (Metiers et
+    echanges) : meme bouton.
+
+Statut
+------
+En place le 2026-09-25 : goods.py (routes, prix, troc, IA), diplo.py
+(TradeRoute, sauvegarde, voisins-porteurs), chiefs.py, ai.py, peoples.py,
+villages.py (Ateliers, Place d'echange), render_trade.py (nouveau),
+render.py, render_panels.py, render_village.py, app.py.
+Tests : tests/test_goods.py, tests/test_emancipation.py, tests/test_villages.py (404 en tout).

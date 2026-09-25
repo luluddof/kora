@@ -1,0 +1,258 @@
+SUITE POSSIBLE — KORA
+(ecart spec / code, et ce qu'on peut ajouter)
+
+Date    : 2026-08-15 (mis a jour 2026-09-24)
+Statut  : etude, pas une spec a implementer
+
+Ce fichier n'est pas le design du jeu.
+Il compare ce qui est ECRIT, ce qui est CODE, et ce qui
+pourrait venir ensuite sans casser le proto.
+
+Carte du depot (ou est le code) :
+  docs/code/carte-du-depot.txt
+
+Specs jeu :
+  docs/superpowers/specs/2026-08-14-tribal-grand-strategy-proto-design.txt
+  docs/superpowers/specs/2026-08-15-saisons-sauvegarde-atlas.txt
+
+
+1. CE QUE LE PROTO FAIT DEJA
+----------------------------
+
+Simulation
+  Nourriture rayon 2, partage, epuisement, famine
+  Population toutes les 4 semaines
+  Prestige, raids, fuite, butin de stock
+  Influence calculee (invisible)
+  Saison calendaire + saison locale qui se propage
+  1 tick = 1 semaine, pause, vitesses 1 a 5
+  1 tribu joueur (1 bande 40 / 160)
+  3 tribus IA (1 bande chacune), decide_ai dans le tick
+
+Carte / vue
+  Planete 384 x 192, wrap est-ouest, carte cuite JSON
+  Sphere a tous les zooms, orbite clic droit
+  Brouillard joueur rayon 16
+  Atlas (noms terres / mers au dezoom)
+  HUD francais, menu Echap, F5, autosave 8 semaines
+  Exe Windows dist/Kora/Kora.exe
+
+Intention d'origine encore vraie :
+  pas de villes, pas de tech, pas de diplomatie, pas de
+  condition de victoire type Civilization.
+
+
+2. ECARTS SPEC 14 AOUT / CODE
+-----------------------------
+
+La spec du 14 a ete ecrite pour une REGION 150 x 100
+faite main. Le proto a derive vers une PLANETE.
+La spec du 15 aout documente une partie de cette derive.
+Il reste des phrases mortes dans le 14.
+
+Spec 14 dit                         Code actuel
+----------                          -----------
+Carte 150 x 100 faite main          384 x 192 generee, JSON cuit
+Pas de generation procedurale       mapgen.py existe ; le jeu
+                                    charge le JSON, ne regenere
+                                    pas a chaque lancement
+Joueur : 2 bandes (40 et 18)        1 bande (40)
+Camera : pas de rotation            sphere, yaw / pitch
+Vitesses 1 / 2 / 5                  1 a 5
+Echap = quitter                     Echap = menu
+Sauvegarde "plus tard"              saves/kora.json en place
+Mini-carte "plus tard"              absente
+Scinder / fusionner "plus tard"     absent
+Calque influence "plus tard"        calcule, pas dessine
+IA steppe 50% roam rayon 12         roam rayon 14, chaque
+                                    decision (pas un pile ou face
+                                    50% explicite)
+
+Rien de tout ca n'est un bug.
+Ce sont des choix de proto. Si on "aligne sur le 14",
+il faut une nouvelle spec, pas un copier-coller.
+
+
+3. TROUS DANS LE PROTO ACTUEL
+-----------------------------
+
+Le moteur simule plus que le joueur ne LIT.
+C'est le plus gros manque jouable, avant d'ajouter
+des systemes neufs.
+
+A. Le monde est muet
+   FAIT (15 aout) : toasts + onglet Journal, filtres.
+
+B. Pas d'inspection de case
+   FAIT (15 aout) : survol + fiche epinglee (brouillard).
+
+C. Une seule bande joueur
+   FAIT (23 sept.) : scinder / reunir / rejoindre,
+   jusqu'a 8 bandes, pour le joueur et l'IA.
+   Voir specs/2026-09-23-economie-bandes-design.txt.
+
+D. Influence morte
+   FAIT (24 sept.) : zone d'influence (pas un territoire) :
+   calque Zones [Z], effets par savoirs (Pistes et reperes,
+   Guetteurs), attachement des clans, tension entre voisins.
+   Voir specs/2026-09-24-tribus-vivantes-neolithique-design.txt.
+
+E. IA peu lisible
+   EN PARTIE (23 sept.) : chaque tribu part sur son
+   biome avec son savoir (Steppe : troupeau, Cote :
+   cabotage), la population s'affiche pres des bandes,
+   le journal dit qui raide qui. Reste : "elle a faim /
+   elle vient raider" n'est pas montre.
+
+F. Decouverte
+   Sur 384 x 192, les voisins peuvent etre loin.
+   Le brouillard est correct. Le joueur n'a aucun
+   indice qu'ils existent tant qu'il n'explore pas.
+   Ce n'est pas faux ; ca peut etre vide.
+
+G. Camera_x / camera_y
+   Encore dans la save. L'orbite reelle est yaw/pitch.
+   Dette, pas une fonctionnalite.
+
+I. IA previsible au combat
+   FAIT (23 sept.) : elle ne lance que des raids gagnants et
+   s'allie a ses bandes soeurs (ai_war.py). Parade du joueur :
+   les renforts (bandes a 2 cases). Reste : montrer au joueur
+   qu'une bande ennemie "vient vers lui".
+
+J. Carte
+   FAIT (23 sept.) : planete 768 x 384 generee par plaques,
+   climat et bassins versants.
+   FAIT (24 sept.) : 6 petits peuples de plus, des peuples qui
+   naissent des clans qui partent (14 vivants au plus), et des
+   ressources du pays (10 couches, plusieurs par case).
+
+K. Neolithique
+   FAIT (24 sept.) : premiers villages (bande installee, champs
+   sur plusieurs cases, semences, sol, palissade), page
+   Neolithique de l'arbre (14 savoirs), evenements des villages.
+   Reste, pour l'age suivant : villes, metiers, routes d'echange
+   materielles (biens), Etats, portee administrative.
+
+L. Village, troupes, batailles
+   FAIT (24 sept.) : fonder est un choix (fenetre, serment definitif,
+   age des villages), ecran du village (9 batiments du village, pas des
+   cases), premieres troupes levees au village, batailles simulees en
+   passes d'armes (moral, terrain, palissade, poursuite, encerclement,
+   aneantissement), rapport de bataille avec graphe.
+   Voir specs/2026-09-24-villages-armees-batailles-design.txt.
+   Pistes : sieges sur plusieurs semaines (une troupe campe devant un
+   village a palissade, la faim decide) ; ravitaillement des troupes
+   (vivres portes par une bande qui suit) ; postures d'une troupe
+   (tenir / harceler / se replier avant le choc) ; prisonniers et
+   rancons ; graphes a la Victoria 3 dans les panneaux Tribu et Peuples
+   (population, vivres, prestige au fil des annees).
+
+H. Economie plafonnee
+   FAIT (23 sept.) : la famine tuait 1 personne par
+   unite manquante et le stock ne couvrait que 4
+   semaines ; toutes les tribus restaient sous 50.
+   Banc d'essai : tests/test_balance.py.
+
+
+4. PISTES, DU PLUS UTILE AU PLUS LOURD
+--------------------------------------
+
+Ces pistes restent DANS l'age tribal.
+Pas de villes, pas d'arbre techno, pas d'espace.
+
+--- Couche lecture (recommandee en premier) ---
+
+1. Inspecter une case
+   Clic ou survol : terrain, saison locale, indice
+   de nourriture, epuisement. Donnees deja la.
+   Fichiers : render.py, app.py, world.py (lecture).
+
+2. Journal d'evenements
+   8-12 lignes. Famine, raid (qui, pertes), hiver
+   fini, bande detruite, ennemi apercu.
+   Nouveau petit module (log) + persist + HUD.
+   Change beaucoup le ressenti, peu la sim.
+
+3. Etiquette de bande
+   Nom de tribu + population a proximite du point,
+   seulement si visible. render.py.
+
+--- Couche leviers joueur ---
+
+4. Deuxieme bande joueur
+   Revenir a 40 + 18, ou scinder une bande assez
+   grande. Sans fusion, deux campements figes.
+   Mieux : scinder / fusionner (plafond 8 dans la
+   spec). Touche sim, ordres, UI, save.
+
+5. Mini-carte ou "ou suis-je"
+   Sur une sphere, on se perd. Un point sur un
+   globe minuscule, ou un rappel du continent
+   (atlas). Pas besoin d'un radar militaire.
+
+--- Couche qui utilise l'existant ---
+
+6. Calque influence (touche I)
+   Teinte legere, pas des frontieres CK3.
+   Donne un role a update_influence.
+   Option plus riche : malus de collecte ou de
+   raid hors de son emprise.
+
+7. Spawn IA sur biome prefere
+   Steppe sur steppe, cote sur cote, etc.
+   pick_spawn_hexes + new_game. Petit, lisible.
+
+--- Couche hors proto (ne pas faire maintenant) ---
+
+8. Villes qui irradient
+   Spec "plus tard". Change le genre du jeu
+   (on pose des points, plus seulement des gens).
+
+9. Ages suivants (antique -> spatial)
+   Nouveau document, meme tapis d'hex si possible.
+   Ne pas commencer tant que l'age tribal n'est
+   pas lisible.
+
+10. Evenements scripts, religions, dynasties,
+    diplomatie, combat tactique, multi.
+    Hors proto, section 1 de la spec 14.
+
+
+5. CE QU'IL NE FAUT PAS RAJOUTER "POUR FAIRE PLEIN"
+---------------------------------------------------
+
+- Un arbre techno tribal A POINTS DE RECHERCHE (ca transforme le jeu
+  en 4X). Fait le 23 sept. autrement : des savoirs qui s'acquierent en
+  vivant (tech.py), voir specs/2026-09-23-savoirs-design.txt.
+- Des batiments sur hex (la spec le refuse ; ceux du 24 sept.
+  appartiennent au village, pas a une case)
+- Un retour au rendu rectangle au zoom
+- Une deuxieme sauvegarde / cloud / compte
+- pygame dans sim.py
+- Regenerer la planete a chaque Nouvelle partie
+  (lent, et casse le feeling "meme monde")
+  Sauf si on en fait un choix de menu explicite,
+  avec une barre d'attente.
+
+La sim est deja profonde. Le trou est la lecture
+et les leviers (1 vs 2 bandes), pas le manque de
+systemes caches.
+
+
+6. ORDRE SUGGERE SI ON CONTINUE
+-------------------------------
+
+  a. Journal + inspecter une case     (lire le monde)     FAIT
+  b. Deuxieme bande, ou scinder       (jouer le monde)    FAIT
+  c. Calque influence optionnel       (voir l'emprise)
+  d. Seulement ensuite : villes / age suivant
+
+Idee pour c : l'emprise pourrait aussi servir au combat
+(un defenseur chez lui un peu plus fort), ce qui donnerait
+un sens au "territoire" sans frontieres dessinees.
+
+Chaque item merite sa propre spec courte en .txt
+avant d'ecrire du code.
+
+Rien de cette liste n'est decide. C'est un menu.

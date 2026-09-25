@@ -1,0 +1,88 @@
+TROUPEAU — SAVOIR (PAS UN ARBRE TECH)
+Date    : 2026-08-15
+Statut  : implemente
+
+Portee : proto Kora. Meme logique que le cabotage.
+Pas de recherche, pas de science, pas de compteur de betes.
+
+
+1. INTENTION
+------------
+
+Le feu est le savoir de depart (affichage seulement).
+Le troupeau s'adopte si on vit assez sur la steppe,
+puis une decision.
+
+Effet simple : en automne et en hiver, la steppe
+baisse moins pour cette tribu. En hiver elle
+nourrit mieux qu'une plaine. Ca casse la boucle
+ete/hiver si on hiverne en steppe avec le savoir.
+
+
+2. DRAPEAU
+----------
+
+Sur Tribe :
+  troupeau      bool  defaut False
+  steppe_seen   bool  defaut False
+  steppe_weeks  int   defaut 0, borne 0 a 4
+
+Une fois troupeau True : toute la tribu, pour toujours.
+
+
+3. CONDITIONS (PRENABLE)
+------------------------
+
+En ET :
+
+  1. Steppe vue : une bande vivante est, ou a ete,
+     a 16 hex ou moins d'une case STEPPE.
+  2. 4 semaines cumulees sur une case STEPPE
+     (pas forcement d'affilee). Au lancement : 0.
+  3. Population de tribu >= 10
+  4. Pas de prestige requis (seuil 0)
+
+Gratuit. Joueur : clic. IA : auto des que pret.
+
+
+4. EFFET
+--------
+
+food_production : si troupeau et terrain STEPPE :
+  PRINTEMPS : 1.35 au lieu de 1.0  (moins que la plaine)
+  ETE       : 1.65 au lieu de 1.2  (moins que la plaine)
+  AUTOMNE   : 1.50 au lieu de 0.9  (plus que la plaine)
+  HIVER     : 1.50 au lieu de 0.35 (plus que la plaine, ~50 avec stocks)
+
+Printemps et ete inchanges. Autres biomes inchanges.
+Pas de troupeau-chiffre. La plaine n'est pas incluse.
+
+Inspect : uniquement Nourriture de la saison locale
+(le bonus est dans le chiffre, pas une ligne de comparaison).
+
+Chaque bande utilise le drapeau de SA tribu
+(un voisin sans le savoir ne vole pas le bonus).
+
+Epuisement : compare la pression a la prod pleine
+(epuisement 1.0), avec le bonus troupeau si une
+bande de cette tribu fourrage la case. Sans ca,
+l'hiver epuisait la steppe et le bonus tombait a 0.6.
+
+Inspect joueur : la nourriture estimee tient compte
+du drapeau joueur.
+
+
+5. UI
+-----
+
+Onglet Decisions, sous le cabotage.
+Ligne "Feu : connu" en haut (aucun bouton).
+Toast + journal joueur : "Troupeau adopte : la steppe nourrit mieux toute l'annee."
+
+
+6. IA
+-----
+
+Memes conditions. Adopte toute seule dans le tick.
+Les choix de cases de l'IA lisent le bonus
+(food_production avec le drapeau).

@@ -1,0 +1,181 @@
+Kora - De la profondeur pour l'age tribal et le neolithique (propositions)
+========================================================================
+Date : 2026-09-25 (soir). Statut : PROPOSITIONS, rien n'est decide.
+Demande : "reflechis a comment ajouter de la profondeur au jeu sur ces deux
+ages". Vision : docs/VISION-KORA.txt (principes P1 a P12).
+
+Methode : pour chaque idee, ce que le joueur DECIDE de nouveau (une
+profondeur qui ne change pas ses choix n'en est pas une), ce que ca touche
+dans le code, la taille (P petit, M moyen, G gros), et le lien a la vision.
+Rien ici n'est "a la Civ" (pas de cases a ameliorer) ; tout passe par des
+savoirs, des peuples et des lieux.
+
+
+A. CE QUI MANQUE AUJOURD'HUI (constat)
+--------------------------------------
+  - Age tribal : on bouge, on mange, on se divise, on raide. Le gibier ne
+    vit pas (des couches fixes qui s'epuisent et se refont) ; l'annee se
+    ressemble ; les clans ne se RETROUVENT jamais (pas de vie sociale entre
+    clans, a part les fusions) ; rien ne pousse a un but a long terme.
+  - Neolithique : on seme, on batit, on echange, on leve des troupes. Mais
+    la richesse du village est seulement du grain et des biens ; la guerre
+    n'a pas d'enjeu propre (on pille des vivres) ; les villages d'un meme
+    peuple sont egaux (pas de capitale, pas de hierarchie) ; la societe du
+    village n'a pas de tensions internes (a part la stabilite).
+  - Les deux : peu d'informations dans le temps (graphes), pas
+    d'"ambitions" qui donnent une direction.
+
+
+B. AGE TRIBAL
+-------------
+  T1. Le gibier qui migre (G)
+      Aurochs, chevaux, rennes forment des TROUPEAUX qui se deplacent avec
+      les saisons (couloirs de migration, hivernage au sud ou en vallee).
+      La chasse suit les troupeaux ; trop chasser un troupeau le reduit
+      pour des annees. Decisions : suivre la migration ou rester pres des
+      campements ; tendre une embuscade au gue (grosse prise, un savoir
+      "chasse collective") ; partager une migration avec un voisin (paix)
+      ou la lui disputer. Prepare le Troupeau puis l'elevage (N1).
+      Touche : resources.py (couches mobiles), world.food_production, IA.
+
+  T2. Les rassemblements (M)
+      Chaque ete, les clans d'un peuple (et des voisins en paix) peuvent se
+      retrouver en un LIEU DE RASSEMBLEMENT (un grand campement, puis une
+      pierre levee) : mariages, echanges de dons, recits. Y aller coute du
+      temps de chasse ; y venir redonne l'attachement, fait naitre des
+      alliances, apprend des savoirs, apaise les querelles. Ne pas le tenir
+      des annees : les clans s'eloignent. Decisions : ou le tenir, qui
+      inviter, le sacrifier pour une migration. Donne un sens a l'emprise
+      du chef (P9) et a la diplomatie (P8).
+      Touche : chiefs (attachement), diplo, events (chaines de fete), sites.
+
+  T3. L'annee qui ne se ressemble pas : climat et presages (M)
+      Chaque annee a une humeur (hiver dur, secheresse, annee grasse),
+      annoncee par des PRESAGES (les oies partent tot, le lac gele en
+      avance) que les savoirs lisent mieux (Recits, puis Culte des
+      ancetres). Decisions : faire des reserves, descendre plus tot vers
+      les vallees, reporter une migration. Rend les caches et le Fumage
+      vitaux, et la lecture des saisons (P1 : lire la carte, pas des cases).
+      Touche : sim (saisons), events (presages), tech.
+
+  T4. Les droits de chasse (P)
+      La zone d'influence prend un sens diplomatique : un voisin peut
+      demander le droit de chasser chez vous (contre des dons), ou y
+      braconner (relation qui baisse, casus belli). Decisions : vendre ou
+      defendre son pays. Touche : diplo (nouvelle action), influence.
+
+  T5. Les biens de prestige avant les villages (P)
+      Ocre, coquillages, parures, silex de belle qualite : des biens rares
+      qu'on troque aux rassemblements (T2) ou en cadeau ; ils donnent du
+      prestige et de l'attachement. Relie l'age tribal au commerce du
+      neolithique (le meme systeme de biens, sans village).
+      Touche : goods (biens portes par les bandes), diplo (cadeaux).
+
+
+C. NEOLITHIQUE
+--------------
+  N1. Le betail (G) - ma premiere recommandation
+      Chevres, moutons, boeufs deviennent des TROUPEAUX POSSEDES par un
+      village (des tetes, pas un bonus) : ils mangent aux paturages
+      (steppe, plaine, collines), donnent lait, viande, laine (Tisserands),
+      cuir (Pelletiers), fumier (champs) ; ils se reproduisent ; l'hiver il
+      faut du fourrage (une part de la recolte). Surtout, c'est la
+      RICHESSE QUI SE VOLE : la razzia de betail devient la guerre du
+      neolithique (le vaincu perd ses betes, pas seulement du grain), les
+      troupeaux se gardent (bergers, chiens, enclos), s'echangent (dot des
+      mariages, tribut en tetes). Decisions : grain ou betail, gardes ou
+      champs, razzier ou proteger. Ouvre une TROISIEME VOIE (N7).
+      Touche : villages (troupeaux), battle (butin), goods (biens), diplo.
+
+  N2. La chefferie : une capitale et ses villages (M-G)
+      Le village du chef devient la CAPITALE ; les autres villages du meme
+      peuple lui doivent une part (grain, biens, guerriers) selon la
+      distance et la stabilite ; trop loin ou trop peu tenus, ils
+      rechignent, puis font secession (ils deviennent un proto-pays).
+      Decisions : ou placer la capitale, garder peu de villages bien tenus
+      ou beaucoup mal tenus, envoyer le chef faire la tournee. C'est la
+      marche vers la "domination d'une cite" que la vision garde pour plus
+      tard, mais sur SES villages seulement (P3 : "tout doit y preparer").
+      Touche : villages, chiefs (emprise), stabilite, interface Villages.
+
+  N3. Les fetes et le surplus (P-M)
+      Un grenier plein pose une question politique : garder (se proteger
+      des mauvaises annees) ou REDISTRIBUER dans une grande fete (prestige,
+      stabilite, attachement des clans restants, relation des voisins
+      invites) ; un chef avare devient impopulaire, un chef prodigue
+      affame son village. Decisions de chaque automne.
+      Touche : villages (action Fete), chiefs (traits), events.
+
+  N4. Les grands travaux (M)
+      Monuments qui demandent des annees et beaucoup de bras (tumulus,
+      cromlech, enceinte fossoyee, allee couverte), qu'on peut construire
+      A PLUSIEURS VILLAGES (et avec des allies) : un chantier commun,
+      des equipes envoyees, un prestige et une stabilite partages, un lieu
+      de rassemblement (T2). Decisions : mettre ses bras dans la pierre
+      plutot qu'aux champs ; qui inviter. Donne un ciment a une
+      civilisation de proto-pays (les villages freres).
+      Touche : villages (chantiers longs), goods (equipes), diplo.
+
+  N5. La guerre du neolithique (M)
+      Sieges sur plusieurs semaines (encercler, affamer un village
+      palissade), villages de hauteur (collines : defense), massacres qui
+      font FUIR les villages voisins (refugies qui rejoignent un autre
+      peuple), guerriers qui gagnent du prestige (une elite), paix jurees
+      par echange d'otages ou de mariages. Decisions : fortifier ou
+      s'etendre, frapper vite ou assieger. Touche : battle, orders, villages.
+
+  N6. Maladies et routes (P)
+      Les grands villages et les routes commerciales font circuler les
+      fievres (une epidemie suit les porteurs) ; le betail en apporte
+      d'autres. Le Puits et la stabilite protegent ; fermer une route un
+      temps devient un choix. Touche : events, goods (routes).
+
+  N7. La voie pastorale (G, plus tard)
+      Un peuple peut choisir de ne pas semer : PASTEURS qui menent leurs
+      troupeaux (N1) de paturage en paturage, sans village mais avec des
+      campements d'ete et d'hiver, riches en betes, redoutables en
+      razzias, qui commercent avec les villages. Un vrai chemin different
+      au lieu d'une seule transition. Touche : tout le neolithique.
+
+  N8. Les traditions des villages (M)
+      Maintenant que les villages ne se divisent plus sans fin, les
+      traditions deviennent possibles (elles avaient ete mises de cote a
+      cause des scissions) : un style de poterie, un rite funeraire, un
+      serment de plus, qui naissent des evenements et des choix, se
+      transmettent aux villages freres et se perdent avec le temps ; les
+      peuples d'une civilisation divergent (relations, union possible ou
+      non). Touche : peoples, events, villages.
+
+
+D. POUR LES DEUX AGES
+---------------------
+  X1. Ambitions du peuple (P)
+      Des buts a long terme qu'on choisit (survivre dix hivers sans
+      famine, tenir un rassemblement de cinq clans, fonder trois villages,
+      dresser une pierre levee, commercer avec cinq peuples) ; les tenir
+      donne du prestige et des traits au chef. Une direction dans le bac a
+      sable, sans condition de victoire.
+
+  X2. Les graphes du temps (P-M)
+      Dans Villages, Peuples, Commerce : population, vivres, prestige,
+      relations, recoltes sur les dernieres annees (a la Victoria 3).
+      Lire l'histoire de sa partie, voir venir une crise.
+
+  X3. Des personnages (M)
+      Le chef a une famille : heritiers, rivaux, mariages qui scellent les
+      alliances (deja la), lignees dont les rivalites troublent un village
+      (N2). Les anciens (deja la) ont des roles : chaman, chasseur, conteur.
+
+
+E. CE QUE JE PROPOSE DE FAIRE D'ABORD
+-------------------------------------
+  1. N1 Le betail (richesse vivante, razzias, paturages) : c'est ce qui
+     manque le plus au neolithique et ca nourrit la guerre, le commerce et
+     les mariages.
+  2. T2 + N4 Rassemblements et grands travaux : la vie sociale entre clans
+     et entre villages, dans les deux ages ; l'emprise du chef et la
+     civilisation y gagnent un sens.
+  3. N2 La chefferie (capitale et villages du peuple) : le premier pas
+     vers "cite puis pays", sur ses propres villages.
+  4. T1 Le gibier qui migre : l'age tribal devient une lecture du monde.
+  Petits ajouts faciles en meme temps : X1 Ambitions, N3 Fetes, X2 Graphes.

@@ -1,0 +1,1912 @@
+PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
+
+Pour les agents : sous-skill requise : superpowers:subagent-driven-development
+(recommande) ou superpowers:executing-plans. Executer les taches une par une.
+Suivre les cases [ ] pour le suivi. Ne pas sauter les tests.
+
+Goal: Prototype Windows jouable (pause, x1/x2/x5) d'une tribu sur la region
+Kora : micro-hexagones, bandes, nourriture, saisons, raids, brouillard,
+3 IA, export .exe.
+
+Architecture: Simulation pure Python (aucun pygame dans sim/world/path/ai).
+L'affichage ne fait que lire l'etat et pousser des ordres. Un tick = une
+semaine, ordre fixe (calendrier, marche, raids, epuisement, nourriture,
+population, influence, prestige, vision, IA). Carte Kora 150x100 faite
+main, chargee depuis data/kora_map.json.
+
+Tech stack: Python 3.11+, pygame-ce, pytest, PyInstaller.
+
+
+CONTRAINTES GLOBALES
+--------------------
+
+- Python 3.11 ou plus.
+- pygame-ce 2.5+, pytest 8+, PyInstaller 6+.
+- Interface en francais.
+- Fenetre (pas plein ecran force).
+- Aucun reseau, aucun compte, aucune sauvegarde.
+- sim n'importe jamais render ni pygame.
+- Le joueur n'installe rien : venv, deps, tests, .exe = agent.
+- Chemins Windows : <dossier du projet>
+- Ne pas committer sauf si le joueur l'a demande explicitement
+  (ignorer les etapes "Commit" dans ce cas).
+- Spec : docs/superpowers/specs/2026-08-14-tribal-grand-strategy-proto-design.txt
+- Interdit dans ce proto : villes, frontieres dessinees, scinder/fusionner,
+  mini-carte, arbre techno, diplomatie.
+
+
+FICHIERS (cible)
+----------------
+
+Creer :
+  requirements.txt
+  main.py
+  src/kora/__init__.py
+  src/kora/types.py      Hex, Terrain, Season, Order, Band, Tribe
+  src/kora/world.py      grille, terrain, passable, vitesse, nourriture hex
+  src/kora/clock.py      semaine, saison, pause, vitesses
+  src/kora/path.py       A*, duree en semaines, distance hex
+  src/kora/sim.py        etat, tick, nourriture, pop, raids, prestige, influence
+  src/kora/vision.py     brouillard joueur
+  src/kora/ai.py         3 tribus IA
+  src/kora/render.py     camera, biomes, bandes, HUD (pygame)
+  src/kora/app.py        fenetre, input, boucle, rollback tick
+  data/kora_map.json     carte faite main (compacte)
+  tests/test_hex.py
+  tests/test_world.py
+  tests/test_clock.py
+  tests/test_path.py
+  tests/test_food.py
+  tests/test_movement.py
+  tests/test_population.py
+  tests/test_influence.py
+  tests/test_raid.py
+  tests/test_vision.py
+  tests/test_ai.py
+  tests/test_tick.py
+
+Python des tests et de l'app :
+  <dossier du projet>\.venv\Scripts\python.exe
+
+Alias dans ce plan : PY
+  PY = <dossier du projet>\.venv\Scripts\python.exe
+
+
+SIGNATURES PARTAGEES (a respecter dans toutes les taches)
+---------------------------------------------------------
+
+types.py
+  class Terrain(Enum): PLAINE, VALLEE, STEPPE, FORET, COLLINE,
+                       MONTAGNE, SOMMET, EAU, COTE
+  class Season(Enum): PRINTEMPS, ETE, AUTOMNE, HIVER
+  class OrderKind(Enum): STAY, GOTO, MARCH_TO_BAND
+  class Hex: frozen dataclass, champs q: int, r: int
+  class Order: kind: OrderKind, target_hex: Hex | None,
+               target_band_id: int | None
+  class Band: id: int, tribe_id: int, position: Hex, population: int,
+              stock: float, order: Order, path: list[Hex],
+              famine_in_period: bool
+  class Tribe: id: int, name: str, prestige: int, is_player: bool
+
+Constantes
+  PLAYER_TRIBE_ID = 1
+  AI_STEPPE_ID = 2
+  AI_FOREST_ID = 3
+  AI_COAST_ID = 4
+  WIDTH = 150
+  HEIGHT = 100
+  FORAGE_RADIUS = 2
+  VISION_RADIUS = 16
+  MOVE_POINTS_PER_WEEK = 60
+  FOOD_PER_INDEX = 2.0
+  STOCK_MAX_FACTOR = 4
+  FOOD_PER_PERSON = 1.0
+
+world.offset_to_axial(col: int, row: int) -> Hex
+  q = col - (row - (row & 1)) // 2
+  r = row
+
+world.axial_to_offset(h: Hex) -> tuple[int, int]  (col, row)
+  col = h.q + (h.r - (h.r & 1)) // 2
+  row = h.r
+
+world.hex_distance(a: Hex, b: Hex) -> int
+  (abs(a.q-b.q) + abs(a.q+a.r-b.q-b.r) + abs(a.r-b.r)) // 2
+
+world.hex_neighbors(h: Hex) -> list[Hex]
+  deltas : (1,0), (1,-1), (0,-1), (-1,0), (-1,1), (0,1)
+
+Couts de marche (points pour ENTRER dans l'hex) :
+  PLAINE 10, VALLEE 10, STEPPE 10, FORET 20, COLLINE 15,
+  MONTAGNE 60, COTE 12, SOMMET None, EAU None
+
+Indice nourriture :
+  PLAINE 1.0, VALLEE 1.4, STEPPE 0.7, FORET 0.9, COLLINE 0.6,
+  MONTAGNE 0.2, COTE 0.8, SOMMET 0, EAU 0
+
+Departs (offset col, row) puis axial via offset_to_axial :
+  joueur bande 1 : (75, 50) pop 40 stock 160
+  joueur bande 2 : (78, 52) pop 18 stock 72
+  IA steppe      : (75, 88) pop 36 stock 144
+  IA foret       : (130, 50) pop 32 stock 128
+  IA cote        : (12, 50) pop 32 stock 128
+
+path.astar(world, start, goal) -> list[Hex] | None
+  Chemin EXCLUANT start, INCLUANT goal. [] si start==goal. None si impossible.
+
+path.travel_weeks(world, start, path) -> int
+  Nombre de semaines pour parcourir path depuis start (minimum 0).
+
+
+TACHE 1 : socle, types, maths hex
+---------------------------------
+
+Fichiers :
+  Creer : requirements.txt
+  Creer : src/kora/__init__.py
+  Creer : src/kora/types.py
+  Creer : src/kora/world.py   (seulement Hex helpers + Terrain tables)
+  Creer : tests/test_hex.py
+
+Interfaces :
+  Consumes : rien
+  Produces : Terrain, Hex, offset_to_axial, axial_to_offset,
+             hex_distance, hex_neighbors, MOVE_COST, BIOME_INDEX,
+             is_passable(terrain) -> bool, enter_cost(terrain) -> int | None
+
+[ ] Etape 1 : ecrire le test qui echoue
+
+---- tests/test_hex.py ----
+from src.kora.types import Hex
+from src.kora.world import (
+    hex_distance,
+    hex_neighbors,
+    offset_to_axial,
+    axial_to_offset,
+)
+
+
+def test_offset_roundtrip():
+    for col in range(0, 10):
+        for row in range(0, 10):
+            h = offset_to_axial(col, row)
+            c2, r2 = axial_to_offset(h)
+            assert (c2, r2) == (col, row)
+
+
+def test_distance_zero():
+    h = Hex(3, 4)
+    assert hex_distance(h, h) == 0
+
+
+def test_distance_neighbors_is_one():
+    h = Hex(0, 0)
+    for n in hex_neighbors(h):
+        assert hex_distance(h, n) == 1
+
+
+def test_twelve_east_distance():
+    a = Hex(0, 0)
+    b = Hex(12, 0)
+    assert hex_distance(a, b) == 12
+---- fin ----
+
+[ ] Etape 2 : lancer le test, verifier l'echec
+
+Run :
+  cd <dossier du projet>
+  python -m venv .venv
+  PY -m pip install pytest
+  PY -m pytest tests/test_hex.py -v
+
+Expected : FAIL (ModuleNotFoundError ou import error)
+
+Si le package src n'est pas trouve, ajouter tests/conftest.py qui met
+la racine du projet dans sys.path :
+  import sys
+  from pathlib import Path
+  sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+[ ] Etape 3 : implementation minimale
+
+---- requirements.txt ----
+pygame-ce>=2.5.0
+pytest>=8.0.0
+pyinstaller>=6.0.0
+---- fin ----
+
+---- src/kora/__init__.py ----
+# paquet proto tribal Kora
+---- fin ----
+
+---- src/kora/types.py ----
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
+
+
+class Terrain(Enum):
+    PLAINE = "plaine"
+    VALLEE = "vallee"
+    STEPPE = "steppe"
+    FORET = "foret"
+    COLLINE = "colline"
+    MONTAGNE = "montagne"
+    SOMMET = "sommet"
+    EAU = "eau"
+    COTE = "cote"
+
+
+class Season(Enum):
+    PRINTEMPS = "printemps"
+    ETE = "ete"
+    AUTOMNE = "automne"
+    HIVER = "hiver"
+
+
+class OrderKind(Enum):
+    STAY = "stay"
+    GOTO = "goto"
+    MARCH_TO_BAND = "march_to_band"
+
+
+@dataclass(frozen=True)
+class Hex:
+    q: int
+    r: int
+
+
+@dataclass
+class Order:
+    kind: OrderKind
+    target_hex: Optional[Hex] = None
+    target_band_id: Optional[int] = None
+
+
+def stay_order() -> Order:
+    return Order(kind=OrderKind.STAY)
+
+
+@dataclass
+class Band:
+    id: int
+    tribe_id: int
+    position: Hex
+    population: int
+    stock: float
+    order: Order = field(default_factory=stay_order)
+    path: list = field(default_factory=list)
+    famine_in_period: bool = False
+
+
+@dataclass
+class Tribe:
+    id: int
+    name: str
+    prestige: int
+    is_player: bool
+    famine_during_winter: bool = False
+---- fin ----
+
+---- src/kora/world.py ----
+from src.kora.types import Hex, Terrain
+
+MOVE_COST = {
+    Terrain.PLAINE: 10,
+    Terrain.VALLEE: 10,
+    Terrain.STEPPE: 10,
+    Terrain.FORET: 20,
+    Terrain.COLLINE: 15,
+    Terrain.MONTAGNE: 60,
+    Terrain.COTE: 12,
+}
+
+BIOME_INDEX = {
+    Terrain.PLAINE: 1.0,
+    Terrain.VALLEE: 1.4,
+    Terrain.STEPPE: 0.7,
+    Terrain.FORET: 0.9,
+    Terrain.COLLINE: 0.6,
+    Terrain.MONTAGNE: 0.2,
+    Terrain.COTE: 0.8,
+    Terrain.SOMMET: 0.0,
+    Terrain.EAU: 0.0,
+}
+
+NEIGHBOR_DELTAS = (
+    (1, 0),
+    (1, -1),
+    (0, -1),
+    (-1, 0),
+    (-1, 1),
+    (0, 1),
+)
+
+
+def offset_to_axial(col: int, row: int) -> Hex:
+    q = col - (row - (row & 1)) // 2
+    r = row
+    return Hex(q, r)
+
+
+def axial_to_offset(h: Hex) -> tuple[int, int]:
+    col = h.q + (h.r - (h.r & 1)) // 2
+    row = h.r
+    return col, row
+
+
+def hex_distance(a: Hex, b: Hex) -> int:
+    return (abs(a.q - b.q) + abs(a.q + a.r - b.q - b.r) + abs(a.r - b.r)) // 2
+
+
+def hex_neighbors(h: Hex) -> list[Hex]:
+    return [Hex(h.q + dq, h.r + dr) for dq, dr in NEIGHBOR_DELTAS]
+
+
+def is_passable(terrain: Terrain) -> bool:
+    return terrain in MOVE_COST
+
+
+def enter_cost(terrain: Terrain) -> int | None:
+    return MOVE_COST.get(terrain)
+---- fin ----
+
+[ ] Etape 4 : relancer les tests
+
+Run : PY -m pytest tests/test_hex.py -v
+Expected : PASS (4 tests)
+
+[ ] Etape 5 : Commit
+  Passer si pas de git / pas demande.
+  Message : feat: maths hexagonales et types de base
+
+
+TACHE 2 : World et carte Kora
+-----------------------------
+
+Fichiers :
+  Creer : src/kora/world.py (completer class World + paint_kora + load)
+  Creer : data/kora_map.json (genere par un appel Python, pas a la main)
+  Creer : tests/test_world.py
+  Modifier : src/kora/world.py
+
+Interfaces :
+  Consumes : Hex, Terrain, offset_to_axial, is_passable, BIOME_INDEX
+  Produces :
+    class World
+      width: int
+      height: int
+      def terrain(self, h: Hex) -> Terrain
+      def in_bounds(self, h: Hex) -> bool
+      def passable(self, h: Hex) -> bool
+      def enter_cost_hex(self, h: Hex) -> int | None
+      def biome_index(self, h: Hex) -> float
+      def hexes_in_radius(self, center: Hex, radius: int) -> list[Hex]
+      def exhaustion(self, h: Hex) -> float
+      def set_exhaustion(self, h: Hex, value: float) -> None
+    def make_filled_world(width, height, terrain) -> World
+    def paint_kora() -> World
+    def save_world(world, path) -> None
+    def load_world(path) -> World
+    WIDTH = 150, HEIGHT = 100
+
+[ ] Etape 1 : test qui echoue
+
+---- tests/test_world.py ----
+from pathlib import Path
+
+from src.kora.types import Hex, Terrain
+from src.kora.world import (
+    HEIGHT,
+    WIDTH,
+    World,
+    hex_distance,
+    load_world,
+    make_filled_world,
+    offset_to_axial,
+    paint_kora,
+    save_world,
+)
+
+
+def test_tiny_world_bounds_and_passable():
+    w = make_filled_world(5, 4, Terrain.PLAINE)
+    h = offset_to_axial(2, 2)
+    assert w.in_bounds(h)
+    assert w.passable(h)
+    assert w.terrain(h) is Terrain.PLAINE
+    outside = Hex(999, 999)
+    assert not w.in_bounds(outside)
+    assert not w.passable(outside)
+
+
+def test_water_impassable():
+    w = make_filled_world(3, 3, Terrain.EAU)
+    h = offset_to_axial(1, 1)
+    assert not w.passable(h)
+    assert w.enter_cost_hex(h) is None
+
+
+def test_radius_two_has_nineteen_on_open_map():
+    w = make_filled_world(20, 20, Terrain.PLAINE)
+    center = offset_to_axial(10, 10)
+    found = w.hexes_in_radius(center, 2)
+    assert len(found) == 19
+    assert all(hex_distance(center, h) <= 2 for h in found)
+
+
+def test_kora_size_and_required_biomes():
+    world = paint_kora()
+    assert world.width == WIDTH == 150
+    assert world.height == HEIGHT == 100
+    terrains = set()
+    for row in range(HEIGHT):
+        for col in range(WIDTH):
+            terrains.add(world.terrain(offset_to_axial(col, row)))
+    for needed in (
+        Terrain.VALLEE,
+        Terrain.STEPPE,
+        Terrain.FORET,
+        Terrain.COLLINE,
+        Terrain.COTE,
+        Terrain.PLAINE,
+    ):
+        assert needed in terrains
+    player = offset_to_axial(75, 50)
+    assert world.passable(player)
+    assert world.terrain(player) in (Terrain.VALLEE, Terrain.PLAINE)
+
+
+def test_save_load_roundtrip(tmp_path: Path):
+    world = paint_kora()
+    path = tmp_path / "kora_map.json"
+    save_world(world, path)
+    loaded = load_world(path)
+    assert loaded.terrain(offset_to_axial(75, 50)) == world.terrain(
+        offset_to_axial(75, 50)
+    )
+---- fin ----
+
+[ ] Etape 2 : PY -m pytest tests/test_world.py -v
+Expected : FAIL (World ou paint_kora absent)
+
+[ ] Etape 3 : implementation
+
+Ajouter dans src/kora/world.py (garder le code de la tache 1) :
+
+---- a ajouter dans src/kora/world.py ----
+import json
+from pathlib import Path
+
+from src.kora.types import Season
+
+WIDTH = 150
+HEIGHT = 100
+CHAR_TO_TERRAIN = {
+    "P": Terrain.PLAINE,
+    "V": Terrain.VALLEE,
+    "S": Terrain.STEPPE,
+    "F": Terrain.FORET,
+    "C": Terrain.COLLINE,
+    "M": Terrain.MONTAGNE,
+    "X": Terrain.SOMMET,
+    "E": Terrain.EAU,
+    "O": Terrain.COTE,
+}
+TERRAIN_TO_CHAR = {v: k for k, v in CHAR_TO_TERRAIN.items()}
+
+
+class World:
+    def __init__(self, terrains: list[list[Terrain]]):
+        self._terrains = terrains
+        self.height = len(terrains)
+        self.width = len(terrains[0]) if terrains else 0
+        self._exhaustion = [
+            [1.0 for _ in range(self.width)] for _ in range(self.height)
+        ]
+        self._influence: list[list[dict[int, float]]] = [
+            [{} for _ in range(self.width)] for _ in range(self.height)
+        ]
+
+    def _index(self, h: Hex) -> tuple[int, int] | None:
+        col, row = axial_to_offset(h)
+        if 0 <= col < self.width and 0 <= row < self.height:
+            return col, row
+        return None
+
+    def in_bounds(self, h: Hex) -> bool:
+        return self._index(h) is not None
+
+    def terrain(self, h: Hex) -> Terrain:
+        idx = self._index(h)
+        if idx is None:
+            return Terrain.EAU
+        col, row = idx
+        return self._terrains[row][col]
+
+    def passable(self, h: Hex) -> bool:
+        return self.in_bounds(h) and is_passable(self.terrain(h))
+
+    def enter_cost_hex(self, h: Hex) -> int | None:
+        if not self.passable(h):
+            return None
+        return enter_cost(self.terrain(h))
+
+    def biome_index(self, h: Hex) -> float:
+        if not self.in_bounds(h):
+            return 0.0
+        return BIOME_INDEX[self.terrain(h)]
+
+    def hexes_in_radius(self, center: Hex, radius: int) -> list[Hex]:
+        found: list[Hex] = []
+        for dq in range(-radius, radius + 1):
+            for dr in range(-radius, radius + 1):
+                h = Hex(center.q + dq, center.r + dr)
+                if hex_distance(center, h) <= radius and self.in_bounds(h):
+                    found.append(h)
+        return found
+
+    def exhaustion(self, h: Hex) -> float:
+        idx = self._index(h)
+        if idx is None:
+            return 1.0
+        col, row = idx
+        return self._exhaustion[row][col]
+
+    def set_exhaustion(self, h: Hex, value: float) -> None:
+        idx = self._index(h)
+        if idx is None:
+            return
+        col, row = idx
+        self._exhaustion[row][col] = min(1.0, max(0.5, value))
+
+    def influence(self, h: Hex, tribe_id: int) -> float:
+        idx = self._index(h)
+        if idx is None:
+            return 0.0
+        col, row = idx
+        return self._influence[row][col].get(tribe_id, 0.0)
+
+    def add_influence(self, h: Hex, tribe_id: int, delta: float) -> None:
+        idx = self._index(h)
+        if idx is None:
+            return
+        col, row = idx
+        cur = self._influence[row][col].get(tribe_id, 0.0)
+        self._influence[row][col][tribe_id] = min(1.0, cur + delta)
+
+    def scale_all_influence(self, factor: float) -> None:
+        for row in self._influence:
+            for cell in row:
+                for tid in list(cell):
+                    cell[tid] *= factor
+                    if cell[tid] < 0.0001:
+                        del cell[tid]
+
+
+def make_filled_world(width: int, height: int, terrain: Terrain) -> World:
+    grid = [[terrain for _ in range(width)] for _ in range(height)]
+    return World(grid)
+
+
+def paint_kora() -> World:
+    grid = [[Terrain.PLAINE for _ in range(WIDTH)] for _ in range(HEIGHT)]
+    import math
+
+    for row in range(HEIGHT):
+        for col in range(WIDTH):
+            if col <= 3:
+                grid[row][col] = Terrain.EAU
+            elif col <= 8:
+                grid[row][col] = Terrain.COTE
+            elif row <= 4:
+                grid[row][col] = Terrain.SOMMET
+            elif row <= 14:
+                grid[row][col] = Terrain.MONTAGNE
+            elif row <= 24:
+                grid[row][col] = Terrain.COLLINE
+            elif row >= 85:
+                grid[row][col] = Terrain.STEPPE
+            elif col >= 115:
+                grid[row][col] = Terrain.FORET
+    for col in range(18, 125):
+        row = 50 + int(5 * math.sin(col / 9.0))
+        for dr in (-1, 0, 1):
+            r = row + dr
+            if 0 <= r < HEIGHT and grid[r][col] not in (Terrain.EAU, Terrain.SOMMET):
+                grid[r][col] = Terrain.VALLEE
+    return World(grid)
+
+
+def save_world(world: World, path: Path) -> None:
+    rows = []
+    for row in range(world.height):
+        chars = []
+        for col in range(world.width):
+            t = world._terrains[row][col]
+            chars.append(TERRAIN_TO_CHAR[t])
+        rows.append("".join(chars))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"width": world.width, "height": world.height, "rows": rows}),
+        encoding="utf-8",
+    )
+
+
+def load_world(path: Path) -> World:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    grid = []
+    for line in data["rows"]:
+        grid.append([CHAR_TO_TERRAIN[ch] for ch in line])
+    return World(grid)
+
+
+def season_multiplier(terrain: Terrain, season: Season) -> float:
+    if season is Season.PRINTEMPS:
+        base = 1.0
+    elif season is Season.ETE:
+        base = 1.2
+    elif season is Season.AUTOMNE:
+        base = 0.9
+    else:
+        base = 0.35
+    if season is Season.HIVER and terrain in (Terrain.COLLINE, Terrain.MONTAGNE):
+        return 0.20
+    return base
+
+
+def food_production(world: World, h: Hex, season: Season) -> float:
+    if not world.in_bounds(h):
+        return 0.0
+    t = world.terrain(h)
+    return 2.0 * BIOME_INDEX[t] * season_multiplier(t, season) * world.exhaustion(h)
+---- fin ----
+
+Puis generer la carte :
+  PY -c "from pathlib import Path; from src.kora.world import paint_kora, save_world; save_world(paint_kora(), Path('data/kora_map.json'))"
+
+[ ] Etape 4 : PY -m pytest tests/test_hex.py tests/test_world.py -v
+Expected : PASS
+Verifier que data/kora_map.json existe.
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: carte Kora et grille mondiale
+
+
+TACHE 3 : horloge
+-----------------
+
+Fichiers :
+  Creer : src/kora/clock.py
+  Creer : tests/test_clock.py
+
+Interfaces :
+  Consumes : Season
+  Produces :
+    class Clock
+      year: int (depart 1)
+      week: int (1 a 52)
+      paused: bool (depart True pour que le joueur lise avant de lancer)
+      speed: int  (1, 2 ou 5)
+      def season(self) -> Season
+      def advance_week(self) -> None
+      def ticks_per_second(self) -> int
+      def set_speed(self, value: int) -> None
+      def toggle_pause(self) -> None
+      def weeks_until_winter(self) -> int
+      def just_finished_winter(self) -> bool
+        True uniquement quand on passe de semaine 52 a annee+1 semaine 1
+
+Mapping ticks/s : pause 0 ; speed 1 -> 2 ; speed 2 -> 4 ; speed 5 -> 10
+
+[ ] Etape 1 : test
+
+---- tests/test_clock.py ----
+from src.kora.clock import Clock
+from src.kora.types import Season
+
+
+def test_seasons_ranges():
+    c = Clock()
+    c.week = 1
+    assert c.season() is Season.PRINTEMPS
+    c.week = 14
+    assert c.season() is Season.ETE
+    c.week = 27
+    assert c.season() is Season.AUTOMNE
+    c.week = 40
+    assert c.season() is Season.HIVER
+    c.week = 52
+    assert c.season() is Season.HIVER
+
+
+def test_year_wrap_and_winter_flag():
+    c = Clock()
+    c.year = 1
+    c.week = 52
+    assert c.just_finished_winter() is False
+    c.advance_week()
+    assert c.year == 2
+    assert c.week == 1
+    assert c.just_finished_winter() is True
+    c.advance_week()
+    assert c.just_finished_winter() is False
+
+
+def test_ticks_per_second_and_pause():
+    c = Clock()
+    c.paused = True
+    assert c.ticks_per_second() == 0
+    c.paused = False
+    c.set_speed(1)
+    assert c.ticks_per_second() == 2
+    c.set_speed(2)
+    assert c.ticks_per_second() == 4
+    c.set_speed(5)
+    assert c.ticks_per_second() == 10
+---- fin ----
+
+[ ] Etape 2 : PY -m pytest tests/test_clock.py -v
+Expected : FAIL
+
+[ ] Etape 3 : implementation
+
+---- src/kora/clock.py ----
+from src.kora.types import Season
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.year = 1
+        self.week = 1
+        self.paused = True
+        self.speed = 1
+        self._finished_winter = False
+
+    def season(self) -> Season:
+        if self.week <= 13:
+            return Season.PRINTEMPS
+        if self.week <= 26:
+            return Season.ETE
+        if self.week <= 39:
+            return Season.AUTOMNE
+        return Season.HIVER
+
+    def advance_week(self) -> None:
+        self._finished_winter = False
+        if self.week == 52:
+            self.week = 1
+            self.year += 1
+            self._finished_winter = True
+        else:
+            self.week += 1
+
+    def just_finished_winter(self) -> bool:
+        return self._finished_winter
+
+    def ticks_per_second(self) -> int:
+        if self.paused:
+            return 0
+        return {1: 2, 2: 4, 5: 10}[self.speed]
+
+    def set_speed(self, value: int) -> None:
+        if value in (1, 2, 5):
+            self.speed = value
+            self.paused = False
+
+    def toggle_pause(self) -> None:
+        self.paused = not self.paused
+
+    def weeks_until_winter(self) -> int:
+        if self.week >= 40:
+            return 0
+        return 40 - self.week
+---- fin ----
+
+[ ] Etape 4 : PY -m pytest tests/test_clock.py tests/test_hex.py -v
+Expected : PASS
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: horloge saisonniere avec pause et vitesses
+
+
+TACHE 4 : pathfinding
+---------------------
+
+Fichiers :
+  Creer : src/kora/path.py
+  Creer : tests/test_path.py
+
+Interfaces :
+  Consumes : World.passable, World.enter_cost_hex, hex_neighbors, hex_distance
+  Produces : astar, travel_weeks
+  MOVE_POINTS_PER_WEEK = 60
+
+[ ] Etape 1 : test
+
+---- tests/test_path.py ----
+from src.kora.path import astar, travel_weeks
+from src.kora.types import Terrain
+from src.kora.world import hex_distance, make_filled_world, offset_to_axial
+
+
+def test_astar_plain_line_length():
+    w = make_filled_world(20, 8, Terrain.PLAINE)
+    start = offset_to_axial(1, 3)
+    goal = offset_to_axial(13, 3)
+    path = astar(w, start, goal)
+    assert path is not None
+    assert path[-1] == goal
+    assert start not in path
+    assert len(path) == hex_distance(start, goal)
+
+
+def test_twelve_plains_hexes_are_two_weeks():
+    w = make_filled_world(20, 8, Terrain.PLAINE)
+    start = offset_to_axial(1, 3)
+    goal = offset_to_axial(13, 3)
+    path = astar(w, start, goal)
+    assert path is not None
+    assert len(path) == 12
+    assert travel_weeks(w, start, path) == 2
+
+
+def test_water_blocks():
+    w = make_filled_world(6, 6, Terrain.EAU)
+    a = offset_to_axial(1, 1)
+    b = offset_to_axial(4, 4)
+    assert astar(w, a, b) is None
+
+
+def test_same_hex_empty_path_zero_weeks():
+    w = make_filled_world(4, 4, Terrain.PLAINE)
+    h = offset_to_axial(1, 1)
+    path = astar(w, h, h)
+    assert path == []
+    assert travel_weeks(w, h, path) == 0
+---- fin ----
+
+[ ] Etape 2 : PY -m pytest tests/test_path.py -v
+Expected : FAIL
+
+[ ] Etape 3 : implementation
+
+---- src/kora/path.py ----
+import heapq
+
+from src.kora.types import Hex
+from src.kora.world import hex_distance, hex_neighbors, World
+
+MOVE_POINTS_PER_WEEK = 60
+
+
+def astar(world: World, start: Hex, goal: Hex) -> list[Hex] | None:
+    if start == goal:
+        return []
+    if not world.passable(start) or not world.passable(goal):
+        return None
+    open_heap: list[tuple[int, int, Hex]] = []
+    seq = 0
+    heapq.heappush(open_heap, (0, seq, start))
+    came: dict[Hex, Hex] = {}
+    g: dict[Hex, int] = {start: 0}
+    closed: set[Hex] = set()
+    while open_heap:
+        _f, _, current = heapq.heappop(open_heap)
+        if current in closed:
+            continue
+        if current == goal:
+            path: list[Hex] = []
+            node = current
+            while node != start:
+                path.append(node)
+                node = came[node]
+            path.reverse()
+            return path
+        closed.add(current)
+        for nb in hex_neighbors(current):
+            cost = world.enter_cost_hex(nb)
+            if cost is None:
+                continue
+            tentative = g[current] + cost
+            if tentative < g.get(nb, 10**9):
+                came[nb] = current
+                g[nb] = tentative
+                seq += 1
+                f = tentative + hex_distance(nb, goal) * 10
+                heapq.heappush(open_heap, (f, seq, nb))
+    return None
+
+
+def travel_weeks(world: World, start: Hex, path: list[Hex]) -> int:
+    if not path:
+        return 0
+    weeks = 0
+    points = 0
+    remaining = list(path)
+    while remaining:
+        if points <= 0:
+            weeks += 1
+            points += MOVE_POINTS_PER_WEEK
+        nxt = remaining[0]
+        cost = world.enter_cost_hex(nxt)
+        if cost is None:
+            return weeks
+        if cost > points:
+            points = 0
+            continue
+        points -= cost
+        remaining.pop(0)
+        _ = start
+    return weeks
+---- fin ----
+
+[ ] Etape 4 : PY -m pytest tests/test_path.py -v
+Expected : PASS (4 tests). Si test_twelve echoue a cause d'un chemin
+plus long que 12 (hex odd-r), ajuster start/goal pour deux hex sur
+la meme rangee dont hex_distance == 12, deja le cas col 1 -> 13.
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: pathfinding A-star et duree de marche
+
+
+TACHE 5 : nourriture, collecte, epuisement
+------------------------------------------
+
+Fichiers :
+  Creer : src/kora/sim.py  (GameState + collect_food + update_exhaustion)
+  Creer : tests/test_food.py
+
+Interfaces :
+  Consumes : World, Clock, Band, Tribe, food_production, hexes_in_radius
+  Produces :
+    PLAYER_TRIBE_ID = 1
+    AI_STEPPE_ID = 2
+    AI_FOREST_ID = 3
+    AI_COAST_ID = 4
+    FORAGE_RADIUS = 2
+    class GameState
+      world, clock, tribes: dict[int, Tribe], bands: dict[int, Band]
+      tick_count: int (0 au depart)
+      rng (random.Random)
+      last_error: str | None
+      player_dead: bool
+    def forage_hexes(state, band) -> list[Hex]
+    def collect_food(state) -> None
+    def update_exhaustion(state) -> None
+    def stock_max(band) -> float   (= 4 * population)
+
+Regles (spec) :
+  production hex = food_production(...)
+  partage au prorata des populations des bandes dont le rayon 2
+  contient l'hex
+  conso = population * 1
+  stock plafonne a 4 * population
+  famine si stock==0 et collecte < conso : pertes = max(1, floor(deficit))
+    si deficit > 0. Apres pertes, population min 0.
+  pression = somme(pop/19) des bandes qui prelevent l'hex
+  epuisement 0.5 si pression > 2 * production, sinon +0.1 cap 1.0
+  Ordre tick pour cette tache (partiel) : exhaustion PUIS collecte
+  (la spec dit epuisement selon la semaine precedente : donc
+  update_exhaustion utilise la pression de la collecte precedente.
+  Pour le proto : memoriser state.pressure: dict[Hex, float] calcule
+  pendant collect_food, applique au debut du tick suivant.
+  Au tick 0, pas d'epuisement encore.)
+
+Pendant collect_food, calculer pressure[h] et le stocker dans
+state.last_pressure: dict[Hex, float]
+update_exhaustion lit last_pressure.
+
+[ ] Etape 1 : test
+
+---- tests/test_food.py ----
+from src.kora.clock import Clock
+from src.kora.sim import (
+    GameState,
+    collect_food,
+    forage_hexes,
+)
+from src.kora.types import Band, Hex, Terrain, Tribe, stay_order
+from src.kora.world import make_filled_world, offset_to_axial, food_production
+from src.kora.types import Season
+
+
+def _state(terrain: Terrain, pop: int, stock: float, season_week: int = 1) -> GameState:
+    world = make_filled_world(15, 15, terrain)
+    clock = Clock()
+    clock.week = season_week
+    pos = offset_to_axial(7, 7)
+    band = Band(
+        id=1,
+        tribe_id=1,
+        position=pos,
+        population=pop,
+        stock=stock,
+        order=stay_order(),
+    )
+    tribe = Tribe(id=1, name="t", prestige=20, is_player=True)
+    return GameState(
+        world=world,
+        clock=clock,
+        tribes={1: tribe},
+        bands={1: band},
+    )
+
+
+def test_forage_radius_nineteen_on_plains():
+    st = _state(Terrain.PLAINE, 10, 0)
+    hexes = forage_hexes(st, st.bands[1])
+    assert len(hexes) == 19
+
+
+def test_spring_valley_small_band_does_not_starve_one_week():
+    st = _state(Terrain.VALLEE, 18, 0, season_week=1)
+    collect_food(st)
+    assert st.bands[1].population == 18
+    assert st.bands[1].stock >= 0
+
+
+def test_winter_hill_no_stock_loses_people_in_four_weeks():
+    st = _state(Terrain.COLLINE, 40, 0, season_week=40)
+    start = st.bands[1].population
+    for _ in range(4):
+        collect_food(st)
+        st.clock.advance_week()
+    assert st.bands[1].population < start
+---- fin ----
+
+[ ] Etape 2 : PY -m pytest tests/test_food.py -v
+Expected : FAIL
+
+[ ] Etape 3 : implementation sim.py
+
+---- src/kora/sim.py ----
+from __future__ import annotations
+
+import copy
+import math
+import random
+from dataclasses import dataclass, field
+
+from src.kora.clock import Clock
+from src.kora.path import astar, travel_weeks
+from src.kora.types import Band, Hex, Order, OrderKind, Tribe, stay_order
+from src.kora.world import World, food_production, offset_to_axial
+
+PLAYER_TRIBE_ID = 1
+AI_STEPPE_ID = 2
+AI_FOREST_ID = 3
+AI_COAST_ID = 4
+FORAGE_RADIUS = 2
+STOCK_MAX_FACTOR = 4
+
+
+@dataclass
+class GameState:
+    world: World
+    clock: Clock
+    tribes: dict[int, Tribe]
+    bands: dict[int, Band]
+    tick_count: int = 0
+    rng: random.Random = field(default_factory=lambda: random.Random(1))
+    last_error: str | None = None
+    player_dead: bool = False
+    last_pressure: dict[Hex, float] = field(default_factory=dict)
+
+
+def stock_max(band: Band) -> float:
+    return STOCK_MAX_FACTOR * band.population
+
+
+def forage_hexes(state: GameState, band: Band) -> list[Hex]:
+    return state.world.hexes_in_radius(band.position, FORAGE_RADIUS)
+
+
+def collect_food(state: GameState) -> None:
+    season = state.clock.season()
+    claimants: dict[Hex, list[Band]] = {}
+    for band in state.bands.values():
+        if band.population <= 0:
+            continue
+        for h in forage_hexes(state, band):
+            claimants.setdefault(h, []).append(band)
+    gained: dict[int, float] = {bid: 0.0 for bid in state.bands}
+    pressure: dict[Hex, float] = {}
+    for h, bands in claimants.items():
+        prod = food_production(state.world, h, season)
+        total_pop = sum(b.population for b in bands)
+        pressure[h] = sum(b.population / 19.0 for b in bands)
+        if total_pop <= 0 or prod <= 0:
+            continue
+        for b in bands:
+            gained[b.id] += prod * (b.population / total_pop)
+    for band in state.bands.values():
+        take = gained.get(band.id, 0.0)
+        need = band.population * 1.0
+        available = band.stock + take
+        if available >= need:
+            band.stock = min(stock_max(band), available - need)
+        else:
+            deficit = need - available
+            band.stock = 0.0
+            loss = max(1, math.floor(deficit)) if deficit > 0 else 0
+            band.population = max(0, band.population - loss)
+            band.famine_in_period = True
+    state.last_pressure = pressure
+
+
+def update_exhaustion(state: GameState) -> None:
+    season = state.clock.season()
+    for row in range(state.world.height):
+        for col in range(state.world.width):
+            h = offset_to_axial(col, row)
+            prod = food_production(state.world, h, season)
+            p = state.last_pressure.get(h, 0.0)
+            if p > 2.0 * prod and prod > 0:
+                state.world.set_exhaustion(h, 0.5)
+            else:
+                state.world.set_exhaustion(
+                    h, min(1.0, state.world.exhaustion(h) + 0.1)
+                )
+---- fin ----
+
+[ ] Etape 4 : PY -m pytest tests/test_food.py -v
+Expected : PASS
+Si valley test echoue (stock reste 0 mais pop intacte), c'est OK tant
+que population == 18.
+Si winter hill ne perd personne : verifier season_multiplier 0.20
+et week 40 = hiver.
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: collecte de nourriture et famine
+
+
+TACHE 6 : deplacement des bandes
+--------------------------------
+
+Fichiers :
+  Modifier : src/kora/sim.py
+  Creer : tests/test_movement.py
+
+Interfaces :
+  Consumes : astar, MOVE_POINTS_PER_WEEK, enter_cost_hex
+  Produces :
+    def set_goto(state, band_id, goal: Hex) -> None
+      ignore si impassable / hors carte ; sinon order GOTO + path=astar
+    def set_march_to_band(state, band_id, target_band_id) -> None
+    def apply_movement(state) -> None
+      Chaque bande avec path : depenser 60 points, entrer les hex
+      dont le cout tient dans les points (meme logique que travel_weeks).
+      Si order MARCH_TO_BAND : recalculer astar vers la position actuelle
+      de la cible au debut du mouvement de cette bande.
+      Si path vide : order redevient STAY (sauf si raid gere tache 9 :
+      pour cette tache, juste STAY).
+
+[ ] Etape 1 : test
+
+---- tests/test_movement.py ----
+from src.kora.clock import Clock
+from src.kora.sim import GameState, apply_movement, set_goto
+from src.kora.types import Band, Terrain, Tribe, stay_order
+from src.kora.world import hex_distance, make_filled_world, offset_to_axial
+
+
+def test_goto_moves_six_plains_in_one_week():
+    world = make_filled_world(20, 8, Terrain.PLAINE)
+    start = offset_to_axial(1, 3)
+    goal = offset_to_axial(13, 3)
+    band = Band(id=1, tribe_id=1, position=start, population=10, stock=40)
+    st = GameState(
+        world=world,
+        clock=Clock(),
+        tribes={1: Tribe(1, "t", 20, True)},
+        bands={1: band},
+    )
+    set_goto(st, 1, goal)
+    apply_movement(st)
+    assert hex_distance(start, band.position) == 6
+    apply_movement(st)
+    assert band.position == goal
+
+
+def test_invalid_goto_ignored():
+    world = make_filled_world(6, 6, Terrain.PLAINE)
+    start = offset_to_axial(1, 1)
+    band = Band(id=1, tribe_id=1, position=start, population=10, stock=40)
+    st = GameState(
+        world=world,
+        clock=Clock(),
+        tribes={1: Tribe(1, "t", 20, True)},
+        bands={1: band},
+    )
+    set_goto(st, 1, offset_to_axial(99, 99))
+    assert band.order.kind.name == "STAY" or band.path == []
+    assert band.position == start
+---- fin ----
+
+[ ] Etape 2 : PY -m pytest tests/test_movement.py -v
+Expected : FAIL
+
+[ ] Etape 3 : ajouter set_goto, set_march_to_band, apply_movement
+dans sim.py.
+
+---- extraits a ajouter dans sim.py ----
+from src.kora.path import MOVE_POINTS_PER_WEEK, astar
+from src.kora.types import Order, OrderKind
+
+
+def set_goto(state: GameState, band_id: int, goal: Hex) -> None:
+    band = state.bands[band_id]
+    if not state.world.passable(goal):
+        return
+    path = astar(state.world, band.position, goal)
+    if path is None:
+        return
+    band.order = Order(kind=OrderKind.GOTO, target_hex=goal)
+    band.path = path
+
+
+def set_march_to_band(state: GameState, band_id: int, target_band_id: int) -> None:
+    if target_band_id not in state.bands or band_id == target_band_id:
+        return
+    band = state.bands[band_id]
+    target = state.bands[target_band_id]
+    path = astar(state.world, band.position, target.position)
+    if path is None:
+        return
+    band.order = Order(
+        kind=OrderKind.MARCH_TO_BAND, target_band_id=target_band_id
+    )
+    band.path = path
+
+
+def apply_movement(state: GameState) -> None:
+    for band in state.bands.values():
+        if band.population <= 0:
+            continue
+        if band.order.kind is OrderKind.MARCH_TO_BAND:
+            tid = band.order.target_band_id
+            if tid not in state.bands:
+                band.order = stay_order()
+                band.path = []
+                continue
+            target = state.bands[tid]
+            path = astar(state.world, band.position, target.position)
+            band.path = [] if path is None else path
+        points = MOVE_POINTS_PER_WEEK
+        while band.path and points > 0:
+            nxt = band.path[0]
+            cost = state.world.enter_cost_hex(nxt)
+            if cost is None or cost > points:
+                break
+            points -= cost
+            band.position = nxt
+            band.path.pop(0)
+        if not band.path and band.order.kind is OrderKind.GOTO:
+            band.order = stay_order()
+---- fin ----
+
+[ ] Etape 4 : PY -m pytest tests/test_movement.py tests/test_path.py -v
+Expected : PASS
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: deplacement des bandes sur la grille
+
+
+TACHE 7 : croissance de population
+----------------------------------
+
+Fichiers :
+  Modifier : src/kora/sim.py
+  Creer : tests/test_population.py
+
+Interfaces :
+  Produces : def update_population(state) -> None
+    Appele seulement si tick_count > 0 and tick_count % 4 == 0
+    (le tick() de la tache 12 incremente puis appelle).
+    Pour les tests, appeler update_population directement.
+    Si famine_in_period : pas de croissance, reset flag False.
+    Sinon : population += max(1, floor(population * 0.02))
+    Recap stock si stock > stock_max apres (clamp).
+    Retirer les bandes a population 0.
+    Si plus aucune bande joueur : player_dead = True
+
+[ ] Etape 1 : test
+
+---- tests/test_population.py ----
+from src.kora.clock import Clock
+from src.kora.sim import GameState, update_population
+from src.kora.types import Band, Terrain, Tribe
+from src.kora.world import make_filled_world, offset_to_axial
+
+
+def test_fed_band_grows():
+    world = make_filled_world(8, 8, Terrain.VALLEE)
+    b = Band(id=1, tribe_id=1, position=offset_to_axial(3, 3), population=40, stock=160)
+    b.famine_in_period = False
+    st = GameState(
+        world=world,
+        clock=Clock(),
+        tribes={1: Tribe(1, "t", 20, True)},
+        bands={1: b},
+        tick_count=4,
+    )
+    update_population(st)
+    assert b.population == 40 + max(1, int(40 * 0.02))
+
+
+def test_famine_band_does_not_grow():
+    world = make_filled_world(8, 8, Terrain.VALLEE)
+    b = Band(id=1, tribe_id=1, position=offset_to_axial(3, 3), population=40, stock=0)
+    b.famine_in_period = True
+    st = GameState(
+        world=world,
+        clock=Clock(),
+        tribes={1: Tribe(1, "t", 20, True)},
+        bands={1: b},
+    )
+    update_population(st)
+    assert b.population == 40
+    assert b.famine_in_period is False
+---- fin ----
+
+[ ] Etape 2 : FAIL puis etape 3 implementation update_population
+en utilisant math.floor pour la croissance.
+
+[ ] Etape 4 : PY -m pytest tests/test_population.py -v
+Expected : PASS
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: croissance de population tous les quatre ticks
+
+
+TACHE 8 : influence invisible
+----------------------------
+
+Fichiers :
+  Modifier : src/kora/sim.py
+  Creer : tests/test_influence.py
+
+Interfaces :
+  Produces : def update_influence(state) -> None
+    1) world.scale_all_influence(0.97)
+    2) pour chaque bande pop>0, pour chaque hex rayon 2 :
+       add_influence(h, tribe_id, 0.08 * (population / 50))
+
+[ ] Etape 1 : test
+
+---- tests/test_influence.py ----
+from src.kora.clock import Clock
+from src.kora.sim import GameState, update_influence
+from src.kora.types import Band, Terrain, Tribe
+from src.kora.world import make_filled_world, offset_to_axial
+
+
+def test_influence_rises_then_falls():
+    world = make_filled_world(12, 12, Terrain.PLAINE)
+    pos = offset_to_axial(6, 6)
+    b = Band(id=1, tribe_id=1, position=pos, population=50, stock=200)
+    st = GameState(
+        world=world,
+        clock=Clock(),
+        tribes={1: Tribe(1, "t", 20, True)},
+        bands={1: b},
+    )
+    update_influence(st)
+    up = world.influence(pos, 1)
+    assert up > 0
+    b.position = offset_to_axial(1, 1)
+    for _ in range(30):
+        update_influence(st)
+    assert world.influence(pos, 1) < up
+---- fin ----
+
+Attention : update_influence decay PUIS add. Apres le move, l'ancien
+hex recoit 0.97 chaque tick sans add (s'il n'est plus dans le rayon 2).
+Distance entre (6,6) offset et (1,1) offset doit etre > 2.
+
+[ ] Etape 2-4 : FAIL, implementer, PASS
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: couche d'influence par tribu
+
+
+TACHE 9 : raids et prestige
+---------------------------
+
+Fichiers :
+  Modifier : src/kora/sim.py
+  Creer : tests/test_raid.py
+
+Interfaces :
+  Produces :
+    def band_force(state, band) -> float
+      population * (1 + tribe.prestige / 200)
+    def resolve_raids(state) -> None
+      Grouper les bandes par position (meme Hex) et tribu differente.
+      Pour chaque hex, trier bandes par id croissant.
+      Tant qu'il reste au moins 2 tribus sur l'hex : le plus petit id
+      attaque la premiere bande d'une autre tribu (resolution 1v1).
+      Gagnant : force strictement superieure, egalite = "defenseur"
+      = la bande avec l'id le plus eleve des deux (la seconde).
+      Pertes gagnant floor(10%), perdant floor(25%) min 1 si pop>=1.
+      Perdant fuit : voisin passable de plus grande hex_distance a
+      l'attaquant. Si aucun : floor(10%) pertes en plus.
+      Gagnant prend min(stock_p, floor(stock_p * 0.5)) nourriture
+      (clamp stock_max).
+      Consommer l'ordre MARCH_TO_BAND des deux si ciblee.
+    def update_prestige(state) -> None
+      si clock.just_finished_winter():
+        pour chaque tribu encore vivante :
+          famine = une de ses bandes a famine_in_period True
+            AU COURANT de l'hiver : trop tard si on a reset le flag.
+          Donc : accumuler tribe.famine_during_winter: bool sur Tribe.
+          collect_food si famine : tribe flag True.
+          A la fin d'hiver : +4 si pas de famine, -6 sinon, reset flag.
+      si tick_count % 4 == 0 : +1 si pop tribu >= 80, -1 si < 20
+      clamp prestige 0..100
+      raids : +5 / -4 dans resolve_raids
+
+Ajouter sur Tribe : famine_during_winter: bool = False
+(modifier types.py). Dans collect_food, si band.famine : 
+  state.tribes[band.tribe_id].famine_during_winter = True
+
+[ ] Etape 1 : test
+
+---- tests/test_raid.py ----
+from src.kora.clock import Clock
+from src.kora.sim import GameState, band_force, resolve_raids
+from src.kora.types import Band, Terrain, Tribe
+from src.kora.world import hex_distance, make_filled_world, offset_to_axial
+
+
+def test_stronger_attacker_reduces_defender_and_forces_flee():
+    world = make_filled_world(12, 12, Terrain.PLAINE)
+    pos = offset_to_axial(5, 5)
+    att = Band(id=1, tribe_id=1, position=pos, population=40, stock=80)
+    deff = Band(id=2, tribe_id=2, position=pos, population=20, stock=80)
+    st = GameState(
+        world=world,
+        clock=Clock(),
+        tribes={
+            1: Tribe(1, "a", 20, True),
+            2: Tribe(2, "b", 20, False),
+        },
+        bands={1: att, 2: deff},
+    )
+    assert band_force(st, att) > band_force(st, deff)
+    resolve_raids(st)
+    assert deff.population < 20
+    assert deff.position != pos
+    assert hex_distance(deff.position, att.position) >= 1
+    assert att.stock == 120
+    assert st.tribes[1].prestige == 25
+    assert st.tribes[2].prestige == 16
+---- fin ----
+
+[ ] Etape 2-4 : FAIL, implementer, PASS
+  Fuite : parmi hex_neighbors(def.position) passable, max distance
+  a l'attaquant. Si le defenseur est encore sur le meme hex au debut,
+  voisins du pos commun.
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: resolution des raids et prestige
+
+
+TACHE 10 : brouillard
+---------------------
+
+Fichiers :
+  Creer : src/kora/vision.py
+  Creer : tests/test_vision.py
+
+Interfaces :
+  Produces :
+    class PlayerVision
+      explored: set[Hex]
+      visible: set[Hex]
+    def recompute_vision(state) -> PlayerVision
+      visible = union hexes_in_radius(bande joueur, 16)
+      explored |= visible
+      stocker sur state.vision
+    def is_visible(state, h) -> bool
+    def is_explored(state, h) -> bool
+    def enemy_band_visible(state, band) -> bool
+      True si band.tribe is_player ou position in visible
+
+VISION_RADIUS = 16
+GameState.vision : PlayerVision, init explored/visible vides puis
+recompute au spawn (tache 12 new_game).
+
+[ ] Etape 1 : test
+
+---- tests/test_vision.py ----
+from src.kora.clock import Clock
+from src.kora.sim import GameState, PLAYER_TRIBE_ID
+from src.kora.types import Band, Terrain, Tribe
+from src.kora.vision import recompute_vision
+from src.kora.world import hex_distance, make_filled_world, offset_to_axial
+
+
+def test_vision_radius_hides_far_enemy():
+    world = make_filled_world(40, 40, Terrain.PLAINE)
+    p = offset_to_axial(10, 10)
+    far = offset_to_axial(10, 30)
+    near = offset_to_axial(12, 12)
+    pb = Band(id=1, tribe_id=1, position=p, population=10, stock=40)
+    enemy_far = Band(id=2, tribe_id=2, position=far, population=10, stock=40)
+    enemy_near = Band(id=3, tribe_id=2, position=near, population=10, stock=40)
+    st = GameState(
+        world=world,
+        clock=Clock(),
+        tribes={
+            1: Tribe(1, "p", 20, True),
+            2: Tribe(2, "e", 20, False),
+        },
+        bands={1: pb, 2: enemy_far, 3: enemy_near},
+    )
+    vis = recompute_vision(st)
+    assert hex_distance(p, far) >= 20
+    assert far not in vis.visible
+    assert hex_distance(p, near) <= 8
+    assert near in vis.visible
+---- fin ----
+
+Verifier hex_distance offset (10,10) vs (10,30). Si < 20, eloigner
+l'ennemi (row 10 vs row 35).
+
+[ ] Etape 2-4 : FAIL, vision.py, PASS
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: brouillard de guerre du joueur
+
+
+TACHE 11 : IA
+-------------
+
+Fichiers :
+  Creer : src/kora/ai.py
+  Creer : tests/test_ai.py
+
+Interfaces :
+  Consumes : set_goto, set_march_to_band, travel_weeks, astar,
+             food_production, forage_hexes
+  Produces : def decide_ai(state) -> None
+    Pour chaque bande dont tribe.is_player is False :
+    appliquer les 4 cas de la spec.
+    Steppe R=4 P=25 ; Foret R=3 P=40 skip raid si rendement local >= 0.8
+    sauf stock < 2 semaines ; Cote prefere COTE/VALLEE aux cas 1-2.
+    Steppe cas 4 : si rng.random() < 0.5, goto hex STEPPE/PLAINE rayon 12.
+
+Rendement local = moyenne food_production des forage_hexes.
+Stock en semaines = stock / max(1, population).
+
+Meilleur hex rayon 24 : max food_production, passable.
+Vallee dans rayon 24 : terrain VALLEE.
+
+Ne pas donner d'ordre a une bande joueur.
+
+[ ] Etape 1 : test
+
+---- tests/test_ai.py ----
+from src.kora.ai import decide_ai
+from src.kora.clock import Clock
+from src.kora.sim import AI_STEPPE_ID, GameState
+from src.kora.types import Band, OrderKind, Terrain, Tribe
+from src.kora.world import make_filled_world, offset_to_axial
+
+
+def test_hungry_ai_moves_toward_better_tile():
+    world = make_filled_world(30, 30, Terrain.STEPPE)
+    # une vallee loin mais dans 24
+    from src.kora.world import axial_to_offset
+
+    valley = offset_to_axial(20, 10)
+    col, row = axial_to_offset(valley)
+    world._terrains[row][col] = Terrain.VALLEE
+    start = offset_to_axial(8, 10)
+    b = Band(
+        id=10,
+        tribe_id=AI_STEPPE_ID,
+        position=start,
+        population=36,
+        stock=0,
+    )
+    st = GameState(
+        world=world,
+        clock=Clock(),
+        tribes={
+            1: Tribe(1, "p", 20, True),
+            AI_STEPPE_ID: Tribe(AI_STEPPE_ID, "s", 20, False),
+        },
+        bands={10: b},
+    )
+    decide_ai(st)
+    assert b.order.kind is OrderKind.GOTO
+    assert b.path
+---- fin ----
+
+[ ] Etape 2-4 : FAIL, implementer decide_ai, PASS
+  Recherche rayon 24 : world.hexes_in_radius(pos, 24) ; filtrer passable.
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: decisions des tribus IA
+
+
+TACHE 12 : tick complet, new_game, tests spec 14
+------------------------------------------------
+
+Fichiers :
+  Modifier : src/kora/sim.py
+  Creer : tests/test_tick.py
+
+Interfaces :
+  Produces :
+    def new_game(world: World | None = None) -> GameState
+      charge data/kora_map.json si world is None
+      (chemin : racine projet / data/kora_map.json)
+      4 tribus prestige 20, bandes aux offsets spec, vision initiale
+    def snapshot(state) -> GameState   copy.deepcopy
+    def tick(state) -> None
+      snap = snapshot ; try : ordre spec ; except : restaurer champs
+      depuis snap, paused=True, last_error=str(e)
+      Ordre :
+        1 clock.advance_week
+        2 apply_movement
+        3 resolve_raids
+        4 update_exhaustion
+        5 collect_food
+        6 tick_count += 1 ; si tick_count % 4 == 0 : update_population
+        7 update_influence
+        8 update_prestige
+        9 recompute_vision
+        10 decide_ai
+      Retirer bandes pop 0 apres collect et apres raids.
+      player_dead si aucune bande tribe_id joueur.
+
+Le calendrier avance EN DEBUT de tick : la premiere semaine jouee
+devient semaine 2 si on avance d'abord. Pour rester fidele a "an 1
+semaine 1 visible au lancement", new_game laisse week=1, et tick
+avance ensuite. Le premier tick fait passer a semaine 2 apres avoir
+simule... Spec : "Avancer le calendrier" en premier. Acceptable :
+l'affichage montre l'etat AVANT tick ; le joueur voit semaine 1
+en pause ; au unpause le premier tick passe a 2. Documente ici.
+
+Alternative plus naturelle : avancer le calendrier EN FIN de tick.
+La spec dit le contraire. Suivre la spec (avance en premier).
+new_game : week=1 pause. Premier tick -> week=2. OK.
+
+[ ] Etape 1 : tests spec 14 regroupes
+
+---- tests/test_tick.py ----
+from pathlib import Path
+
+from src.kora.path import astar, travel_weeks
+from src.kora.sim import GameState, new_game, tick
+from src.kora.types import Band, Season, Terrain, Tribe
+from src.kora.world import (
+    food_production,
+    hex_distance,
+    make_filled_world,
+    offset_to_axial,
+    paint_kora,
+)
+
+
+def test_new_game_kora_has_player_bands():
+    st = new_game(paint_kora())
+    assert st.clock.week == 1
+    assert st.clock.paused is True
+    player_bands = [b for b in st.bands.values() if b.tribe_id == 1]
+    assert len(player_bands) == 2
+    assert sum(b.population for b in player_bands) == 58
+
+
+def test_path_twelve_plains_two_weeks():
+    w = make_filled_world(20, 8, Terrain.PLAINE)
+    start = offset_to_axial(1, 3)
+    goal = offset_to_axial(13, 3)
+    path = astar(w, start, goal)
+    assert path is not None
+    assert len(path) == 12
+    assert travel_weeks(w, start, path) == 2
+---- fin ----
+
+Les autres tests spec 14 existent deja (food, influence, vision, raid, ai).
+Ici ajouter un test d'integration : 4 ticks sans exception sur Kora.
+
+---- a ajouter dans tests/test_tick.py ----
+def test_four_ticks_on_kora_do_not_crash():
+    st = new_game(paint_kora())
+    st.clock.paused = False
+    for _ in range(4):
+        tick(st)
+    assert st.last_error is None
+    assert st.clock.week == 5
+---- fin ----
+
+[ ] Etape 2-4 : implementer new_game + tick, PASS
+  PY -m pytest tests/ -v
+  Expected : tous les tests PASS
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: boucle de tick et partie Kora
+
+
+TACHE 13 : rendu carte (pygame)
+-------------------------------
+
+Fichiers :
+  Creer : src/kora/render.py
+  Modifier : rien a la sim
+
+Interfaces :
+  Consumes : GameState, PlayerVision, axial_to_offset
+  Produces :
+    HEX_SIZE = 8  (pixels, rayon)
+    def hex_to_pixel(h, camera_x, camera_y, zoom) -> tuple[float, float]
+      pointy-top :
+        col, row = axial_to_offset(h)
+        x = HEX_SIZE * zoom * (3**0.5) * (col + 0.5 * (row & 1)) - camera_x
+        y = HEX_SIZE * zoom * 1.5 * row - camera_y
+    def pixel_to_hex(x, y, camera_x, camera_y, zoom, world) -> Hex | None
+    BIOME_COLORS dict Terrain -> (r,g,b)
+      PLAINE (186, 196, 120), VALLEE (120, 160, 80), STEPPE (210, 190, 120),
+      FORET (46, 100, 56), COLLINE (140, 130, 90), MONTAGNE (110, 110, 115),
+      SOMMET (230, 230, 235), EAU (40, 80, 140), COTE (210, 190, 130)
+    FOG_UNEXPLORED (8, 8, 10)
+    FOG_EXPLORED multiplier 0.45 sur la couleur
+    TRIBE_COLORS {1:(220,70,70), 2:(70,140,220), 3:(80,180,90), 4:(220,180,60)}
+    class Renderer
+      def __init__(self, screen)
+      def draw(self, state)
+        n'affiche que les hex visibles a l'ecran (conversion pixel->col/row)
+        inexplore = noir
+        explore hors vue = biome assombri, PAS de bandes ennemies
+        en vue = biome + bandes (joueur toujours, ennemis si visible)
+      def draw_hud(self, state)
+      def draw_path(self, state, band)
+        ligne + texte "{n} semaines"
+
+Pas de test pygame obligatoire. Test pur :
+
+---- tests/test_render_math.py ----
+from src.kora.render import hex_to_pixel, pixel_to_hex
+from src.kora.world import make_filled_world, offset_to_axial
+from src.kora.types import Terrain
+
+
+def test_pixel_roundtrip_centerish():
+    w = make_filled_world(20, 20, Terrain.PLAINE)
+    h = offset_to_axial(5, 5)
+    x, y = hex_to_pixel(h, 0, 0, 1.0)
+    back = pixel_to_hex(x, y, 0, 0, 1.0, w)
+    assert back is not None
+    assert back == h
+---- fin ----
+
+pixel_to_hex : tester les offsets voisins du pixel et prendre le Hex
+in_bounds de distance au point la plus petite (cube round).
+
+HUD textes FR :
+  "An {year}  {season}  semaine {week}"
+  "Pause" ou "x1"/"x2"/"x5"
+  "Prestige {n}"
+  "Peuple {pop}    Stocks {stock:.0f}"
+  last_error si present
+  si player_dead : "Votre peuple n'est plus"
+
+Saisons en francais : Printemps, Ete, Automne, Hiver.
+
+[ ] Etapes : test maths FAIL, implementer render.py, PASS
+  PY -m pip install pygame-ce
+  PY -m pytest tests/test_render_math.py tests/ -v
+
+[ ] Commit (si demande)
+  Message : feat: rendu de la carte hexagonale et HUD
+
+
+TACHE 14 : app, commandes, boucle
+---------------------------------
+
+Fichiers :
+  Creer : src/kora/app.py
+  Creer : main.py
+
+Interfaces :
+  Produces : def run() -> None
+    pygame 1280x720, resizable, titre "Kora"
+    new_game()
+    selected_band_id : int | None = bande joueur id 1
+    camera_x, camera_y, zoom (0.4 a 3.0)
+    Boucle :
+      events :
+        QUIT -> return
+        K_ESCAPE -> return
+        K_SPACE -> clock.toggle_pause
+        K_1 / K_2 / K_5 -> set_speed
+        MOUSEWHEEL -> zoom
+        MOUSEBUTTONDOWN droit ou milieu : drag camera
+        MOUSEBUTTONDOWN gauche :
+          si pixel sur bande joueur -> select
+          elif bande ennemie visible -> set_march_to_band
+          else pixel_to_hex passable -> set_goto
+      si not paused and not player_dead :
+        accumuler dt * ticks_per_second, while >= 1 : tick()
+      renderer.draw + path de la selection + hud
+      flip
+
+---- main.py ----
+from src.kora.app import run
+
+if __name__ == "__main__":
+    run()
+---- fin ----
+
+Pas de test UI. Verification manuelle par l'agent :
+  PY main.py
+  (lancer 3 secondes puis fermer si possible ; au minimum importer
+   app sans run infini)
+
+Ajouter tests/test_app_import.py :
+  def test_import_app():
+      import src.kora.app
+      import src.kora.render
+
+[ ] PY -m pytest tests/ -v
+Expected : PASS
+[ ] Commit (si demande)
+  Message : feat: fenetre de jeu et commandes joueur
+
+
+TACHE 15 : executable Windows
+-----------------------------
+
+Fichiers :
+  Creer : kora.spec (PyInstaller) si utile, sinon ligne de commande
+
+[ ] Etape 1 : installer pyinstaller dans le venv
+  PY -m pip install pyinstaller pygame-ce pytest
+
+[ ] Etape 2 : build onedir (plus fiable que onefile)
+
+Run, depuis la racine du projet :
+  PY -m PyInstaller --noconfirm --clean --windowed --name Kora --noconsole --add-data "data/kora_map.json;data" main.py
+
+Sous PowerShell l'argument --add-data utilise le separateur ;
+(point-virgule) entre source et dest.
+
+[ ] Etape 3 : verifier
+  Test-Path dist\Kora\Kora.exe
+  Expected : True
+  Lancer dist\Kora\Kora.exe (l'agent le lance, confirme la fenetre,
+  puis on peut tuer le process).
+
+[ ] Etape 4 : PY -m pytest tests/ -v
+  Expected : PASS toujours (le build ne casse pas la sim)
+
+[ ] Etape 5 : Commit (si demande)
+  Message : feat: export Windows Kora.exe
+
+
+COUVERTURE SPEC (auto-verif)
+----------------------------
+
+1 Intention / boucle          taches 5-12, 14
+2 Livraison exe, python       taches 1, 15
+3 Nourriture pop climat       taches 3, 5, 7
+4 Prestige                    tache 9
+5 Micro-hex 150x100 Kora      tache 2
+6 Table terrains / saisons    taches 1-3, 5
+7 Departs chiffrés            tache 12 new_game
+8 Bandes 2 joueur / 1 IA      tache 12
+9 Influence invisible         tache 8
+10 Raids                      tache 9
+11 Brouillard 16              tache 10
+12 HUD pause x1 x2 x5 FR      taches 13-14
+13 IA 3 tribus                tache 11
+14 Ordre du tick              tache 12
+15 Architecture fichiers      toutes
+16 Erreurs / rollback         tache 12 tick
+17 Tests section 14           taches 4,5,8,9,10,11,12
+18 Pas de villes / frontieres  aucune tache n'en ajoute
+19 Joueur n'installe rien     tache 1 venv + 15 exe
+)

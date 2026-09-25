@@ -1,0 +1,206 @@
+ECONOMIE, BANDES MULTIPLES, BROUILLARD, PERF
+Date    : 2026-09-23
+Statut  : en place
+
+Portee : proto Kora. Reequilibrage apres une revue du jeu en simulation
+sans fenetre. Le banc d'essai est tests/test_balance.py.
+
+
+1. LE PROBLEME
+--------------
+
+Mesure sur la vraie carte, 10 ans, avant ce changement :
+
+  - toutes les tribus (IA comprises) tombaient de 32-40 a ~7 au
+    premier hiver, puis oscillaient entre 5 et 30 pour toujours ;
+  - le meilleur site de la planete nourrissait 52 personnes au mieux
+    (ete) : une bande unique plafonnait vers 50 ;
+  - strategie dominante : steppe + troupeau, 39 <-> 46 a vie ;
+  - cabotage (peuple >= 50) : jamais adopte, par personne ;
+  - prestige joueur bloque a 0 (famine d'hiver chaque annee).
+
+Causes :
+  - famine = 1 mort par unite manquante, la meme semaine ;
+  - stock max = 4 semaines, alors que l'hiver en dure 6 a 20 ;
+  - croissance minimum +1 par bande et par mois ;
+  - une seule bande joueur, pas de scission.
+
+
+2. FAMINE, STOCK, CROISSANCE (sim.py)
+-------------------------------------
+
+Famine progressive :
+  morts = arrondi(population x part manquante x FAMINE_RATE)
+  FAMINE_RATE = 0.15, minimum 1 mort s'il manque quelque chose.
+  Une bande qui recoit la moitie de sa ration perd ~7 % par semaine.
+
+Stock max = 10 semaines de conso (STOCK_MAX_FACTOR = 10).
+  Le surplus d'ete et d'automne peut couvrir l'hiver : preparer
+  l'hiver devient un vrai choix.
+
+Croissance toutes les 4 semaines, si nourrie :
+  population x GROWTH_RATE (0.025), les fractions sont reportees
+  (Band.growth_acc). Scinder ne multiplie pas les naissances.
+
+Prestige d'hiver : la famine ne compte que semaines 49 a 52
+  (les 4 dernieres de l'hiver, comme la spec du 14 aout le disait).
+
+
+3. BANDES MULTIPLES (sim.py, ai.py)
+-----------------------------------
+
+Scinder (split_band) : une bande de SPLIT_MIN_POP (20) ou plus se
+coupe en deux, stock au prorata, meme case. Plafond MAX_BANDS_PER_TRIBE
+= 8 bandes par tribu.
+
+Reunir (merge_bands) : toutes les bandes amies de la case rejoignent
+la bande choisie.
+
+Rejoindre : "marcher vers" une bande AMIE = fusion a l'arrivee
+(resolve_joins, juste apres apply_movement dans le tick).
+
+Les id de bande ne sont jamais reutilises (GameState.next_band_id,
+sauvegarde).
+
+L'IA scinde aussi : bande >= 30, stock >= 2 semaines, pas dans les
+10 semaines avant l'hiver ; la moitie part a 6 cases ou plus.
+Une bande IA bien nourrie (collecte >= 1.15 x besoin, stock >= 4 sem.)
+campe au lieu d'errer.
+
+
+4. RAIDS (sim.py, ai.py)
+------------------------
+
+Attaquant = la bande qui marchait vers l'autre. Egalite : le
+defenseur tient (la spec du 14 le disait, le code donnait la victoire
+a l'id le plus haut, donc le joueur perdait toutes les egalites).
+
+Renforts : les bandes amies a 2 cases ou moins ajoutent leur force
+(side_force). Seule la bande engagee subit les pertes.
+=> se disperser nourrit mieux, se regrouper protege.
+
+Le perdant perd 25 % de ses gens et la moitie de son stock (butin),
+puis SE REPLIE a pied (voir section 4 bis).
+
+IA : pas de raid dans les 12 semaines qui suivent un combat de cette
+bande (Band.last_raid_tick), et seulement avec 1.25 x la force de la
+cible. Rassasiee mais prestigieuse, elle ne raide qu'une decision sur
+trois ou quatre (AI_RAID_WHIM = 0.3).
+
+Journal : "Raid contre X : victoire / echec", "Raid de X contre vous :
+repousse / vous perdez", "Accrochage avec X" (rencontre sans chasseur).
+
+
+4 bis. REPLI APRES UNE DEFAITE (sim.py _retreat) -- ajoute le 23 sept.
+-----------------------------------------------------------------------
+
+Retour de jeu : la camera sautait sur chaque combat, le jeu se mettait
+en pause, et une meme bande pouvait etre attaquee plusieurs fois de
+suite. La spec du 15 aout disait deja "pas de pause forcee".
+
+Destination du repli, dans l'ordre :
+  1. la bande amie la plus proche (30 cases au plus, pas collee au
+     vainqueur) ;
+  2. sinon la meilleure case dans un rayon de 12 :
+       score = nourriture (rayon 2) x eloignement des autres tribus
+               (plafonne a 16 cases) - 0.5 x distance a parcourir
+     cases explorees seulement pour le joueur ; au moins 3 cases de
+     toute bande etrangere et 4 du vainqueur ;
+  3. nulle part : -10 % de gens en plus (regle du 14 aout).
+
+La bande MARCHE (vitesse normale, pas de teleportation).
+Pendant le repli (Band.retreating) :
+  - elle n'accepte aucun ordre (aller, raid, scinder, reunir),
+    joueur comme IA ;
+  - personne ne peut l'attaquer (is_shielded) ;
+  - la fiche de bande affiche "En repli : pas d'ordre avant
+    l'arrivee (~N sem.)".
+Repit minimum de 4 semaines apres le combat (Band.shield_until), meme
+sans chemin. Donner soi-meme un ordre de raid met fin au repit.
+A l'arrivee : "Repli termine" au journal, la bande obeit de nouveau.
+Elle ne fusionne pas toute seule avec l'allie : [F] pour reunir.
+
+Affichage :
+  - plus de saut de camera ni de pause au combat ;
+  - toast (fond sombre, en rouge pour les combats) + journal + epee ;
+  - "[voir]" : un clic sur le toast, ou sur la ligne du journal,
+    centre la camera et ouvre la fiche du combat ;
+  - la fiche reste ouverte jusqu'a Fermer / Echap / clic ailleurs ;
+  - les epees restent 26 semaines (8 au plus).
+
+
+5. DEPARTS (world.py pick_spawn_hexes, sim.py new_game)
+-------------------------------------------------------
+
+Chaque tribu part sur le biome de son nom, avec assez de nourriture
+de printemps autour (spawn_forage) :
+  Joueur  vallee ou plaine, >= 40
+  Steppe  steppe, >= 30, connait deja le troupeau
+  Foret   foret, >= 32
+  Cote    cote, >= 24, connait deja le cabotage
+Chaque exigence se relache si la carte ne permet pas mieux.
+Le voisin du meme continent part a 24 cases (hors vue, rayon 16).
+
+
+6. LECTURE ET COMMANDES (render.py, app.py)
+-------------------------------------------
+
+Fiche de bande (en bas, bande selectionnee) :
+  personnes, bandes x/8, stock en semaines, collecte / besoin,
+  terrain, saison locale, duree de l'hiver ici.
+  Boutons Scinder [S], Reunir [F], Suivante [Tab].
+
+Duree de l'hiver par latitude (local_winter_weeks) : 20 sem. aux
+poles, 6 a l'equateur. Aussi dans l'inspection de case.
+
+Carte : population a cote de chaque bande visible (de pres), bandes
+empilees sur une case decalees pour rester cliquables.
+
+Selection : reclic sur sa bande = deselection. Sans selection, un
+clic sur la carte montre la case sans deplacer personne.
+Maj+clic sur une bande amie = la rejoindre.
+
+Journal : les lignes longues passent a la ligne au lieu d'etre coupees.
+
+
+7. BROUILLARD AU DEZOOM (render.py)
+-----------------------------------
+
+Avant : la texture de sphere (zoom lointain) ignorait la vision, toute
+la planete et les noms de continents se voyaient ; au zoom moyen,
+l'ocean dessinait la silhouette des terres inconnues.
+Maintenant : une grille de brouillard (0 inexplore, 1 explore, 2 en
+vue) sert aux deux modes ; l'inexplore est noir, eau comprise ;
+les noms d'atlas n'apparaissent que sur une case exploree.
+La vue lointaine montre aussi la saison locale par rangee.
+
+
+8. PERFORMANCE
+--------------
+
+Tick debut de partie : 55 ms -> ~5 ms. Fin de partie (30 bandes) ~40 ms.
+  - saison : le front avance par rangees entieres (resultat identique
+    hex par hex, verifie sur 2 ans de la vraie carte) ;
+  - World._index sans Hex intermediaire, cache des petits rayons ;
+  - snapshot sans deepcopy des Hex ;
+  - decisions IA etalees sur 4 semaines (selon l'id de la bande),
+    grands rayons echantillonnes puis affines sur les voisins.
+
+
+9. RESULTATS DU BANC (tests/test_balance.py, graines 1-3, 10 ans)
+-----------------------------------------------------------------
+
+  Robot raisonnable : ~100 en an 4, 170-190 en an 6, ~300 en an 8,
+                      cabotage et troupeau vers l'an 4-7.
+  Joueur immobile   : 20-45, finit souvent par disparaitre (raids).
+  IA                : 60-290 chacune selon la partie, 4-8 bandes.
+  Premier hiver     : on perd du monde si on est mal place, plus 85 %.
+
+
+10. HORS SPEC
+-------------
+
+- Calque d'influence (toujours calcule, jamais dessine)
+- Diplomatie, alliances, tributs
+- Mini-carte
+- Nouvelle generation de carte

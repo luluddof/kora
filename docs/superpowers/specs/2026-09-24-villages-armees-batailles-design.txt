@@ -1,0 +1,134 @@
+Kora - Villages, premieres armees, batailles
+============================================
+Date : 2026-09-24. Statut : en place (voir la fin).
+
+Demande : "une interface propre au village, que ce soit un choix important
+qui marque un tournant, avec la possibilite de construire des batiments.
+Ameliorer la simulation du combat pour pouvoir aneantir une armee, ajouter
+de la profondeur. Avec les premiers villages viennent les premieres
+armees."
+
+Regles gardees : pas de pause ni de saut de camera sur un combat ; le vaincu
+se replie a pied, ordres bloques ; pas d'attaques en chaine (repit) ; les
+batiments appartiennent AU VILLAGE, pas a une case (pas de jeu "a la Civ").
+
+
+1. Fonder un village : un tournant
+----------------------------------
+Le bouton Village [V] d'une bande sur son campement n'installe plus d'un
+coup : il ouvre la fenetre "Fonder un village" (le temps s'arrete, comme
+pour un evenement).
+  - Le lieu : terres a cultiver autour (champs possibles, fertilite), eau,
+    ressources proches, dangers (crues des vallees, voisins hostiles).
+  - Ce qui change : on gagne champs, grenier, croissance, batiments et
+    guerriers ; on perd la marche (le village ne bouge plus), on attire les
+    pillards, les fievres viennent avec la foule.
+  - LE CHOIX : le serment de fondation, un trait definitif du village :
+      Le grenier d'abord   grenier +25 %, grain qui se gate x0,7
+      Les champs d'abord   recolte +10 %, croissance du village x1,1
+      Les pieux d'abord    palissade 2x plus vite et moitie prix,
+                           defense du village x1,15
+      Le feu des anciens   attachement +8 des clans a 8 cases ou moins,
+                           +1 prestige a chaque fin d'hiver
+  - Le PREMIER village du peuple ouvre un age : +10 prestige, et les
+    villages peuvent lever des guerriers (les premieres armees).
+Bouton "Fonder <nom>" (le nom est propose), ou "Pas maintenant".
+L'IA choisit son serment selon sa culture.
+
+
+2. L'ecran du village
+---------------------
+Selectionner la bande du village puis [V] (bouton "Gerer") : ecran propre,
+dans le style de l'ecran des savoirs (cadre dore, cartes, graphes).
+  - En tete : nom, peuple, annee de fondation, serment ; Fermer ; Abandonner
+    (a confirmer, comme avant).
+  - Tuiles : habitants, grenier (vivres / capacite, semaines), semences,
+    recolte attendue, defense, guerriers.
+  - Terres : petite carte des cases autour (champs, etat du sol), la roue
+    des saisons (semailles, recolte), le graphe des dernieres recoltes.
+  - Batiments : cartes (bati, en chantier, possible, verrouille), places
+    (2 + 1 par 40 habitants, 9 au plus), fiche du batiment choisi et bouton
+    Construire. Un chantier a la fois, paye en vivres du grenier.
+  - Guerriers : lever une troupe (une poignee, une troupe, la levee en
+    masse), sa force estimee, les troupes du village (voir, rappeler,
+    liberer).
+  - Le village aujourd'hui : grenier, grain gate, croissance, recolte,
+    defense, troupes possibles, serment.
+
+
+3. Batiments (villages.BUILDINGS)
+---------------------------------
+  Palissade           savoir Palissades   defense x1,6 (l'ancienne palissade)
+  Grenier sureleve    -                   +8 sem. de reserve, grain x0,6
+  Puits               -                   fievres x0,6
+  Maison longue       Maisons de terre    croissance du village x1,2
+  Enclos              Chevres et moutons  vivres du village x1,1
+  Maison des guerriers Palissades         troupes : force x1,25, moral +10,
+                                          une troupe de plus
+  Tour de guet        Guetteurs           vue +3 autour du village, defense
+                                          x1,15, alerte si un ennemi approche
+  Autel des ancetres  Rites               attachement +6 des clans a 8 cases
+                                          ou moins, +1 prestige par hiver
+  Pierre levee        Pierres levees      +2 prestige par hiver, zone
+                                          d'influence du village +1
+Pille, un village peut perdre un batiment (jamais la palissade).
+Abandonne, il perd tout.
+
+
+4. Les premieres armees
+-----------------------
+Une troupe (Band.kind == "armee", Band.home = le village) : des guerriers
+leves au village, pas des familles.
+  - Combattants : toute la troupe (un clan : 40 % de ses gens).
+  - Ne grandit pas, ne campe pas, ne fonde rien, ne se scinde pas ; ne
+    compte pas dans la limite de bandes ; obeit toujours (discipline).
+  - Levee : 1/5, 1/3 ou 1/2 des habitants (au moins 40 habitants, 8
+    guerriers, 20 qui restent) ; part avec 8 semaines de vivres du
+    grenier et un chef de guerre. Une troupe par village (deux avec la
+    Maison des guerriers).
+  - Le village a moins de bras : a la recolte, il faut 15 habitants par
+    champ, sinon une part reste aux champs ; moins de defense aussi.
+  - Loin de chez elle plus de 26 semaines, la troupe deserte (5 % par mois).
+  - Rentrer : sur la case du village (ou a cote), bouton "Rentrer" : les
+    guerriers redeviennent villageois.
+  - Village perdu : la troupe redevient un clan errant.
+IA : leve une troupe quand un ennemi rode pres du village ou pour un raid
+(peuple audacieux) ; la ramene quand il n'y a plus rien a faire.
+
+
+5. Les batailles (battle.py)
+----------------------------
+Chaque combat est simule en passes d'armes (6 au plus), dans la semaine :
+  - Chaque camp : combattants x qualite (savoirs, prestige, chef, troupe
+    aguerrie) ; renforts a portee (clans soeurs, allies) ; terrain du
+    defenseur (colline x1,2, foret x1,15, montagne x1,35) ; palissade.
+  - Moral de depart : 60, + troupe 20, + defendre ses familles 10, + village
+    25, + chez soi 5, + prestige, - faim 20, + "sur leurs gardes" 10.
+  - A chaque passe : chaque camp tue selon sa puissance ; le moral baisse
+    avec les pertes et le rapport de force. Moral sous 25 : deroute.
+    Apres 6 passes sans deroute : le plus faible se retire en ordre.
+  - Poursuite : une deroute se paie (plus en plaine, moins en foret ou en
+    colline ; une troupe poursuit mieux qu'un clan) ; sans chemin de repli,
+    c'est l'encerclement. Il reste moins de 6 personnes : ANEANTIE.
+  - Un village ne fuit pas : 60 % de ses habitants tiennent les murs ;
+    battu, il est pille (champs brules, grain pris, 35 % de risque de
+    perdre un batiment) ; ses defenseurs peuvent etre aneantis (ruines).
+    Ordre de grandeur : un village de 60 avec palissade tient contre 44
+    guerriers, tombe sans elle.
+  - Une bande ne livre qu'une bataille par semaine ; sur une case, c'est
+    celle qui est venue attaquer qui la livre.
+  - L'IA pese aussi son moral (des affames se battent mal).
+  - Hasard : une graine par combat (tour, bandes) : rejouable, et n'use pas
+    le hasard du reste du jeu.
+  - Prestige : +5 (victoire), +10 (ennemi aneanti) ; -4, -8.
+Rapport de bataille : un clic sur l'epee ouvre la fiche (les deux camps,
+forces, modificateurs, le graphe du moral passe par passe, les pertes,
+l'issue). La fiche de bande donne le rapport de force d'un raid en cours.
+
+
+Statut
+------
+En place le 2026-09-24 : battle.py, villages.py (serments, batiments,
+troupes), render_village.py (fondation, ecran du village, rapport de
+bataille), orders.py, ai.py. Tests : tests/test_battle.py,
+tests/test_village_screen.py, tests/test_armies.py.

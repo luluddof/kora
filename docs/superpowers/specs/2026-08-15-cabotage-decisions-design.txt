@@ -1,0 +1,144 @@
+CABOTAGE — DECISION DE TRIBU
+Date    : 2026-08-15
+Statut  : en place
+
+Portee : proto tribal Kora. Une decision, pas un arbre techno.
+
+
+1. INTENTION
+------------
+
+Au depart, l'eau est infranchissable (deja le cas).
+Le joueur (et l'IA) peut, plus tard, adopter le cabotage :
+longer l'eau collee a la terre, pas la haute mer.
+
+Ce n'est pas automatique : il faut remplir des conditions,
+puis prendre une decision (gratuite) dans un menu.
+
+
+2. EAU LITTORALE
+----------------
+
+Une case est littorale si :
+  - son terrain est EAU
+  - au moins un voisin (apres wrap) n'est PAS de l'eau
+
+Donc : rivage, lac, bras de mer, estuaire.
+Une case d'eau entouree d'eau = haute mer, toujours bloquee.
+
+Avec cabotage, une bande peut entrer sur l'eau littorale.
+Sans cabotage, world.passable reste faux pour toute l'eau
+(inchangé pour qui n'a pas le drapeau).
+
+Cout de marche sur l'eau littorale = 10 (comme la plaine).
+Nourriture de la case eau = 0. Le prelevement rayon 2
+continue : une pirogue le long du rivage mange encore
+sur la terre voisine.
+
+Les vallees (rivières peintes) restent de la terre.
+On n'ajoute pas d'autoroute fluviale dans cette spec.
+
+Raids : inchanges. Si deux tribus sont sur le meme hex
+(y compris littoral), resolution normale.
+Fuite : voisins marchables pour CETTE tribu (eau littorale
+seulement si elle a le cabotage).
+
+
+3. DRAPEAU DE TRIBU
+-------------------
+
+Sur Tribe :
+  cabotage      bool  defaut False
+  shore_seen    bool  defaut False
+  coast_weeks   int   defaut 0, borne 0 a 4
+
+Une fois cabotage True : toute la tribu, pour toujours.
+Sauvegarde compris.
+
+
+4. CONDITIONS POUR VOIR LA DECISION PRENABLE
+--------------------------------------------
+
+Les quatre, en ET :
+
+  1. Rivage vu : une bande vivante de la tribu est, ou a ete,
+     a 16 hex ou moins d'une case d'eau littorale.
+     Joueur et IA : meme geometrie. On ne se sert pas du
+     "l'IA connait toute la carte".
+
+  2. Semaines de cote : 4 semaines cumulees (pas forcement
+     d'affilee) ou au moins une bande de la tribu est sur
+     une case COTE au moment du decompte (apres mouvement).
+     Au lancement : 0, on ne compte pas un "faux" premier
+     tick. On peut marquer shore_seen des new_game si
+     une bande est deja assez pres.
+
+  3. Prestige : plus requis (seuil 0)
+  4. Population de tribu (somme des bandes vivantes) >= 50
+
+Prendre la decision : gratuit. Pas de prestige, pas de stock.
+
+
+5. ONGLET DECISIONS (JOUEUR)
+----------------------------
+
+Comme CK3 : un onglet a droite de l'ecran.
+Ferme : on ne voit que l'onglet, pas les decisions.
+Ouvert (clic sur l'onglet) : panneau a droite avec la liste
+(pour l'instant : Cabotage, conditions, bouton Prendre).
+
+Reclic sur l'onglet, ou Echap, referme le panneau
+(Echap n'ouvre le menu quitter que si le panneau est deja ferme).
+
+
+6. IA
+-----
+
+Memes conditions, aucun bonus.
+Des que les 4 sont vraies, l'IA adopte le cabotage
+toute seule dans le tick (pas de menu).
+
+
+7. PATHFINDING
+--------------
+
+astar / set_goto / set_march_to_band / apply_movement /
+travel_weeks / _flee / _pick_hex (IA) doivent connaitre
+le drapeau de la tribu de la bande.
+
+Sans drapeau : comportement actuel (eau bloquee).
+
+
+8. HORLOGE
+----------
+
+Dans tick, apres apply_movement :
+  update_cabotage_progress (shore_seen + coast_weeks)
+  apply_ai_cabotage (IA prete -> drapeau)
+
+Le joueur n'est jamais auto-adopte.
+
+
+9. TESTS SANS FENETRE
+---------------------
+
+- Case eau touchee par de la terre = littorale ;
+  eau entouree d'eau = non.
+- Sans cabotage, A* refuse un but littoral.
+- Avec cabotage, A* accepte le littoral, refuse la haute mer.
+- set_goto vers l'eau ignore sans drapeau, accepte avec.
+- 4 semaines sur cote (cumul) puis prestige 30 et pop 50
+  + rivage vu => pret ; il manque un critere => pas pret.
+- Joueur pret n'obtient pas le drapeau tout seul.
+- IA prete l'obtient au tick.
+- Sauvegarde restaure cabotage / shore_seen / coast_weeks.
+
+
+10. HORS SPEC
+-------------
+
+- Plusieurs decisions
+- Traversée d'ocean
+- Vallées plus rapides
+- Coût en nourriture ou prestige
+- Embarquement comme ordre separe

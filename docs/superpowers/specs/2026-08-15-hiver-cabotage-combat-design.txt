@@ -1,0 +1,52 @@
+HIVER 30/50, CABOTAGE SANS PRESTIGE, EPEE DE COMBAT
+Date    : 2026-08-15
+Statut  : a implementer
+
+Portee : proto Kora. Trois changements valides ensemble.
+
+
+1. TROUPEAU / POP 50
+--------------------
+
+Le troupeau booste la steppe toute l'annee
+(pas seulement l'hiver). Sinon la cueillette
+plafonne vers 30-32 et on n'atteint jamais 50.
+
+Multiplicateurs steppe + troupeau :
+  printemps 1.35  (plaine 2.0 > steppe 1.9)
+  ete       1.65  (plaine 2.4 > steppe 2.3)
+  automne   1.50  (steppe 2.1 > plaine 1.8)
+  hiver     1.50  (steppe 2.1 > plaine 0.7, stocks -> 50+)
+
+Sans troupeau : inchange. Plaine inchangee.
+
+
+2. CABOTAGE
+-----------
+
+Plus de seuil prestige (CABOTAGE_PRESTIGE = 0).
+Conditions restantes : rivage vu, 4 sem. de cote,
+peuple >= 50. L'UI n'affiche plus la ligne Prestige.
+
+
+3. COMBAT (EPEE)
+----------------
+
+Le raid reste instantane (1 semaine).
+
+Si le joueur y participe OU voit l'hex :
+  un FightMark sur l'hex (remplace un ancien
+  marqueur du meme hex).
+
+Carte : petite epee au-dessus de l'hex.
+Clic epee (prioritaire) : fiche a gauche
+  Combat, date, Vous/nom vs nom, gagnant,
+  effectifs avant -> apres, pertes, butin.
+Echap ferme la fiche d'abord.
+Clic hors fiche ferme sans donner d'ordre.
+Max 8 marqueurs, duree 8 semaines (ticks).
+  (2026-09-23 : 26 semaines, la camera ne saute plus sur le combat,
+   voir 2026-09-23-economie-bandes-design.txt section 4 bis)
+Sauvegarde compris. Vieilles saves : liste vide.
+
+Pas de combat multi-semaines, pas de pause forcee.
