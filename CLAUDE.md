@@ -23,7 +23,9 @@ livrée dans toute sa dimension (simulation + interface + IA + carte + événeme
 - Le jeu est déterministe : `tools/empreinte.py check empreinte.json` prouve qu'une
   optimisation ne change rien ; ré-enregistrer quand le jeu change volontairement.
 - Tests : `python -m pytest -q` (test_balance juge sur 4 graines).
-- Pas de dépôt git : sauvegardes .zip à la racine avant un gros chantier.
+- Dépôt git local (branche `main`) depuis le 2026-09-25 : committer à la fin d'un chantier.
+  Pas encore de dépôt distant : deux comptes GitHub sont connectés (demander lequel au joueur).
+  Le passage en « mode cloud » viendra plus tard, à sa demande.
 
 ## En fin de chantier
 Mettre à jour docs/VISION-KORA.txt (sections 3 et 5), la spec du chantier,
