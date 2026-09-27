@@ -132,6 +132,30 @@ def test_a_machine_that_drifts_is_copied_back():
         assert _until(lambda: client.state.tick_count == host.state.tick_count, lambda: host.pump(0.05), lambda: client.pump(0.05))
         assert session.sync_digest(host.state) == session.sync_digest(client.state)
         assert host.resyncs >= 1 and any("ecartee" in n for n in host.take_notes())
+        # Apres la recopie, plus d'ecart : l'hote a relu la meme partie
+        # (sinon "300" chez lui et "300.0" chez l'ami differeraient a jamais).
+        before = host.resyncs
+        start = host.state.tick_count
+        host.set_speed(5)
+        assert _until(lambda: host.state.tick_count >= start + 2 * session.DIGEST_EVERY + 1, lambda: host.pump(0.05), lambda: client.pump(0.05), timeout=40)
+        assert host.resyncs == before
+    finally:
+        _close(host, client)
+
+
+def test_a_reread_game_matches_an_int_valued_one():
+    """Une partie en memoire (un stock entier) et la meme relue : l'hote
+    relit avant d'envoyer, les deux machines ont donc la meme empreinte."""
+    host, client = _started()
+    try:
+        for st in (host.state, client.state):
+            next(b for b in st.bands.values() if b.tribe_id == 3).stock = 300
+        client.state.bands[1].population += 3  # un ecart pour forcer la recopie
+        host.set_speed(5)
+        assert _until(lambda: client.resyncs >= 1, lambda: host.pump(0.05), lambda: client.pump(0.05), timeout=40)
+        host.toggle_pause()
+        assert _until(lambda: client.state.tick_count == host.state.tick_count, lambda: host.pump(0.05), lambda: client.pump(0.05))
+        assert session.sync_digest(host.state) == session.sync_digest(client.state)
     finally:
         _close(host, client)
 

@@ -1,6 +1,6 @@
 Kora - Menu de demarrage, bonus de depart, multijoueur
 =====================================================
-Date : 2026-09-27. Statut : en place (version 0.2.0).
+Date : 2026-09-27. Statut : en place (version 0.2.0, corrigee en 0.2.1).
 Demande : "j'aimerais ajouter un mode multijoueur au jeu mais aussi un menu
 de demarrage et la possibilite quand on cree la tribu de lui donner des
 bonus de depart (qui durent 5 ans) et que l'on peut choisir parmi un pool."
@@ -92,8 +92,11 @@ bonus de depart (qui durent 5 ans) et que l'on peut choisir parmi un pool."
     attend : X"). Pause et vitesse : tout le monde peut les demander.
   - Ecarts : toutes les 26 semaines, chacun envoie son empreinte
     (session.sync_digest : la partie sans pause/vitesse/camera, ensembles
-    tries ; ~50 ms en fin de partie) ; differente -> l'hote renvoie sa
-    partie ; une semaine sautee -> l'ami la demande ("lost").
+    tries ; ~50 ms en fin de partie) ; differente -> l'hote RELIT sa partie
+    et l'envoie a TOUS (_share_game : une partie relue range autrement et
+    ecrit "350.0" pour "350" ; sans cela, l'hote et l'ami differeraient a
+    chaque controle - corrige en 0.2.1) ; une semaine sautee -> l'ami la
+    demande ("lost") ; un joueur qui revient : pareil.
   - Un ami qui part : son peuple attend (bandes immobiles, cartes decidees
     d'office a l'echeance) ; il revient avec le meme nom. L'hote qui part :
     les amis reviennent au menu avec le message. Seul l'hote sauvegarde

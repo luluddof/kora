@@ -170,6 +170,7 @@ class HostSession(_Base):
         self.pending: list = []
         self.acc = 0.0
         self.started = False
+        self._want_share = False
         self.seats[1] = Seat(1, setup.get("name", "Hote"), tuple(setup.get("color", (220, 70, 70))), list(setup.get("bonuses", [])), True, True, True)
         if resume is not None:
             # Reprendre une partie : les places sont celles des peuples joueurs.
@@ -229,7 +230,7 @@ class HostSession(_Base):
         conn.send({"t": "welcome", "you": tid, "slots": {str(k): v for k, v in SLOTS.items()}})
         self.notes.append(f"{seat.name} rejoint la partie ({SLOTS.get(tid, '?').lower()}).")
         if self.started:
-            self._send_game(conn, tid)
+            self._want_share = True
         self.broadcast(self.lobby_json())
 
     def _seat_msg(self, tid: int, msg: dict) -> None:
@@ -355,13 +356,30 @@ class HostSession(_Base):
         self.broadcast(self._clock_msg(""))
         return state
 
-    def _send_game(self, conn, tid: int) -> None:
-        from src.kora.persist import dumps_game
+    def _share_game(self) -> None:
+        """La partie de l'hote, RELUE par lui et envoyee a tous : chaque
+        machine repart exactement du meme etat (memes nombres, meme
+        rangement ; une partie relue range autrement, "350" devient
+        "350.0"). Apres un ecart, ou quand un joueur revient."""
+        from src.kora.persist import dumps_game, loads_game
 
+        self._want_share = False
         self._flush()
-        conn.send({"t": "start", "you": tid, "tick": self.state.tick_count, "snap": pack(dumps_game(self.state))})
-        conn.send(self._clock_msg(""))
-        self.acks[tid] = self.state.tick_count
+        text = dumps_game(self.state)
+        loaded = loads_game(text, self.state.world)
+        if loaded is not None:
+            paused, speed = self.state.clock.paused, self.state.clock.speed
+            state = loaded[0]
+            state.viewer = 1
+            state.clock.paused, state.clock.speed = paused, speed
+            self.state = state
+        self.digests.clear()
+        blob = pack(text)
+        for conn, tid in self.conns.items():
+            if tid is not None and conn.alive:
+                conn.send({"t": "start", "you": tid, "tick": self.state.tick_count, "snap": blob})
+                conn.send(self._clock_msg(""))
+                self.acks[tid] = self.state.tick_count
 
     # --- en partie -----------------------------------------------------------------
 
@@ -410,7 +428,7 @@ class HostSession(_Base):
                 self._check(conn, tid, msg)
             elif kind == "lost":
                 self.resyncs += 1
-                self._send_game(conn, tid)
+                self._want_share = True
             elif kind == "pause":
                 self.toggle_pause(self.name_of(tid))
             elif kind == "speed":
@@ -418,6 +436,9 @@ class HostSession(_Base):
             elif kind == "chat":
                 self._relay_chat(tid, msg)
         self._flush()
+        if self._want_share:
+            self._share_game()
+        state = self.state
         if state.clock.paused:
             self.acc = 0.0
             self.waiting_for = ""
@@ -448,7 +469,7 @@ class HostSession(_Base):
             # Cette machine s'est ecartee : elle repart de la partie de l'hote.
             self.resyncs += 1
             self.notes.append(f"La partie de {self.name_of(tid)} s'etait ecartee : elle est recopiee.")
-            self._send_game(conn, tid)
+            self._want_share = True
 
     def close(self, why: str = "L'hote a quitte la partie.") -> None:
         self.broadcast({"t": "bye", "why": why})

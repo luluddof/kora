@@ -1,4 +1,7 @@
-## Nouveau dans la 0.2.0
+## Nouveau dans la 0.2
+
+**0.2.1** : à plusieurs, après une recopie de la partie (une machine écartée, un joueur qui revient), toutes les
+machines repartent exactement de la même partie (plus de recopies à répétition).
 
 - **Un menu de démarrage** : *Continuer* votre partie, *Nouvelle partie*, *Multijoueur*. Une nouvelle partie met
   l'ancienne de côté (elle n'est plus effacée).

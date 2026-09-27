@@ -628,6 +628,14 @@ Tests d'une regle                   tests/test_<sujet>.py
 Exe Windows                         Kora.spec puis
                                     python -m PyInstaller --noconfirm Kora.spec
                                     Ne PAS --collect-all pygame
+                                    Kora.exe en un fichier = DEUX processus
+                                    (l'extracteur, puis le jeu) : pour arreter
+                                    un essai, taskkill /T /F /PID (l'arbre),
+                                    sinon le jeu reste orphelin et verrouille
+                                    dist-unfichier/Kora.exe
+Essai reseau de l'exe               tools/essai_reseau.py 3 --exe
+                                    dist-unfichier/Kora.exe (KORA_ESSAI,
+                                    src/kora/essai.py ; KORA_BIND=127.0.0.1)
 Carte incluse dans l'exe            Kora.spec datas=
                                     ('data/kora_map.json', 'data')
 
