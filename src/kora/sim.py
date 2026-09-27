@@ -1440,6 +1440,7 @@ def _copy_tribe(tribe: Tribe) -> Tribe:
     out.flags = dict(tribe.flags)
     out.goods = dict(tribe.goods)
     out.trade = copy.deepcopy(tribe.trade)
+    out.start_bonuses = list(tribe.start_bonuses)
     return out
 
 
@@ -1557,7 +1558,9 @@ def _default_world() -> World:
     return world
 
 
-def new_game(world: World | None = None, minor_peoples: int | None = None) -> GameState:
+def new_game(world: World | None = None, minor_peoples: int | None = None, setup: dict | None = None) -> GameState:
+    """Une partie neuve. setup (menu de demarrage) : "name", "color" et
+    "bonuses" (tech.START_BONUSES) de la tribu du joueur."""
     from src.kora.clock import Clock
     from src.kora.types import Band, Tribe
     from src.kora.vision import recompute_vision
@@ -1575,6 +1578,13 @@ def new_game(world: World | None = None, minor_peoples: int | None = None) -> Ga
         tribes[tid] = Tribe(tid, name, 20, False, culture=culture)
     for tribe in tribes.values():
         tribe.color = LEGACY_COLOR[tribe.id]
+    if setup:
+        player = tribes[PLAYER_TRIBE_ID]
+        if setup.get("name"):
+            player.name = str(setup["name"])[:24]
+        if setup.get("color"):
+            player.color = tuple(int(c) for c in setup["color"])
+        tech.set_start_bonuses(player, setup.get("bonuses", ()), 0)
     # Chaque tribu part sur le biome de son nom, avec de quoi nourrir
     # sa bande au printemps. La Steppe connait deja le troupeau, la Cote
     # le cabotage : c'est leur savoir de depart.
@@ -1699,6 +1709,7 @@ def tick(state: GameState) -> None:
             update_population(state)
         update_influence(state)
         if monthly:
+            tech.update_start_bonuses(state)
             diplo.monthly(state)
             goods.monthly(state)
             chiefs.monthly(state)

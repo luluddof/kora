@@ -457,6 +457,126 @@ TECHS: dict[str, Tech] = {
 # Specialites de depart et gout de l'IA : voir peoples.CULTURES.
 
 
+# --- bonus de depart ---------------------------------------------------------------
+# A la creation de sa tribu, le joueur en choisit START_BONUS_PICKS dans ce pool ;
+# ils durent START_BONUS_YEARS ans (Tribe.start_bonuses, start_bonus_until), puis
+# s'eteignent. Leurs effets sont ceux des savoirs (memes noms, meme calcul).
+START_BONUS_YEARS = 5
+START_BONUS_WEEKS = 52 * START_BONUS_YEARS
+START_BONUS_PICKS = 2
+
+
+@dataclass(frozen=True)
+class StartBonus:
+    id: str
+    name: str
+    about: str
+    effects: dict
+    icon: int = 0
+
+
+START_BONUSES: dict[str, StartBonus] = {
+    b.id: b
+    for b in (
+        StartBonus(
+            "bonus:aurochs", "Chasseurs d'aurochs",
+            "On sait rabattre les grands troupeaux des plaines.",
+            {"food": {_T.PLAINE: 1.15, _T.STEPPE: 1.15}}, 0,
+        ),
+        StartBonus(
+            "bonus:bois", "Cueilleurs des bois",
+            "Baies, noix, champignons : les bois nourrissent.",
+            {"food": {_T.FORET: 1.15, _T.VALLEE: 1.12}}, 1,
+        ),
+        StartBonus(
+            "bonus:rivages", "Gens des rivages",
+            "Coquillages, poissons des lagunes : on vit du rivage.",
+            {"food": {_T.COTE: 1.15}, "water_food": 0.2}, 3,
+        ),
+        StartBonus(
+            "bonus:froid", "Enfants du froid",
+            "Nes dans la neige, ils savent passer l'hiver.",
+            {"winter_famine": 0.6, "winter_hills": 1.3}, 4,
+        ),
+        StartBonus(
+            "bonus:prevoyants", "Prevoyants",
+            "On seche, on fume, on cache : il y a toujours une reserve.",
+            {"stock_weeks": 4, "caches": 1, "cache_cap": 200}, 2,
+        ),
+        StartBonus(
+            "bonus:fertiles", "Peuple fecond",
+            "Beaucoup d'enfants, et qui survivent.",
+            {"growth": 1.3}, 5,
+        ),
+        StartBonus(
+            "bonus:guerriers", "Guerriers redoutes",
+            "Vos chasseurs sont aussi des combattants.",
+            {"combat": 1.2, "home_defense": 1.1}, 0,
+        ),
+        StartBonus(
+            "bonus:eclaireurs", "Eclaireurs",
+            "Des yeux percants sur chaque colline.",
+            {"vision": 3}, 5,
+        ),
+        StartBonus(
+            "bonus:conteurs", "Conteurs",
+            "Les anciens transmettent tout : on apprend vite.",
+            {"learn": 1.3, "winter_prestige": 1}, 6,
+        ),
+        StartBonus(
+            "bonus:rassembleur", "Chef rassembleur",
+            "Les clans suivent le chef, meme loin de lui.",
+            {"loyalty": 10, "chief_reach": 4}, 6,
+        ),
+        StartBonus(
+            "bonus:diplomates", "Diplomates",
+            "On parle avant de se battre, et on sait offrir.",
+            {"diplo": 15, "gifts": 1.5}, 7,
+        ),
+        StartBonus(
+            "bonus:campeurs", "Batisseurs de camps",
+            "Des huttes solides, des camps qu'on retrouve chaque saison.",
+            {"camps": 1, "camp_shelter": 0.7, "camp_growth": 1.1}, 5,
+        ),
+    )
+}
+
+
+def start_bonus_lines(bonus: StartBonus) -> list[str]:
+    """Ce que fait un bonus de depart (les memes phrases que les savoirs)."""
+
+    class _Shim:
+        id = bonus.id
+        effects = bonus.effects
+
+    lines = effect_lines(_Shim)
+    return lines
+
+
+def set_start_bonuses(tribe, picks, tick: int) -> None:
+    tribe.start_bonuses = [b for b in picks if b in START_BONUSES][:START_BONUS_PICKS]
+    tribe.start_bonus_until = tick + START_BONUS_WEEKS if tribe.start_bonuses else -1
+
+
+def update_start_bonuses(state) -> None:
+    """Fin des bonus de depart, START_BONUS_YEARS ans apres le debut."""
+    from src.kora.log import LogKind
+
+    for tribe in state.tribes.values():
+        if tribe.start_bonuses and state.tick_count >= tribe.start_bonus_until:
+            names = ", ".join(START_BONUSES[b].name for b in tribe.start_bonuses if b in START_BONUSES)
+            tribe.start_bonuses = []
+            tribe.start_bonus_until = -1
+            invalidate()
+            if tribe.is_player:
+                state.log.add(
+                    LogKind.DECOUVERTE,
+                    f"Les bonus de depart s'eteignent ({names}) : votre peuple vole de ses propres ailes.",
+                    state.clock.year,
+                    state.clock.week,
+                )
+
+
 # --- effets ----------------------------------------------------------------
 
 
@@ -514,9 +634,12 @@ class Bonuses:
     trade: bool = False
     # Accords commerciaux (diplo, goods.py).
     commerce: bool = False
+    # Vitesse d'apprentissage (bonus de depart des Conteurs).
+    learn: float = 1.0
 
 
 _MULT = {
+    "learn",
     "field_yield",
     "soil_loss",
     "grain_rot",
@@ -552,7 +675,7 @@ def bonuses_of(known) -> Bonuses:
         if name not in ("food", "move")
     }
     for tid in sorted(key):
-        tech = TECHS.get(tid)
+        tech = TECHS.get(tid) or START_BONUSES.get(tid)
         if tech is None:
             continue
         for name, value in tech.effects.items():
@@ -601,6 +724,10 @@ def bonuses(tribe) -> Bonuses:
         if hit is not None and hit[0] is tribe:
             return hit[1]
     known = getattr(tribe, "knowledge", None)
+    extra = getattr(tribe, "start_bonuses", None)
+    if extra:
+        # Les bonus de depart comptent comme des savoirs tant qu'ils durent.
+        known = set(known or ()) | set(extra)
     bonus = bonuses_of(known) if known else NO_BONUS
     if memo is not None:
         memo[id(tribe)] = (tribe, bonus)
@@ -752,6 +879,8 @@ def effect_lines(tech: Tech) -> list[str]:
         out.append("Echanges des accords commerciaux : charges x2, portee x2")
     if e.get("commerce"):
         out.append("Accords commerciaux : vos villages echangent leurs biens")
+    if e.get("learn"):
+        out.append(f"Apprentissage des savoirs : {_pct(e['learn'])}")
     from src.kora.goods import CRAFTS, res_label
 
     for craft in CRAFTS.values():
@@ -941,7 +1070,8 @@ def _learning_pop(state, tribe_id: int) -> int:
 def base_rate(state, tribe_id: int) -> float:
     from src.kora import chiefs
 
-    return (1.0 + _learning_pop(state, tribe_id) / LEARN_POP) * chiefs.learn_mult(state, tribe_id)
+    learn = bonuses(state.tribes[tribe_id]).learn if tribe_id in state.tribes else 1.0
+    return (1.0 + _learning_pop(state, tribe_id) / LEARN_POP) * chiefs.learn_mult(state, tribe_id) * learn
 
 
 def diffusion_bonus(state, tribe_id: int, tech_id: str | None) -> float:

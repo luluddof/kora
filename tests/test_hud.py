@@ -143,16 +143,16 @@ def test_journal_panel_has_filters_and_sort():
     assert side_hit(layout, bx + 8, by + 8) == "panel"
 
 
-def test_escape_menu_has_resume_save_new_quit():
+def test_escape_menu_has_resume_save_main_menu_quit():
     layout = menu_layout(1280, 720)
     keys = set(layout["items"])
-    assert keys == {"reprendre", "sauvegarder", "nouvelle", "quitter"}
+    assert keys == {"reprendre", "sauvegarder", "principal", "quitter"}
     rx, ry, rw, rh = layout["items"]["reprendre"]
     assert menu_hit(layout, rx + 2, ry + 2) == "reprendre"
     sx, sy, sw, sh = layout["items"]["sauvegarder"]
     assert menu_hit(layout, sx + 2, sy + 2) == "sauvegarder"
-    nx, ny, nw, nh = layout["items"]["nouvelle"]
-    assert menu_hit(layout, nx + 2, ny + 2) == "nouvelle"
+    nx, ny, nw, nh = layout["items"]["principal"]
+    assert menu_hit(layout, nx + 2, ny + 2) == "principal"
     qx, qy, qw, qh = layout["items"]["quitter"]
     assert menu_hit(layout, qx + 2, qy + 2) == "quitter"
     assert menu_hit(layout, 2, 2) is None

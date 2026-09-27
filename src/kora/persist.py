@@ -175,6 +175,8 @@ def _tribe_to_json(tribe: Tribe) -> dict:
         "civ": tribe.civ,
         "goods": {k: round(v, 3) for k, v in tribe.goods.items()},
         "trade": tribe.trade,
+        "start_bonuses": list(tribe.start_bonuses),
+        "start_bonus_until": tribe.start_bonus_until,
     }
 
 
@@ -207,6 +209,8 @@ def _tribe_from_json(data: dict) -> Tribe:
         civ=int(data.get("civ", 0)),
         goods={str(k): float(v) for k, v in data.get("goods", {}).items()},
         trade=data.get("trade", {}) if isinstance(data.get("trade", {}), dict) else {},
+        start_bonuses=[str(b) for b in data.get("start_bonuses", [])],
+        start_bonus_until=int(data.get("start_bonus_until", -1)),
     )
 
 
@@ -502,4 +506,29 @@ def load_game(path: Path, world: World) -> tuple[GameState, dict] | None:
         view = _view_to_json(data.get("view"))
         return state, view
     except (KeyError, TypeError, ValueError, AttributeError):
+        return None
+
+
+def peek_save(path: Path) -> dict | None:
+    """Ce que le menu de demarrage montre d'une sauvegarde (bouton
+    Continuer) : annee, semaine, nom du peuple, gens, villages. None si
+    elle manque ou ne se lit pas."""
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        if data.get("version") != SAVE_VERSION:
+            return None
+        player = next((t for t in data.get("tribes", []) if t.get("is_player")), None)
+        pid = player["id"] if player else 1
+        pop = sum(int(b.get("population", 0)) for b in data.get("bands", []) if b.get("tribe_id") == pid)
+        villages = sum(1 for s in data.get("sites", []) if s.get("kind") == "village" and s.get("tribe_id") == pid)
+        return {
+            "year": int(data["clock"]["year"]),
+            "week": int(data["clock"]["week"]),
+            "name": player.get("name", "?") if player else "?",
+            "color": tuple(player.get("color", ())) if player else (),
+            "population": pop,
+            "villages": villages,
+            "dead": bool(data.get("player_dead", False)),
+        }
+    except (OSError, ValueError, KeyError, TypeError):
         return None

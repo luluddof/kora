@@ -147,6 +147,10 @@ class Tribe:
     # echanges : peuple (texte) -> {"in": {bien: n}, "out": {...}, "vivres": v}.
     goods: dict = field(default_factory=dict)
     trade: dict = field(default_factory=dict)
+    # Bonus de depart choisis a la creation (tech.START_BONUSES), jusqu'a la
+    # semaine start_bonus_until (-1 : aucun).
+    start_bonuses: list = field(default_factory=list)
+    start_bonus_until: int = -1
 
 
 @dataclass

@@ -153,25 +153,47 @@ def _view(camera_x, camera_y, zoom, selected, globe_yaw=0.0, globe_pitch=0.0):
     }
 
 
-def _boot_state(sw: int, sh: int):
-    path = default_save_path()
-    world = _default_world()
-    loaded = load_game(path, world)
-    if loaded is None:
-        moved = set_aside_save(path)
-        # Un chargement rate a pu toucher le monde : on repart d'une carte propre.
-        state = new_game(_default_world() if moved else world)
-        if moved is not None:
-            note(state, LogKind.DECOUVERTE, f"Ancienne sauvegarde mise de cote : {moved.name}")
-        selected = _first_player_band(state)
-        yaw, pitch, zoom = _tribe_start_view(state, selected)
-        return state, selected, 0.0, 0.0, zoom, yaw, pitch
-    state, _view_saved = loaded
-    selected = _refresh_selection(state, _view_saved.get("selected"))
+class _Worlds:
+    """La carte : lue une fois au lancement (le menu la montre). Une partie
+    la modifie (epuisement, influence) : la suivante en relit une propre."""
+
+    def __init__(self) -> None:
+        self.shown = _default_world()
+        self._fresh = self.shown
+
+    def fresh(self):
+        world = self._fresh if self._fresh is not None else _default_world()
+        self._fresh = None
+        return world
+
+
+def _start_view(state, selected, sw: int, sh: int):
     yaw, pitch, zoom = _tribe_start_view(state, selected)
     zmin = min_zoom_for(state.world, sw, sh)
     zoom = min(MAX_ZOOM, max(zmin, zoom))
     return state, selected, 0.0, 0.0, zoom, yaw, pitch
+
+
+def _continue_boot(worlds, sw: int, sh: int):
+    """La partie sauvegardee ; None si elle ne se lit pas (elle est alors
+    mise de cote, jamais ecrasee)."""
+    path = default_save_path()
+    loaded = load_game(path, worlds.fresh())
+    if loaded is None:
+        set_aside_save(path)
+        return None
+    state, view = loaded
+    return _start_view(state, _refresh_selection(state, view.get("selected")), sw, sh)
+
+
+def _new_boot(worlds, setup: dict | None, sw: int, sh: int):
+    """Une partie neuve (menu de demarrage) ; l'ancienne sauvegarde est
+    mise de cote, pas effacee."""
+    moved = set_aside_save(default_save_path())
+    state = new_game(worlds.fresh(), setup=setup)
+    if moved is not None:
+        note(state, LogKind.DECOUVERTE, f"Ancienne partie mise de cote : {moved.name}")
+    return _start_view(state, _first_player_band(state), sw, sh)
 
 
 def _nearest_band_of(state, tid: int, near):
@@ -224,17 +246,120 @@ def _fresh_ui() -> dict:
     }
 
 
+def _loading(renderer, text: str) -> None:
+    screen = renderer.screen
+    screen.fill((6, 8, 14))
+    surf = renderer.font.render(text, True, (214, 180, 104))
+    w, h = screen.get_size()
+    screen.blit(surf, ((w - surf.get_width()) // 2, (h - surf.get_height()) // 2))
+    pygame.display.flip()
+
+
 def run() -> None:
     pygame.init()
     pygame.display.set_caption("Kora")
     screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
     clock = pygame.time.Clock()
-    sw, sh = screen.get_size()
-    state, selected, camera_x, camera_y, zoom, globe_yaw, globe_pitch = _boot_state(
-        sw, sh
-    )
-    _settle_memory()
     renderer = Renderer(screen)
+    _loading(renderer, "Kora : la carte du monde se prepare...")
+    worlds = _Worlds()
+    message = ""
+    while True:
+        choice = title_screen(renderer, clock, worlds, message)
+        message = ""
+        sw, sh = renderer.screen.get_size()
+        if choice[0] == "quit":
+            break
+        _loading(renderer, "La partie se prepare...")
+        if choice[0] == "continue":
+            boot = _continue_boot(worlds, sw, sh)
+            if boot is None:
+                message = "La sauvegarde ne se lit pas (autre version ?) : elle est mise de cote."
+                continue
+        else:
+            boot = _new_boot(worlds, choice[1], sw, sh)
+        _settle_memory()
+        if play(renderer, clock, boot) == "quit":
+            break
+    pygame.quit()
+
+
+def title_screen(renderer, clock, worlds, message: str = ""):
+    """Le menu de demarrage et la creation du peuple. Rend ("continue",),
+    ("new", setup) ou ("quit",)."""
+    import random
+
+    from src.kora import render_menu
+    from src.kora.persist import peek_save
+
+    scene = render_menu.TitleScene(worlds.shown)
+    info = peek_save(default_save_path())
+    rng = random.Random()
+    setup = None
+    hint = ""
+    t = 0.0
+    while True:
+        t += clock.tick(60) / 1000.0
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return ("quit",)
+            if event.type == pygame.VIDEORESIZE:
+                renderer.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                continue
+            if setup is not None:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        if setup.get("typing"):
+                            setup["typing"] = False
+                        else:
+                            setup = None
+                    elif setup.get("typing"):
+                        render_menu.setup_key(setup, event)
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and render_menu.setup_ready(setup):
+                        return ("new", render_menu.setup_for_game(setup))
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    hits = getattr(renderer, "setup_hits", None)
+                    hit = render_menu.setup_hit(hits, *event.pos) if hits else None
+                    if hit is None:
+                        setup["typing"] = False
+                    elif hit == "back":
+                        setup = None
+                    elif hit == "start":
+                        if render_menu.setup_ready(setup):
+                            return ("new", render_menu.setup_for_game(setup))
+                        hint = render_menu.setup_missing(setup)
+                    else:
+                        hint = render_menu.setup_click(setup, hit, rng)
+                continue
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return ("quit",)
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and info is not None:
+                    return ("continue",)
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                hits = getattr(renderer, "title_hits", None)
+                hit = render_menu.title_hit(hits, *event.pos, can_continue=info is not None) if hits else None
+                if hit == "continuer":
+                    return ("continue",)
+                if hit == "nouvelle":
+                    setup = render_menu.new_setup(rng)
+                    hint = ""
+                elif hit == "multijoueur":
+                    message = "Le multijoueur arrive : il se prepare."
+                elif hit == "quitter":
+                    return ("quit",)
+        render_menu.draw_title(renderer, scene, info, t, message)
+        if setup is not None:
+            render_menu.draw_setup(renderer, setup, t, info, hint)
+        pygame.display.flip()
+
+
+def play(renderer, clock, boot) -> str:
+    """Une partie, jusqu'au retour au menu ("menu") ou au depart ("quit")."""
+    screen = renderer.screen
+    state, selected, camera_x, camera_y, zoom, globe_yaw, globe_pitch = boot
+    renderer.map_mode = "zones"
+    renderer._layer_key = None
     dragging = False
     drag_button = 0
     last_mouse = (0, 0)
@@ -259,7 +384,6 @@ def run() -> None:
     resume_after_found = False
     confirm = {"band": None, "until": 0.0}
     now = 0.0
-    running = True
 
     def persist() -> None:
         save_game(
@@ -646,31 +770,6 @@ def run() -> None:
             confirm["band"] = None
         set_march_to_band(state, selected, target.id)
 
-    def start_new() -> None:
-        nonlocal state, selected, camera_x, camera_y, zoom, acc, last_auto
-        nonlocal menu_open, globe_yaw, globe_pitch, side_panel
-        nonlocal log_filter, log_newest, pinned_hex, toasts, last_log_seq, open_fight
-        nonlocal tech_pick, ui
-        state = new_game()
-        _settle_memory()
-        selected = _first_player_band(state)
-        globe_yaw, globe_pitch, zoom = _tribe_start_view(state, selected)
-        camera_x = 0.0
-        camera_y = 0.0
-        acc = 0.0
-        last_auto = -1
-        menu_open = False
-        side_panel = None
-        tech_pick = None
-        log_filter = FILTER_ALL
-        log_newest = True
-        pinned_hex = None
-        open_fight = None
-        toasts = []
-        last_log_seq = state.log.seq
-        ui = _fresh_ui()
-        persist()
-
     def side_click(choice) -> bool:
         """Clic dans un panneau lateral ; True si traite."""
         nonlocal side_panel, tech_pick, log_filter, log_newest, selected, globe_yaw, globe_pitch, tech_drag, last_mouse
@@ -814,14 +913,14 @@ def run() -> None:
             return True
         return choice == "panel"
 
-    while running:
+    while True:
         dt = clock.tick(60) / 1000.0
         now += dt
         sw, sh = screen.get_size()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 persist()
-                running = False
+                return "quit"
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     if ui["event_open"] is not None:
@@ -910,11 +1009,12 @@ def run() -> None:
                         menu_open = False
                     elif choice == "sauvegarder":
                         persist()
-                    elif choice == "nouvelle":
-                        start_new()
+                    elif choice == "principal":
+                        persist()
+                        return "menu"
                     elif choice == "quitter":
                         persist()
-                        running = False
+                        return "quit"
             elif ui["event_open"] is not None:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     lay = renderer.event_hits.get("modal") if isinstance(renderer.event_hits, dict) else None
@@ -1187,4 +1287,3 @@ def run() -> None:
             ui,
         )
         pygame.display.flip()
-    pygame.quit()

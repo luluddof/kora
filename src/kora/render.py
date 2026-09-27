@@ -100,7 +100,7 @@ def hud_hit(layout: dict, mx: int, my: int):
 MENU_ITEMS = (
     ("reprendre", "Reprendre"),
     ("sauvegarder", "Sauvegarder"),
-    ("nouvelle", "Nouvelle partie"),
+    ("principal", "Menu principal"),
     ("quitter", "Quitter"),
 )
 

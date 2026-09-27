@@ -151,6 +151,39 @@ def tribe_tab_label(state) -> str:
 # --- Tribu ------------------------------------------------------------------------
 
 
+def start_bonus_text(state, tribe) -> str:
+    """Les bonus de depart encore actifs, et le temps qu'il leur reste."""
+    if not getattr(tribe, "start_bonuses", None):
+        return ""
+    left = max(0, tribe.start_bonus_until - state.tick_count)
+    years = left // 52
+    if years >= 1:
+        when = f"encore {years} an{'s' if years > 1 else ''}"
+    else:
+        when = f"encore {max(1, left)} semaine{'s' if left > 1 else ''}"
+    names = ", ".join(tech.START_BONUSES[b].name for b in tribe.start_bonuses if b in tech.START_BONUSES)
+    return f"Bonus de depart : {names} ({when})"
+
+
+def _start_bonus_chip(r, state, tribe, right: int, y: int, ui) -> None:
+    text = start_bonus_text(state, tribe)
+    if not text:
+        return
+    w = r.tiny.size(text)[0]
+    rect = (right - w, y, w, 14)
+    _text(r, r.tiny, text, GOLD, rect[0], y)
+    if _hover(rect):
+        lines = []
+        for bid in tribe.start_bonuses:
+            bonus = tech.START_BONUSES.get(bid)
+            if bonus is None:
+                continue
+            lines.append((bonus.name, GOLD))
+            lines.extend((f"  {line}", SOFT) for line in tech.start_bonus_lines(bonus))
+        lines.append((f"Choisis a la creation du peuple, ils durent {tech.START_BONUS_YEARS} ans.", NOTE))
+        ui.setdefault("_tips", []).append((lines, rect[0] - 120, y + 18))
+
+
 def draw_tribe(r, state, layout, ui) -> None:
     title_font, head_font = _fonts(r)
     items = layout["items"]
@@ -223,6 +256,7 @@ def draw_tribe(r, state, layout, ui) -> None:
         since = f"depuis {years} an{'s' if years > 1 else ''}" if years else "depuis cette annee"
         settled = f"Peuple fixe {since} : les nomades s'emancipent"
         _text(r, r.tiny, settled, WARN, bx + bw - 24 - r.tiny.size(settled)[0], by + 16)
+    _start_bonus_chip(r, state, tribe, bx + bw - 24, by + (2 if tribe.settled_at >= 0 else 16), ui)
     # Les clans.
     y += 72
     cols = {"clan": bx + 20, "gens": bx + 206, "att": bx + 250, "dist": bx + 424, "act": bx + bw - 12 - 184}
@@ -293,6 +327,8 @@ def draw_tribe(r, state, layout, ui) -> None:
     if band is None:
         _text(r, r.small, "Un seul clan : la tribu suit son chef.", SOFT, bx + 18, dy + 10)
         _text(r, r.tiny, "Quand vous scindez, chaque nouveau clan a son chef de bande et son attachement.", NOTE, bx + 18, dy + 32)
+        for lines, x, y2 in ui.pop("_tips", []):
+            _tooltip(r, lines, x, y2)
         return
     who = band.leader.name if band.leader is not None else f"bande {band.id}"
     target = chiefs.loyalty_target(state, band)
@@ -409,6 +445,7 @@ def draw_villages(r, state, layout, ui) -> None:
     know = tech.bonuses(tribe)
     stats = f"Prestige {tribe.prestige}  ·  {pop} personnes  ·  villages {len(homes)}/{know.villages}  ·  {troops} sous les armes"
     _text(r, r.tiny, stats, NOTE, bx + 18, by + 40)
+    _start_bonus_chip(r, state, tribe, bx + bw - 24, by + 16, ui)
     y = by + 60
     _chief_card(r, state, tribe, (bx + 12, y, bw - 24, 62), head_font)
     y += 72
@@ -478,6 +515,8 @@ def draw_villages(r, state, layout, ui) -> None:
     _text(r, r.tiny, r._fit(r.tiny, f"Besoin : {need:.1f} de chaque bien par semaine (tous vos villages). Metiers : ecran du village.".replace(".", ",", 1), bw - 36), NOTE, bx + 18, ty + 16)
     tip = "Plus de nomades : le peuple vit dans ses villages."
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
+    for lines, x, y2 in ui.pop("_tips", []):
+        _tooltip(r, lines, x, y2)
 
 
 # --- Peuples ---------------------------------------------------------------------------
