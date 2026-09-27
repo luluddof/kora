@@ -446,6 +446,7 @@ def _grow_autonomy(state, tribe) -> None:
                 LogKind.POLITIQUE,
                 f"Le clan de {_name(band)} n'ecoute plus guere le village : il parle de partir fonder le sien.",
                 band.position,
+                to=tribe.id,
             )
         if band.autonomy >= 100.0:
             ready.append(band)
@@ -516,7 +517,7 @@ def honor(state, band_id: int) -> bool:
         band.leader.renown += 3
     if tribe.is_player:
         who = band.leader.name if band.leader else "ce clan"
-        _note(state, LogKind.POLITIQUE, f"Le clan de {who} est honore (+{HONOR_GAIN:.0f} attachement).", band.position)
+        _note(state, LogKind.POLITIQUE, f"Le clan de {who} est honore (+{HONOR_GAIN:.0f} attachement).", band.position, to=tribe.id)
     return True
 
 
@@ -566,7 +567,7 @@ def promote(state, band_id: int, pid: int) -> bool:
     add_notable(band, band.leader)
     band.leader = new
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.POLITIQUE, f"{new.name} mene desormais son clan.", band.position)
+        _note(state, LogKind.POLITIQUE, f"{new.name} mene desormais son clan.", band.position, to=band.tribe_id)
     return True
 
 
@@ -582,7 +583,7 @@ def set_heir(state, band_id: int) -> bool:
             if "ambitieux" in other.leader.traits:
                 other.loyalty = max(0.0, other.loyalty - 5.0)
     if tribe.is_player:
-        _note(state, LogKind.POLITIQUE, f"{band.leader.name} est designe heritier.", band.position)
+        _note(state, LogKind.POLITIQUE, f"{band.leader.name} est designe heritier.", band.position, to=tribe.id)
     return True
 
 
@@ -680,8 +681,10 @@ def secede(state, band_id: int, hostile: bool = False, independence: bool = Fals
         return 0
     if parent.heir and band.leader is not None and parent.heir == band.leader.pid:
         parent.heir = 0
-    if parent.is_player or state.tribes[joined].is_player:
-        _note(state, LogKind.POLITIQUE, text, band.position)
+    if parent.is_player:
+        _note(state, LogKind.POLITIQUE, text, band.position, to=parent.id)
+    if state.tribes[joined].is_player and joined != parent.id:
+        _note(state, LogKind.POLITIQUE, f"Le clan de {_name(band)} quitte les {parent.name} et vous rejoint !", band.position, to=joined)
     return joined
 
 
@@ -739,6 +742,7 @@ def leader_dies(state, band, cause: str) -> None:
             LogKind.POLITIQUE,
             f"{dead.name}, chef de clan, est mort {cause}. {band.leader.name} mene le clan.",
             band.position,
+            to=tribe.id,
         )
 
 
@@ -772,11 +776,12 @@ def _succession(state, tid: int, dead: Person | None, cause: str = "") -> None:
         crown(state, tid, ranked[0].id, quiet=True)
         if events.hook(state, "succession", tribe_id=tid, band_id=ranked[0].id, dead=dead.name, cause=cause):
             return
-        _note(state, LogKind.POLITIQUE, f"{dead.name}, votre chef, est mort {cause}. {ranked[0].leader.name} lui succede.")
+        _note(state, LogKind.POLITIQUE, f"{dead.name}, votre chef, est mort {cause}. {ranked[0].leader.name} lui succede.", to=tid)
         return
     crown(state, tid, ranked[0].id, quiet=True)
-    if dead is not None and _player_knows(state, tid):
-        _note(state, LogKind.POLITIQUE, f"Les {tribe.name} ont un nouveau chef : {ranked[0].leader.name}.")
+    if dead is not None:
+        for me in _players_knowing(state, tid):
+            _note(state, LogKind.POLITIQUE, f"Les {tribe.name} ont un nouveau chef : {ranked[0].leader.name}.", to=me)
 
 
 def crown(state, tid: int, band_id: int, quiet: bool = False) -> None:
@@ -798,14 +803,14 @@ def crown(state, tid: int, band_id: int, quiet: bool = False) -> None:
         if "ambitieux" in other.leader.traits and other.leader.renown >= band.leader.renown - 5:
             other.loyalty = max(0.0, other.loyalty - 15.0)
     if not quiet and tribe.is_player:
-        _note(state, LogKind.POLITIQUE, f"{band.leader.name} mene desormais la tribu.", band.position)
+        _note(state, LogKind.POLITIQUE, f"{band.leader.name} mene desormais la tribu.", band.position, to=tribe.id)
 
 
-def _player_knows(state, tid: int) -> bool:
+def _players_knowing(state, tid: int) -> list[int]:
+    """Les joueurs qui connaissent ce peuple."""
     from src.kora import diplo
 
-    player = next((t for t in state.tribes.values() if t.is_player), None)
-    return player is not None and diplo.in_contact(state, player.id, tid)
+    return [t.id for t in sorted(state.tribes.values(), key=lambda t: t.id) if t.is_player and t.id != tid and diplo.in_contact(state, t.id, tid)]
 
 
 # --- mise en place -----------------------------------------------------------------------
@@ -907,7 +912,7 @@ def marriage_note(state, a: int, b: int) -> None:
     for x, y in ((a, b), (b, a)):
         if state.tribes[x].is_player:
             other = state.tribes[y]
-            _note(state, LogKind.POLITIQUE, f"Des enfants de {ca.name if x == a else cb.name} epousent ceux de {cb.name if x == a else ca.name}, chef des {other.name}.")
+            _note(state, LogKind.POLITIQUE, f"Des enfants de {ca.name if x == a else cb.name} epousent ceux de {cb.name if x == a else ca.name}, chef des {other.name}.", to=x)
 
 
 def battle_death(state, band) -> bool:
@@ -954,5 +959,8 @@ def person_from_json(data) -> Person | None:
     return Person(int(data[0]), str(data[1]), int(data[2]), tuple(str(t) for t in data[3]), int(data[4]))
 
 
-def _note(state, kind, text: str, where=None) -> None:
-    state.log.add(kind, text, state.clock.year, state.clock.week, where=where)
+def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
+    """Au journal du joueur `to` (par defaut le joueur solo)."""
+    from src.kora.sim import PLAYER_TRIBE_ID, note
+
+    note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

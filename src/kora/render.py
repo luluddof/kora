@@ -19,8 +19,9 @@ from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
 from src.kora import chiefs, orders
 from src.kora.sim import (
-    PLAYER_TRIBE_ID,
     GameState,
+    human_dead,
+    log_of,
     band_lines,
     band_summary,
     band_warn_from,
@@ -599,7 +600,7 @@ def band_screen_positions(state, yaw, pitch, gcx, gcy, focal, dist) -> dict:
     for band in sorted(state.bands.values(), key=lambda b: b.id):
         if band.population <= 0:
             continue
-        if band.tribe_id != PLAYER_TRIBE_ID and not enemy_band_visible(state, band):
+        if band.tribe_id != state.viewer and not enemy_band_visible(state, band, state.viewer):
             continue
         pos = hex_to_globe_screen(
             band.position, state.world, yaw, pitch, gcx, gcy, focal, dist
@@ -922,7 +923,7 @@ class Renderer:
             else:
                 pygame.draw.circle(self.screen, colr, (ix, iy), radius)
                 pygame.draw.circle(self.screen, _darken(colr, 0.45), (ix, iy), radius, 1)
-            if band.tribe_id == PLAYER_TRIBE_ID and not chiefs.is_chief_band(state, band):
+            if band.tribe_id == state.viewer and not chiefs.is_chief_band(state, band):
                 # Clan qui se detache : anneau orange (indocile), rouge (pret a partir).
                 if band.loyalty < chiefs.LEAVE:
                     _ring(self.screen, (230, 70, 60), ix, iy, radius + 5, band.village)
@@ -952,7 +953,7 @@ class Renderer:
         self.draw_hud(state)
         self._legend_state = state
         extra_y = HUD_HEIGHT + 8
-        if state.player_dead:
+        if human_dead(state, state.viewer):
             extra_y += 22
         if state.last_error:
             extra_y += 18
@@ -990,7 +991,7 @@ class Renderer:
 
     def draw_band_card(self, state: GameState, selected_id: int | None) -> None:
         band = state.bands.get(selected_id) if selected_id is not None else None
-        if band is None or band.tribe_id != PLAYER_TRIBE_ID or band.village:
+        if band is None or band.tribe_id != state.viewer or band.village:
             # Un village se gere dans son ecran (render_village.py).
             self.band_hits = {}
             return
@@ -1059,16 +1060,16 @@ class Renderer:
 
         world = state.world
         w, h = self.screen.get_size()
-        partners = set(goods.partners(state, PLAYER_TRIBE_ID))
-        heart = chiefs.chief_band(state, PLAYER_TRIBE_ID)
+        partners = set(goods.partners(state, state.viewer))
+        heart = chiefs.chief_band(state, state.viewer)
         heart_hex = heart.position if heart is not None and heart.village else None
-        reach = goods.trade_range(state, PLAYER_TRIBE_ID, PLAYER_TRIBE_ID)
+        reach = goods.trade_range(state, state.viewer, state.viewer)
         self._legend_world = world
         for site in sorted(state.sites.values(), key=lambda s: s.id):
             if site.kind != "village":
                 continue
-            own = site.tribe_id == PLAYER_TRIBE_ID
-            if not own and not is_explored(state, site.hex):
+            own = site.tribe_id == state.viewer
+            if not own and not is_explored(state, site.hex, state.viewer):
                 continue
             pos = hex_to_globe_screen(site.hex, world, yaw, pitch, gcx, gcy, focal, dist)
             if pos is None:
@@ -1129,7 +1130,7 @@ class Renderer:
         for site in sorted(state.sites.values(), key=lambda s: s.id):
             if site.kind != "village":
                 continue
-            if site.tribe_id != PLAYER_TRIBE_ID and not is_explored(state, site.hex):
+            if site.tribe_id != state.viewer and not is_explored(state, site.hex, state.viewer):
                 continue
             homes.setdefault(site.tribe_id, []).append(site.hex)
         font = self.small if dist <= LABEL_DIST else self.tiny
@@ -1177,8 +1178,8 @@ class Renderer:
             if not xs or not ys:
                 continue
             a, b = min(((x, y) for x in xs for y in ys), key=lambda p: world.distance(p[0], p[1]))
-            mine = PLAYER_TRIBE_ID in (route.exporter, route.importer)
-            if not mine and not (is_explored(state, a) and is_explored(state, b)):
+            mine = state.viewer in (route.exporter, route.importer)
+            if not mine and not (is_explored(state, a, state.viewer) and is_explored(state, b, state.viewer)):
                 continue
             key = (a, b, route.good)
             if key in drawn:
@@ -1230,8 +1231,8 @@ class Renderer:
         w, h = self.screen.get_size()
         size = 7 if dist <= LABEL_DIST else 4
         for site in sorted(state.sites.values(), key=lambda s: s.id):
-            mine = site.tribe_id == PLAYER_TRIBE_ID
-            seen = is_explored(state, site.hex) if mine else is_visible(state, site.hex)
+            mine = site.tribe_id == state.viewer
+            seen = is_explored(state, site.hex, state.viewer) if mine else is_visible(state, site.hex, state.viewer)
             if not seen:
                 continue
             if site.kind == "village":
@@ -1330,8 +1331,8 @@ class Renderer:
         ]
         extra = []
         if state is not None:
-            month = goods.last_month(state, PLAYER_TRIBE_ID)
-            mine = goods.routes_of(state, PLAYER_TRIBE_ID)
+            month = goods.last_month(state, state.viewer)
+            mine = goods.routes_of(state, state.viewer)
             extra = [
                 f"Vos routes : {len(mine)}, dont {sum(1 for r in mine if r.units > 0)} actives",
                 f"Le mois dernier : +{month['sold']:.0f} / -{month['bought']:.0f} vivres",
@@ -1359,7 +1360,13 @@ class Renderer:
     ) -> None:
         w, h = self.screen.get_size()
         gcx, gcy, focal, dist = view_params(zoom, w, h, HUD_HEIGHT)
+        from src.kora.vision import is_explored
+
+        me = state.viewer
         for mark in state.fights:
+            # Multijoueur : les combats des autres, seulement la ou on est alle.
+            if me not in (mark.winner_tribe, mark.loser_tribe) and not is_explored(state, mark.hex, me):
+                continue
             pos = fight_mark_screen_pos(
                 mark, state.world, globe_yaw, globe_pitch, gcx, gcy, focal, dist
             )
@@ -1381,7 +1388,7 @@ class Renderer:
 
             render_village.draw_battle(self, state, mark)
             return
-        lines = fight_lines(mark)
+        lines = fight_lines(mark, state.viewer if state is not None else 1)
         w, h = self.screen.get_size()
         layout = fight_panel_layout(w, h, len(lines))
         self.fight_hits = layout
@@ -1588,7 +1595,7 @@ class Renderer:
                 else:
                     active = not log_newest
                 self._draw_chip(rect, labels[key], active)
-            log = state.log if isinstance(state.log, GameLog) else GameLog()
+            log = log_of(state, state.viewer) if isinstance(state.log, GameLog) else GameLog()
             rows = log.filtered(log_filter, newest_first=log_newest)
             list_y = layout["items"]["sort_recent"][1] + 30
             bottom = by + bh - 10
@@ -1614,9 +1621,9 @@ class Renderer:
                         bw - 20,
                         list_y - row_top,
                     )
-        player = state.tribes.get(PLAYER_TRIBE_ID)
+        player = state.tribes.get(state.viewer)
         idle = player is not None and not player.learning
-        ready = idle and bool(tech.available(state, PLAYER_TRIBE_ID))
+        ready = idle and bool(tech.available(state, state.viewer))
         self._draw_tab(layout["tab_savoirs"], "Savoirs", panel == "savoirs", ready)
         if player is not None and player.learning:
             # Avancement du savoir en cours, en bas de l'onglet.
@@ -1821,18 +1828,18 @@ class Renderer:
             )
 
         pop = sum(
-            b.population for b in state.bands.values() if b.tribe_id == PLAYER_TRIBE_ID
+            b.population for b in state.bands.values() if b.tribe_id == state.viewer
         )
         stock = sum(
-            b.stock for b in state.bands.values() if b.tribe_id == PLAYER_TRIBE_ID
+            b.stock for b in state.bands.values() if b.tribe_id == state.viewer
         )
-        prestige = state.tribes[PLAYER_TRIBE_ID].prestige
+        prestige = state.tribes[state.viewer].prestige
         stats = f"Prestige  {prestige}      Peuple  {pop}      Stocks  {stock:.0f}"
         stats_surf = self.font.render(stats, True, (210, 208, 200))
         self.screen.blit(stats_surf, (width - stats_surf.get_width() - 16, 15))
 
         extra_y = HUD_HEIGHT + 8
-        if state.player_dead:
+        if human_dead(state, state.viewer):
             dead = self.font.render("Votre peuple n'est plus", True, (220, 90, 80))
             self.screen.blit(dead, (16, extra_y))
             extra_y += 22

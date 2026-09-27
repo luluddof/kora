@@ -364,7 +364,7 @@ def build(state, band_id: int, bid: str) -> bool:
     band.stock -= build_cost(state, site, bid)
     site.data["build"] = [bid, build_weeks(site, bid)]
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.SURVIE, f"{name(site)} : chantier de {BUILDINGS[bid].name.lower()} ({build_weeks(site, bid)} sem.).", site.hex)
+        _note(state, LogKind.SURVIE, f"{name(site)} : chantier de {BUILDINGS[bid].name.lower()} ({build_weeks(site, bid)} sem.).", site.hex, to=band.tribe_id)
     return True
 
 
@@ -381,7 +381,7 @@ def _advance_works(state, site, band) -> None:
     site.data.setdefault("buildings", []).append(bid)
     if state.tribes[band.tribe_id].is_player:
         text = f"{name(site)} : la palissade est debout." if bid == "palissade" else f"{name(site)} : {BUILDINGS[bid].name.lower()} achevee."
-        _note(state, LogKind.SURVIE, text, site.hex)
+        _note(state, LogKind.SURVIE, text, site.hex, to=band.tribe_id)
 
 
 # --- effets des batiments et du serment ------------------------------------------------
@@ -700,11 +700,12 @@ def _unrest(state, site, band) -> None:
         if target is not None and state.world.distance(target.position, band.position) <= UNREST_JOIN_RANGE:
             target.population += moved
             target.stock = min(stock_max(target, state), target.stock + stock)
-            if state.tribes[band.tribe_id].is_player or state.tribes[target.tribe_id].is_player:
-                where = name(site_of(state, target))
-                _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes partent vivre a {where}.", site.hex)
+            where = name(site_of(state, target))
+            for me in sorted({band.tribe_id, target.tribe_id}):
+                if state.tribes[me].is_player:
+                    _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes partent vivre a {where}.", site.hex, to=me)
         elif state.tribes[band.tribe_id].is_player:
-            _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes s'en vont et se dispersent.", site.hex)
+            _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes s'en vont et se dispersent.", site.hex, to=band.tribe_id)
         return
     band.population -= moved
     band.stock -= stock
@@ -715,7 +716,7 @@ def _unrest(state, site, band) -> None:
     clan.loyalty = min(clan.loyalty, 50.0)
     _ai_caches_changed(state)
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes s'en vont, lasses du desordre.", site.hex)
+        _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes s'en vont, lasses du desordre.", site.hex, to=band.tribe_id)
     # Elles ne deviennent pas une tribu errante : elles partent fonder leur
     # propre village, sous leur propre chef (un proto-pays de la meme
     # civilisation).
@@ -870,7 +871,7 @@ def sow(state, site, band, late: bool = False) -> None:
     site.data["burned"] = False
     if state.tribes[band.tribe_id].is_player:
         if sown <= 0:
-            _note(state, LogKind.SURVIE, f"{name(site)} : pas de semences, les champs restent vides cette annee.", site.hex)
+            _note(state, LogKind.SURVIE, f"{name(site)} : pas de semences, les champs restent vides cette annee.", site.hex, to=band.tribe_id)
         else:
             extra = ""
             if from_granary >= 1:
@@ -878,7 +879,7 @@ def sow(state, site, band, late: bool = False) -> None:
                 extra += ", et des graines sauvages)" if wild else ")"
             elif wild:
                 extra = " (des graines sauvages, faute de semences)"
-            _note(state, LogKind.SURVIE, f"{name(site)} : semailles sur {len(fields)} champs{extra}.", site.hex)
+            _note(state, LogKind.SURVIE, f"{name(site)} : semailles sur {len(fields)} champs{extra}.", site.hex, to=band.tribe_id)
 
 
 def harvest(state, site, band) -> float:
@@ -915,7 +916,7 @@ def harvest(state, site, band) -> float:
         text = f"{name(site)} : recolte de {crop:.0f} vivres."
         if short < 1.0:
             text += " Il manquait des bras : une part est restee aux champs."
-        _note(state, LogKind.SURVIE, text, site.hex)
+        _note(state, LogKind.SURVIE, text, site.hex, to=band.tribe_id)
     if crop > 0 and luck >= 1.15:
         from src.kora import events
 
@@ -1031,13 +1032,14 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
     if first:
         _chief_takes_the_village(state, tribe, band)
     if tribe.is_player:
-        _note(state, LogKind.SURVIE, f"Le village de {camp.name} est fonde.", camp.hex)
+        _note(state, LogKind.SURVIE, f"Le village de {camp.name} est fonde.", camp.hex, to=tribe.id)
         if first:
             _note(
                 state,
                 LogKind.POLITIQUE,
                 f"L'age des villages commence (+{FIRST_VILLAGE_PRESTIGE} prestige) : vos villages levent des troupes, vos clans nomades s'emanciperont.",
                 camp.hex,
+                to=tribe.id,
             )
     return camp
 
@@ -1071,7 +1073,7 @@ def _chief_takes_the_village(state, tribe, band, quiet: bool = False) -> None:
     band.loyalty = 100.0
     heart.loyalty = min(heart.loyalty, 70.0)
     if tribe.is_player and chief is not None and not quiet:
-        _note(state, LogKind.POLITIQUE, f"{chief.name} s'installe au village et y gouverne ; ses anciens clans ne lui obeiront plus longtemps.", band.position)
+        _note(state, LogKind.POLITIQUE, f"{chief.name} s'installe au village et y gouverne ; ses anciens clans ne lui obeiront plus longtemps.", band.position, to=tribe.id)
 
 
 def ai_oath(state, tribe_id: int) -> str:
@@ -1170,7 +1172,7 @@ def leave(state, band_id: int) -> bool:
     site.store = extra
     site.data = {}
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.SURVIE, f"{name(site)} est abandonne.", site.hex)
+        _note(state, LogKind.SURVIE, f"{name(site)} est abandonne.", site.hex, to=band.tribe_id)
     return True
 
 
@@ -1338,7 +1340,7 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
         units.add(here, kind.id, n, site.id)
         here.stock = min(stock_max(here, state), here.stock + supply)
         if tribe.is_player:
-            _note(state, LogKind.COMBAT, f"{name(site)} leve {n} {kind.name.lower()} : ils rejoignent la troupe.", site.hex)
+            _note(state, LogKind.COMBAT, f"{name(site)} leve {n} {kind.name.lower()} : ils rejoignent la troupe.", site.hex, to=tribe.id)
         return here
     nid = new_band_id(state)
     army = Band(nid, band.tribe_id, site.hex, n, supply, kind="armee", home=site.id, raised=state.tick_count, units=[[kind.id, n, site.id]])
@@ -1347,7 +1349,7 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     state.bands[nid] = army
     _ai_caches_changed(state)
     if tribe.is_player:
-        _note(state, LogKind.COMBAT, f"{name(site)} leve une troupe : {n} {kind.name.lower()}, menes par {army.leader.name}.", site.hex)
+        _note(state, LogKind.COMBAT, f"{name(site)} leve une troupe : {n} {kind.name.lower()}, menes par {army.leader.name}.", site.hex, to=tribe.id)
     return army
 
 
@@ -1446,7 +1448,7 @@ def _join_village(state, army, site) -> None:
     if not chiefs.is_chief_band(state, home):
         home.loyalty = keep
     if state.tribes[home.tribe_id].is_player:
-        _note(state, LogKind.COMBAT, f"La troupe rentre a {name(site)} : {n} guerriers retrouvent leurs champs.", site.hex)
+        _note(state, LogKind.COMBAT, f"La troupe rentre a {name(site)} : {n} guerriers retrouvent leurs champs.", site.hex, to=home.tribe_id)
 
 
 def _to_clan(state, band) -> None:
@@ -1456,7 +1458,7 @@ def _to_clan(state, band) -> None:
     band.homebound = False
     if state.tribes[band.tribe_id].is_player:
         who = band.leader.name if band.leader else "?"
-        _note(state, LogKind.COMBAT, f"La troupe de {who} n'a plus de village : elle devient un clan errant.", band.position)
+        _note(state, LogKind.COMBAT, f"La troupe de {who} n'a plus de village : elle devient un clan errant.", band.position, to=band.tribe_id)
 
 
 def _send_home(state, band, site) -> None:
@@ -1504,7 +1506,7 @@ def dissolve(state, band_id: int) -> bool:
         army.home = site.id
         _send_home(state, army, site)
         if army.homebound and state.tribes[army.tribe_id].is_player:
-            _note(state, LogKind.COMBAT, f"La troupe est dissoute : ses hommes rentrent a {name(site)}.", army.position)
+            _note(state, LogKind.COMBAT, f"La troupe est dissoute : ses hommes rentrent a {name(site)}.", army.position, to=army.tribe_id)
     return True
 
 
@@ -1567,7 +1569,7 @@ def reequip(state, band_id: int) -> bool:
             village.stock -= units.REEQUIP_COST * u[1]
             u[0] = new.id
     if tribe.is_player:
-        _note(state, LogKind.COMBAT, f"{name(site)} reequipe ses compagnies.", site.hex)
+        _note(state, LogKind.COMBAT, f"{name(site)} reequipe ses compagnies.", site.hex, to=tribe.id)
     return True
 
 
@@ -1597,7 +1599,7 @@ def _update_armies(state) -> None:
         band.population -= gone
         band_of(state, site).population += gone
         if state.tribes[band.tribe_id].is_player and state.tick_count % 12 == 0:
-            _note(state, LogKind.COMBAT, f"Trop longtemps loin de {name(site)} : des guerriers desertent et rentrent chez eux.", band.position)
+            _note(state, LogKind.COMBAT, f"Trop longtemps loin de {name(site)} : des guerriers desertent et rentrent chez eux.", band.position, to=band.tribe_id)
 
 
 def _alert(state, site, band) -> None:
@@ -1617,7 +1619,7 @@ def _alert(state, site, band) -> None:
             site.data["alert"] = state.tick_count
             who = state.tribes[foe.tribe_id].name if foe.tribe_id in state.tribes else "etrangers"
             what = "une troupe" if foe.kind == "armee" else f"{foe.population} personnes"
-            _note(state, LogKind.COMBAT, f"Tour de guet de {name(site)} : des {who} approchent ({what}) !", foe.position)
+            _note(state, LogKind.COMBAT, f"Tour de guet de {name(site)} : des {who} approchent ({what}) !", foe.position, to=band.tribe_id)
             return
 
 
@@ -1709,7 +1711,7 @@ def lost(state, band) -> None:
         state.sites.pop(site.id, None)
         tribe = state.tribes.get(band.tribe_id)
         if tribe is not None and tribe.is_player:
-            _note(state, LogKind.COMBAT, f"{name(site)} n'est plus que ruines.", site.hex)
+            _note(state, LogKind.COMBAT, f"{name(site)} n'est plus que ruines.", site.hex, to=tribe.id)
 
 
 # --- lecture ----------------------------------------------------------------------------
@@ -1795,5 +1797,8 @@ def army_lines(state, band) -> list[str]:
     return out
 
 
-def _note(state, kind, text: str, where=None) -> None:
-    state.log.add(kind, text, state.clock.year, state.clock.week, where=where)
+def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
+    """Au journal du joueur `to` (par defaut le joueur solo)."""
+    from src.kora.sim import PLAYER_TRIBE_ID, note
+
+    note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

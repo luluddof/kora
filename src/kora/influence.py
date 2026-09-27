@@ -167,7 +167,7 @@ def zone_lines(state, h) -> list[str]:
         return []
 
     def name(tid: int) -> str:
-        return "Vous" if state.tribes[tid].is_player else state.tribes[tid].name
+        return "Vous" if tid == state.viewer else state.tribes[tid].name
 
     if len(here) == 1:
         v, t = here[0]

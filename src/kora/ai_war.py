@@ -186,10 +186,13 @@ def start_plan(state: GameState, band: Band, plan) -> None:
         band.order = stay_order()
         band.path = []
         set_goto(state, ally.id, band.position)
-    if is_visible(state, band.position) or is_visible(state, ally.position):
-        tribe = state.tribes.get(band.tribe_id)
-        name = tribe.name if tribe else "ennemis"
-        note(state, LogKind.COMBAT, f"Des {name} se regroupent.", where=band.position)
+    from src.kora.sim import humans
+
+    tribe = state.tribes.get(band.tribe_id)
+    name = tribe.name if tribe else "ennemis"
+    for me in humans(state):
+        if me != band.tribe_id and (is_visible(state, band.position, me) or is_visible(state, ally.position, me)):
+            note(state, LogKind.COMBAT, f"Des {name} se regroupent.", where=band.position, to=me)
 
 
 def _drop_plan(band: Band) -> None:

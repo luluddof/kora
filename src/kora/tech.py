@@ -569,12 +569,9 @@ def update_start_bonuses(state) -> None:
             tribe.start_bonus_until = -1
             invalidate()
             if tribe.is_player:
-                state.log.add(
-                    LogKind.DECOUVERTE,
-                    f"Les bonus de depart s'eteignent ({names}) : votre peuple vole de ses propres ailes.",
-                    state.clock.year,
-                    state.clock.week,
-                )
+                from src.kora.sim import note
+
+                note(state, LogKind.DECOUVERTE, f"Les bonus de depart s'eteignent ({names}) : votre peuple vole de ses propres ailes.", to=tribe.id)
 
 
 # --- effets ----------------------------------------------------------------
@@ -1255,13 +1252,10 @@ def _update_learning(state) -> None:
         if tribe.progress[tid] >= TECHS[tid].cost:
             grant(tribe, tid)
             if tribe.is_player:
+                from src.kora.sim import note
+
                 tech = TECHS[tid]
-                state.log.add(
-                    LogKind.DECOUVERTE,
-                    f"Nouveau savoir : {tech.name}. {summary(tech)}",
-                    state.clock.year,
-                    state.clock.week,
-                )
+                note(state, LogKind.DECOUVERTE, f"Nouveau savoir : {tech.name}. {summary(tech)}", to=tribe.id)
 
 
 def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:

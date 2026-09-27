@@ -24,7 +24,6 @@ import pygame.gfxdraw
 
 from src.kora import tech
 from src.kora.render import TREE_GUTTER, TREE_PAD, TREE_ROW, cam_on, tech_panel_layout, to_screen
-from src.kora.sim import PLAYER_TRIBE_ID
 
 GOLD = (214, 180, 104)
 GOLD_DIM = (132, 108, 62)
@@ -70,11 +69,13 @@ def _fonts(r):
 
 def _era_font(r, name: str, width: int):
     """Le plus grand titre d'age qui tient dans la marge (chaque mot entier)."""
+    # Garde sur le Renderer (comme _fonts) : une police ne survit pas a un
+    # pygame.quit (les tests en font).
+    cache = r.__dict__.setdefault("_era_fonts", {})
     for size in (17, 15, 13, 12):
-        key = ("era_font", size)
-        font = _CACHE.get(key)
+        font = cache.get(size)
         if font is None:
-            font = _CACHE[key] = pygame.font.SysFont("georgia", size, bold=True)
+            font = cache[size] = pygame.font.SysFont("georgia", size, bold=True)
         if all(font.size(word)[0] <= width for word in name.split(" ")):
             return font
     return font
@@ -293,11 +294,11 @@ def _button(screen, font, rect, label: str, on: bool, hover: bool) -> None:
 
 def focus_cam(state, width: int, height: int) -> tuple:
     """La vue posee sur la recherche en cours (sinon un savoir disponible)."""
-    tribe = state.tribes.get(PLAYER_TRIBE_ID)
+    tribe = state.tribes.get(state.viewer)
     lay = tech_panel_layout(width, height)
     focus = tribe.learning if tribe is not None else None
     if focus is None:
-        focus = next(iter(tech.available(state, PLAYER_TRIBE_ID)), None)
+        focus = next(iter(tech.available(state, state.viewer)), None)
     return cam_on(lay["view"], lay["world"], focus, 1.0)
 
 
@@ -308,9 +309,9 @@ def _status_line(state, tribe, tid: str, st: str) -> tuple[str, tuple]:
         return "Connu", STYLE["connu"]["edge"]
     if st == "en_cours":
         done = int(100 * tribe.progress.get(tid, 0.0) / t.cost) if t.cost else 100
-        return f"En cours · {done} % · ~{tech.weeks_left(state, PLAYER_TRIBE_ID, tid)} sem.", STYLE["en_cours"]["edge"]
+        return f"En cours · {done} % · ~{tech.weeks_left(state, state.viewer, tid)} sem.", STYLE["en_cours"]["edge"]
     if st == "disponible":
-        return f"{t.cost} pts · ~{tech.weeks_left(state, PLAYER_TRIBE_ID, tid)} sem.", STYLE["disponible"]["edge"]
+        return f"{t.cost} pts · ~{tech.weeks_left(state, state.viewer, tid)} sem.", STYLE["disponible"]["edge"]
     if st == "verrouille":
         missing = tech.missing_prereqs(tribe, t)
         return ("Il faut : " + ", ".join(m.name for m in missing[:2])) if missing else "Verrouille", STYLE["verrouille"]["text"]
@@ -323,7 +324,7 @@ def _status_line(state, tribe, tid: str, st: str) -> tuple[str, tuple]:
 
 
 def draw(r, state, lay: dict, pick: str | None) -> None:
-    tribe = state.tribes.get(PLAYER_TRIBE_ID)
+    tribe = state.tribes.get(state.viewer)
     if tribe is None or lay is None:
         return
     screen = r.screen
@@ -334,7 +335,7 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
     _ornate_frame(screen, (bx, by, bw, bh))
     mx, my = pygame.mouse.get_pos()
     world = lay["world"]
-    states = {tid: tech.status(state, PLAYER_TRIBE_ID, tid) for tid in world["nodes"]}
+    states = {tid: tech.status(state, state.viewer, tid) for tid in world["nodes"]}
     _header(r, state, tribe, lay, states, title_font, head_font)
     view, cam = lay["view"], lay["cam"]
     z = cam[2]
@@ -549,8 +550,8 @@ def _header(r, state, tribe, lay, states, title_font, head_font) -> None:
     screen = r.screen
     bx, by, bw, bh = lay["box"]
     screen.blit(title_font.render("Savoirs", True, GOLD), (bx + 20, by + 10))
-    rate = tech.learn_rate(state, PLAYER_TRIBE_ID)
-    pop = tech._learning_pop(state, PLAYER_TRIBE_ID)
+    rate = tech.learn_rate(state, state.viewer)
+    pop = tech._learning_pop(state, state.viewer)
     pace = f"Recherche : {rate:.1f} pts par semaine  ·  {pop} personnes a l'ecoute des anciens".replace(".", ",", 1)
     screen.blit(r.tiny.render(pace, True, NOTE), (bx + 22, by + 42))
     # Legende.
@@ -572,7 +573,7 @@ def _header(r, state, tribe, lay, states, title_font, head_font) -> None:
         med = medallion(tech.era_of(cur), cur.branch, "en_cours", 16)
         screen.blit(med, (cx + 8, cy + ch // 2 - 17))
         done = tribe.progress.get(cur.id, 0.0) / cur.cost
-        weeks = tech.weeks_left(state, PLAYER_TRIBE_ID, cur.id)
+        weeks = tech.weeks_left(state, state.viewer, cur.id)
         screen.blit(head_font.render(_fit(head_font, cur.name, cw - 170), True, INK), (cx + 48, cy + 4))
         info = f"{int(100 * done)} %  ·  encore ~{weeks} sem."
         surf = r.tiny.render(info, True, STYLE["en_cours"]["edge"])
@@ -588,7 +589,7 @@ def _header(r, state, tribe, lay, states, title_font, head_font) -> None:
 def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
     screen = r.screen
     dx, dy, dw, dh = lay["detail"]
-    shown = pick or tribe.learning or next(iter(tech.available(state, PLAYER_TRIBE_ID)), None)
+    shown = pick or tribe.learning or next(iter(tech.available(state, state.viewer)), None)
     card = _gradient_card(dw, dh, (30, 32, 38), (18, 20, 24), 8)
     screen.blit(card, (dx, dy))
     pygame.draw.rect(screen, GOLD_DEEP, (dx, dy, dw, dh), 1, border_radius=8)
@@ -596,7 +597,7 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
         screen.blit(r.small.render("Cliquez sur un savoir pour voir ce qu'il fait.", True, SOFT), (dx + 14, dy + 14))
         return
     t = tech.TECHS[shown]
-    st = states.get(shown) or tech.status(state, PLAYER_TRIBE_ID, shown)
+    st = states.get(shown) or tech.status(state, state.viewer, shown)
     style = STYLE[st]
     screen.blit(medallion(tech.era_of(t), t.branch, st, 17), (dx + 10, dy + 6))
     screen.blit(head_font.render(t.name, True, INK), (dx + 52, dy + 6))
@@ -605,7 +606,7 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
     if t.cost:
         sub += f"  ·  {t.cost} pts"
         if st in ("disponible", "en_cours"):
-            sub += f" (~{tech.weeks_left(state, PLAYER_TRIBE_ID, shown)} sem.)"
+            sub += f" (~{tech.weeks_left(state, state.viewer, shown)} sem.)"
     screen.blit(r.tiny.render(sub, True, NOTE), (dx + 52, dy + 28))
     pill = r.tiny.render(STATE_LABEL[st], True, style["text"])
     pw = pill.get_width() + 18
@@ -615,7 +616,7 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
     screen.blit(pill, (px + 9, dy + 13))
     pygame.draw.line(screen, GOLD_DEEP, (dx + 12, dy + 40), (dx + dw - 12, dy + 40))
     left, right = lay["detail_cols"]
-    lines = tech.detail_lines(state, PLAYER_TRIBE_ID, shown)
+    lines = tech.detail_lines(state, state.viewer, shown)
     what = [ln for ln in lines if ln[1] in ("texte", "effet")]
     need = []
     mode = None

@@ -1,0 +1,129 @@
+Kora - Menu de demarrage, bonus de depart, multijoueur
+=====================================================
+Date : 2026-09-27. Statut : en place (version 0.2.0).
+Demande : "j'aimerais ajouter un mode multijoueur au jeu mais aussi un menu
+de demarrage et la possibilite quand on cree la tribu de lui donner des
+bonus de depart (qui durent 5 ans) et que l'on peut choisir parmi un pool."
+
+1. LE MENU DE DEMARRAGE (render_menu.py, app.title_screen)
+  - Sur la planete qui tourne (calque et brouillard a part : celle de la
+    partie n'est pas touchee) : Continuer (resume de la sauvegarde :
+    persist.peek_save - peuple, annee, gens, villages), Nouvelle partie,
+    Multijoueur, Quitter ; version en bas.
+  - app.run() : menu -> partie (play) -> menu... play() rend ("menu",
+    message) ou ("quit", "") ; Echap en partie : Reprendre, Sauvegarder,
+    MENU PRINCIPAL (remplace "Nouvelle partie"), Quitter.
+  - Une nouvelle partie met l'ancienne de cote (kora-ancienne-*.json, les
+    5 dernieres gardees : persist.KEEP_ASIDE) ; une sauvegarde illisible
+    aussi, avec un message au menu.
+  - reglages.json (a cote des sauvegardes) : nom, couleur, bonus et
+    derniere adresse proposes la fois suivante.
+
+2. LA CREATION DU PEUPLE ET LES BONUS DE DEPART
+  - Ecran "Votre peuple" : nom (clavier, ou Au hasard : syllabes du peuple
+    joueur), 10 couleurs, 12 cartes de bonus, en choisir 2.
+  - tech.START_BONUSES (12) : effets ecrits comme ceux des savoirs (memes
+    cles, memes phrases) : Chasseurs d'aurochs, Cueilleurs des bois, Gens
+    des rivages, Enfants du froid, Prevoyants, Peuple fecond, Guerriers
+    redoutes, Eclaireurs, Conteurs (nouvel effet "learn" : apprentissage
+    des savoirs +30 %), Chef rassembleur, Diplomates, Batisseurs de camps.
+  - Tribe.start_bonuses, start_bonus_until (= 260 semaines apres le
+    debut) ; tech.bonuses() les compte comme des savoirs tant qu'ils
+    durent ; tech.update_start_bonuses (chaque mois) les eteint et le dit
+    au journal. Panneau Tribu / Villages : "Bonus de depart : ... (encore
+    N ans)", effets au survol. Sauvegardes.
+  - sim.new_game(setup={"name", "color", "bonuses"}) ; sans setup, la
+    partie est celle d'avant (empreinte identique).
+
+3. PLUSIEURS PEUPLES JOUEURS DANS LA SIMULATION
+  - Un peuple is_player est mene par un humain. En solo : PLAYER_TRIBE_ID
+    seul. new_game(others={place: setup}) : places 2 a 4 (steppe, foret,
+    cote) ; ils gardent le savoir de leur pays (troupeau, cabotage).
+  - Ce qui est a chaque joueur : journal (sim.log_of), vue (vision.vision_of,
+    recompute_vision les calcule tous), peuples apercus (sim.seen_of). Le
+    joueur solo garde state.log / state.vision / seen_enemy_tribes ; les
+    autres dans state.povs (sim.Pov). Sauvegarde : "povs".
+  - Les messages vont au peuple concerne : note(..., to=tid) partout
+    (sim, chiefs, villages, sites, diplo, events, goods, tech, ai_war) ;
+    ce que tous voient : note_seen / note_all ; les raids sont racontes a
+    chaque joueur qui y est ou qui voit la case ("Vous" = lui).
+  - Cartes d'evenement par joueur : events.pending(state, tid).
+  - Diplomatie entre joueurs : une proposition (treve, alliance, commerce,
+    tribut) arrive chez l'autre comme la carte que l'IA lui enverrait
+    (offre_treve...) ; il decide ; le proposant apprend la reponse. Cadeau
+    et rupture : il est prevenu. Pas d'"union" d'un peuple joueur. Panneau
+    Peuples : "un joueur", "Un joueur : il decidera lui-meme".
+  - state.viewer : le joueur de CET ecran. L'interface ne lit plus
+    PLAYER_TRIBE_ID : state.viewer partout (render*, app, hex_inspect,
+    player_home_hex, fight_lines, zone_lines, site_lines). La simulation ne
+    lit JAMAIS viewer (sinon deux machines divergeraient).
+  - Correction trouvee en route : la pression de cueillette de la derniere
+    semaine n'etait pas sauvegardee (l'epuisement des terres sautait une
+    semaine a chaque chargement) : persist "pressure". Depuis, une partie
+    rechargee suit EXACTEMENT la meme histoire (8 + 4 ans verifies).
+
+4. LE CANAL DES ORDRES (commands.py)
+  - Tout ce que l'interface change a la partie est un ordre JSON
+    [peuple, genre, args...] : goto, march, band (scinder, reunir, camper,
+    deposer, chef ici, honorer, troupe, quitter le village...), found,
+    route_open / route_close / route_level (route reperee par [exportateur,
+    importateur, bien]), teams, diplo, invite, build, raise, reequip,
+    dissolve, honor, promote, heir, learn, event.
+  - apply() verifie que le joueur commande ce qui est a lui (NOT_YOURS),
+    refuse un ordre mal forme sans rien casser, rend {msg, sel, site}.
+  - En solo, app.issue() applique tout de suite (comme avant). En reseau,
+    l'ordre part chez l'hote ; la reponse revient quand il s'applique.
+  - Regle d'or : un dessin ne touche JAMAIS la partie (tests/test_ui_pure :
+    tous les ecrans dessines sur une partie avancee, empreinte inchangee).
+
+5. LE RESEAU (net.py, session.py) : LOCKSTEP
+  - TCP, un message JSON par ligne, un fil de lecture et un d'ecriture par
+    connexion (le jeu ne bloque jamais) ; la partie entiere compressee
+    (net.pack : ~900 Ko -> ~150 Ko). Port 45170 (KORA_PORT pour un autre).
+  - Salon : l'hote a la place 1 (vallee), les amis la steppe (2), la foret
+    (3), la cote (4) ; nom, couleur, bonus, pret ; discussion. Versions
+    differentes : refuse, avec le message. Complet : refuse.
+  - Lancement : l'hote cree la partie, l'ecrit en texte et la relit (lui
+    aussi) : tous partent du meme etat. Chaque ami la recoit ("start").
+  - En partie : l'hote tient le temps. Il renvoie a tous les ordres recus
+    ("cmds", appliques tout de suite, meme en pause), puis annonce chaque
+    semaine ("tick") ; chaque machine applique ces messages dans l'ordre.
+    Il n'avance pas plus de LAG = 6 semaines devant le plus lent ("on
+    attend : X"). Pause et vitesse : tout le monde peut les demander.
+  - Ecarts : toutes les 26 semaines, chacun envoie son empreinte
+    (session.sync_digest : la partie sans pause/vitesse/camera, ensembles
+    tries ; ~50 ms en fin de partie) ; differente -> l'hote renvoie sa
+    partie ; une semaine sautee -> l'ami la demande ("lost").
+  - Un ami qui part : son peuple attend (bandes immobiles, cartes decidees
+    d'office a l'echeance) ; il revient avec le meme nom. L'hote qui part :
+    les amis reviennent au menu avec le message. Seul l'hote sauvegarde
+    (kora-multi.json, toutes les 8 semaines et en partant) ; "Reprendre la
+    partie a plusieurs" rouvre le salon, places reprises par nom.
+  - En partie : bandeau des joueurs (absent, disparu, on attend...),
+    discussion (Entree), les cartes ne mettent plus en pause, F5 chez un ami
+    : "c'est l'hote qui sauvegarde".
+  - Par Internet : un reseau prive commun (Radmin VPN, ZeroTier,
+    Tailscale) ou le port 45170 ouvert chez l'hote (README).
+
+6. VERIFICATIONS
+  - Empreinte (tools/empreinte.py check) : IDENTIQUE (le solo n'a pas
+    change), y compris avec une autre graine de hachage (PYTHONHASHSEED).
+  - tools/essai_reseau.py 10 : deux PROCESSUS (graines de hachage
+    differentes, comme deux PC), la vraie carte, un robot par joueur qui ne
+    passe que par des ordres : 10 ans, 40 empreintes, 0 ecart, 0 recopie.
+  - tools/essai_graines.py (copie de SA partie, an 54 -> 57, 58 villages,
+    commerce, troupes) : deux processus, 12 empreintes identiques.
+  - Tests : test_start_menu (bonus, fin a 5 ans, sauvegarde, ecrans),
+    test_multiplayer_sim (vues, journaux, cartes, diplomatie entre joueurs,
+    sauvegarde), test_commands, test_session (salon, meme partie des deux
+    cotes, ecart recopie, depart/retour, joueur lent, reprise), test_mp_ui
+    (la vraie boucle du jeu, hote et ami, par TCP), test_ui_pure.
+  - Lecon : un robot (ou une interface) qui appelle une fonction de l'IA
+    qui MODIFIE la partie (tech.auto_choose fixe le savoir) fait diverger
+    les machines ; toujours passer par un ordre.
+
+7. LIMITES CONNUES / PISTES
+  - Pas de serveur au milieu (mode cloud, plus tard a sa demande) : il faut
+    un reseau commun ou un port ouvert.
+  - Au plus 4 joueurs (les quatre pays de depart).
+  - Un joueur absent ne passe pas a l'IA (ses bandes attendent).

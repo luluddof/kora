@@ -528,10 +528,10 @@ def headline(rep: dict, loser: Band | None = None) -> str:
     return f"Deroute des {name}"
 
 
-def log_suffix(state, res: Result) -> str:
-    """Ce que le journal ajoute au texte du raid."""
+def log_suffix(state, res: Result, me: int | None = None) -> str:
+    """Ce que le journal du joueur `me` ajoute au texte du raid."""
     if res.outcome == "aneanti":
-        mine = res.loser.tribe_id == sim.PLAYER_TRIBE_ID
+        mine = res.loser.tribe_id == (sim.PLAYER_TRIBE_ID if me is None else me)
         left = res.report.get("scattered", 0)
         if left:
             return f" La bande est dispersee ; {left} survivants rejoignent les leurs."

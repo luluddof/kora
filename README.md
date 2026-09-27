@@ -3,7 +3,8 @@
 Un jeu de grande stratégie en temps réel (avec pause), du tout début de l'humanité jusqu'aux premiers villages.
 Vous guidez un peuple de chasseurs-cueilleurs qui vient de maîtriser le feu : lire les saisons, trouver à manger,
 passer l'hiver, se diviser en clans, rencontrer les autres peuples, apprendre des savoirs, puis fonder des villages,
-cultiver, commercer, lever des troupes… et voir vos clans partir fonder leurs propres pays.
+cultiver, commercer, lever des troupes… et voir vos clans partir fonder leurs propres pays. Seul, ou **à plusieurs**
+(jusqu'à 4 joueurs sur la même planète).
 
 > Version de test. Merci de jouer, et de dire ce qui cloche !
 
@@ -50,6 +51,10 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 
 ## Premiers pas
 
+- Au lancement, le **menu** : *Continuer* votre partie, *Nouvelle partie*, *Multijoueur*.
+- Une nouvelle partie commence par **votre peuple** : son nom (ou *Au hasard*), sa couleur, et **2 bonus de départ**
+  à choisir parmi 12 (chasseurs d'aurochs, enfants du froid, conteurs, guerriers…). Ils durent **5 ans**, puis
+  s'éteignent (le panneau *Tribu* dit combien de temps il leur reste).
 - **Clic gauche** sur une de vos bandes (un rond à votre couleur) pour la choisir, puis **clic gauche sur la carte** pour
   qu'elle y marche. Un clic sur une bande étrangère : un raid (attention, les combats sont durs).
 - **Clic droit maintenu** (ou molette maintenue) et glisser : tourner la planète. **Molette** : zoomer.
@@ -84,15 +89,45 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **L** | Lever une troupe (depuis un village) |
 | **Z** / **R** / **X** | Modes de carte : zones d'influence / ressources / commerce |
 | **F5** | Sauvegarder (le jeu sauvegarde aussi tout seul) |
-| **Échap** | Fermer une fenêtre · menu |
+| **Entrée** | À plusieurs : écrire aux autres joueurs |
+| **Échap** | Fermer une fenêtre · menu (Reprendre, Sauvegarder, Menu principal, Quitter) |
+
+---
+
+## Jouer à plusieurs
+
+Jusqu'à 4 joueurs, chacun son peuple, sur la même planète (les places libres restent aux peuples de l'IA).
+**Tout le monde doit avoir la même version** de Kora.
+
+1. **L'hôte** : *Multijoueur* → *Héberger une partie* → il crée son peuple → *Ouvrir le salon*. Le salon affiche
+   **l'adresse à donner aux amis**. Si Windows demande d'autoriser Kora sur le réseau, acceptez (réseaux privés).
+2. **Les amis** : *Multijoueur* → *Rejoindre une partie* → l'adresse de l'hôte, leur peuple → *Rejoindre*. Dans le
+   salon, un clic sur une place libre choisit son pays de départ : la **steppe** (on y connaît le troupeau), la
+   **forêt**, la **côte** (on y connaît le cabotage) ; l'hôte a la vallée. Puis *Je suis prêt*.
+3. L'hôte clique *Lancer la partie*.
+
+En partie : l'hôte tient le temps ; chacun peut mettre en pause (**Espace**) ou changer la vitesse (**1** à **5**),
+pour tout le monde. Ouvrir une carte d'événement ne met plus en pause. **Entrée** pour écrire aux autres. Les
+propositions entre joueurs (trêve, alliance, commerce, tribut) arrivent chez l'autre comme une carte à décider.
+
+**Par Internet** (pas dans la même maison), au choix :
+- un **réseau privé commun**, gratuit : [Radmin VPN](https://www.radmin-vpn.com/fr/),
+  [ZeroTier](https://www.zerotier.com/) ou [Tailscale](https://tailscale.com/). Tous l'installent et rejoignent le
+  même réseau ; les amis écrivent l'adresse de l'hôte **dans ce réseau** (Radmin l'affiche à côté de son nom) ;
+- ou l'hôte **ouvre le port 45170 (TCP)** de sa box vers son PC ; les amis écrivent alors son adresse publique.
+
+Un joueur qui part laisse son peuple en attente (ses bandes ne bougent plus) ; il revient avec **le même nom** et le
+retrouve. Seul l'hôte sauvegarde la partie à plusieurs : *Multijoueur* → *Reprendre la partie à plusieurs* la rouvre
+(les amis rejoignent le salon avec leur nom). Si une machine s'écarte de la partie de l'hôte, elle est recopiée
+toute seule.
 
 ---
 
 ## Où est ma partie ? Un problème ?
 
 - La partie est sauvegardée dans **`%APPDATA%\Kora\saves\kora.json`**
-  (collez `%APPDATA%\Kora` dans la barre d'adresse de l'explorateur de fichiers).
-  Le menu (**Échap**) propose aussi une **Nouvelle partie**.
+  (collez `%APPDATA%\Kora` dans la barre d'adresse de l'explorateur de fichiers) ; la partie à plusieurs de l'hôte
+  dans `kora-multi.json`, à côté. Une nouvelle partie met l'ancienne de côté (`kora-ancienne-…json`), sans l'effacer.
 - Si le jeu se ferme tout seul, il écrit ce qui s'est passé dans **`%APPDATA%\Kora\kora_erreur.txt`** :
   envoyez-moi ce fichier (et votre `kora.json` si possible). La version du jeu est écrite en bas du menu (**Échap**).
 

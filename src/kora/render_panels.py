@@ -11,7 +11,7 @@ import pygame
 
 from src.kora import chiefs, diplo, influence, sites, tech
 from src.kora.peoples import color_of, label_of
-from src.kora.sim import PLAYER_TRIBE_ID, max_bands_of
+from src.kora.sim import max_bands_of
 
 BG = (16, 18, 22)
 EDGE = (70, 74, 80)
@@ -122,10 +122,10 @@ def tribe_alert(state) -> bool:
         return any(
             villages.stability(state, s) < villages.UNREST
             for s in state.sites.values()
-            if s.kind == "village" and s.tribe_id == PLAYER_TRIBE_ID and villages.band_of(state, s) is not None
+            if s.kind == "village" and s.tribe_id == state.viewer and villages.band_of(state, s) is not None
         )
     return any(
-        b.tribe_id == PLAYER_TRIBE_ID and not chiefs.is_chief_band(state, b) and b.loyalty < chiefs.OBEY
+        b.tribe_id == state.viewer and not chiefs.is_chief_band(state, b) and b.loyalty < chiefs.OBEY
         for b in state.bands.values()
     )
 
@@ -133,7 +133,7 @@ def tribe_alert(state) -> bool:
 def has_nomads(state) -> bool:
     """Le peuple a encore des clans nomades (ni village, ni troupe)."""
     return any(
-        b.tribe_id == PLAYER_TRIBE_ID and b.population > 0 and not b.village and b.kind != "armee"
+        b.tribe_id == state.viewer and b.population > 0 and not b.village and b.kind != "armee"
         for b in state.bands.values()
     )
 
@@ -142,7 +142,7 @@ def tribe_tab_label(state) -> str:
     """Plus de nomades : l'onglet Tribu devient celui des villages."""
     if has_nomads(state):
         return "Tribu"
-    n = len(sites.of_tribe(state, PLAYER_TRIBE_ID, "village"))
+    n = len(sites.of_tribe(state, state.viewer, "village"))
     if n == 0:
         return "Tribu"
     return "Village" if n == 1 else "Villages"
@@ -188,7 +188,7 @@ def draw_tribe(r, state, layout, ui) -> None:
     title_font, head_font = _fonts(r)
     items = layout["items"]
     bx, by, bw, bh = layout["box"]
-    tribe = state.tribes.get(PLAYER_TRIBE_ID)
+    tribe = state.tribes.get(state.viewer)
     if tribe is None:
         return
     if tribe_tab_label(state) != "Tribu":
@@ -199,26 +199,26 @@ def draw_tribe(r, state, layout, ui) -> None:
     pygame.draw.rect(r.screen, color, (bx, by + 10, 5, 44), border_radius=2)
     _text(r, title_font, tribe.name, TEXT, bx + 18, by + 10)
     bands = sorted(
-        (b for b in state.bands.values() if b.tribe_id == PLAYER_TRIBE_ID and b.population > 0),
+        (b for b in state.bands.values() if b.tribe_id == state.viewer and b.population > 0),
         key=lambda b: (not chiefs.is_chief_band(state, b), b.id),
     )
     pop = sum(b.population for b in bands)
     know = tech.bonuses(tribe)
-    camps = len(sites.of_tribe(state, PLAYER_TRIBE_ID, "camp"))
-    caches = len(sites.of_tribe(state, PLAYER_TRIBE_ID, "cache"))
+    camps = len(sites.of_tribe(state, state.viewer, "camp"))
+    caches = len(sites.of_tribe(state, state.viewer, "cache"))
     from src.kora.peoples import civ_of
     from src.kora.sim import civ_band_cap, civ_band_count, tribe_band_count
 
     civ = civ_of(state, tribe)
     stats = (
-        f"Prestige {tribe.prestige}  ·  {pop} personnes  ·  {tribe_band_count(state, PLAYER_TRIBE_ID)}/{max_bands_of(state, PLAYER_TRIBE_ID)} bandes"
+        f"Prestige {tribe.prestige}  ·  {pop} personnes  ·  {tribe_band_count(state, state.viewer)}/{max_bands_of(state, state.viewer)} bandes"
         + f" (civilisation {civ_band_count(state, civ)}/{civ_band_cap(state, civ)})"
         + f"  ·  campements {camps}/{know.camps}  ·  caches {caches}/{know.caches}"
     )
     _text(r, r.tiny, stats, NOTE, bx + 18, by + 40)
     # Le chef.
     y = by + 64
-    heart = chiefs.chief_band(state, PLAYER_TRIBE_ID)
+    heart = chiefs.chief_band(state, state.viewer)
     _box(r, (bx + 12, y, bw - 24, 62), fill=(22, 24, 30), edge=(60, 56, 44), radius=6)
     if heart is not None and heart.leader is not None:
         from src.kora.render import _draw_crown
@@ -322,7 +322,7 @@ def draw_tribe(r, state, layout, ui) -> None:
     dy = by + bh - 140
     pygame.draw.line(r.screen, (50, 54, 60), (bx + 14, dy), (bx + bw - 14, dy))
     band = state.bands.get(pick) if pick is not None else None
-    if band is None or band.tribe_id != PLAYER_TRIBE_ID or chiefs.is_chief_band(state, band):
+    if band is None or band.tribe_id != state.viewer or chiefs.is_chief_band(state, band):
         band = next((b for b in bands if not chiefs.is_chief_band(state, b)), None)
     if band is None:
         _text(r, r.small, "Un seul clan : la tribu suit son chef.", SOFT, bx + 18, dy + 10)
@@ -430,18 +430,18 @@ def draw_villages(r, state, layout, ui) -> None:
     title_font, head_font = _fonts(r)
     items = layout["items"]
     bx, by, bw, bh = layout["box"]
-    tribe = state.tribes[PLAYER_TRIBE_ID]
+    tribe = state.tribes[state.viewer]
     _box(r, (bx, by, bw, bh))
     color = color_of(tribe)
     pygame.draw.rect(r.screen, color, (bx, by + 10, 5, 44), border_radius=2)
     homes = [
         (s, villages.band_of(state, s))
         for s in sorted(state.sites.values(), key=lambda s: s.id)
-        if s.kind == "village" and s.tribe_id == PLAYER_TRIBE_ID and villages.band_of(state, s) is not None
+        if s.kind == "village" and s.tribe_id == state.viewer and villages.band_of(state, s) is not None
     ]
     _text(r, title_font, f"Les villages des {tribe.name}", TEXT, bx + 18, by + 10)
-    pop = sum(b.population for b in state.bands.values() if b.tribe_id == PLAYER_TRIBE_ID and b.population > 0)
-    troops = sum(b.population for b in state.bands.values() if b.tribe_id == PLAYER_TRIBE_ID and b.kind == "armee")
+    pop = sum(b.population for b in state.bands.values() if b.tribe_id == state.viewer and b.population > 0)
+    troops = sum(b.population for b in state.bands.values() if b.tribe_id == state.viewer and b.kind == "armee")
     know = tech.bonuses(tribe)
     stats = f"Prestige {tribe.prestige}  ·  {pop} personnes  ·  villages {len(homes)}/{know.villages}  ·  {troops} sous les armes"
     _text(r, r.tiny, stats, NOTE, bx + 18, by + 40)
@@ -493,18 +493,18 @@ def draw_villages(r, state, layout, ui) -> None:
     dy = by + bh - 140
     pygame.draw.line(r.screen, (50, 54, 60), (bx + 14, dy), (bx + bw - 14, dy))
     _text(r, r.small, "Reserve du peuple", TEXT, bx + 18, dy + 8)
-    need = goods.need(state, PLAYER_TRIBE_ID)
+    need = goods.need(state, state.viewer)
     col_w = (bw - 36) // 2
     for i, good in enumerate(goods.GOODS):
         cx = bx + 18 + (i % 2) * col_w
         cy = dy + 32 + (i // 2) * 18
-        have = goods.stock(state, PLAYER_TRIBE_ID, good)
-        ok = goods.supplied(state, PLAYER_TRIBE_ID, good)
-        made = goods.made(state, PLAYER_TRIBE_ID, good)
+        have = goods.stock(state, state.viewer, good)
+        ok = goods.supplied(state, state.viewer, good)
+        made = goods.made(state, state.viewer, good)
         made_s = f"{made:.1f}".replace(".", ",")
         line = f"{goods.GOOD_NAMES[good]} : {have:.0f}" + (f" (+{made_s}/sem.)" if made else "") + ("  pourvu" if ok else "  en manque")
         _text(r, r.tiny, r._fit(r.tiny, line, col_w - 8), GOOD if ok else NOTE, cx, cy)
-    partners = [o for o in sorted(state.tribes) if o != PLAYER_TRIBE_ID and _diplo.has_pact(state, PLAYER_TRIBE_ID, o, "commerce")]
+    partners = [o for o in sorted(state.tribes) if o != state.viewer and _diplo.has_pact(state, state.viewer, o, "commerce")]
     ty = dy + 32 + 2 * 18 + 6
     if partners:
         names = ", ".join(state.tribes[o].name for o in partners[:4]) + ("..." if len(partners) > 4 else "")
@@ -526,8 +526,8 @@ def known_peoples(state) -> list[int]:
     from src.kora.peoples import living_tribe_ids
 
     alive = living_tribe_ids(state)
-    out = [t for t in diplo.contacts_of(state, PLAYER_TRIBE_ID) if t in alive]
-    out.sort(key=lambda t: (not diplo.allied(state, PLAYER_TRIBE_ID, t), -diplo.relation(state, PLAYER_TRIBE_ID, t), t))
+    out = [t for t in diplo.contacts_of(state, state.viewer) if t in alive]
+    out.sort(key=lambda t: (not diplo.allied(state, state.viewer, t), -diplo.relation(state, state.viewer, t), t))
     return out
 
 
@@ -601,9 +601,11 @@ def draw_peoples(r, state, layout, ui) -> None:
         _text(r, r.small, r._fit(r.small, t.name, 120), TEXT, lx + 32, ly + 5)
         nv = len(sites.of_tribe(state, tid, "village"))
         second = f"proto-pays, {nv} village{'s' if nv > 1 else ''}" if nv else label_of(t)
-        _text(r, r.tiny, r._fit(r.tiny, second, 130), GOLD if nv else NOTE, lx + 32, ly + 23)
-        rel = diplo.relation(state, PLAYER_TRIBE_ID, tid)
-        lvl = diplo.level(state, PLAYER_TRIBE_ID, tid)
+        if t.is_player:
+            second = "un joueur  ·  " + second
+        _text(r, r.tiny, r._fit(r.tiny, second, 130), GOLD if nv or t.is_player else NOTE, lx + 32, ly + 23)
+        rel = diplo.relation(state, state.viewer, tid)
+        lvl = diplo.level(state, state.viewer, tid)
         val = _signed(rel)
         vw = r.small.size(val)[0]
         _text(r, r.small, val, _rel_color(rel), lx + lw - 10 - vw, ly + 5)
@@ -622,14 +624,14 @@ def draw_peoples(r, state, layout, ui) -> None:
     nb = sum(1 for b in state.bands.values() if b.tribe_id == pick and b.population > 0)
     pop = diplo.pop_of(state, pick)
     approx = max(10, int(round(pop / 10.0)) * 10)
-    culture = label_of(t)
+    culture = label_of(t) + ("  ·  mene par un joueur" if t.is_player else "")
     origin = ""
     if t.origin and t.origin in state.tribes:
-        origin = f"  ·  issus des {state.tribes[t.origin].name}" if t.origin != PLAYER_TRIBE_ID else "  ·  issus de votre peuple"
+        origin = f"  ·  issus des {state.tribes[t.origin].name}" if t.origin != state.viewer else "  ·  issus de votre peuple"
     from src.kora.peoples import civ_name, civ_of
 
     civ = civ_of(state, t)
-    if civ == civ_of(state, state.tribes[PLAYER_TRIBE_ID]):
+    if civ == civ_of(state, state.tribes[state.viewer]):
         culture += "  ·  votre civilisation"
     elif civ != t.id:
         culture += f"  ·  civilisation des {civ_name(state, civ)}"
@@ -648,16 +650,16 @@ def draw_peoples(r, state, layout, ui) -> None:
     _button(r, see, "Voir")
     # Relation.
     cy += 86
-    rel = diplo.relation(state, PLAYER_TRIBE_ID, pick)
-    lvl = diplo.level(state, PLAYER_TRIBE_ID, pick)
+    rel = diplo.relation(state, state.viewer, pick)
+    lvl = diplo.level(state, state.viewer, pick)
     _text(r, head_font, f"Relation : {_signed(rel)}  ·  {lvl}", _rel_color(rel), cx + 4, cy)
-    status = diplo.status_line(state, PLAYER_TRIBE_ID, pick)
+    status = diplo.status_line(state, state.viewer, pick)
     if status:
         sw_ = r.small.size(status)[0]
         _text(r, r.small, status, GOLD, cx + cw - sw_ - 4, cy + 2)
     _relation_meter(r, cx + 10, cy + 34, cw - 20, rel)
     cy += 62
-    reasons = diplo.reasons(state, PLAYER_TRIBE_ID, pick)
+    reasons = diplo.reasons(state, state.viewer, pick)
     _text(r, r.tiny, "Pourquoi :", NOTE, cx + 4, cy)
     cy += 16
     half = (cw - 8) // 2
@@ -671,9 +673,9 @@ def draw_peoples(r, state, layout, ui) -> None:
         _text(r, r.tiny, r._fit(r.tiny, label, half - 46), SOFT, x + 38, y)
     cy += 16 * ((min(8, len(reasons)) + 1) // 2) + 8
     # Savoirs a apprendre d'eux.
-    mine = state.tribes[PLAYER_TRIBE_ID].knowledge
+    mine = state.tribes[state.viewer].knowledge
     theirs = sorted(t.knowledge - mine, key=lambda k: (tech.TECHS[k].tier, k))
-    teach = pick in getattr(state.diplo, "neighbors", {}).get(PLAYER_TRIBE_ID, [])
+    teach = pick in getattr(state.diplo, "neighbors", {}).get(state.viewer, [])
     if theirs:
         names = ", ".join(tech.TECHS[k].name for k in theirs[:6]) + ("..." if len(theirs) > 6 else "")
         _text(r, r.tiny, r._fit(r.tiny, "Ils savent : " + names, cw - 8), SOFT, cx + 4, cy)
@@ -701,13 +703,13 @@ def draw_peoples(r, state, layout, ui) -> None:
     if ties:
         _text(r, r.tiny, r._fit(r.tiny, "Avec les autres : " + ", ".join(ties), cw - 8), SOFT, cx + 4, cy)
         cy += 20
-    if diplo.has_pact(state, PLAYER_TRIBE_ID, pick, "commerce"):
+    if diplo.has_pact(state, state.viewer, pick, "commerce"):
         from src.kora import goods
 
-        n = sum(1 for rt in goods.routes_of(state, PLAYER_TRIBE_ID) if pick in (rt.exporter, rt.importer))
-        done = goods.summary(state, PLAYER_TRIBE_ID, pick)
+        n = sum(1 for rt in goods.routes_of(state, state.viewer) if pick in (rt.exporter, rt.importer))
+        done = goods.summary(state, state.viewer, pick)
         line = f"Routes : {n}" + (" · le mois dernier : " + done if done else " · rien porte le mois dernier")
-        if goods.trade_distance(state, PLAYER_TRIBE_ID, pick) > goods.trade_range(state, PLAYER_TRIBE_ID, pick):
+        if goods.trade_distance(state, state.viewer, pick) > goods.trade_range(state, state.viewer, pick):
             line = "Commerce : vos villages sont trop loin l'un de l'autre"
         button = (cx + cw - 190, cy - 3, 186, 20)
         items["trade_with"] = button
@@ -716,9 +718,9 @@ def draw_peoples(r, state, layout, ui) -> None:
         cy += 22
     # Actions : les vivres sur une ligne, puis les propositions.
     tips = []
-    verdict = diplo.evaluate(state, PLAYER_TRIBE_ID, pick, "cadeau")
+    verdict = diplo.evaluate(state, state.viewer, pick, "cadeau")
     _text(r, r.small, diplo.ACTION_LABELS["cadeau"], TEXT if not verdict.blocked else NOTE, cx + 4, cy + 3)
-    sizes = diplo.gift_sizes(state, PLAYER_TRIBE_ID, pick) if not verdict.blocked else []
+    sizes = diplo.gift_sizes(state, state.viewer, pick) if not verdict.blocked else []
     gx = cx + 160
     for amount in diplo.GIFT_SIZES:
         rect = (gx, cy, 50, 22)
@@ -726,7 +728,7 @@ def draw_peoples(r, state, layout, ui) -> None:
         on = amount in sizes
         _button(r, rect, str(amount), on=on)
         if on and _hover(rect):
-            gain = diplo.gift_value(state, PLAYER_TRIBE_ID, pick, amount)
+            gain = diplo.gift_value(state, state.viewer, pick, amount)
             tips.append(([(f"{amount} vivres, portes par votre bande la plus proche", TEXT), (f"Relation : +{gain:.0f}", GOOD)], rect[0] + rect[2] + 8, rect[1]))
         gx += 56
     if verdict.blocked:
@@ -745,9 +747,13 @@ def draw_peoples(r, state, layout, ui) -> None:
         ay = cy + (i // cols) * ah
         if ay + ah > by + bh - 6:
             break
-        verdict = diplo.evaluate(state, PLAYER_TRIBE_ID, pick, action)
-        wait = diplo.on_cooldown(state, PLAYER_TRIBE_ID, pick, action) if action != "rompre" else 0
+        verdict = diplo.evaluate(state, state.viewer, pick, action)
+        wait = diplo.on_cooldown(state, state.viewer, pick, action) if action != "rompre" else 0
         line, tint = _verdict_line(verdict)
+        if t.is_player and not verdict.blocked and action in diplo.HUMAN_OFFERS:
+            # Un autre joueur : pas de calcul, il recevra une carte et choisira.
+            line, tint = "Un joueur : il decidera lui-meme", GOLD
+            verdict = diplo.Verdict(score=verdict.score)
         if wait and not verdict.blocked:
             line, tint = f"Deja propose : attendez {wait} sem.", NOTE
         rect = (ax, ay, min(190, aw - 4), 22)
@@ -762,16 +768,16 @@ def draw_peoples(r, state, layout, ui) -> None:
             tips.append((rows, rect[0] + rect[2] + 10, rect[1] - 4))
     # Clans de ce peuple qui se detachent, pres de chez vous.
     iy = cy + 3 * ah + 4
-    for band in diplo.invitable(state, PLAYER_TRIBE_ID, pick)[:2]:
+    for band in diplo.invitable(state, state.viewer, pick)[:2]:
         if iy + 26 > by + bh - 6:
             break
         who = band.leader.name if band.leader else f"bande {band.id}"
-        chance = round(100 * diplo.invite_chance(state, PLAYER_TRIBE_ID, band))
+        chance = round(100 * diplo.invite_chance(state, state.viewer, band))
         line = f"Clan de {who} ({band.population}) : attachement {band.loyalty:.0f}, il se detache de son chef"
         _text(r, r.tiny, r._fit(r.tiny, line, cw - 200), WARN, cx + 4, iy + 5)
         rect = (cx + cw - 190, iy, 186, 22)
         items[f"invite:{band.id}"] = rect
-        on = state.tribes[PLAYER_TRIBE_ID].prestige >= diplo.INVITE_COST
+        on = state.tribes[state.viewer].prestige >= diplo.INVITE_COST
         _button(r, rect, f"Inviter ({diplo.INVITE_COST} prest., ~{chance} %)", on=on)
         iy += 28
     for rows, x, y in tips:
@@ -786,7 +792,9 @@ def draw_event_cards(r, state, ui) -> None:
     r.event_hits = {}
     from src.kora import events
 
-    pending = events.pending(state)
+    # Multijoueur : une carte repondue attend que l'hote applique la reponse.
+    answered = ui.get("answered", ()) if isinstance(ui, dict) else ()
+    pending = [p for p in events.pending(state, state.viewer) if p.uid not in answered]
     if not pending:
         return
     w, h = r.screen.get_size()
@@ -887,7 +895,7 @@ LEVY_SHORT = {"poignee": "Poignee", "troupe": "Troupe", "masse": "Masse"}
 
 def commerce_ready(state) -> bool:
     """L'onglet Commerce vient avec le premier village."""
-    return bool(sites.of_tribe(state, PLAYER_TRIBE_ID, "village"))
+    return bool(sites.of_tribe(state, state.viewer, "village"))
 
 
 def commerce_alert(state) -> bool:
@@ -895,16 +903,16 @@ def commerce_alert(state) -> bool:
     plus rien."""
     from src.kora import goods
 
-    return any(r.by == PLAYER_TRIBE_ID and r.idle >= 2 for r in goods.routes_of(state, PLAYER_TRIBE_ID))
+    return any(r.by == state.viewer and r.idle >= 2 for r in goods.routes_of(state, state.viewer))
 
 
 def army_ready(state) -> bool:
-    tribe = state.tribes.get(PLAYER_TRIBE_ID)
+    tribe = state.tribes.get(state.viewer)
     if tribe is None:
         return False
-    if sites.of_tribe(state, PLAYER_TRIBE_ID, "village"):
+    if sites.of_tribe(state, state.viewer, "village"):
         return True
-    return any(b.tribe_id == PLAYER_TRIBE_ID and b.kind == "armee" for b in state.bands.values())
+    return any(b.tribe_id == state.viewer and b.kind == "armee" for b in state.bands.values())
 
 
 def draw_army(r, state, layout, ui) -> None:
@@ -913,14 +921,14 @@ def draw_army(r, state, layout, ui) -> None:
     title_font, head_font = _fonts(r)
     items = layout["items"]
     bx, by, bw, bh = layout["box"]
-    tribe = state.tribes.get(PLAYER_TRIBE_ID)
+    tribe = state.tribes.get(state.viewer)
     if tribe is None:
         return
     _box(r, (bx, by, bw, bh))
     pygame.draw.rect(r.screen, color_of(tribe), (bx, by + 10, 5, 44), border_radius=2)
     _text(r, title_font, "Armee", TEXT, bx + 18, by + 10)
-    troops = sorted((b for b in state.bands.values() if b.tribe_id == PLAYER_TRIBE_ID and b.kind == "armee"), key=lambda b: b.id)
-    homes = sites.of_tribe(state, PLAYER_TRIBE_ID, "village")
+    troops = sorted((b for b in state.bands.values() if b.tribe_id == state.viewer and b.kind == "armee"), key=lambda b: b.id)
+    homes = sites.of_tribe(state, state.viewer, "village")
     men = sum(b.population for b in troops)
     comps = sum(len(units.normalize(b)) for b in troops)
     _text(r, r.tiny, f"{comps} compagnie{'s' if comps > 1 else ''} sous les armes  ·  {men} guerriers  ·  {len(homes)} village{'s' if len(homes) > 1 else ''}", NOTE, bx + 18, by + 40)

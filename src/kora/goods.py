@@ -970,18 +970,21 @@ def route_text(state, me: int, route) -> str:
 
 
 def _note_opened(state, route) -> None:
+    """Un autre peuple (IA, ou un autre joueur) ouvre une route avec un joueur."""
+    from src.kora.sim import note
+
     by = state.tribes.get(route.by)
-    if by is None or by.is_player:
+    if by is None:
         return
     other = route.importer if route.by == route.exporter else route.exporter
-    if other not in state.tribes or not state.tribes[other].is_player:
+    if other == by.id or other not in state.tribes or not state.tribes[other].is_player:
         return
     some = GOOD_SOME.get(route.good, route.good)
     if route.by == route.exporter:
         text = f"Les {by.name} ouvrent une route : leurs porteurs vous vendront {some} chaque mois (Commerce [M] : vous pouvez la fermer)."
     else:
         text = f"Les {by.name} ouvrent une route : ils vous achetent {some} chaque mois (Commerce [M] : vous pouvez la fermer)."
-    state.log.add(LogKind.POLITIQUE, text, state.clock.year, state.clock.week)
+    note(state, LogKind.POLITIQUE, text, to=other)
 
 
 def _note_player(state) -> None:
@@ -993,12 +996,9 @@ def _note_player(state) -> None:
             continue
         month = last_month(state, tribe.id)
         if month["sold"] >= 1 or month["bought"] >= 1:
-            state.log.add(
-                LogKind.POLITIQUE,
-                f"Commerce du mois : ventes +{month['sold']:.0f} vivres, achats -{month['bought']:.0f} vivres.",
-                state.clock.year,
-                state.clock.week,
-            )
+            from src.kora.sim import note
+
+            note(state, LogKind.POLITIQUE, f"Commerce du mois : ventes +{month['sold']:.0f} vivres, achats -{month['bought']:.0f} vivres.", to=tribe.id)
 
 
 # --- IA ----------------------------------------------------------------------------

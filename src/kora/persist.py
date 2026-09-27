@@ -26,6 +26,36 @@ def default_save_path() -> Path:
     return root / "saves" / "kora.json"
 
 
+def multi_save_path() -> Path:
+    """La partie multijoueur de l'hote (a cote de la partie solo)."""
+    return default_save_path().with_name("kora-multi.json")
+
+
+def prefs_path() -> Path:
+    """Les reglages du joueur (nom, couleur, bonus, derniere adresse)."""
+    return default_save_path().with_name("reglages.json")
+
+
+def load_prefs() -> dict:
+    try:
+        data = json.loads(prefs_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_prefs(prefs: dict) -> None:
+    path = prefs_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(prefs), encoding="utf-8")
+    except OSError:
+        pass
+
+
+KEEP_ASIDE = 5
+
+
 def set_aside_save(path: Path) -> Path | None:
     """Sauvegarde illisible (autre carte, autre version) : on la renomme au
     lieu de l'ecraser avec la nouvelle partie."""
@@ -38,6 +68,14 @@ def set_aside_save(path: Path) -> Path | None:
         path.replace(target)
     except OSError:
         return None
+    # Chaque nouvelle partie met l'ancienne de cote : on en garde les
+    # KEEP_ASIDE dernieres (pas un dossier qui grossit sans fin).
+    old = sorted(path.parent.glob(f"{path.stem}-ancienne-*{path.suffix}"), key=lambda p: p.name)
+    for extra in old[:-KEEP_ASIDE]:
+        try:
+            extra.unlink()
+        except OSError:
+            pass
     return target
 
 
@@ -307,6 +345,35 @@ def _fight_from_json(data: dict) -> FightMark:
 
 
 def save_game(state: GameState, path: Path, view: dict | None = None) -> None:
+    payload = game_to_json(state, view)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def dumps_game(state: GameState, view: dict | None = None) -> str:
+    """La partie en texte (multijoueur : ce que l'hote envoie aux autres)."""
+    return json.dumps(game_to_json(state, view))
+
+
+def loads_game(text: str, world: World) -> tuple[GameState, dict] | None:
+    try:
+        data = json.loads(text)
+    except (ValueError, TypeError):
+        return None
+    return game_from_json(data, world)
+
+
+def _pov_to_json(pov) -> dict:
+    vis = pov.vision if isinstance(pov.vision, PlayerVision) else None
+    return {
+        "log": _log_to_json(pov.log),
+        "explored": [_hex_to_list(h) for h in vis.explored] if vis is not None else [],
+        "seen": sorted(pov.seen),
+    }
+
+
+def game_to_json(state: GameState, view: dict | None = None) -> dict:
     vis = state.vision if isinstance(state.vision, PlayerVision) else None
     explored = []
     if vis is not None:
@@ -346,6 +413,10 @@ def save_game(state: GameState, path: Path, view: dict | None = None) -> None:
             [tid, [[h.q, h.r, w] for h, w in spots.items()]] for tid, spots in state.presence.items()
         ],
         "overlap": [[a, b, n] for (a, b), n in state.overlap.items()],
+        # Pression de cueillette de la derniere semaine : l'epuisement des
+        # terres de la semaine suivante en depend (sans elle, recharger
+        # changeait la suite de la partie).
+        "pressure": [[h.q, h.r, p] for h, p in state.last_pressure.items()],
         "events": events.to_json(state.events),
         "tribes": [_tribe_to_json(t) for t in state.tribes.values()],
         "bands": [_band_to_json(b) for b in state.bands.values()],
@@ -358,10 +429,11 @@ def save_game(state: GameState, path: Path, view: dict | None = None) -> None:
         "seen_enemy_tribes": sorted(state.seen_enemy_tribes),
         "fights": [_fight_to_json(m) for m in state.fights],
         "view": _view_to_json(view),
+        # Multijoueur : journal, carte exploree, peuples apercus des autres
+        # joueurs (le joueur solo : log, explored, seen_enemy_tribes).
+        "povs": [[tid, _pov_to_json(pov)] for tid, pov in sorted(state.povs.items()) if tid in state.tribes],
     }
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload), encoding="utf-8")
+    return payload
 
 
 def load_game(path: Path, world: World) -> tuple[GameState, dict] | None:
@@ -372,6 +444,10 @@ def load_game(path: Path, world: World) -> tuple[GameState, dict] | None:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return None
+    return game_from_json(data, world)
+
+
+def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
     if not isinstance(data, dict) or data.get("version") != SAVE_VERSION:
         return None
     info = data.get("map") or {}
@@ -429,6 +505,7 @@ def load_game(path: Path, world: World) -> tuple[GameState, dict] | None:
         )
         if isinstance(data.get("story_rng"), dict):
             state.story_rng = _rng_from_json(data["story_rng"])
+        state.last_pressure = {Hex(int(q), int(r)): float(p) for q, r, p in data.get("pressure", [])}
         from src.kora.peoples import LEGACY_COLOR, LEGACY_CULTURE, free_color
 
         for tribe in tribes.values():
@@ -492,10 +569,22 @@ def load_game(path: Path, world: World) -> tuple[GameState, dict] | None:
             world._season_gen += 1
         else:
             world.fill_season(clock.season())
+        from src.kora.sim import Pov
+
+        explored_of = {}
+        for tid, raw in data.get("povs", []):
+            tid = int(tid)
+            if tid in tribes and isinstance(raw, dict):
+                state.povs[tid] = Pov(log=_log_from_json(raw.get("log")), seen={int(t) for t in raw.get("seen", [])})
+                explored_of[tid] = raw.get("explored", [])
         recompute_vision(state)
         vis = state.vision
         if isinstance(vis, PlayerVision):
             vis.explored |= {_hex_from_list(h) for h in data.get("explored", [])}
+        for tid, cells in explored_of.items():
+            pov_vis = state.povs[tid].vision
+            if isinstance(pov_vis, PlayerVision):
+                pov_vis.explored |= {_hex_from_list(h) for h in cells}
         if "diplo" not in data and world.width >= 300 and len(tribes) <= 4:
             # Partie d'avant les petits peuples : ils naissent hors de ce que
             # le joueur a deja explore (ils etaient la, on ne les voyait pas).

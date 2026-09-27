@@ -39,7 +39,6 @@ from src.kora.render_tech import (
     _tick,
     _wrap,
 )
-from src.kora.sim import PLAYER_TRIBE_ID
 from src.kora.types import Hex
 
 WARN = (236, 170, 90)
@@ -1090,7 +1089,7 @@ def _side(r, state, rect, side: dict, won: bool, attacker: bool) -> None:
     screen.blit(_gradient_card(w, h, (32, 34, 40), (20, 22, 26), 6), (x, y))
     pygame.draw.rect(screen, _lerp(color, (0, 0, 0), 0.3), rect, 1, border_radius=6)
     pygame.draw.rect(screen, color, (x, y, w, 6), border_top_left_radius=6, border_top_right_radius=6)
-    who = "Vous" if side["tribe"] == PLAYER_TRIBE_ID else side["name"]
+    who = "Vous" if side["tribe"] == state.viewer else side["name"]
     role = "ATTAQUANT" if attacker else "DEFENSEUR"
     screen.blit(r.tiny.render(role, True, GOLD_DIM), (x + 10, y + 12))
     tag = r.tiny.render("VAINQUEUR" if won else "VAINCU", True, GOOD if won else BAD)
@@ -1139,8 +1138,8 @@ def draw_battle(r, state, mark) -> None:
     _button(screen, r.small, lay["close"], "Fermer", True, _hover(lay["close"], mx, my))
     att, dfd = rep["attacker"], rep["defender"]
     att_won = rep["winner"] == "attacker"
-    mine_won = (att["tribe"] if att_won else dfd["tribe"]) == PLAYER_TRIBE_ID
-    mine_in = PLAYER_TRIBE_ID in (att["tribe"], dfd["tribe"])
+    mine_won = (att["tribe"] if att_won else dfd["tribe"]) == state.viewer
+    mine_in = state.viewer in (att["tribe"], dfd["tribe"])
     # Bandeau de l'issue.
     bar = (bx + 24, by + 64, bw - 48, 30)
     if rep.get("wiped"):

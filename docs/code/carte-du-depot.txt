@@ -1,11 +1,12 @@
 CARTE DU DEPOT — KORA
 (doc de code, pas de design de jeu)
 
-Date    : 2026-09-24
+Date    : 2026-09-27
 Statut  : a jour avec le proto actuel (tribus vivantes : peuples,
           zone d'influence, campements, chefs, diplomatie, evenements,
           ressources du pays, villages du neolithique ; fondation,
-          batiments, troupes et batailles simulees)
+          batiments, troupes et batailles simulees ; menu de demarrage,
+          bonus de depart, MULTIJOUEUR en lockstep)
 
 Ce fichier dit OU vit le code, QUI appelle QUI, et OU aller
 quand on veut changer quelque chose.
@@ -29,6 +30,9 @@ Le design de jeu (nourriture, raids, prestige, etc.) est ailleurs :
     (troupes = piles de compagnies typees, fusion des clans et anciens,
      emancipation apres le premier village, campements leves, caches
      prises par l'IA, monde plus grand, menu Armee)
+  docs/superpowers/specs/2026-09-27-menu-bonus-multijoueur.txt
+    (menu de demarrage, creation du peuple, bonus de depart ; plusieurs
+     peuples joueurs, canal des ordres, reseau lockstep, verifications)
 
 Ce qui n'est pas encore dans le proto, et ce qui pourrait venir :
   docs/code/suite-possible.txt
@@ -49,6 +53,11 @@ ni la nourriture ni les raids.
                           + noms de l'atlas precalcules
   tools/empreinte.py      preuve qu'un refactoring ne change pas le jeu
   tools/arbre_savoirs.py  ecrit l'arbre des savoirs dans sa spec
+  tools/essai_reseau.py   multijoueur : deux PROCESSUS (hote, ami), la vraie
+                          carte, des robots qui donnent des ordres ; les
+                          empreintes doivent etre identiques (avant de publier)
+  tools/essai_graines.py  une sauvegarde (COPIE) continuee dans deux
+                          processus aux graines de hachage differentes
   Kora.spec               empaquetage PyInstaller
   dist/Kora/Kora.exe      livrable Windows
   saves/kora.json         sauvegarde unique en dev
@@ -386,9 +395,39 @@ src/kora/render_village.py
   bataille (deux camps, graphe du moral par passe). *_layout et *_hit
   sont purs (tests sans fenetre).
 
+src/kora/render_menu.py
+  Avant la partie : menu de demarrage (planete qui tourne, calque et
+  brouillard A PART de celui de la partie), creation du peuple (nom,
+  couleur, 2 bonus parmi tech.START_BONUSES ; mode "host"/"join" : l'adresse
+  de l'hote), menu du multijoueur, SALON (4 places, prets, discussion) ;
+  en partie : draw_mp_overlay (bandeau des joueurs, discussion).
+
+src/kora/commands.py  (pas de pygame)
+  Le canal des ordres : [peuple, genre, args...] -> apply() (verifie que
+  le joueur commande ce qui est a lui). Tout ce que l'interface change a
+  la partie passe par la (app.issue). Un nouveau bouton qui modifie la
+  partie = un nouveau genre d'ordre ICI, sinon le multijoueur diverge.
+
+src/kora/net.py  (pas de pygame)
+  Connexions TCP : un message JSON par ligne, un fil de lecture et un
+  d'ecriture par connexion ; pack/unpack (zlib) ; Listener, connect,
+  parse_address, local_addresses. Port 45170 (KORA_PORT).
+
+src/kora/session.py  (pas de pygame)
+  HostSession / ClientSession : salon (Seat, places 1-4, prets, reprise
+  par nom), lancement (la partie en texte, relue par tous), lockstep
+  ("cmds" puis "tick", LAG, CATCH_UP), sync_digest et recopie ("start"),
+  "lost", pause/vitesse, discussion, depart/retour, run_step (le meme
+  code chez l'hote et chez l'ami).
+
 src/kora/app.py
-  Boucle 60 fps, clavier / souris, autosave 8 semaines,
-  menu, onglets, hover/pin inspect, branchement des ordres.
+  run() : menu de demarrage (title_screen) -> _multiplayer (salon) ->
+  play(renderer, clock, boot, mp) -> menu. play : boucle 60 fps, clavier
+  / souris, autosave 8 semaines (en reseau : l'hote seul, kora-multi.json),
+  menu, onglets, hover/pin inspect, ordres par issue() (commands.py).
+  En reseau : mp.pump (le temps de l'hote), resultats des ordres, notes,
+  partie recopiee, Entree = discussion ; les cartes ne mettent pas en
+  pause.
   T savoirs, B tribu, P peuples, J journal, Z zones, R ressources,
   E evenement, S scinder, F reunir (troupe : rentrer), C camper,
   K deposer, H honorer, V fonder / gerer le village, L lever une troupe
@@ -405,11 +444,13 @@ src/kora/app.py
 4. UNE FRAME, UN TICK
 ---------------------
 
-Frame (app.run, ~60 fois par seconde) :
-  1. evenements pygame (ordres, pause, zoom, orbite, menu)
-  2. si pas pause / pas menu / joueur vivant :
+Frame (app.play, ~60 fois par seconde) :
+  1. evenements pygame (ordres -> issue(), pause, zoom, orbite, menu)
+  2. solo : si pas pause / pas menu / joueur vivant,
        consume_ticks  (peut appeler tick 0 ou 1 fois par frame)
-  3. renderer.draw
+     reseau : mp.pump(dt) (l'hote annonce les semaines ; l'ami les
+       applique, au plus CATCH_UP par image)
+  3. renderer.draw (+ draw_mp_overlay en reseau)
   4. flip
 
 Un tick = une semaine. Ordre DANS tick() — ne pas le reordonner
@@ -569,6 +610,17 @@ Sphere, zoom, clic sur un hex       globe.py
 HUD, menu Echap, dessin des bandes  render.py
 Touche, clic, autosave, nouvelle    app.py
                                     partie
+Menu de demarrage, creation du      render_menu.py ; app.title_screen,
+peuple, bonus de depart             tech.START_BONUSES, sim.new_game(setup)
+Un nouvel ordre du joueur           commands.py (genre + handler), puis
+                                    app.issue(commands.make(...))
+Multijoueur : salon, lockstep,      session.py (HostSession, ClientSession),
+ecarts, reprise                     net.py, app._multiplayer ; verifier
+                                    avec tools/essai_reseau.py
+Un message au journal d'un joueur   sim.note(..., to=peuple) ; ce que
+                                    tous voient : note_seen / note_all
+Ce que voit l'ecran                 state.viewer (jamais PLAYER_TRIBE_ID
+                                    dans render*/app) ; vision.vision_of
 Taille / forme de la planete        mapgen.py PLANET_WIDTH / HEIGHT
                                     puis recuire data/kora_map.json
 Tests d'une regle                   tests/test_<sujet>.py

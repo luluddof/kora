@@ -99,6 +99,21 @@ class GameState:
     # Relations deja calculees, le temps d'une phase ou elles ne changent pas
     # (diplo.frozen_relations) : ni sauvegardees ni copiees.
     rel_memo: object | None = None
+    # Multijoueur : ce que voit et lit chaque autre peuple joueur (Pov) ; le
+    # joueur solo (PLAYER_TRIBE_ID) garde log, vision et seen_enemy_tribes.
+    povs: dict = field(default_factory=dict)
+    # Le joueur de CET ecran : l'interface seulement, la simulation ne le lit
+    # jamais (sinon deux machines calculeraient deux parties differentes).
+    viewer: int = PLAYER_TRIBE_ID
+
+
+@dataclass
+class Pov:
+    """Ce qui est a un joueur : son journal, sa vue, les peuples apercus."""
+
+    log: GameLog = field(default_factory=GameLog)
+    vision: object | None = None
+    seen: set = field(default_factory=set)
 
 
 GRID = 8
@@ -156,8 +171,74 @@ def new_band_id(state: GameState) -> int:
     return nid
 
 
-def note(state: GameState, kind: LogKind, text: str, where: Hex | None = None) -> None:
-    state.log.add(kind, text, state.clock.year, state.clock.week, where=where)
+# --- les peuples joueurs -------------------------------------------------------------
+# Un peuple is_player est mene par un humain : en solo, PLAYER_TRIBE_ID seul ;
+# en multijoueur, un par joueur. Les messages vont au journal du peuple
+# concerne (note(..., to=tid)) ; ce que tous peuvent voir va a chacun de ceux
+# qui le voient (note_seen).
+
+
+def humans(state: GameState) -> list[int]:
+    """Les peuples menes par un joueur (le joueur solo compte toujours)."""
+    out = [tid for tid, t in state.tribes.items() if t.is_player and tid != PLAYER_TRIBE_ID]
+    out.sort()
+    return [PLAYER_TRIBE_ID] + out
+
+
+def is_human(state: GameState, tid: int) -> bool:
+    if tid == PLAYER_TRIBE_ID:
+        return True
+    tribe = state.tribes.get(tid)
+    return bool(tribe is not None and tribe.is_player)
+
+
+def pov_of(state: GameState, tid: int) -> Pov:
+    pov = state.povs.get(tid)
+    if pov is None:
+        pov = state.povs[tid] = Pov()
+    return pov
+
+
+def log_of(state: GameState, tid: int) -> GameLog:
+    """Le journal d'un peuple joueur."""
+    if tid == PLAYER_TRIBE_ID:
+        return state.log
+    return pov_of(state, tid).log
+
+
+def seen_of(state: GameState, tid: int) -> set:
+    """Les peuples qu'un joueur a deja apercus."""
+    if tid == PLAYER_TRIBE_ID:
+        return state.seen_enemy_tribes
+    return pov_of(state, tid).seen
+
+
+def human_dead(state: GameState, tid: int) -> bool:
+    """Le peuple de ce joueur n'a plus personne."""
+    if tid == PLAYER_TRIBE_ID:
+        return state.player_dead
+    return not any(b.tribe_id == tid and b.population > 0 for b in state.bands.values())
+
+
+def note(state: GameState, kind: LogKind, text: str, where: Hex | None = None, to: int = PLAYER_TRIBE_ID) -> None:
+    log_of(state, to).add(kind, text, state.clock.year, state.clock.week, where=where)
+
+
+def note_all(state: GameState, kind: LogKind, text: str, where: Hex | None = None) -> None:
+    """A tous les joueurs (les saisons...)."""
+    for tid in humans(state):
+        note(state, kind, text, where, to=tid)
+
+
+def note_seen(state: GameState, kind: LogKind, text, where: Hex, but=()) -> None:
+    """A chaque joueur qui voit cette case (sauf `but`). text : une chaine,
+    ou une fonction du joueur qui lit (tid -> chaine)."""
+    from src.kora.vision import is_visible
+
+    for tid in humans(state):
+        if tid in but or not is_visible(state, where, tid):
+            continue
+        note(state, kind, text(tid) if callable(text) else text, where, to=tid)
 
 
 def is_shielded(state: GameState, band: Band) -> bool:
@@ -165,14 +246,16 @@ def is_shielded(state: GameState, band: Band) -> bool:
 
 
 def hex_inspect(state: GameState, h: Hex) -> dict | None:
+    """Ce que le joueur de cet ecran (state.viewer) sait d'une case."""
     from src.kora.vision import enemy_band_visible, is_explored, is_visible
 
+    me = state.viewer
     placed = state.world.canonicalize(h)
-    if placed is None or not is_explored(state, placed):
+    if placed is None or not is_explored(state, placed, me):
         return None
     terrain = state.world.terrain(placed)
     season = state.world.hex_season(placed)
-    visible = is_visible(state, placed)
+    visible = is_visible(state, placed, me)
     band_info = None
     food = None
     if visible:
@@ -180,17 +263,15 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
             state.world,
             placed,
             season,
-            herd=_herd_ok(state, PLAYER_TRIBE_ID),
-            bonus=bonus_of(state, PLAYER_TRIBE_ID),
+            herd=_herd_ok(state, me),
+            bonus=bonus_of(state, me),
         )
         for band in state.bands.values():
             if band.population <= 0:
                 continue
             if band.position != placed:
                 continue
-            if band.tribe_id != PLAYER_TRIBE_ID and not enemy_band_visible(
-                state, band
-            ):
+            if band.tribe_id != me and not enemy_band_visible(state, band, me):
                 continue
             tribe = state.tribes.get(band.tribe_id)
             band_info = {
@@ -199,18 +280,18 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
                 "name": tribe.name if tribe else "?",
                 "population": band.population,
                 "stock": band.stock,
-                "ally": band.tribe_id == PLAYER_TRIBE_ID,
+                "ally": band.tribe_id == me,
             }
             break
     site = sites.site_on_hex(state, placed)
     site_info = None
-    if site is not None and (visible or site.tribe_id == PLAYER_TRIBE_ID):
+    if site is not None and (visible or site.tribe_id == me):
         site_info = sites.site_lines(state, site)
     elif site is None:
         from src.kora import villages
 
         owner = villages.field_site(state, placed)
-        if owner is not None and (visible or owner.tribe_id == PLAYER_TRIBE_ID):
+        if owner is not None and (visible or owner.tribe_id == me):
             site_info = [f"Champ de {villages.name(owner)}"]
     return {
         "hex": placed,
@@ -389,17 +470,19 @@ def inspect_lines(info: dict) -> list[str]:
 def _note_spotted_enemies(state: GameState) -> None:
     from src.kora.vision import is_visible
 
-    for band in state.bands.values():
-        if band.population <= 0 or band.tribe_id == PLAYER_TRIBE_ID:
-            continue
-        if band.tribe_id in state.seen_enemy_tribes:
-            continue
-        if not is_visible(state, band.position):
-            continue
-        state.seen_enemy_tribes.add(band.tribe_id)
-        tribe = state.tribes.get(band.tribe_id)
-        name = tribe.name if tribe else "ennemie"
-        note(state, LogKind.DECOUVERTE, f"Des {name} ont ete apercus.")
+    for me in humans(state):
+        seen = seen_of(state, me)
+        for band in state.bands.values():
+            if band.population <= 0 or band.tribe_id == me:
+                continue
+            if band.tribe_id in seen:
+                continue
+            if not is_visible(state, band.position, me):
+                continue
+            seen.add(band.tribe_id)
+            tribe = state.tribes.get(band.tribe_id)
+            name = tribe.name if tribe else "ennemie"
+            note(state, LogKind.DECOUVERTE, f"Des {name} ont ete apercus.", to=me)
 
 
 def _water_ok(state: GameState, tribe_id: int) -> bool:
@@ -496,7 +579,7 @@ def collect_food(state: GameState) -> None:
             site = site_of(state, band)
             if site is not None:
                 note_forage(state, site, gained[band.id])
-    player_loss = 0
+    losses: dict[int, int] = {}
     for band in state.bands.values():
         take = gained.get(band.id, 0.0)
         need = band.population * 1.0
@@ -527,10 +610,10 @@ def collect_food(state: GameState) -> None:
             tribe = state.tribes.get(band.tribe_id)
             if tribe is not None and state.clock.week >= WINTER_TAIL_WEEK:
                 tribe.famine_during_winter = True
-            if band.tribe_id == PLAYER_TRIBE_ID:
-                player_loss += loss
-    if player_loss > 0:
-        note(state, LogKind.SURVIE, f"Famine : {player_loss} morts.")
+            if tribe is not None and (tribe.is_player or band.tribe_id == PLAYER_TRIBE_ID):
+                losses[band.tribe_id] = losses.get(band.tribe_id, 0) + loss
+    for tid in sorted(losses):
+        note(state, LogKind.SURVIE, f"Famine : {losses[tid]} morts.", to=tid)
     state.last_pressure = pressure
 
 
@@ -581,12 +664,13 @@ def remove_dead_bands(state: GameState) -> None:
     for bid in dead:
         band = state.bands[bid]
         what = "troupe" if band.kind == "armee" else "bande"
-        if band.tribe_id == PLAYER_TRIBE_ID:
-            note(state, LogKind.COMBAT, f"Votre {what} a ete detruite.", where=band.position)
-        elif is_visible(state, band.position):
-            tribe = state.tribes.get(band.tribe_id)
-            name = tribe.name if tribe else "ennemie"
-            note(state, LogKind.COMBAT, f"Une {what} {name} a ete detruite.", where=band.position)
+        if is_human(state, band.tribe_id):
+            note(state, LogKind.COMBAT, f"Votre {what} a ete detruite.", where=band.position, to=band.tribe_id)
+        tribe = state.tribes.get(band.tribe_id)
+        name = tribe.name if tribe else "ennemie"
+        for me in humans(state):
+            if me != band.tribe_id and is_visible(state, band.position, me):
+                note(state, LogKind.COMBAT, f"Une {what} {name} a ete detruite.", where=band.position, to=me)
         del state.bands[bid]
         if band.village:
             from src.kora import villages
@@ -775,11 +859,12 @@ def split_band(state: GameState, band_id: int) -> int | None:
     band.stock -= stock
     chiefs.on_split(state, band, state.bands[nid])
     _ai_caches_changed(state)
-    if band.tribe_id == PLAYER_TRIBE_ID:
+    if is_human(state, band.tribe_id):
         note(
             state,
             LogKind.SURVIE,
             f"La bande se scinde : {band.population} et {moved}.",
+            to=band.tribe_id,
         )
     return nid
 
@@ -885,12 +970,12 @@ def merge_bands(state: GameState, band_id: int) -> int:
     for mate in far:
         set_march_to_band(state, mate.id, keep.id)
     walking = [m for m in far if m.order.kind is OrderKind.MARCH_TO_BAND]
-    if keep.tribe_id == PLAYER_TRIBE_ID:
+    if is_human(state, keep.tribe_id):
         if near:
-            note(state, LogKind.SURVIE, merge_text(keep, names))
+            note(state, LogKind.SURVIE, merge_text(keep, names), to=keep.tribe_id)
         if walking:
             n = len(walking)
-            note(state, LogKind.SURVIE, f"{n} bande{'s' if n > 1 else ''} proche{'s' if n > 1 else ''} vien{'nent' if n > 1 else 't'} vous rejoindre.", keep.position)
+            note(state, LogKind.SURVIE, f"{n} bande{'s' if n > 1 else ''} proche{'s' if n > 1 else ''} vien{'nent' if n > 1 else 't'} vous rejoindre.", keep.position, to=keep.tribe_id)
     return len(near) + len(walking)
 
 
@@ -927,8 +1012,8 @@ def resolve_joins(state: GameState) -> None:
                 continue
         names = [band.leader.name] if band.leader is not None and band.kind == target.kind else []
         _absorb(state, target, band)
-        if target.tribe_id == PLAYER_TRIBE_ID:
-            note(state, LogKind.SURVIE, merge_text(target, names))
+        if is_human(state, target.tribe_id):
+            note(state, LogKind.SURVIE, merge_text(target, names), to=target.tribe_id)
 
 
 def apply_movement(state: GameState) -> None:
@@ -977,12 +1062,13 @@ def apply_movement(state: GameState) -> None:
             band.order = stay_order()
         if band.retreating and not band.path:
             band.retreating = False
-            if band.tribe_id == PLAYER_TRIBE_ID:
+            if is_human(state, band.tribe_id):
                 note(
                     state,
                     LogKind.COMBAT,
                     f"Repli termine : {band.population} personnes a l'abri.",
                     where=band.position,
+                    to=band.tribe_id,
                 )
 
 
@@ -1122,7 +1208,7 @@ def _retreat_sites(state: GameState, band: Band, winner: Band) -> list[Hex]:
     herd = _herd_ok(state, band.tribe_id)
     bonus = bonus_of(state, band.tribe_id)
     water_ok = _water_ok(state, band.tribe_id)
-    player = band.tribe_id == PLAYER_TRIBE_ID
+    player = is_human(state, band.tribe_id)
     # Seuls les etrangers assez proches peuvent changer le score d'une case.
     span = RETREAT_SEARCH_RADIUS + RETREAT_SAFE_DIST
     foes = [
@@ -1137,7 +1223,7 @@ def _retreat_sites(state: GameState, band: Band, winner: Band) -> list[Hex]:
     for h in world.hexes_in_radius(band.position, RETREAT_SEARCH_RADIUS)[::2]:
         if h == band.position or enter_cost_for(world, h, water_ok) is None:
             continue
-        if player and not is_explored(state, h):
+        if player and not is_explored(state, h, band.tribe_id):
             continue
         near = min((world.distance(h, f) for f in foes), default=RETREAT_SAFE_DIST)
         if near < 3 or world.distance(h, winner.position) < 4:
@@ -1208,7 +1294,7 @@ def add_fight_mark(state: GameState, mark: FightMark) -> None:
 
 def player_home_hex(state: GameState) -> Hex | None:
     for band in state.bands.values():
-        if band.tribe_id == PLAYER_TRIBE_ID and band.population > 0:
+        if band.tribe_id == state.viewer and band.population > 0:
             return band.position
     return None
 
@@ -1219,9 +1305,9 @@ def fight_at(state: GameState, h: Hex | None) -> FightMark | None:
     return next((m for m in reversed(state.fights) if m.hex == h), None)
 
 
-def fight_lines(mark: FightMark) -> list[str]:
+def fight_lines(mark: FightMark, me: int = PLAYER_TRIBE_ID) -> list[str]:
     def label(tribe_id: int, name: str) -> str:
-        return "Vous" if tribe_id == PLAYER_TRIBE_ID else name
+        return "Vous" if tribe_id == me else name
 
     w = label(mark.winner_tribe, mark.winner_name)
     l = label(mark.loser_tribe, mark.loser_name)
@@ -1255,20 +1341,22 @@ def _raid_sides(a: Band, b: Band) -> tuple[Band, Band]:
     return a, b
 
 
-def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band) -> str:
+def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band, me: int = PLAYER_TRIBE_ID) -> str:
+    """Le raid raconte au joueur `me`."""
+
     def name(band: Band) -> str:
         tribe = state.tribes.get(band.tribe_id)
         return tribe.name if tribe else "ennemi"
 
     hunted = attacker.order.kind is OrderKind.MARCH_TO_BAND
-    player_won = winner.tribe_id == PLAYER_TRIBE_ID
-    if PLAYER_TRIBE_ID not in (attacker.tribe_id, defender.tribe_id):
+    player_won = winner.tribe_id == me
+    if me not in (attacker.tribe_id, defender.tribe_id):
         return f"Un raid a ete apercu : {name(attacker)} contre {name(defender)}."
     if not hunted:
-        other = defender if attacker.tribe_id == PLAYER_TRIBE_ID else attacker
+        other = defender if attacker.tribe_id == me else attacker
         result = "vous l'emportez" if player_won else "vous perdez"
         return f"Accrochage avec {name(other)} : {result}."
-    if attacker.tribe_id == PLAYER_TRIBE_ID:
+    if attacker.tribe_id == me:
         result = "victoire" if player_won else "echec"
         return f"Raid contre {name(defender)} : {result}."
     result = "repousse" if player_won else "vous perdez"
@@ -1315,13 +1403,13 @@ def resolve_raids(state: GameState) -> None:
             a, foe = pair
             attacker, defender = _raid_sides(a, foe)
             hunted = _hunts(attacker, defender)
-            seen = is_visible(state, h)
-            player_in = PLAYER_TRIBE_ID in (a.tribe_id, foe.tribe_id)
+            # Les joueurs qui y sont, ou qui voient la case.
+            told = [t for t in humans(state) if t in (a.tribe_id, foe.tribe_id) or is_visible(state, h, t)]
             res = battle.fight(state, attacker, defender, h)
             fought.update(res.engaged)
             winner, loser = res.winner, res.loser
-            if player_in or seen:
-                note(state, LogKind.COMBAT, _raid_text(state, attacker, defender, winner) + battle.log_suffix(state, res), where=h)
+            for me in told:
+                note(state, LogKind.COMBAT, _raid_text(state, attacker, defender, winner, me) + battle.log_suffix(state, res, me), where=h, to=me)
             wt = state.tribes[winner.tribe_id]
             lt = state.tribes[loser.tribe_id]
             wt.prestige = min(100, wt.prestige + (10 if res.wiped else 5))
@@ -1334,7 +1422,7 @@ def resolve_raids(state: GameState) -> None:
             if winner.order.kind is OrderKind.MARCH_TO_BAND:
                 winner.order = stay_order()
                 winner.path = []
-            if player_in or seen:
+            if told:
                 add_fight_mark(
                     state,
                     FightMark(
@@ -1354,8 +1442,8 @@ def resolve_raids(state: GameState) -> None:
                         report=res.report,
                     ),
                 )
-            if res.building and loser.tribe_id == PLAYER_TRIBE_ID:
-                note(state, LogKind.COMBAT, f"Le village a perdu : {res.building}.", where=h)
+            if res.building and is_human(state, loser.tribe_id):
+                note(state, LogKind.COMBAT, f"Le village a perdu : {res.building}.", where=h, to=loser.tribe_id)
     remove_dead_bands(state)
 
 
@@ -1430,6 +1518,7 @@ class _Snap:
     diplo: object
     next_person_id: int
     events: object
+    povs: dict = field(default_factory=dict)
 
 
 def _copy_tribe(tribe: Tribe) -> Tribe:
@@ -1489,6 +1578,10 @@ def snapshot(state: GameState) -> _Snap:
         diplo=diplo.copy_diplo(state.diplo),
         next_person_id=state.next_person_id,
         events=copy.deepcopy(state.events),
+        povs={
+            tid: Pov(GameLog(entries=list(p.log.entries), seq=p.log.seq), p.vision, set(p.seen))
+            for tid, p in state.povs.items()
+        },
     )
 
 
@@ -1520,6 +1613,7 @@ def _restore(state: GameState, saved: _Snap) -> None:
     state.diplo = saved.diplo
     state.next_person_id = saved.next_person_id
     state.events = saved.events
+    state.povs = saved.povs
     from src.kora.vision import recompute_vision
 
     recompute_vision(state)
@@ -1558,9 +1652,16 @@ def _default_world() -> World:
     return world
 
 
-def new_game(world: World | None = None, minor_peoples: int | None = None, setup: dict | None = None) -> GameState:
+def new_game(
+    world: World | None = None,
+    minor_peoples: int | None = None,
+    setup: dict | None = None,
+    others: dict | None = None,
+) -> GameState:
     """Une partie neuve. setup (menu de demarrage) : "name", "color" et
-    "bonuses" (tech.START_BONUSES) de la tribu du joueur."""
+    "bonuses" (tech.START_BONUSES) de la tribu du joueur. others
+    (multijoueur) : {place: setup} des autres joueurs, places 2 a 4
+    (steppe, foret, cote) ; les places libres restent a l'IA."""
     from src.kora.clock import Clock
     from src.kora.types import Band, Tribe
     from src.kora.vision import recompute_vision
@@ -1578,13 +1679,17 @@ def new_game(world: World | None = None, minor_peoples: int | None = None, setup
         tribes[tid] = Tribe(tid, name, 20, False, culture=culture)
     for tribe in tribes.values():
         tribe.color = LEGACY_COLOR[tribe.id]
-    if setup:
-        player = tribes[PLAYER_TRIBE_ID]
-        if setup.get("name"):
-            player.name = str(setup["name"])[:24]
-        if setup.get("color"):
-            player.color = tuple(int(c) for c in setup["color"])
-        tech.set_start_bonuses(player, setup.get("bonuses", ()), 0)
+    seats = {PLAYER_TRIBE_ID: setup} if setup else {}
+    for tid, extra in sorted((others or {}).items()):
+        if int(tid) in tribes and int(tid) != PLAYER_TRIBE_ID:
+            seats[int(tid)] = extra or {}
+    for tid, seat in seats.items():
+        player = tribes[tid]
+        if seat.get("name"):
+            player.name = str(seat["name"])[:24]
+        if seat.get("color"):
+            player.color = tuple(int(c) for c in seat["color"])
+        tech.set_start_bonuses(player, seat.get("bonuses", ()), 0)
     # Chaque tribu part sur le biome de son nom, avec de quoi nourrir
     # sa bande au printemps. La Steppe connait deja le troupeau, la Cote
     # le cabotage : c'est leur savoir de depart.
@@ -1601,6 +1706,10 @@ def new_game(world: World | None = None, minor_peoples: int | None = None, setup
     )
     for tribe in tribes.values():
         tech.start_knowledge(tribe)
+    # Les autres joueurs gardent le savoir de leur pays (troupeau pour la
+    # steppe, cabotage pour la cote) : start_knowledge est passe avant.
+    for tid in seats:
+        tribes[tid].is_player = True
     bands = {
         1: Band(1, PLAYER_TRIBE_ID, spots[0], 40, 160.0),
         2: Band(2, AI_STEPPE_ID, spots[1], 36, 144.0),
@@ -1688,7 +1797,7 @@ def tick(state: GameState) -> None:
         prev_season = state.clock.season()
         state.clock.advance_week()
         if state.clock.season() is not prev_season:
-            note(
+            note_all(
                 state,
                 LogKind.SAISON,
                 f"{season_fr(state.clock.season())} commence.",

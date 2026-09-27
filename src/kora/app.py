@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import chiefs, diplo, events, orders, tech
+from src.kora import chiefs, commands, diplo, events, orders
 from src.kora.globe import (
     FOCUS_ZOOM,
     clamp_pitch,
@@ -12,7 +12,7 @@ from src.kora.globe import (
     view_params,
 )
 from src.kora.log import FILTER_ALL, LogKind
-from src.kora.persist import default_save_path, load_game, save_game, set_aside_save
+from src.kora.persist import default_save_path, load_game, multi_save_path, save_game, set_aside_save
 from src.kora.render import (
     HUD_HEIGHT,
     MAX_ZOOM,
@@ -30,7 +30,8 @@ from src.kora.render import (
     side_hit,
 )
 from src.kora.sim import (
-    PLAYER_TRIBE_ID,
+    human_dead,
+    log_of,
     _default_world,
     consume_ticks,
     fight_at,
@@ -38,8 +39,6 @@ from src.kora.sim import (
     new_game,
     note,
     player_home_hex,
-    set_goto,
-    set_march_to_band,
 )
 
 
@@ -115,7 +114,7 @@ def _fight_at_pixel(state, x, y, zoom, globe_yaw, globe_pitch, sw, sh):
 
 
 def _player_band_ids(state) -> list[int]:
-    return sorted(b.id for b in state.bands.values() if b.tribe_id == PLAYER_TRIBE_ID)
+    return sorted(b.id for b in state.bands.values() if b.tribe_id == state.viewer)
 
 
 def _first_player_band(state):
@@ -127,7 +126,7 @@ def _refresh_selection(state, selected):
     # None = rien de selectionne, voulu par le joueur : un clic sur la carte
     # montre alors la case sans deplacer personne. Une bande disparue
     # (reunie, detruite, partie) passe la selection a une autre bande.
-    if selected is None or (selected in state.bands and state.bands[selected].tribe_id == PLAYER_TRIBE_ID):
+    if selected is None or (selected in state.bands and state.bands[selected].tribe_id == state.viewer):
         return selected
     return _first_player_band(state)
 
@@ -243,6 +242,8 @@ def _fresh_ui() -> dict:
         "levy": "troupe",
         "levy_role": "melee",
         "leave_confirm": 0.0,
+        # Multijoueur : cartes deja repondues (la reponse est en route).
+        "answered": set(),
     }
 
 
@@ -270,32 +271,77 @@ def run() -> None:
         sw, sh = renderer.screen.get_size()
         if choice[0] == "quit":
             break
-        _loading(renderer, "La partie se prepare...")
-        if choice[0] == "continue":
-            boot = _continue_boot(worlds, sw, sh)
-            if boot is None:
-                message = "La sauvegarde ne se lit pas (autre version ?) : elle est mise de cote."
+        mp = None
+        if choice[0] in ("host", "join", "resume_mp"):
+            out = _multiplayer(renderer, clock, worlds, choice)
+            if out[0] == "quit":
+                break
+            if out[0] == "back":
+                message = out[1]
                 continue
+            mp, state = out[1], out[2]
+            boot = _start_view(state, _first_player_band(state), sw, sh)
         else:
-            boot = _new_boot(worlds, choice[1], sw, sh)
+            _loading(renderer, "La partie se prepare...")
+            if choice[0] == "continue":
+                boot = _continue_boot(worlds, sw, sh)
+                if boot is None:
+                    message = "La sauvegarde ne se lit pas (autre version ?) : elle est mise de cote."
+                    continue
+            else:
+                boot = _new_boot(worlds, choice[1], sw, sh)
         _settle_memory()
-        if play(renderer, clock, boot) == "quit":
+        outcome, message = play(renderer, clock, boot, mp)
+        if outcome == "quit":
             break
     pygame.quit()
 
 
+def _remember(setup: dict) -> None:
+    """Le nom, la couleur, les bonus et la derniere adresse : proposes la
+    prochaine fois (reglages.json, a cote des sauvegardes)."""
+    from src.kora.persist import load_prefs, save_prefs
+
+    prefs = load_prefs()
+    for key in ("name", "color", "bonuses", "address"):
+        if setup.get(key):
+            prefs[key] = list(setup[key]) if key in ("color", "bonuses") else setup[key]
+    save_prefs(prefs)
+
+
+def _prefilled(setup: dict) -> dict:
+    from src.kora import render_menu, tech
+    from src.kora.persist import load_prefs
+
+    prefs = load_prefs()
+    if isinstance(prefs.get("name"), str) and prefs["name"].strip():
+        setup["name"] = prefs["name"][: render_menu.NAME_MAX]
+    color = prefs.get("color")
+    if isinstance(color, list) and tuple(color) in render_menu.PALETTE:
+        setup["color"] = tuple(color)
+    bonuses = [b for b in prefs.get("bonuses", []) if b in tech.START_BONUSES][: tech.START_BONUS_PICKS]
+    if bonuses:
+        setup["bonuses"] = bonuses
+    if isinstance(prefs.get("address"), str):
+        setup["address"] = prefs["address"][: render_menu.ADDRESS_MAX]
+    return setup
+
+
 def title_screen(renderer, clock, worlds, message: str = ""):
-    """Le menu de demarrage et la creation du peuple. Rend ("continue",),
-    ("new", setup) ou ("quit",)."""
+    """Le menu de demarrage, la creation du peuple, le menu du multijoueur.
+    Rend ("continue",), ("new", setup), ("host", setup), ("join", setup),
+    ("resume_mp",) ou ("quit",)."""
     import random
 
     from src.kora import render_menu
-    from src.kora.persist import peek_save
+    from src.kora.persist import multi_save_path, peek_save
 
     scene = render_menu.TitleScene(worlds.shown)
     info = peek_save(default_save_path())
+    multi = peek_save(multi_save_path())
     rng = random.Random()
     setup = None
+    page = "title"
     hint = ""
     t = 0.0
     while True:
@@ -307,6 +353,7 @@ def title_screen(renderer, clock, worlds, message: str = ""):
                 renderer.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
                 continue
             if setup is not None:
+                mode = setup.get("mode", "solo")
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         if setup.get("typing"):
@@ -316,20 +363,39 @@ def title_screen(renderer, clock, worlds, message: str = ""):
                     elif setup.get("typing"):
                         render_menu.setup_key(setup, event)
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and render_menu.setup_ready(setup):
-                        return ("new", render_menu.setup_for_game(setup))
+                        _remember(setup)
+                        return (mode if mode != "solo" else "new", render_menu.setup_for_game(setup) | {"address": setup.get("address", "")})
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     hits = getattr(renderer, "setup_hits", None)
-                    hit = render_menu.setup_hit(hits, *event.pos) if hits else None
+                    hit = render_menu.setup_hit(hits, *event.pos, mode=mode) if hits else None
                     if hit is None:
                         setup["typing"] = False
                     elif hit == "back":
                         setup = None
                     elif hit == "start":
                         if render_menu.setup_ready(setup):
-                            return ("new", render_menu.setup_for_game(setup))
+                            _remember(setup)
+                            return (mode if mode != "solo" else "new", render_menu.setup_for_game(setup) | {"address": setup.get("address", "")})
                         hint = render_menu.setup_missing(setup)
                     else:
                         hint = render_menu.setup_click(setup, hit, rng)
+                continue
+            if page == "mp":
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    page = "title"
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    hits = getattr(renderer, "mp_menu_hits", None)
+                    hit = render_menu.mp_menu_hit(hits, *event.pos, can_resume=multi is not None) if hits else None
+                    if hit == "retour":
+                        page = "title"
+                    elif hit in ("heberger", "rejoindre"):
+                        setup = _prefilled(render_menu.new_setup(rng))
+                        setup["mode"] = "host" if hit == "heberger" else "join"
+                        if setup["mode"] == "join" and not setup.get("address"):
+                            setup["typing"] = "address"
+                        hint = ""
+                    elif hit == "reprendre":
+                        return ("resume_mp",)
                 continue
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -342,20 +408,151 @@ def title_screen(renderer, clock, worlds, message: str = ""):
                 if hit == "continuer":
                     return ("continue",)
                 if hit == "nouvelle":
-                    setup = render_menu.new_setup(rng)
+                    setup = _prefilled(render_menu.new_setup(rng))
                     hint = ""
                 elif hit == "multijoueur":
-                    message = "Le multijoueur arrive : il se prepare."
+                    page = "mp"
+                    message = ""
                 elif hit == "quitter":
                     return ("quit",)
-        render_menu.draw_title(renderer, scene, info, t, message)
+        if page == "mp":
+            render_menu.draw_mp_menu(renderer, scene, multi, t, message)
+        else:
+            render_menu.draw_title(renderer, scene, info, t, message)
         if setup is not None:
-            render_menu.draw_setup(renderer, setup, t, info, hint)
+            render_menu.draw_setup(renderer, setup, t, info if setup.get("mode", "solo") == "solo" else None, hint)
         pygame.display.flip()
 
 
-def play(renderer, clock, boot) -> str:
-    """Une partie, jusqu'au retour au menu ("menu") ou au depart ("quit")."""
+def _multiplayer(renderer, clock, worlds, choice):
+    """Heberger, rejoindre ou reprendre : jusqu'au lancement de la partie.
+    Rend ("play", session, state), ("back", message) ou ("quit",)."""
+    import threading
+
+    from src.kora import net, render_menu, session
+    from src.kora.persist import load_game, multi_save_path
+
+    scene = render_menu.TitleScene(worlds.shown)
+    mp = None
+    connecting = None
+    status = ""
+    try:
+        if choice[0] == "host":
+            mp = session.HostSession(choice[1], port=net.PORT)
+        elif choice[0] == "resume_mp":
+            _loading(renderer, "La partie a plusieurs se prepare...")
+            loaded = load_game(multi_save_path(), worlds.fresh())
+            if loaded is None:
+                return ("back", "La partie a plusieurs ne se lit pas (autre version ?).")
+            saved, _view = loaded
+            me = saved.tribes[1]
+            mp = session.HostSession({"name": me.name, "color": me.color, "bonuses": me.start_bonuses}, port=net.PORT, resume=saved)
+        else:
+            host, port = net.parse_address(choice[1].get("address", ""))
+            status = f"Connexion a {host}..."
+            box: dict = {}
+
+            def work():
+                try:
+                    box["conn"] = net.connect(host, port)
+                except OSError as exc:
+                    box["err"] = str(exc)
+
+            connecting = (threading.Thread(target=work, daemon=True), box, choice[1])
+            connecting[0].start()
+    except OSError as exc:
+        return ("back", f"Impossible d'ouvrir le salon (port {net.PORT} deja pris ?) : {exc}")
+    chat_text = None
+    hint = ""
+    t = 0.0
+    while True:
+        t += clock.tick(60) / 1000.0
+        if connecting is not None:
+            _thread, box, setup = connecting
+            if "err" in box:
+                return ("back", f"Pas de reponse de l'hote ({box['err']}). Verifiez l'adresse, et que son salon est ouvert.")
+            if "conn" in box:
+                mp = session.ClientSession(box["conn"], setup)
+                connecting = None
+                status = ""
+        if mp is not None:
+            if mp.role == "host":
+                mp.pump_lobby()
+            else:
+                mp.pump_lobby()
+                if mp.ended:
+                    mp.close()
+                    return ("back", mp.ended)
+                if mp.snap is not None:
+                    _loading(renderer, "La partie arrive de l'hote...")
+                    state = mp.begin(worlds.fresh())
+                    if state is None:
+                        mp.close()
+                        return ("back", mp.ended)
+                    return ("play", mp, state)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                if mp is not None:
+                    mp.close()
+                return ("quit",)
+            if event.type == pygame.VIDEORESIZE:
+                renderer.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                continue
+            if mp is None:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    return ("back", "")
+                continue
+            if event.type == pygame.KEYDOWN:
+                if chat_text is not None:
+                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        mp.say(chat_text)
+                        chat_text = None
+                    elif event.key == pygame.K_ESCAPE:
+                        chat_text = None
+                    elif event.key == pygame.K_BACKSPACE:
+                        chat_text = chat_text[:-1]
+                    elif event.unicode and event.unicode.isprintable() and len(chat_text) < 160:
+                        chat_text += event.unicode
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    chat_text = ""
+                elif event.key == pygame.K_ESCAPE:
+                    mp.close()
+                    return ("back", "")
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                hits = getattr(renderer, "lobby_hits", None)
+                hit = render_menu.lobby_hit(hits, *event.pos, mp.role) if hits else None
+                if hit == "chat_input":
+                    chat_text = "" if chat_text is None else chat_text
+                elif hit == "back":
+                    mp.close()
+                    return ("back", "")
+                elif hit == "ready" and mp.role == "client":
+                    mine = mp.seats.get(mp.me)
+                    mp.set_ready(not (mine and mine.ready))
+                elif hit == "go" and mp.role == "host":
+                    why = mp.can_start()
+                    if why:
+                        hint = why
+                    else:
+                        _loading(renderer, "La partie se prepare...")
+                        world = mp.resume.world if mp.resume is not None else worlds.fresh()
+                        state = mp.start(world)
+                        return ("play", mp, state)
+                elif isinstance(hit, str) and hit.startswith("seat:") and mp.role == "client":
+                    tid = int(hit.split(":")[1])
+                    if tid not in mp.seats and not mp.resume:
+                        mp.want_slot(tid)
+        if mp is None:
+            render_menu.draw_title(renderer, scene, None, t, status)
+        else:
+            render_menu.draw_title(renderer, scene, None, t, "")
+            render_menu.draw_lobby(renderer, mp, t, chat_text, hint, status)
+        pygame.display.flip()
+
+
+def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
+    """Une partie, jusqu'au retour au menu ("menu", message) ou au depart
+    ("quit", ""). mp : la session multijoueur (session.py), sinon solo."""
     screen = renderer.screen
     state, selected, camera_x, camera_y, zoom, globe_yaw, globe_pitch = boot
     renderer.map_mode = "zones"
@@ -368,8 +565,11 @@ def play(renderer, clock, boot) -> str:
     tech_drag = 0
     tech_press = {"at": (0, 0), "moved": False, "pick": None}
     acc = 0.0
-    save_path = default_save_path()
+    # En multijoueur, seul l'hote sauvegarde (a part : la partie solo reste).
+    save_path = multi_save_path() if mp is not None else default_save_path()
     last_auto = -1
+    # Multijoueur : le message qu'on ecrit (Entree), None sinon.
+    chat_text = None
     menu_open = False
     side_panel = None
     tech_pick = None
@@ -378,7 +578,7 @@ def play(renderer, clock, boot) -> str:
     pinned_hex = None
     open_fight = None
     toasts: list[dict] = []
-    last_log_seq = state.log.seq
+    last_log_seq = log_of(state, state.viewer).seq
     ui: dict = _fresh_ui()
     resume_after_event = False
     resume_after_found = False
@@ -386,11 +586,46 @@ def play(renderer, clock, boot) -> str:
     now = 0.0
 
     def persist() -> None:
+        if mp is not None and mp.role != "host":
+            return
         save_game(
             state,
             save_path,
             _view(camera_x, camera_y, zoom, selected, globe_yaw, globe_pitch),
         )
+
+    def leave() -> None:
+        persist()
+        if mp is not None:
+            mp.close()
+
+    def say(res) -> None:
+        if res.get("msg"):
+            toast(res["msg"])
+
+    def issue(cmd, then=None) -> None:
+        """Un ordre du joueur (commands.py) : tout de suite en solo ; par
+        l'hote en multijoueur. then recoit la reponse quand il s'applique."""
+        then = then or say
+        if mp is None:
+            then(commands.apply(state, cmd))
+        else:
+            mp.issue(cmd, then)
+
+    def me() -> int:
+        return state.viewer
+
+    def toggle_pause() -> None:
+        if mp is None:
+            state.clock.toggle_pause()
+        else:
+            mp.toggle_pause()
+
+    def set_speed(n: int) -> None:
+        if mp is None:
+            state.clock.set_speed(n)
+        else:
+            mp.set_speed(n)
 
     def toast(text: str, combat: bool = False) -> None:
         nonlocal toasts
@@ -428,16 +663,19 @@ def play(renderer, clock, boot) -> str:
             else:
                 open_found(target)
             return
-        new_sel, message = orders.perform(state, target, action)
-        if message:
-            toast(message)
-        elif band_id is None:
-            selected = new_sel
+        def done(res):
+            nonlocal selected
+            if res["msg"]:
+                toast(res["msg"])
+            elif band_id is None and res["sel"] is not None:
+                selected = res["sel"]
+
+        issue(commands.make(me(), "band", target, action), done)
 
     def open_found(band_id) -> None:
-        """Fonder un village : un choix qui arrete le temps."""
+        """Fonder un village : un choix qui arrete le temps (en solo)."""
         nonlocal resume_after_found, side_panel
-        if ui["found"] is None:
+        if ui["found"] is None and mp is None:
             resume_after_found = not state.clock.paused
             state.clock.paused = True
         ui["found"] = band_id
@@ -485,13 +723,11 @@ def play(renderer, clock, boot) -> str:
             if partner is None:
                 toast("Choisissez un partenaire (il faut un accord commercial).")
                 return
-            why = goods.open_block(state, PLAYER_TRIBE_ID, partner, good, ui["trade_sell"], ui["trade_level"])
+            why = goods.open_block(state, state.viewer, partner, good, ui["trade_sell"], ui["trade_level"])
             if why:
                 toast(why)
                 return
-            route = goods.open_route(state, PLAYER_TRIBE_ID, partner, good, ui["trade_sell"], ui["trade_level"])
-            if route is not None:
-                toast(f"Route ouverte : {goods.route_text(state, PLAYER_TRIBE_ID, route).lower()} (chaque mois).")
+            issue(commands.make(me(), "route_open", partner, good, ui["trade_sell"], ui["trade_level"]))
             return
         if choice.startswith(("rlevel:", "rclose:")):
             parts = choice.split(":")
@@ -500,22 +736,21 @@ def play(renderer, clock, boot) -> str:
                 return
             route = renderer.trade_routes[idx]
             if choice.startswith("rclose:"):
-                if goods.close_route(state, PLAYER_TRIBE_ID, route):
-                    toast(f"Route fermee : {goods.route_text(state, PLAYER_TRIBE_ID, route).lower()}.")
+                issue(commands.make(me(), "route_close", commands.route_key(route)))
                 return
             level = int(parts[2])
-            why = goods.level_block(state, PLAYER_TRIBE_ID, route, level)
+            why = goods.level_block(state, state.viewer, route, level)
             if why:
                 toast(why)
             else:
-                goods.set_level(state, PLAYER_TRIBE_ID, route, level)
+                issue(commands.make(me(), "route_level", commands.route_key(route), level))
             return
         if choice.startswith("tpropose:"):
             tid = int(choice.split(":")[1])
-            if diplo.on_cooldown(state, PLAYER_TRIBE_ID, tid, "commerce"):
+            if diplo.on_cooldown(state, state.viewer, tid, "commerce"):
                 toast("Vous avez deja propose cela recemment.")
             else:
-                toast(diplo.perform(state, PLAYER_TRIBE_ID, tid, "commerce"))
+                issue(commands.make(me(), "diplo", tid, "commerce"))
             return
 
     def village_click(choice) -> None:
@@ -534,11 +769,14 @@ def play(renderer, clock, boot) -> str:
                 toast("Abandonner le village ? Cliquez encore pour confirmer (champs et batiments perdus).", True)
                 return
             ui["leave_confirm"] = 0.0
-            _sel, message = orders.perform(state, home.id, "leave")
-            if message:
-                toast(message)
-            else:
-                ui["village_open"] = None
+
+            def left(res):
+                if res["msg"]:
+                    toast(res["msg"])
+                else:
+                    ui["village_open"] = None
+
+            issue(commands.make(me(), "band", home.id, "leave"), left)
             return
         if choice.startswith("vb:"):
             ui["village_pick"] = choice[3:]
@@ -557,24 +795,29 @@ def play(renderer, clock, boot) -> str:
             if not chiefs.obeys(state, home):
                 toast(orders.INDOCILE)
                 return
-            n = goods.teams_of(site, cid)
             if choice.startswith("vteam+:"):
                 why = goods.add_block(state, site, cid)
                 if why:
                     toast(why)
                 else:
-                    goods.set_teams(state, site, cid, n + 1)
-            elif n > 0:
-                goods.set_teams(state, site, cid, n - 1)
+                    issue(commands.make(me(), "teams", site.id, cid, 1))
+            elif goods.teams_of(site, cid) > 0:
+                issue(commands.make(me(), "teams", site.id, cid, -1))
             return
         if choice == "vsplit":
-            new_sel, message = orders.perform(state, home.id, "split")
-            if message:
-                toast(message)
-            elif new_sel != home.id:
-                selected = new_sel
-                ui["village_open"] = None
-                toast(f"Une bande part de {villages.name(site)} : {state.bands[new_sel].population} personnes.")
+            place = villages.name(site)
+
+            def split_done(res, home_id=home.id):
+                nonlocal selected
+                new_sel = res["sel"]
+                if res["msg"]:
+                    toast(res["msg"])
+                elif new_sel is not None and new_sel != home_id and new_sel in state.bands:
+                    selected = new_sel
+                    ui["village_open"] = None
+                    toast(f"Une bande part de {place} : {state.bands[new_sel].population} personnes.")
+
+            issue(commands.make(me(), "band", home.id, "split"), split_done)
             return
         if choice == "vbuild":
             pick = ui["village_pick"] or next(
@@ -586,7 +829,7 @@ def play(renderer, clock, boot) -> str:
             if why:
                 toast(why)
             else:
-                villages.build(state, home.id, pick)
+                issue(commands.make(me(), "build", home.id, pick))
             return
         if choice.startswith("levy:"):
             ui["levy"] = choice[5:]
@@ -610,7 +853,7 @@ def play(renderer, clock, boot) -> str:
             if why:
                 toast(why)
             else:
-                villages.raise_army(state, home.id, share, type_id)
+                issue(commands.make(me(), "raise", home.id, ui["levy"], type_id))
             return
         if choice.startswith(("vsee:", "vrecall:", "vreequip:")):
             bid = int(choice.split(":")[1])
@@ -626,13 +869,13 @@ def play(renderer, clock, boot) -> str:
                 if why:
                     toast(why)
                 else:
-                    villages.reequip(state, bid)
+                    issue(commands.make(me(), "reequip", bid))
             else:
                 why = villages.dissolve_block(state, bid)
                 if why:
                     toast(why)
                 else:
-                    villages.dissolve(state, bid)
+                    issue(commands.make(me(), "dissolve", bid))
             return
 
     def army_click(choice) -> None:
@@ -643,7 +886,7 @@ def play(renderer, clock, boot) -> str:
         kind, _sep, rest = choice.partition(":")
         if kind == "arole":
             sid, role = rest.split(":")
-            if units.best(state.tribes[PLAYER_TRIBE_ID], role) is None:
+            if units.best(state.tribes[state.viewer], role) is None:
                 toast("Aucune unite de ce role pour l'instant (voir les savoirs).")
             else:
                 ui.setdefault("army_role", {})[int(sid)] = role
@@ -663,13 +906,13 @@ def play(renderer, clock, boot) -> str:
                 return
             role = ui.get("army_role", {}).get(site.id, "melee")
             key = ui.get("army_size", {}).get(site.id, "troupe")
-            unit = units.best(state.tribes[PLAYER_TRIBE_ID], role) or units.best(state.tribes[PLAYER_TRIBE_ID], "melee")
+            unit = units.best(state.tribes[state.viewer], role) or units.best(state.tribes[state.viewer], "melee")
             share = villages.LEVY_SHARE.get(key, villages.LEVY_SHARE["troupe"])
             why = villages.army_block(state, home.id, share, unit.id) or ("" if chiefs.obeys(state, home) else orders.INDOCILE)
             if why:
                 toast(why)
             else:
-                villages.raise_army(state, home.id, share, unit.id)
+                issue(commands.make(me(), "raise", home.id, key, unit.id))
             return
         bid = int(rest)
         army = state.bands.get(bid)
@@ -683,7 +926,7 @@ def play(renderer, clock, boot) -> str:
         if why:
             toast(why)
         else:
-            villages.dissolve(state, bid)
+            issue(commands.make(me(), "dissolve", bid))
 
     def found_click(choice) -> None:
         from src.kora import villages
@@ -706,18 +949,22 @@ def play(renderer, clock, boot) -> str:
                 toast(why)
                 close_found()
                 return
-            name = villages.propose_name(state, bid)
-            site = villages.found(state, bid, oath=ui["found_oath"], name_=name)
+            oath = ui["found_oath"]
             close_found()
-            if site is not None:
-                open_village(site.id)
+
+            def founded(res):
+                say(res)
+                if res["site"] is not None and res["site"] in state.sites:
+                    open_village(res["site"])
+
+            issue(commands.make(me(), "found", bid, oath), founded)
 
     def open_event(uid) -> None:
         nonlocal resume_after_event
         if events.find(state, uid) is None:
             return
-        if ui["event_open"] is None:
-            # Lire un evenement met en pause ; on reprend en le fermant.
+        if ui["event_open"] is None and mp is None:
+            # Lire un evenement met en pause (en solo) ; on reprend en le fermant.
             resume_after_event = not state.clock.paused
             state.clock.paused = True
         ui["event_open"] = uid
@@ -725,7 +972,7 @@ def play(renderer, clock, boot) -> str:
     def close_event() -> None:
         nonlocal resume_after_event
         ui["event_open"] = None
-        if resume_after_event and not events.pending(state):
+        if resume_after_event and not events.pending(state, state.viewer):
             state.clock.paused = False
         elif resume_after_event:
             state.clock.paused = False
@@ -744,7 +991,7 @@ def play(renderer, clock, boot) -> str:
         if band.homebound:
             toast(orders.HOMEBOUND + ".")
             return False
-        set_goto(state, selected, hx)
+        issue(commands.make(me(), "goto", selected, hx.q, hx.r))
         return True
 
     def order_raid(target) -> None:
@@ -760,7 +1007,7 @@ def play(renderer, clock, boot) -> str:
         if band.homebound:
             toast(orders.HOMEBOUND + ".")
             return
-        if target.tribe_id != PLAYER_TRIBE_ID and diplo.at_peace(state, PLAYER_TRIBE_ID, target.tribe_id):
+        if target.tribe_id != state.viewer and diplo.at_peace(state, state.viewer, target.tribe_id):
             name = state.tribes[target.tribe_id].name
             if confirm["band"] != target.id or now > confirm["until"]:
                 confirm["band"] = target.id
@@ -768,7 +1015,7 @@ def play(renderer, clock, boot) -> str:
                 toast(f"Pacte avec les {name} : cliquez encore pour attaquer (trahison, prestige -10).", True)
                 return
             confirm["band"] = None
-        set_march_to_band(state, selected, target.id)
+        issue(commands.make(me(), "march", selected, target.id))
 
     def side_click(choice) -> bool:
         """Clic dans un panneau lateral ; True si traite."""
@@ -801,7 +1048,7 @@ def play(renderer, clock, boot) -> str:
             return True
         if choice.startswith("log_"):
             seq = int(choice[4:])
-            entry = next((e for e in state.log.entries if e.seq == seq), None)
+            entry = next((e for e in log_of(state, state.viewer).entries if e.seq == seq), None)
             if entry is not None:
                 show_place(entry.hex)
             return True
@@ -839,7 +1086,7 @@ def play(renderer, clock, boot) -> str:
             return True
         if choice == "learn":
             if tech_pick is not None:
-                tech.choose(state, PLAYER_TRIBE_ID, tech_pick)
+                issue(commands.make(me(), "learn", tech_pick))
             return True
         if choice in FILTER_BY_HIT:
             log_filter = FILTER_BY_HIT[choice]
@@ -867,7 +1114,7 @@ def play(renderer, clock, boot) -> str:
             if why:
                 toast(why)
             else:
-                chiefs.honor(state, bid)
+                issue(commands.make(me(), "honor", bid))
             return True
         if choice.startswith(("arole:", "asize:", "araise:", "avillage:", "asee:", "adissolve:")):
             army_click(choice)
@@ -878,11 +1125,11 @@ def play(renderer, clock, boot) -> str:
             if why:
                 toast(why)
             else:
-                chiefs.promote(state, int(bid), int(pid))
+                issue(commands.make(me(), "promote", int(bid), int(pid)))
             return True
         if choice.startswith("tribe_heir:"):
             bid = int(choice.split(":")[1])
-            chiefs.set_heir(state, bid)
+            issue(commands.make(me(), "heir", bid))
             return True
         if choice.startswith("people:"):
             ui["people_pick"] = int(choice.split(":")[1])
@@ -897,19 +1144,19 @@ def play(renderer, clock, boot) -> str:
         if choice.startswith("gift:"):
             tid = ui.get("people_pick")
             if tid is not None:
-                toast(diplo.perform(state, PLAYER_TRIBE_ID, tid, "cadeau", float(choice.split(":")[1])))
+                issue(commands.make(me(), "diplo", tid, "cadeau", float(choice.split(":")[1])))
             return True
         if choice.startswith("invite:"):
-            toast(diplo.invite(state, PLAYER_TRIBE_ID, int(choice.split(":")[1])))
+            issue(commands.make(me(), "invite", int(choice.split(":")[1])))
             return True
         if choice.startswith("diplo:"):
             tid = ui.get("people_pick")
             action = choice.split(":")[1]
             if tid is not None:
-                if diplo.on_cooldown(state, PLAYER_TRIBE_ID, tid, action) and action not in ("rompre",):
+                if diplo.on_cooldown(state, state.viewer, tid, action) and action not in ("rompre",):
                     toast("Vous avez deja propose cela recemment.")
                 else:
-                    toast(diplo.perform(state, PLAYER_TRIBE_ID, tid, action))
+                    issue(commands.make(me(), "diplo", tid, action))
             return True
         return choice == "panel"
 
@@ -919,8 +1166,24 @@ def play(renderer, clock, boot) -> str:
         sw, sh = screen.get_size()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                persist()
-                return "quit"
+                leave()
+                return "quit", ""
+            elif event.type == pygame.KEYDOWN and chat_text is not None:
+                # La discussion (multijoueur) : Entree envoie, Echap renonce.
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    if chat_text.strip():
+                        mp.say(chat_text)
+                    chat_text = None
+                elif event.key == pygame.K_ESCAPE:
+                    chat_text = None
+                elif event.key == pygame.K_BACKSPACE:
+                    chat_text = chat_text[:-1]
+                elif event.unicode and event.unicode.isprintable() and len(chat_text) < 160:
+                    chat_text += event.unicode
+                continue
+            elif event.type == pygame.KEYDOWN and mp is not None and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and not menu_open:
+                chat_text = ""
+                continue
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     if ui["event_open"] is not None:
@@ -958,9 +1221,13 @@ def play(renderer, clock, boot) -> str:
                             zin = event.key in (pygame.K_PLUS, pygame.K_KP_PLUS, pygame.K_EQUALS)
                             ui["tech_cam"] = zoom_at(tlay["cam"], view, tlay["world"], view[0] + view[2] / 2, view[1] + view[3] / 2, TREE_ZOOM_STEP if zin else 1.0 / TREE_ZOOM_STEP)
                 elif event.key == pygame.K_SPACE:
-                    state.clock.toggle_pause()
+                    toggle_pause()
                 elif event.key == pygame.K_F5:
-                    persist()
+                    if mp is not None and mp.role != "host":
+                        toast("C'est l'hote qui sauvegarde la partie.")
+                    else:
+                        persist()
+                        toast("Partie sauvegardee.")
                 elif event.key in ACTION_KEYS:
                     band_action(ACTION_KEYS[event.key])
                 elif event.key in PANEL_KEYS:
@@ -988,7 +1255,7 @@ def play(renderer, clock, boot) -> str:
                 elif event.key == pygame.K_x:
                     renderer.map_mode = "relief" if renderer.map_mode == "commerce" else "commerce"
                 elif event.key == pygame.K_e:
-                    waiting = events.pending(state)
+                    waiting = [p for p in events.pending(state, state.viewer) if p.uid not in ui["answered"]]
                     if waiting:
                         open_event(waiting[0].uid)
                 elif event.key in (
@@ -998,7 +1265,7 @@ def play(renderer, clock, boot) -> str:
                     pygame.K_4,
                     pygame.K_5,
                 ):
-                    state.clock.set_speed(event.key - pygame.K_0)
+                    set_speed(event.key - pygame.K_0)
             elif event.type == pygame.VIDEORESIZE:
                 screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
                 renderer.screen = screen
@@ -1008,13 +1275,17 @@ def play(renderer, clock, boot) -> str:
                     if choice == "reprendre":
                         menu_open = False
                     elif choice == "sauvegarder":
-                        persist()
+                        if mp is not None and mp.role != "host":
+                            toast("C'est l'hote qui sauvegarde la partie.")
+                        else:
+                            persist()
+                            toast("Partie sauvegardee.")
                     elif choice == "principal":
-                        persist()
-                        return "menu"
+                        leave()
+                        return "menu", ""
                     elif choice == "quitter":
-                        persist()
-                        return "quit"
+                        leave()
+                        return "quit", ""
             elif ui["event_open"] is not None:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     lay = renderer.event_hits.get("modal") if isinstance(renderer.event_hits, dict) else None
@@ -1028,11 +1299,21 @@ def play(renderer, clock, boot) -> str:
                         continue
                     for i, (ox, oy, ow, oh) in lay["options"].items():
                         if ox <= mx <= ox + ow and oy <= my <= oy + oh:
-                            result = events.choose(state, ui["event_open"], i)
-                            if events.find(state, ui["event_open"]) is None:
+                            uid = ui["event_open"]
+
+                            def chosen(res, uid=uid):
+                                if events.find(state, uid) is None:
+                                    if ui["event_open"] == uid:
+                                        close_event()
+                                else:
+                                    ui["answered"].discard(uid)
+                                    say(res)
+
+                            if mp is not None:
+                                # La reponse part chez l'hote : la carte se ferme deja.
+                                ui["answered"].add(uid)
                                 close_event()
-                            elif result:
-                                toast(result)
+                            issue(commands.make(me(), "event", uid, i), chosen)
                             break
             elif ui["found"] is not None:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -1071,10 +1352,10 @@ def play(renderer, clock, boot) -> str:
                     mx, my = event.pos
                     ui_hit = hud_hit(renderer.hud_hits, mx, my)
                     if ui_hit == "pause":
-                        state.clock.toggle_pause()
+                        toggle_pause()
                         continue
                     if isinstance(ui_hit, tuple) and ui_hit[0] == "speed":
-                        state.clock.set_speed(ui_hit[1])
+                        set_speed(ui_hit[1])
                         continue
                     if ui_hit == "bar":
                         continue
@@ -1148,17 +1429,17 @@ def play(renderer, clock, boot) -> str:
                         continue
                     hit = _band_at_pixel(state, mx, my, zoom, globe_yaw, globe_pitch, sw, sh)
                     shift = pygame.key.get_mods() & pygame.KMOD_SHIFT
-                    if hit is not None and hit.tribe_id == PLAYER_TRIBE_ID and hit.village and not shift:
+                    if hit is not None and hit.tribe_id == state.viewer and hit.village and not shift:
                         # Un clic sur un de vos villages ouvre son ecran.
                         selected = hit.id
                         open_village(hit.village)
                         continue
-                    if hit is not None and hit.tribe_id == PLAYER_TRIBE_ID:
+                    if hit is not None and hit.tribe_id == state.viewer:
                         if shift and selected not in (None, hit.id):
                             # Rejoindre : les deux bandes se reunissent.
                             band = state.bands.get(selected)
                             if band is not None and chiefs.obeys(state, band):
-                                set_march_to_band(state, selected, hit.id)
+                                issue(commands.make(me(), "march", selected, hit.id))
                             else:
                                 toast(orders.INDOCILE + ".")
                         elif selected == hit.id:
@@ -1210,7 +1491,28 @@ def play(renderer, clock, boot) -> str:
                 globe_yaw += (mx - last_mouse[0]) * sens
                 globe_pitch = clamp_pitch(globe_pitch + (my - last_mouse[1]) * sens)
                 last_mouse = (mx, my)
-        if not menu_open and not state.clock.paused and not state.player_dead:
+        if mp is not None:
+            # Le temps est a l'hote : il annonce les semaines, chacun les calcule.
+            mp.pump(dt)
+            if mp.state is not state:
+                # Partie recopiee depuis l'hote (un ecart, un retour).
+                state = mp.state
+                last_log_seq = log_of(state, state.viewer).seq
+                renderer._layer_key = None
+                if selected not in state.bands:
+                    selected = None
+            for then, res in mp.take_results():
+                (then or say)(res)
+            for text in mp.take_notes():
+                toast(text)
+            ui["answered"] = {u for u in ui["answered"] if events.find(state, u) is not None}
+            if mp.ended:
+                leave()
+                return "menu", mp.ended
+            if mp.role == "host" and state.tick_count > 0 and state.tick_count % 8 == 0 and state.tick_count != last_auto:
+                persist()
+                last_auto = state.tick_count
+        elif not menu_open and not state.clock.paused and not human_dead(state, state.viewer):
             # Un combat ne deplace plus la camera et n'arrete plus le temps :
             # toast + journal + epee ; un clic sur le toast ou la ligne y mene.
             acc = consume_ticks(state, acc, dt)
@@ -1230,8 +1532,8 @@ def play(renderer, clock, boot) -> str:
         for t in toasts:
             t["age"] += dt
         toasts = [t for t in toasts if t["age"] < TOAST_LIFE]
-        if state.log.seq > last_log_seq:
-            fresh = [e for e in state.log.entries if e.seq > last_log_seq]
+        if log_of(state, state.viewer).seq > last_log_seq:
+            fresh = [e for e in log_of(state, state.viewer).entries if e.seq > last_log_seq]
             for entry in fresh:
                 toasts.append(
                     {
@@ -1242,7 +1544,7 @@ def play(renderer, clock, boot) -> str:
                         "combat": entry.kind is LogKind.COMBAT,
                     }
                 )
-            last_log_seq = state.log.seq
+            last_log_seq = log_of(state, state.viewer).seq
             toasts = toasts[-MAX_TOASTS:]
         mx, my = pygame.mouse.get_pos()
         hover_info = None
@@ -1286,4 +1588,8 @@ def play(renderer, clock, boot) -> str:
             open_fight,
             ui,
         )
+        if mp is not None:
+            from src.kora import render_menu
+
+            render_menu.draw_mp_overlay(renderer, mp, state, chat_text)
         pygame.display.flip()

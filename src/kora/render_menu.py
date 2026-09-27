@@ -4,7 +4,11 @@ dore, cartes en degrade) :
     sauvegardee, resumee), Nouvelle partie, Multijoueur, Quitter ;
   - la CREATION DE LA TRIBU : son nom (ecrit, ou tire au hasard), sa
     couleur, et START_BONUS_PICKS bonus de depart choisis dans le pool
-    (tech.START_BONUSES), actifs START_BONUS_YEARS ans.
+    (tech.START_BONUSES), actifs START_BONUS_YEARS ans. En multijoueur, le
+    meme ecran (mode "host" ou "join" : l'adresse de l'hote en plus) ;
+  - le MULTIJOUEUR : son menu (heberger, rejoindre, reprendre), le SALON
+    (les quatre places, prets, discussion) et, en partie, le bandeau des
+    joueurs et la discussion (draw_mp_overlay).
 Les *_layout et *_hit sont purs (tests) ; draw_* dessinent.
 """
 
@@ -168,13 +172,17 @@ def setup_layout(width: int, height: int) -> dict:
         cards[bid] = (bx + 30 + c * (card_w + gap), top + rr * (card_h + gap), card_w, card_h)
     start = (bx + bw - 30 - 260, by + bh - 62, 260, 42)
     back = (start[0] - 16 - 160, start[1] + 4, 160, 34)
-    return {"box": (bx, by, bw, bh), "name": name, "random": randomize, "colors": colors, "cards": cards, "start": start, "back": back}
+    # Rejoindre une partie : l'adresse de l'hote, en bas a gauche.
+    address = (bx + 30, start[1] + 6, min(330, back[0] - bx - 60), 32)
+    return {"box": (bx, by, bw, bh), "name": name, "random": randomize, "colors": colors, "cards": cards, "start": start, "back": back, "address": address}
 
 
-def setup_hit(lay: dict, mx: int, my: int):
+def setup_hit(lay: dict, mx: int, my: int, mode: str = "solo"):
     for key in ("start", "back", "random", "name"):
         if _hover(lay[key], mx, my):
             return key
+    if mode == "join" and _hover(lay["address"], mx, my):
+        return "address"
     for i, rect in enumerate(lay["colors"]):
         if _hover(rect, mx, my):
             return f"color:{i}"
@@ -184,8 +192,12 @@ def setup_hit(lay: dict, mx: int, my: int):
     return None
 
 
+START_LABEL = {"solo": "Commencer la partie", "host": "Ouvrir le salon", "join": "Rejoindre"}
+
+
 def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "") -> None:
-    """setup : {"name", "color", "bonuses" (liste), "typing" (bool)}."""
+    """setup : {"name", "color", "bonuses" (liste), "typing" (False, True :
+    le nom, "address" : l'adresse), "mode" (solo, host, join), "address"}."""
     from src.kora.render_tech import _fonts
 
     title_font, head_font, _era, _num = _fonts(r)
@@ -207,7 +219,8 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
     # Le nom.
     screen.blit(r.tiny.render("NOM DU PEUPLE", True, GOLD_DIM), (lay["name"][0], lay["name"][1] - 17))
     nx, ny, nw, nh = lay["name"]
-    typing = setup.get("typing", False)
+    mode = setup.get("mode", "solo")
+    typing = setup.get("typing") is True
     screen.blit(_gradient_card(nw, nh, (20, 22, 28), (14, 16, 20), 6), (nx, ny))
     pygame.draw.rect(screen, GOLD if typing else GOLD_DEEP, lay["name"], 2 if typing else 1, border_radius=6)
     text = setup.get("name", "")
@@ -256,19 +269,36 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
         if chosen:
             pygame.draw.circle(screen, GOLD, (x + cw - 14, y + 14), 8)
             pygame.draw.lines(screen, (40, 30, 14), False, [(x + cw - 18, y + 14), (x + cw - 15, y + 17), (x + cw - 10, y + 11)], 2)
-    # En bas : resume, avertissement, boutons.
+    # En bas : resume (ou l'adresse de l'hote), avertissement, boutons.
     sx, sy = bx + 30, lay["start"][1] + 4
-    names = ", ".join(tech.START_BONUSES[b].name for b in picks) or "aucun bonus choisi"
-    screen.blit(r.small.render(_fit(r.small, f"{text or '?'}  ·  {names}", lay["back"][0] - sx - 20), True, INK), (sx, sy))
-    note = hint
-    if not note and save_info is not None:
-        note = f"Votre partie en cours ({save_info['name']}, an {save_info['year']}) sera mise de cote, pas effacee."
-    if note:
-        color = (236, 170, 90) if hint else NOTE
-        screen.blit(r.tiny.render(_fit(r.tiny, note, lay["back"][0] - sx - 20), True, color), (sx, sy + 22))
-    ready = bool(text.strip()) and len(picks) == tech.START_BONUS_PICKS
+    if mode == "join":
+        ax, ay, aw, ah = lay["address"]
+        on = setup.get("typing") == "address"
+        screen.blit(r.tiny.render("ADRESSE DE L'HOTE (il la voit dans son salon)", True, GOLD_DIM), (ax, ay - 16))
+        screen.blit(_gradient_card(aw, ah, (20, 22, 28), (14, 16, 20), 6), (ax, ay))
+        pygame.draw.rect(screen, GOLD if on else GOLD_DEEP, lay["address"], 2 if on else 1, border_radius=6)
+        addr = setup.get("address", "")
+        shown = addr + ("|" if on and int(t * 2) % 2 == 0 else "")
+        if not addr and not on:
+            screen.blit(r.small.render("ex. 192.168.1.20", True, (110, 112, 118)), (ax + 10, ay + 8))
+        else:
+            screen.blit(r.small.render(_fit(r.small, shown, aw - 16), True, INK), (ax + 10, ay + 8))
+        if hint:
+            screen.blit(r.tiny.render(_fit(r.tiny, hint, lay["back"][0] - ax - aw - 30), True, (236, 170, 90)), (ax + aw + 14, ay + 9))
+    else:
+        names = ", ".join(tech.START_BONUSES[b].name for b in picks) or "aucun bonus choisi"
+        screen.blit(r.small.render(_fit(r.small, f"{text or '?'}  ·  {names}", lay["back"][0] - sx - 20), True, INK), (sx, sy))
+        note = hint
+        if not note and mode == "host":
+            note = "Vos amis choisiront leur peuple de leur cote, dans le salon."
+        elif not note and save_info is not None:
+            note = f"Votre partie en cours ({save_info['name']}, an {save_info['year']}) sera mise de cote, pas effacee."
+        if note:
+            color = (236, 170, 90) if hint else NOTE
+            screen.blit(r.tiny.render(_fit(r.tiny, note, lay["back"][0] - sx - 20), True, color), (sx, sy + 22))
+    ready = setup_ready(setup)
     _plain_button(r, lay["back"], "Retour", _hover(lay["back"], mx, my))
-    _button(screen, head_font, lay["start"], "Commencer la partie", ready, ready and _hover(lay["start"], mx, my))
+    _button(screen, head_font, lay["start"], START_LABEL.get(mode, "Commencer la partie"), ready, ready and _hover(lay["start"], mx, my))
 
 
 def random_name(rng, taken=()) -> str:
@@ -283,7 +313,7 @@ def new_setup(rng) -> dict:
 
 def setup_click(setup: dict, hit: str, rng) -> str:
     """Un clic dans l'ecran de creation ; rend un message (vide si rien a dire)."""
-    setup["typing"] = hit == "name"
+    setup["typing"] = True if hit == "name" else ("address" if hit == "address" else False)
     if hit == "random":
         setup["name"] = random_name(rng)
     elif hit.startswith("color:"):
@@ -300,9 +330,23 @@ def setup_click(setup: dict, hit: str, rng) -> str:
     return ""
 
 
+ADDRESS_MAX = 64
+
+
 def setup_key(setup: dict, event) -> None:
-    """Frappe au clavier dans le nom du peuple."""
+    """Frappe au clavier dans le nom du peuple (ou l'adresse de l'hote)."""
     if not setup.get("typing"):
+        return
+    if setup.get("typing") == "address":
+        addr = setup.get("address", "")
+        if event.key == pygame.K_BACKSPACE:
+            setup["address"] = addr[:-1]
+        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_TAB):
+            setup["typing"] = False
+        else:
+            ch = getattr(event, "unicode", "")
+            if ch and (ch.isalnum() or ch in ".:-_[]") and len(addr) < ADDRESS_MAX:
+                setup["address"] = addr + ch
         return
     name = setup.get("name", "")
     if event.key == pygame.K_BACKSPACE:
@@ -318,6 +362,8 @@ def setup_key(setup: dict, event) -> None:
 def setup_missing(setup: dict) -> str:
     if not setup.get("name", "").strip():
         return "Donnez un nom a votre peuple."
+    if setup.get("mode") == "join" and not setup.get("address", "").strip():
+        return "Ecrivez l'adresse de l'hote."
     n = len(setup.get("bonuses", []))
     if n < tech.START_BONUS_PICKS:
         return f"Choisissez encore {tech.START_BONUS_PICKS - n} bonus de depart."
@@ -330,6 +376,8 @@ def setup_for_game(setup: dict) -> dict:
 
 
 def setup_ready(setup: dict) -> bool:
+    if setup.get("mode") == "join" and not setup.get("address", "").strip():
+        return False
     return bool(setup.get("name", "").strip()) and len(setup.get("bonuses", [])) == tech.START_BONUS_PICKS
 
 
@@ -358,3 +406,285 @@ def title_planet(r, world):
         r._title_planet = planet
         r._title_key = None
     return planet
+
+
+# --- le multijoueur : son menu -------------------------------------------------------------------
+
+MP_ITEMS = (
+    ("heberger", "Heberger une partie", "Vos amis vous rejoignent ; vous tenez le temps."),
+    ("rejoindre", "Rejoindre une partie", "L'adresse de l'hote suffit."),
+    ("reprendre", "Reprendre la partie a plusieurs", "La derniere partie que vous avez hebergee."),
+    ("retour", "Retour", ""),
+)
+
+
+def mp_menu_layout(width: int, height: int) -> dict:
+    lay = title_layout(width, height)
+    x, top = lay["buttons"]["continuer"][0], lay["buttons"]["continuer"][1]
+    buttons = {}
+    y = top
+    for key, _label, _about in MP_ITEMS:
+        h = 40 if key == "retour" else 58
+        buttons[key] = (x, y, 380, h)
+        y += h + 12
+    return {"buttons": buttons, "title": lay["title"], "help": (x, y + 6)}
+
+
+def mp_menu_hit(lay: dict, mx: int, my: int, can_resume: bool = True):
+    for key, rect in lay["buttons"].items():
+        if _hover(rect, mx, my):
+            if key == "reprendre" and not can_resume:
+                return None
+            return key
+    return None
+
+
+MP_HELP = (
+    "Meme maison (meme box) : l'hote donne l'adresse affichee dans son salon.",
+    "Par Internet : un reseau prive commun (Radmin VPN, ZeroTier, Tailscale),",
+    "ou l'hote ouvre le port 45170 (TCP) de sa box vers son PC.",
+    "Tout le monde doit avoir la meme version de Kora.",
+)
+
+
+def draw_mp_menu(r, scene, resume_info: dict | None, t: float, message: str = "") -> None:
+    draw_title(r, scene, None, t, "")
+    screen = r.screen
+    w, h = screen.get_size()
+    lay = mp_menu_layout(w, h)
+    r.mp_menu_hits = lay
+    # Le menu du titre s'efface derriere celui du multijoueur.
+    veil = pygame.Surface((440, h), pygame.SRCALPHA)
+    veil.fill((6, 8, 12, 245))
+    x0 = lay["buttons"]["heberger"][0] - 10
+    screen.blit(veil, (x0, lay["buttons"]["heberger"][1] - 60))
+    screen.blit(_big_font(r, 26).render("Partie a plusieurs", True, GOLD), (x0 + 10, lay["buttons"]["heberger"][1] - 48))
+    mx, my = pygame.mouse.get_pos()
+    for key, label, about in MP_ITEMS:
+        rect = lay["buttons"][key]
+        on = key != "reprendre" or resume_info is not None
+        hover = on and _hover(rect, mx, my)
+        if key == "retour":
+            _plain_button(r, rect, label, hover)
+            continue
+        x, y, bw, bh = rect
+        _button(screen, _big_font(r, 19), rect, "", on, hover)
+        lab = _big_font(r, 19).render(label, True, (28, 20, 8) if hover else INK if on else (126, 128, 134))
+        screen.blit(lab, (x + (bw - lab.get_width()) // 2, y + 7))
+        sub = about
+        if key == "reprendre":
+            sub = f"{resume_info['name']}  ·  an {resume_info['year']}" if resume_info else "Aucune partie a plusieurs sauvegardee"
+        s_ = r.tiny.render(_fit(r.tiny, sub, bw - 16), True, (40, 30, 14) if hover else NOTE)
+        screen.blit(s_, (x + (bw - s_.get_width()) // 2, y + bh - 17))
+    hx, hy = lay["help"]
+    for i, line in enumerate(MP_HELP):
+        screen.blit(r.tiny.render(line, True, SOFT if i else (200, 196, 180)), (hx, hy + i * 15))
+    if message:
+        screen.blit(r.small.render(_fit(r.small, message, 520), True, (236, 170, 90)), (hx, hy + len(MP_HELP) * 15 + 10))
+
+
+# --- le salon ------------------------------------------------------------------------------------
+
+
+def lobby_layout(width: int, height: int) -> dict:
+    bw = min(1100, width - 40)
+    bh = min(680, height - 30)
+    bx = (width - bw) // 2
+    by = (height - bh) // 2
+    gap = 12
+    seat_w = (bw - 60 - 3 * gap) // 4
+    seats = {tid: (bx + 30 + i * (seat_w + gap), by + 118, seat_w, 220) for i, tid in enumerate((1, 2, 3, 4))}
+    chat = (bx + 30, by + 118 + 220 + 24, bw - 60, bh - 118 - 220 - 24 - 80)
+    chat_input = (chat[0], chat[1] + chat[3] - 30, chat[2], 30)
+    go = (bx + bw - 30 - 260, by + bh - 62, 260, 42)
+    back = (go[0] - 16 - 180, go[1] + 4, 180, 34)
+    ready = (back[0] - 16 - 200, go[1] + 4, 200, 34)
+    return {"box": (bx, by, bw, bh), "seats": seats, "chat": chat, "chat_input": chat_input, "go": go, "back": back, "ready": ready}
+
+
+def lobby_hit(lay: dict, mx: int, my: int, role: str):
+    for key in ("go", "back", "ready", "chat_input"):
+        if key == "go" and role != "host":
+            continue
+        if key == "ready" and role == "host":
+            continue
+        if _hover(lay[key], mx, my):
+            return key
+    for tid, rect in lay["seats"].items():
+        if _hover(rect, mx, my):
+            return f"seat:{tid}"
+    return None
+
+
+def _addresses(mp) -> tuple[str, str]:
+    """L'adresse a donner (celle du reseau principal) et les autres."""
+    from src.kora import net
+
+    ips = net.local_addresses()
+    port = getattr(mp, "port", net.PORT)
+    suffix = "" if port == net.PORT else f":{port}"
+    return ips[0] + suffix, ", ".join(ip + suffix for ip in ips[1:4])
+
+
+def draw_lobby(r, mp, t: float, chat_text, hint: str = "", status: str = "") -> None:
+    """Le salon : les quatre places (vallee, steppe, foret, cote), qui est
+    pret, la discussion. mp : session.HostSession ou ClientSession."""
+    from src.kora import session
+    from src.kora.render_tech import _fonts
+
+    title_font, head_font, _era, _num = _fonts(r)
+    screen = r.screen
+    w, h = screen.get_size()
+    lay = lobby_layout(w, h)
+    r.lobby_hits = lay
+    mx, my = pygame.mouse.get_pos()
+    veil = pygame.Surface((w, h), pygame.SRCALPHA)
+    veil.fill((6, 8, 12, 175))
+    screen.blit(veil, (0, 0))
+    _frame(r, lay["box"])
+    bx, by, bw, bh = lay["box"]
+    host = mp.role == "host"
+    resume = bool(getattr(mp, "resume", None))
+    title = "Le salon" + ("  ·  reprise de la partie" if resume else "")
+    screen.blit(title_font.render(title, True, GOLD), (bx + 30, by + 22))
+    if host:
+        main, others = _addresses(mp)
+        line1 = f"Donnez a vos amis cette adresse : {main}" + (f"   (autres cartes reseau de ce PC : {others})" if others else "")
+        line2 = "Par Internet : un reseau prive commun (Radmin VPN, ZeroTier, Tailscale : son adresse a lui) ou le port 45170 ouvert sur votre box."
+    else:
+        line1 = status or "Vous etes dans le salon. L'hote lancera la partie quand tout le monde sera pret."
+        line2 = "Cliquez sur une place libre pour changer de pays de depart." if not resume else "Vous retrouvez votre peuple ; l'hote lance quand tout le monde est la."
+    screen.blit(r.small.render(_fit(r.small, line1, bw - 60), True, INK), (bx + 32, by + 58))
+    screen.blit(r.tiny.render(_fit(r.tiny, line2, bw - 60), True, NOTE), (bx + 32, by + 80))
+    me = mp.me
+    for tid, rect in lay["seats"].items():
+        seat = mp.seats.get(tid)
+        x, y, cw, ch = rect
+        mine = tid == me
+        free = seat is None
+        hover = _hover(rect, mx, my) and free and not host and not resume
+        top, bot = ((62, 54, 34), (40, 34, 22)) if mine else (((46, 50, 58), (28, 30, 35)) if hover else ((32, 36, 44), (22, 24, 28)))
+        screen.blit(_gradient_card(cw, ch, top, bot, 8), (x, y))
+        pygame.draw.rect(screen, GOLD if mine else (GOLD_DEEP if hover else (70, 72, 78)), rect, 2 if mine else 1, border_radius=8)
+        screen.blit(head_font.render(session.SLOTS[tid], True, GOLD if mine else INK), (x + 12, y + 10))
+        yy = y + 36
+        for part in _wrap(r.tiny, session.SLOT_NOTE[tid], cw - 24)[:2]:
+            screen.blit(r.tiny.render(part, True, NOTE), (x + 12, yy))
+            yy += 13
+        yy += 8
+        pygame.draw.line(screen, (70, 64, 50), (x + 12, yy), (x + cw - 12, yy))
+        yy += 10
+        if free:
+            screen.blit(r.small.render("Place libre", True, SOFT), (x + 12, yy))
+            yy += 20
+            note = "Un peuple de l'IA y vivra." if host or resume else "Cliquez pour la prendre."
+            screen.blit(r.tiny.render(note, True, NOTE), (x + 12, yy))
+            continue
+        pygame.draw.circle(screen, tuple(seat.color), (x + 20, yy + 9), 7)
+        pygame.draw.circle(screen, (20, 20, 20), (x + 20, yy + 9), 7, 1)
+        label = seat.name + ("  (vous)" if mine else "")
+        screen.blit(r.small.render(_fit(r.small, label, cw - 44), True, INK), (x + 34, yy + 1))
+        yy += 24
+        role = "L'hote" if seat.host else ("Absent" if not seat.present else ("Pret" if seat.ready else "Se prepare..."))
+        tint = GOLD if seat.host else ((150, 150, 150) if not seat.present else ((150, 208, 136) if seat.ready else (236, 170, 90)))
+        screen.blit(r.tiny.render(role, True, tint), (x + 12, yy))
+        yy += 18
+        for bid in seat.bonuses:
+            bonus = tech.START_BONUSES.get(bid)
+            if bonus is None:
+                continue
+            screen.blit(r.tiny.render(_fit(r.tiny, "+ " + bonus.name, cw - 24), True, (184, 222, 168)), (x + 12, yy))
+            yy += 15
+    # La discussion.
+    cx, cy, cw, chh = lay["chat"]
+    screen.blit(r.tiny.render("DISCUSSION  ·  Entree pour ecrire", True, GOLD_DIM), (cx, cy - 16))
+    screen.blit(_gradient_card(cw, chh, (18, 20, 26), (14, 16, 20), 6), (cx, cy))
+    pygame.draw.rect(screen, (60, 60, 64), lay["chat"], 1, border_radius=6)
+    rows = max(1, (chh - 40) // 16)
+    for i, msg in enumerate(mp.chat[-rows:]):
+        who = r.tiny.render(msg["from"] + " :", True, GOLD)
+        screen.blit(who, (cx + 10, cy + 8 + i * 16))
+        screen.blit(r.tiny.render(_fit(r.tiny, msg["text"], cw - who.get_width() - 30), True, INK), (cx + 16 + who.get_width(), cy + 8 + i * 16))
+    ix, iy, iw, ih = lay["chat_input"]
+    on = chat_text is not None
+    pygame.draw.rect(screen, (26, 28, 34), lay["chat_input"], border_radius=5)
+    pygame.draw.rect(screen, GOLD if on else (70, 72, 78), lay["chat_input"], 1, border_radius=5)
+    shown = (chat_text + ("|" if int(t * 2) % 2 == 0 else "")) if on else "Ecrire un message..."
+    screen.blit(r.small.render(_fit(r.small, shown, iw - 16), True, INK if on else (110, 112, 118)), (ix + 8, iy + 7))
+    # En bas.
+    if hint:
+        screen.blit(r.tiny.render(_fit(r.tiny, hint, lay["ready"][0] - bx - 60), True, (236, 170, 90)), (bx + 30, lay["go"][1] + 14))
+    _plain_button(r, lay["back"], "Quitter le salon" if not host else "Fermer le salon", _hover(lay["back"], mx, my))
+    if host:
+        why = mp.can_start()
+        _button(screen, head_font, lay["go"], "Lancer la partie", not why, not why and _hover(lay["go"], mx, my))
+        if why and not hint:
+            screen.blit(r.tiny.render(_fit(r.tiny, why, lay["back"][0] - bx - 60), True, NOTE), (bx + 30, lay["go"][1] + 14))
+    else:
+        mine = mp.seats.get(me) if me is not None else None
+        ready = bool(mine and mine.ready)
+        _button(screen, r.small, lay["ready"], "Pas pret" if ready else "Je suis pret", True, _hover(lay["ready"], mx, my))
+
+
+# --- en partie : le bandeau des joueurs, la discussion -------------------------------------------------
+
+CHAT_SHOWN = 24.0
+
+
+def draw_mp_overlay(r, mp, state, chat_text) -> None:
+    import time as _time
+
+    from src.kora.render import HUD_HEIGHT
+    from src.kora.sim import human_dead
+
+    screen = r.screen
+    w, h = screen.get_size()
+    chips = []
+    for tid, seat in sorted(mp.seats.items()):
+        tribe = state.tribes.get(tid)
+        name = tribe.name if tribe is not None else seat.name
+        note = ""
+        if not seat.present:
+            note = " (absent)"
+        elif human_dead(state, tid):
+            note = " (disparu)"
+        chips.append((tuple(tribe.color) if tribe is not None else tuple(seat.color), name + (" (vous)" if tid == state.viewer else "") + note, seat.present))
+    wait = getattr(mp, "waiting_for", "")
+    parts = [r.tiny.size(text)[0] + 22 for _c, text, _p in chips]
+    total = sum(parts) + 16 + (r.tiny.size(f"on attend : {wait}")[0] + 20 if wait else 0)
+    x = (w - total) // 2
+    y = HUD_HEIGHT + 4
+    pygame.draw.rect(screen, (14, 16, 20), (x, y, total, 20), border_radius=6)
+    pygame.draw.rect(screen, (70, 64, 50), (x, y, total, 20), 1, border_radius=6)
+    x += 8
+    for (color, text, present), pw in zip(chips, parts):
+        pygame.draw.circle(screen, color if present else (90, 90, 90), (x + 6, y + 10), 5)
+        screen.blit(r.tiny.render(text, True, INK if present else (130, 130, 130)), (x + 15, y + 3))
+        x += pw
+    if wait:
+        screen.blit(r.tiny.render(f"on attend : {wait}", True, (236, 170, 90)), (x + 4, y + 3))
+    # La discussion, en bas a gauche.
+    now = _time.time()
+    lines = [m for m in mp.chat if chat_text is not None or now - m["at"] < CHAT_SHOWN][-6:]
+    bx, bw = 12, min(460, w // 2)
+    by = h - 36 - len(lines) * 16
+    for i, msg in enumerate(lines):
+        who = r.tiny.render(msg["from"] + " :", True, GOLD)
+        tx = bx + 8 + who.get_width() + 6
+        text = r.tiny.render(_fit(r.tiny, msg["text"], bw - tx), True, INK)
+        back = pygame.Surface((who.get_width() + text.get_width() + 22, 16), pygame.SRCALPHA)
+        back.fill((10, 12, 16, 170))
+        screen.blit(back, (bx, by + i * 16))
+        screen.blit(who, (bx + 6, by + i * 16 + 1))
+        screen.blit(text, (tx, by + i * 16 + 1))
+    if chat_text is not None:
+        rect = (bx, h - 32, bw, 24)
+        pygame.draw.rect(screen, (20, 22, 28), rect, border_radius=5)
+        pygame.draw.rect(screen, GOLD, rect, 1, border_radius=5)
+        caret = "|" if int(now * 2) % 2 == 0 else ""
+        screen.blit(r.small.render(_fit(r.small, "> " + chat_text + caret, bw - 16), True, INK), (bx + 8, h - 28))
+        hint = r.tiny.render("Entree : envoyer  ·  Echap : annuler", True, NOTE)
+        screen.blit(hint, (bx + 2, by - 16))
+    elif not lines:
+        hint = r.tiny.render("Entree : ecrire aux autres joueurs", True, (120, 122, 128))
+        screen.blit(hint, (bx, h - 20))

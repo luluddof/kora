@@ -195,6 +195,21 @@ lente, bandes dessinees petites a taille fixe.
     (signer l'exe : SignPath Foundation gratuit pour l'open source, ou un
     certificat payant) attend SON choix.
 
+2026-09-27
+  - "J'aimerais ajouter un mode MULTIJOUEUR au jeu, mais aussi un MENU DE
+    DEMARRAGE, et la possibilite, quand on cree la tribu, de lui donner des
+    BONUS DE DEPART (qui durent 5 ans), que l'on choisit parmi un pool."
+    FAIT (0.2.0, spec 2026-09-27-menu-bonus-multijoueur.txt) :
+    menu de demarrage (Continuer, Nouvelle partie, Multijoueur ; l'ancienne
+    partie mise de cote, jamais effacee) ; creation du peuple (nom, couleur,
+    2 bonus parmi 12, 5 ans, affiches dans Tribu) ; MULTIJOUEUR jusqu'a 4
+    (lockstep : l'hote tient le temps, chacun calcule la meme partie ; salon,
+    discussion, pause pour tous, diplomatie entre joueurs en cartes, ecarts
+    reperes et recopies, depart/retour, reprise de la partie a plusieurs).
+    Verifie : deux processus 10 ans identiques ; sa partie (copie, an 54)
+    identique sur deux "machines". En route : la sauvegarde oubliait la
+    pression de cueillette (recharger changeait la suite) : corrige.
+
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -227,6 +242,12 @@ lente, bandes dessinees petites a taille fixe.
 (mis a jour a la fin de chaque chantier)
   Fait le 2026-09-25 apres-midi : emancipation sans impasse, proto-pays
   lisibles, commerce en routes (voir section 3).
+  Fait le 2026-09-27 : menu de demarrage, bonus de depart, multijoueur
+  (0.2.0). REGLE NOUVELLE : tout changement de la partie par l'interface
+  passe par commands.py (un ordre) ; l'interface lit state.viewer, jamais
+  PLAYER_TRIBE_ID ; un message du jeu va a note(..., to=peuple). Avant de
+  publier : tools/essai_reseau.py (deux processus identiques).
+  En attente de SON choix : signer l'exe (SignPath, licence du depot).
   En attente de SON choix : les propositions de profondeur des deux ages,
   deuxieme reflexion (docs/superpowers/specs/2026-09-26-profondeur-deuxieme-reflexion.txt ;
   ma recommandation : F1 Les Voix du peuple et les Coutumes d'abord).
@@ -238,3 +259,8 @@ lente, bandes dessinees petites a taille fixe.
     relations entre peuples d'une meme civilisation (entraide, rivalite).
   - Plus tard (demande explicite) : domination d'une cite puis d'un pays
     sur d'autres villages ; ages suivants.
+  - Multijoueur (pistes) : un serveur au milieu (mode cloud, a sa demande)
+    pour se passer du reseau prive ; plus de 4 joueurs (d'autres pays de
+    depart) ; un joueur absent confie a l'IA ; bonus de depart propres a
+    chaque pays ; "nouvelle partie" depuis le salon avec d'autres reglages
+    (taille de monde, petits peuples).

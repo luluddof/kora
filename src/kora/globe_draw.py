@@ -17,7 +17,7 @@ import pygame
 from src.kora.globe import HEX_ROW_SHIFT, HEX_ROW_SQUASH, look_center, visible_hex_radius
 from src.kora.look import season_color
 from src.kora.types import Season, Terrain
-from src.kora.vision import PlayerVision
+from src.kora.vision import vision_of
 from src.kora.world import NEIGHBOR_DELTAS, axial_to_offset
 
 FOG_UNEXPLORED = (8, 8, 10)
@@ -111,8 +111,9 @@ class Planet:
     def sync_fog(self, state) -> int:
         # 0 = inexplore, 1 = explore hors vue, 2 = en vue. Mise a jour par
         # differences : explored ne fait que grandir ; visible n'est un
-        # nouvel objet que si une bande du joueur a bouge.
-        vis = state.vision if isinstance(state.vision, PlayerVision) else None
+        # nouvel objet que si une bande du joueur a bouge. La vue est celle
+        # du joueur de cet ecran (multijoueur) ; le menu n'en a pas.
+        vis = vision_of(state, state.viewer) if hasattr(state, "povs") else None
         if vis is None:
             return self.fog_gen
         fog = self.fog

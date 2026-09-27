@@ -184,12 +184,14 @@ def make_contact(state, a: int, b: int, quiet: bool = False) -> bool:
     if key in d.contacts:
         return False
     d.contacts.add(key)
-    player = next((t for t in (a, b) if state.tribes[t].is_player), None)
-    if player is not None and not quiet:
+    # Chaque joueur de la paire (deux, si deux joueurs se rencontrent).
+    for player in [t for t in (a, b) if state.tribes[t].is_player]:
+        if quiet:
+            break
         other = b if player == a else a
         from src.kora import events
 
-        _note(state, LogKind.POLITIQUE, f"Premier contact avec les {state.tribes[other].name}.")
+        _note(state, LogKind.POLITIQUE, f"Premier contact avec les {state.tribes[other].name}.", to=player)
         found = gift_carrier(state, player, other)
         band_id = found[0].id if found is not None else next(
             (x.id for x in sorted(state.bands.values(), key=lambda x: x.id) if x.tribe_id == player), 0
@@ -438,9 +440,9 @@ def betray(state, traitor: int, victim: int) -> None:
             add_mod(state, traitor, other, "reputation", -10, actor=traitor)
     names = (state.tribes[traitor].name, state.tribes[victim].name)
     if state.tribes[traitor].is_player:
-        _note(state, LogKind.POLITIQUE, f"Vous avez trahi les {names[1]} : prestige -{BETRAYAL_PRESTIGE}, tous s'en souviendront.")
-    elif state.tribes[victim].is_player:
-        _note(state, LogKind.POLITIQUE, f"Les {names[0]} ont trahi leur parole.")
+        _note(state, LogKind.POLITIQUE, f"Vous avez trahi les {names[1]} : prestige -{BETRAYAL_PRESTIGE}, tous s'en souviendront.", to=traitor)
+    if state.tribes[victim].is_player:
+        _note(state, LogKind.POLITIQUE, f"Les {names[0]} ont trahi leur parole.", to=victim)
 
 
 def hostile_intent(state, a: int, b: int) -> bool:
@@ -503,9 +505,9 @@ def _pay_tribute(state, pact: Pact, a: int, b: int) -> None:
     target = max(recv_bands, key=lambda x: (stock_max(x, state) - x.stock, -x.id))
     target.stock = min(stock_max(target, state), target.stock + paid)
     if state.tribes[receiver].is_player:
-        _note(state, LogKind.POLITIQUE, f"Tribut des {state.tribes[payer].name} : {paid:.0f} vivres.")
-    elif state.tribes[payer].is_player:
-        _note(state, LogKind.POLITIQUE, f"Tribut verse aux {state.tribes[receiver].name} : {paid:.0f} vivres.")
+        _note(state, LogKind.POLITIQUE, f"Tribut des {state.tribes[payer].name} : {paid:.0f} vivres.", to=receiver)
+    if state.tribes[payer].is_player:
+        _note(state, LogKind.POLITIQUE, f"Tribut verse aux {state.tribes[receiver].name} : {paid:.0f} vivres.", to=payer)
 
 
 def monthly(state) -> None:
@@ -533,10 +535,10 @@ def monthly(state) -> None:
             if a not in alive or b not in alive:
                 continue
             if p.until and state.tick_count >= p.until:
-                if state.tribes[a].is_player or state.tribes[b].is_player:
-                    other = b if state.tribes[a].is_player else a
-                    what = {"treve": "La treve", "tribut": "Le tribut", "alliance": "L'alliance", "commerce": "L'accord commercial"}.get(p.kind, "Le pacte")
-                    _note(state, LogKind.POLITIQUE, f"{what} avec les {state.tribes[other].name} prend fin.")
+                what = {"treve": "La treve", "tribut": "Le tribut", "alliance": "L'alliance", "commerce": "L'accord commercial"}.get(p.kind, "Le pacte")
+                for me, other in ((a, b), (b, a)):
+                    if state.tribes[me].is_player:
+                        _note(state, LogKind.POLITIQUE, f"{what} avec les {state.tribes[other].name} prend fin.", to=me)
                 continue
             if p.kind == "tribut" and state.tick_count - p.paid >= TRIBUTE_EVERY:
                 _pay_tribute(state, p, a, b)
@@ -802,7 +804,7 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         if not bonus.union:
             return Verdict(blocked="Il faut connaitre Confederation")
         if state.tribes[target].is_player:
-            return Verdict(blocked="Impossible")
+            return Verdict(blocked="Un peuple mene par un joueur ne se fond pas dans un autre")
         if rel < 50:
             return Verdict(blocked=f"Relation trop basse ({rel:.0f}, il faut 50)")
         pa, pt = max(1, pop_of(state, actor)), pop_of(state, target)
@@ -854,13 +856,19 @@ def gift_value(state, actor: int, target: int, amount: float) -> float:
     return min(25.0, base) * tech.bonuses(state.tribes[actor]).gifts
 
 
+# Proposer a un autre joueur : il recoit la carte que l'IA lui enverrait.
+HUMAN_OFFERS = {"treve": "offre_treve", "alliance": "offre_alliance", "commerce": "offre_commerce", "tribut": "exige_tribut"}
+
+
 def perform(state, actor: int, target: int, action: str, amount: float = 0.0) -> str:
-    """Executer une proposition ; rend le texte du resultat."""
+    """Executer une proposition ; rend le texte du resultat. Si `target` est
+    un autre joueur, il decide lui-meme (carte d'evenement)."""
     verdict = evaluate(state, actor, target, action)
     if verdict.blocked:
         return verdict.blocked
     d = _d(state)
     names = state.tribes[target].name
+    human = state.tribes[target].is_player and actor != target
     if action == "cadeau":
         carrier, receiver = gift_carrier(state, actor, target)
         from src.kora.sim import stock_max
@@ -871,10 +879,25 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         carrier.stock -= amount
         receiver.stock = min(stock_max(receiver, state), receiver.stock + amount)
         add_mod(state, actor, target, "cadeau", gift_value(state, actor, target, amount), actor=actor)
+        if human:
+            _note(state, LogKind.POLITIQUE, f"Les {state.tribes[actor].name} vous offrent {amount:.0f} vivres.", receiver.position, to=target)
         return f"Les {names} acceptent vos {amount:.0f} vivres."
     if action == "rompre":
         break_pact(state, actor, target)
+        if human:
+            _note(state, LogKind.POLITIQUE, f"Les {state.tribes[actor].name} rompent leur pacte avec vous.", to=target)
         return f"Pacte rompu avec les {names}."
+    if human and action in HUMAN_OFFERS:
+        from src.kora import events
+
+        found = gift_carrier(state, target, actor)
+        band_id = found[0].id if found is not None else next(
+            (x.id for x in sorted(state.bands.values(), key=lambda x: x.id) if x.tribe_id == target and x.population > 0), 0
+        )
+        if not events.hook(state, HUMAN_OFFERS[action], tribe_id=target, band_id=band_id, other=actor):
+            return f"Les {names} ne peuvent pas examiner cette proposition pour l'instant."
+        d.cooldown[f"{action}:{actor}:{target}"] = state.tick_count
+        return f"Proposition portee aux {names} : a eux de decider."
     d.cooldown[f"{action}:{actor}:{target}"] = state.tick_count
     if not verdict.accepted:
         if action == "tribut":
@@ -923,7 +946,7 @@ def invitable(state, actor: int, target: int) -> list:
             continue
         if band.loyalty >= chiefs.OBEY:
             continue
-        if state.tribes[actor].is_player and not is_visible(state, band.position):
+        if state.tribes[actor].is_player and not is_visible(state, band.position, actor):
             continue
         near = influence.in_zone(state.world, band.position, actor) or any(
             state.world.distance(band.position, p) <= INVITE_RANGE for p in mine
@@ -1097,7 +1120,7 @@ def _propose_to_player(state, ai: int, player: int) -> None:
             carrier.stock -= amount
             receiver.stock = min(stock_max(receiver, state), receiver.stock + amount)
             add_mod(state, ai, player, "cadeau", gift_value(state, ai, player, amount), actor=ai)
-            _note(state, LogKind.POLITIQUE, f"Les {state.tribes[ai].name} vous offrent {amount:.0f} vivres.", receiver.position)
+            _note(state, LogKind.POLITIQUE, f"Les {state.tribes[ai].name} vous offrent {amount:.0f} vivres.", receiver.position, to=player)
             d.cooldown[key] = state.tick_count
         return
     if not kind:
@@ -1155,5 +1178,8 @@ def from_json(data) -> Diplomacy:
     return d
 
 
-def _note(state, kind, text: str, where=None) -> None:
-    state.log.add(kind, text, state.clock.year, state.clock.week, where=where)
+def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
+    """Au journal du joueur `to` (par defaut le joueur solo)."""
+    from src.kora.sim import PLAYER_TRIBE_ID, note
+
+    note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

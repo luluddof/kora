@@ -1,10 +1,15 @@
 import traceback
 
-from src.kora.app import run
-
 if __name__ == "__main__":
     try:
-        run()
+        from src.kora import essai
+
+        # KORA_ESSAI=hote|ami : l'essai du multijoueur sans fenetre
+        # (tools/essai_reseau.py --exe) ; sinon, le jeu.
+        if not essai.from_env():
+            from src.kora.app import run
+
+            run()
     except Exception:
         # L'exe n'a pas de console : l'erreur est ecrite a cote des sauvegardes
         # (%APPDATA%\Kora\kora_erreur.txt), pour qu'on sache pourquoi il s'est ferme.

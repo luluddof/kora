@@ -161,7 +161,7 @@ def make_camp(state, band_id: int) -> Site | None:
         del state.sites[here.id]
     state.sites[sid] = site
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.SURVIE, "Campement etabli.", band.position)
+        _note(state, LogKind.SURVIE, "Campement etabli.", band.position, to=band.tribe_id)
     return site
 
 
@@ -169,7 +169,7 @@ def abandon(state, site_id: int) -> None:
     site = state.sites.pop(site_id, None)
     if site is not None and state.tribes.get(site.tribe_id) and state.tribes[site.tribe_id].is_player:
         what = "Campement abandonne." if site.kind == "camp" else "Cache abandonnee."
-        _note(state, LogKind.SURVIE, what, site.hex)
+        _note(state, LogKind.SURVIE, what, site.hex, to=site.tribe_id)
 
 
 # --- caches ------------------------------------------------------------------------
@@ -216,7 +216,7 @@ def deposit(state, band_id: int) -> float:
     here.store += amount
     if state.tribes[band.tribe_id].is_player:
         where = "au campement" if here.kind == "camp" else "dans une cache"
-        _note(state, LogKind.SURVIE, f"{amount:.0f} de vivres mis {where}.", here.hex)
+        _note(state, LogKind.SURVIE, f"{amount:.0f} de vivres mis {where}.", here.hex, to=band.tribe_id)
     return amount
 
 
@@ -295,7 +295,7 @@ def update(state) -> None:
         elif site.kind == "camp" and state.tick_count - site.visited > CAMP_FORGOTTEN:
             del state.sites[site.id]
             if state.tribes[site.tribe_id].is_player:
-                _note(state, LogKind.SURVIE, "Un campement oublie est tombe en ruine.", site.hex)
+                _note(state, LogKind.SURVIE, "Un campement oublie est tombe en ruine.", site.hex, to=site.tribe_id)
 
 
 def _strike_camp(state, site: Site) -> None:
@@ -305,13 +305,13 @@ def _strike_camp(state, site: Site) -> None:
         site.kind = "cache"
         site.founded = state.tick_count
         if player:
-            _note(state, LogKind.SURVIE, f"Campement leve : sa reserve reste en cache ({site.store:.0f} vivres).", site.hex)
+            _note(state, LogKind.SURVIE, f"Campement leve : sa reserve reste en cache ({site.store:.0f} vivres).", site.hex, to=site.tribe_id)
     else:
         lost = site.store
         del state.sites[site.id]
         if player:
             text = "Campement leve." if lost < 1 else f"Campement leve : plus de place pour une cache, {lost:.0f} vivres perdus."
-            _note(state, LogKind.SURVIE, text, site.hex)
+            _note(state, LogKind.SURVIE, text, site.hex, to=site.tribe_id)
 
 
 def _maybe_found(state, site: Site, foes: list) -> None:
@@ -348,6 +348,7 @@ def _maybe_found(state, site: Site, foes: list) -> None:
                 LogKind.COMBAT,
                 f"{what} a ete pillee par les {foe_tribe.name} ({take:.0f} vivres).",
                 site.hex,
+                to=owner.id,
             )
         return
 
@@ -358,8 +359,11 @@ def _offer_player_find(state, site: Site, band) -> None:
     events.hook(state, "cache_trouvee", tribe_id=band.tribe_id, band_id=band.id, other=site.tribe_id, site_id=site.id)
 
 
-def _note(state, kind, text: str, where=None) -> None:
-    state.log.add(kind, text, state.clock.year, state.clock.week, where=where)
+def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
+    """Au journal du joueur `to` (par defaut le joueur solo)."""
+    from src.kora.sim import PLAYER_TRIBE_ID, note
+
+    note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)
 
 
 # --- effets sur les bandes ----------------------------------------------------------
@@ -385,7 +389,7 @@ def oldest_village_years(state, tribe_id: int) -> int:
 
 def site_lines(state, site: Site) -> list[str]:
     tribe = state.tribes.get(site.tribe_id)
-    who = "Vous" if tribe is not None and tribe.is_player else (tribe.name if tribe else "?")
+    who = "Vous" if tribe is not None and tribe.id == state.viewer else (tribe.name if tribe else "?")
     if site.kind == "cache":
         return [f"Cache de vivres ({who})", f"Vivres : {site.store:.0f} / {capacity(state, site):.0f}"]
     if site.kind == "camp":

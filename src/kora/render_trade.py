@@ -20,7 +20,6 @@ from src.kora.peoples import color_of
 from src.kora.render import HUD_HEIGHT
 from src.kora.render_tech import BAD, GOLD, GOLD_DEEP, GOLD_DIM, GOOD, INK, NOTE, SOFT, _button, _fit, _gradient_card, _wrap
 from src.kora.render_village import WARN, _fonts, _frame, _hover, _section, _tile, _tip
-from src.kora.sim import PLAYER_TRIBE_ID
 
 MAX_ROUTES_SHOWN = 8
 MAX_PARTNERS_SHOWN = 6
@@ -151,15 +150,15 @@ def candidates(state) -> list[int]:
     proposer des echanges (les plus proches d'abord)."""
     alive = {b.tribe_id for b in state.bands.values() if b.population > 0}
     out = []
-    for t in diplo.contacts_of(state, PLAYER_TRIBE_ID):
-        if t in alive and not diplo.has_pact(state, PLAYER_TRIBE_ID, t, "commerce") and goods.has_village(state, t):
+    for t in diplo.contacts_of(state, state.viewer):
+        if t in alive and not diplo.has_pact(state, state.viewer, t, "commerce") and goods.has_village(state, t):
             out.append(t)
-    out.sort(key=lambda t: (goods.trade_distance(state, PLAYER_TRIBE_ID, t), t))
+    out.sort(key=lambda t: (goods.trade_distance(state, state.viewer, t), t))
     return out
 
 
 def routes_shown(state) -> list:
-    return sorted(goods.routes_of(state, PLAYER_TRIBE_ID), key=lambda r: (r.exporter != PLAYER_TRIBE_ID, r.good, r.exporter, r.importer))
+    return sorted(goods.routes_of(state, state.viewer), key=lambda r: (r.exporter != state.viewer, r.good, r.exporter, r.importer))
 
 
 def _chip(r, rect, label, active, on=True, mx=0, my=0) -> None:
@@ -183,14 +182,14 @@ def _dot(r, color, x, y, radius=5) -> None:
 
 
 def draw_trade(r, state, ui) -> None:
-    tribe = state.tribes.get(PLAYER_TRIBE_ID)
+    tribe = state.tribes.get(state.viewer)
     if tribe is None:
         r.trade_hits = {}
         return
     title_font, head_font = _fonts(r)
     screen = r.screen
     mx, my = pygame.mouse.get_pos()
-    partners = goods.partners(state, PLAYER_TRIBE_ID)
+    partners = goods.partners(state, state.viewer)
     routes = routes_shown(state)
     cands = candidates(state)
     w, h = screen.get_size()
@@ -203,14 +202,14 @@ def draw_trade(r, state, ui) -> None:
     bx, by, bw, bh = lay["box"]
     pygame.draw.rect(screen, color_of(tribe), (bx + 22, by + 18, 6, 34), border_radius=2)
     screen.blit(title_font.render(f"Commerce des {tribe.name}", True, GOLD), (bx + 36, by + 12))
-    used, cap = goods.convoys_used(state, PLAYER_TRIBE_ID), goods.convoys(state, PLAYER_TRIBE_ID)
+    used, cap = goods.convoys_used(state, state.viewer), goods.convoys(state, state.viewer)
     sub = f"Accords commerciaux : {len(partners)}  ·  convois de porteurs {used}/{cap} (1, +1 par village, +2 par Place d'echange)"
     screen.blit(r.tiny.render(_fit(r.tiny, sub, bw - 240), True, NOTE), (bx + 38, by + 42))
     _button(screen, r.small, lay["close"], "Fermer [Echap]", True, _hover(lay["close"], mx, my))
     tips: list = []
     # Tuiles.
-    month = goods.last_month(state, PLAYER_TRIBE_ID)
-    ok = sum(1 for g in goods.GOODS if goods.supplied(state, PLAYER_TRIBE_ID, g))
+    month = goods.last_month(state, state.viewer)
+    ok = sum(1 for g in goods.GOODS if goods.supplied(state, state.viewer, g))
     balance = month["sold"] - month["bought"]
     tiles = (
         ("BIENS POURVUS", f"{ok}/{len(goods.GOODS)}", "leurs effets jouent", GOOD if ok else INK),
@@ -233,16 +232,16 @@ def _draw_market(r, state, lay, tips, mx, my) -> None:
     screen = r.screen
     x, y, w, _h = lay["left"]
     _section(r, x, y, w, "MARCHE DU PEUPLE  ·  reserve, prix chez vous")
-    need = goods.need(state, PLAYER_TRIBE_ID)
+    need = goods.need(state, state.viewer)
     for g, rect in lay["goods"].items():
         gx, gy, gw, gh = rect
-        have = goods.stock(state, PLAYER_TRIBE_ID, g)
-        made = goods.made(state, PLAYER_TRIBE_ID, g)
-        ok = goods.supplied(state, PLAYER_TRIBE_ID, g)
+        have = goods.stock(state, state.viewer, g)
+        made = goods.made(state, state.viewer, g)
+        ok = goods.supplied(state, state.viewer, g)
         pygame.draw.circle(screen, goods.GOOD_COLORS[g], (gx + 6, gy + 9), 5)
         screen.blit(r.small.render(goods.GOOD_NAMES[g], True, INK if have or made else SOFT), (gx + 16, gy))
-        p = goods.price(state, PLAYER_TRIBE_ID, g)
-        word = goods.price_word(state, PLAYER_TRIBE_ID, g)
+        p = goods.price(state, state.viewer, g)
+        word = goods.price_word(state, state.viewer, g)
         ptxt = f"{p:.1f} vivres · {word}".replace(".", ",", 1)
         ps = r.tiny.render(ptxt, True, WARN if word in ("cher", "tres cher") else GOOD if word == "bon marche" else SOFT)
         screen.blit(ps, (gx + gw - ps.get_width(), gy + 3))
@@ -263,7 +262,7 @@ def _draw_market(r, state, lay, tips, mx, my) -> None:
     gx, gy, gw, gh = lay["graph"]
     screen.blit(r.tiny.render("VENTES ET ACHATS DES DERNIERS MOIS (vivres)", True, GOLD), (gx, gy - 18))
     screen.blit(_gradient_card(gw, gh, (20, 24, 28), (14, 16, 20), 6), (gx, gy))
-    hist = goods.history(state, PLAYER_TRIBE_ID)
+    hist = goods.history(state, state.viewer)
     mid_y = gy + gh // 2
     pygame.draw.line(screen, (60, 64, 72), (gx + 6, mid_y), (gx + gw - 6, mid_y))
     if not hist:
@@ -288,7 +287,7 @@ def _draw_market(r, state, lay, tips, mx, my) -> None:
 def _draw_routes(r, state, lay, routes, ui, tips, mx, my) -> None:
     screen = r.screen
     x, y, w, h = lay["mid"]
-    used, cap = goods.convoys_used(state, PLAYER_TRIBE_ID), goods.convoys(state, PLAYER_TRIBE_ID)
+    used, cap = goods.convoys_used(state, state.viewer), goods.convoys(state, state.viewer)
     _section(r, x, y, w, f"ROUTES  ·  convois {used}/{cap}")
     if not routes:
         text = (
@@ -303,7 +302,7 @@ def _draw_routes(r, state, lay, routes, ui, tips, mx, my) -> None:
         return
     for route, row in zip(routes, lay["routes"]):
         cx, cy, cw, ch = row["card"]
-        selling = route.exporter == PLAYER_TRIBE_ID
+        selling = route.exporter == state.viewer
         other = route.importer if selling else route.exporter
         o = state.tribes.get(other)
         top = (40, 52, 38) if selling else (52, 40, 34)
@@ -312,9 +311,9 @@ def _draw_routes(r, state, lay, routes, ui, tips, mx, my) -> None:
         pygame.draw.circle(screen, goods.GOOD_COLORS[route.good], (cx + 12, cy + 12), 6)
         if o is not None:
             _dot(r, color_of(o), cx + 26, cy + 12, 4)
-        head = goods.route_text(state, PLAYER_TRIBE_ID, route)
+        head = goods.route_text(state, state.viewer, route)
         screen.blit(r.small.render(_fit(r.small, head, cw - 50), True, INK), (cx + 36, cy + 3))
-        mine = route.by == PLAYER_TRIBE_ID
+        mine = route.by == state.viewer
         if route.units > 0:
             verb = "vendu" if selling else "achete"
             last = f"{verb} {route.units:.1f} · {'+' if selling else '-'}{route.paid:.0f} vivres".replace(".", ",", 1)
@@ -327,13 +326,13 @@ def _draw_routes(r, state, lay, routes, ui, tips, mx, my) -> None:
         for k, rect in enumerate(row["levels"]):
             _chip(r, rect, str(k + 1), route.level == k + 1, on=mine, mx=mx, my=my)
             if _hover(rect, mx, my):
-                why = goods.level_block(state, PLAYER_TRIBE_ID, route, k + 1)
+                why = goods.level_block(state, state.viewer, route, k + 1)
                 load = goods.trade_load(state, route.exporter, route.importer)
                 tips.append(([(f"{k + 1} convoi{'s' if k else ''} : {load * (k + 1):.0f} charges par mois au plus", SOFT)] + ([(why, WARN)] if why and route.level != k + 1 else []), mx, my))
         _chip(r, row["close"], "Fermer", False, on=True, mx=mx, my=my)
         if _hover(row["close"], mx, my) and not mine:
             tips.append(([("C'est leur route : la fermer les froissera (relation -3).", WARN)], mx, my))
-    extra = len(goods.routes_of(state, PLAYER_TRIBE_ID)) - len(routes)
+    extra = len(goods.routes_of(state, state.viewer)) - len(routes)
     if extra > 0:
         screen.blit(r.tiny.render(f"... et {extra} autres routes", True, NOTE), (x, lay["routes"][-1]["card"][1] + 60))
 
@@ -344,7 +343,7 @@ def _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my) -> No
     _section(r, x, y, w, "OUVRIR UNE ROUTE")
     if not partners:
         hint = "Il faut un accord commercial (Peuples [P], il faut Echanges lointains) avec un peuple qui a un village."
-        if not tech.bonuses(state.tribes[PLAYER_TRIBE_ID]).commerce:
+        if not tech.bonuses(state.tribes[state.viewer]).commerce:
             hint = "Il faut connaitre Echanges lointains pour conclure des accords commerciaux."
         yy = y + 26
         for part in _wrap(r.tiny, hint, w)[:3]:
@@ -373,9 +372,9 @@ def _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my) -> No
     for k, rect in enumerate(lay["levels"]):
         _chip(r, rect, str(k + 1), level == k + 1, on=pick is not None, mx=mx, my=my)
     px, py, pw, _ph = lay["preview"]
-    why = "Choisissez un partenaire" if pick is None else goods.open_block(state, PLAYER_TRIBE_ID, pick, good, sell, level)
+    why = "Choisissez un partenaire" if pick is None else goods.open_block(state, state.viewer, pick, good, sell, level)
     if pick is not None:
-        pv = goods.preview(state, PLAYER_TRIBE_ID, pick, good, sell, level)
+        pv = goods.preview(state, state.viewer, pick, good, sell, level)
         other = state.tribes[pick].name
         rows = [
             (f"Prix : {pv['mine']:.1f} chez vous, {pv['theirs']:.1f} chez les {other} -> {pv['price']:.1f} la charge".replace(".", ","), SOFT),
@@ -428,11 +427,11 @@ def _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my) -> No
                 break
             t = state.tribes[tid]
             _dot(r, color_of(t), rx + 6, ry + 11, 5)
-            dist = goods.trade_distance(state, PLAYER_TRIBE_ID, tid)
-            rel = diplo.relation(state, PLAYER_TRIBE_ID, tid)
+            dist = goods.trade_distance(state, state.viewer, tid)
+            rel = diplo.relation(state, state.viewer, tid)
             screen.blit(r.tiny.render(_fit(r.tiny, f"{t.name} · {dist} cases · relation {rel:+.0f}", rw_ - 110), True, SOFT), (rx + 16, ry + 5))
-            v = diplo.evaluate(state, PLAYER_TRIBE_ID, tid, "commerce")
-            wait = diplo.on_cooldown(state, PLAYER_TRIBE_ID, tid, "commerce")
+            v = diplo.evaluate(state, state.viewer, tid, "commerce")
+            wait = diplo.on_cooldown(state, state.viewer, tid, "commerce")
             ok = not v.blocked and not wait
             _chip(r, row["ask"], "Proposer", False, on=ok, mx=mx, my=my)
             if _hover(row["ask"], mx, my):

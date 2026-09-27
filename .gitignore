@@ -13,3 +13,4 @@ dist-unfichier/
 # Sauvegardes locales (code en .zip, partie du joueur)
 *.zip
 sauvegarde-partie-*.json
+saves/

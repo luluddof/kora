@@ -16,15 +16,27 @@ class PlayerVision:
     key: tuple | None = None
 
 
-def recompute_vision(state: GameState) -> PlayerVision:
-    vis = state.vision if isinstance(state.vision, PlayerVision) else PlayerVision()
+def vision_of(state: GameState, tid: int = PLAYER_TRIBE_ID):
+    """La vue d'un peuple joueur (None si elle n'est pas encore calculee).
+    Le joueur solo garde la sienne dans state.vision, les autres dans
+    state.povs (multijoueur)."""
+    if tid == PLAYER_TRIBE_ID:
+        vis = state.vision
+    else:
+        pov = state.povs.get(tid)
+        vis = pov.vision if pov is not None else None
+    return vis if isinstance(vis, PlayerVision) else None
+
+
+def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
+    vis = vis if isinstance(vis, PlayerVision) else PlayerVision()
     spots = sorted(
         (band.position.q, band.position.r)
         for band in state.bands.values()
-        if band.tribe_id == PLAYER_TRIBE_ID and band.population > 0
+        if band.tribe_id == tid and band.population > 0
     )
     radius = VISION_RADIUS
-    player = state.tribes.get(PLAYER_TRIBE_ID)
+    player = state.tribes.get(tid)
     if player is not None:
         from src.kora import tech
 
@@ -34,14 +46,13 @@ def recompute_vision(state: GameState) -> PlayerVision:
     if state.sites:
         from src.kora import villages
 
-        towers = villages.watch_spots(state, PLAYER_TRIBE_ID)
+        towers = villages.watch_spots(state, tid)
     key = (id(state.world), radius, tuple(spots), tuple(towers))
     if vis.key == key:
-        state.vision = vis
         return vis
     visible: set[Hex] = set()
     for band in state.bands.values():
-        if band.tribe_id != PLAYER_TRIBE_ID or band.population <= 0:
+        if band.tribe_id != tid or band.population <= 0:
             continue
         visible.update(state.world.hexes_in_radius(band.position, radius))
     for h in towers:
@@ -49,25 +60,36 @@ def recompute_vision(state: GameState) -> PlayerVision:
     vis.visible = visible
     vis.explored |= visible
     vis.key = key
-    state.vision = vis
     return vis
 
 
-def is_visible(state: GameState, h: Hex) -> bool:
-    vis = state.vision
-    if not isinstance(vis, PlayerVision):
+def recompute_vision(state: GameState) -> PlayerVision:
+    """La vue de chaque peuple joueur ; rend celle du joueur solo."""
+    from src.kora.sim import humans, pov_of
+
+    vis = _recompute_for(state, PLAYER_TRIBE_ID, state.vision)
+    state.vision = vis
+    for tid in humans(state)[1:]:
+        pov = pov_of(state, tid)
+        pov.vision = _recompute_for(state, tid, pov.vision)
+    return vis
+
+
+def is_visible(state: GameState, h: Hex, tid: int = PLAYER_TRIBE_ID) -> bool:
+    vis = vision_of(state, tid)
+    if vis is None:
         return False
     return h in vis.visible
 
 
-def is_explored(state: GameState, h: Hex) -> bool:
-    vis = state.vision
-    if not isinstance(vis, PlayerVision):
+def is_explored(state: GameState, h: Hex, tid: int = PLAYER_TRIBE_ID) -> bool:
+    vis = vision_of(state, tid)
+    if vis is None:
         return False
     return h in vis.explored
 
 
-def enemy_band_visible(state: GameState, band) -> bool:
-    if band.tribe_id == PLAYER_TRIBE_ID:
+def enemy_band_visible(state: GameState, band, tid: int = PLAYER_TRIBE_ID) -> bool:
+    if band.tribe_id == tid:
         return True
-    return is_visible(state, band.position)
+    return is_visible(state, band.position, tid)

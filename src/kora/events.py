@@ -616,10 +616,11 @@ def _warm_spot(state, band, reach: int):
 
 
 def _reveal(state, inst, radius: int) -> None:
-    from src.kora.vision import PlayerVision
+    from src.kora.vision import vision_of
 
     tribe = state.tribes.get(inst.tribe_id)
-    if tribe is None or not tribe.is_player or not isinstance(state.vision, PlayerVision):
+    vision = vision_of(state, inst.tribe_id) if tribe is not None and tribe.is_player else None
+    if vision is None:
         return
     band = _band(state, inst)
     if band is None:
@@ -628,7 +629,7 @@ def _reveal(state, inst, radius: int) -> None:
     # Un pays lointain : le peuple inconnu le plus proche, sinon au hasard.
     unknown = [
         b for b in state.bands.values()
-        if b.tribe_id != tribe.id and b.population > 0 and b.position not in state.vision.explored
+        if b.tribe_id != tribe.id and b.population > 0 and b.position not in vision.explored
     ]
     unknown.sort(key=lambda b: (world.distance(b.position, band.position), b.id))
     if unknown:
@@ -637,7 +638,7 @@ def _reveal(state, inst, radius: int) -> None:
         from src.kora.world import offset_to_axial
 
         center = offset_to_axial(state.story_rng.randrange(world.width), world.height // 2)
-    state.vision.explored |= set(world.hexes_in_radius(center, radius))
+    vision.explored |= set(world.hexes_in_radius(center, radius))
     inst.data["lieu"] = "vers le soleil levant" if center.q > band.position.q else "vers le couchant"
 
 
@@ -908,12 +909,13 @@ def fire(state, inst: Instance) -> bool:
     book = _book(state)
     book.fired[f"{inst.tribe_id}:{ev.id}"] = state.tick_count
     if tribe.is_player:
-        if len(book.pending) >= MAX_PENDING:
+        mine = [p for p in book.pending if p.tribe_id == tribe.id]
+        if len(mine) >= MAX_PENDING:
             # Trop de cartes : on decide d'office la plus ancienne.
-            decide_default(state, book.pending[0].uid)
+            decide_default(state, mine[0].uid)
         inst.deadline = state.tick_count + ev.deadline
         book.pending.append(inst)
-        state.log.add(LogKind.DECOUVERTE, f"A decider : {ev.title}.", state.clock.year, state.clock.week)
+        _log(state, tribe.id, LogKind.DECOUVERTE, f"A decider : {ev.title}.")
         return True
     opts = options_for(state, inst)
     choices = [i for i, o in enumerate(opts) if not o["blocked"]]
@@ -951,7 +953,7 @@ def resolve(state, inst: Instance, index: int) -> str:
         band = state.bands.get(bid)
         text = f"{band.leader.name} mene desormais la tribu." if band is not None and band.leader else ""
         if tribe.is_player and text:
-            state.log.add(LogKind.POLITIQUE, text, state.clock.year, state.clock.week)
+            _log(state, tribe.id, LogKind.POLITIQUE, text)
         # Un ambitieux ecarte peut contester.
         from src.kora import chiefs
 
@@ -987,8 +989,23 @@ def resolve(state, inst: Instance, index: int) -> str:
         band = state.bands.get(inst.band_id)
         if band is not None:
             where = band.position
-        state.log.add(LogKind.DECOUVERTE, shown, state.clock.year, state.clock.week, where=where)
+        _log(state, tribe.id, LogKind.DECOUVERTE, shown, where)
+    other = state.tribes.get(inst.other)
+    if ev.trigger in OFFERS and other is not None and other.is_player and other.id != tribe.id:
+        # La proposition venait d'un autre joueur : il apprend la reponse.
+        _log(state, other.id, LogKind.POLITIQUE, f"Les {tribe.name} ont repondu a votre proposition : {options[index].label.lower()}.")
     return shown
+
+
+# Les propositions d'un peuple a un autre (diplo) : si elles viennent d'un
+# joueur, il apprend la reponse.
+OFFERS = ("offre_treve", "offre_alliance", "offre_commerce", "exige_tribut")
+
+
+def _log(state, tid: int, kind, text: str, where=None) -> None:
+    from src.kora.sim import note
+
+    note(state, kind, text, where, to=tid)
 
 
 def _schedule(state, f: Follow, inst: Instance, band_id: int | None = None, rival: int | None = None) -> None:
@@ -1039,12 +1056,7 @@ def decide_default(state, uid: int) -> None:
     opts = options_for(state, inst)
     label = opts[index]["label"] if index < len(opts) else "?"
     if ev is not None:
-        state.log.add(
-            LogKind.DECOUVERTE,
-            f"Decide d'office ({ev.title}) : {label}.",
-            state.clock.year,
-            state.clock.week,
-        )
+        _log(state, inst.tribe_id, LogKind.DECOUVERTE, f"Decide d'office ({ev.title}) : {label}.")
     choose(state, uid, index)
 
 
@@ -1054,10 +1066,16 @@ def find(state, uid) -> Instance | None:
     return next((p for p in state.events.pending if p.uid == uid), None)
 
 
-def pending(state) -> list:
+def pending(state, tid: int | None = None) -> list:
+    """Les cartes qui attendent la decision du joueur `tid` (par defaut le
+    joueur solo ; l'interface passe state.viewer)."""
     if not isinstance(state.events, Book):
         return []
-    return list(state.events.pending)
+    if tid is None:
+        from src.kora.sim import PLAYER_TRIBE_ID
+
+        tid = PLAYER_TRIBE_ID
+    return [p for p in state.events.pending if p.tribe_id == tid]
 
 
 def text_for(state, inst) -> str:

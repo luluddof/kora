@@ -219,3 +219,17 @@ def test_tribe_panel_shows_remaining_years():
     assert "encore 2 semaines" in start_bonus_text(st, me)
     me.start_bonuses = []
     assert start_bonus_text(st, me) == ""
+
+
+def test_new_games_keep_only_the_last_set_aside_saves(tmp_path):
+    from src.kora.persist import KEEP_ASIDE, set_aside_save
+
+    for i in range(8):
+        (tmp_path / f"kora-ancienne-20260101-00000{i}.json").write_text("{}", encoding="utf-8")
+    save = tmp_path / "kora.json"
+    save.write_text("{}", encoding="utf-8")
+    moved = set_aside_save(save)
+    assert moved is not None and moved.exists() and not save.exists()
+    left = sorted(p.name for p in tmp_path.glob("kora-ancienne-*.json"))
+    assert len(left) == KEEP_ASIDE
+    assert moved.name in left
