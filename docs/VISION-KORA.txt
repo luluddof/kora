@@ -199,14 +199,15 @@ lente, bandes dessinees petites a taille fixe.
   - "J'aimerais ajouter un mode MULTIJOUEUR au jeu, mais aussi un MENU DE
     DEMARRAGE, et la possibilite, quand on cree la tribu, de lui donner des
     BONUS DE DEPART (qui durent 5 ans), que l'on choisit parmi un pool."
-    FAIT (0.2.0, spec 2026-09-27-menu-bonus-multijoueur.txt) :
+    FAIT (0.2.0 puis 0.2.1, spec 2026-09-27-menu-bonus-multijoueur.txt) :
     menu de demarrage (Continuer, Nouvelle partie, Multijoueur ; l'ancienne
     partie mise de cote, jamais effacee) ; creation du peuple (nom, couleur,
     2 bonus parmi 12, 5 ans, affiches dans Tribu) ; MULTIJOUEUR jusqu'a 4
     (lockstep : l'hote tient le temps, chacun calcule la meme partie ; salon,
     discussion, pause pour tous, diplomatie entre joueurs en cartes, ecarts
     reperes et recopies, depart/retour, reprise de la partie a plusieurs).
-    Verifie : deux processus 10 ans identiques ; sa partie (copie, an 54)
+    Verifie : deux processus 10 ans identiques, deux Kora.exe 3 ans
+    identiques ; sa partie (copie, an 54)
     identique sur deux "machines". En route : la sauvegarde oubliait la
     pression de cueillette (recharger changeait la suite) : corrige.
 
