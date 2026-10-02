@@ -337,8 +337,8 @@ def draw_tribe(r, state, layout, ui) -> None:
     if band is None:
         _text(r, r.small, "Un seul clan : la tribu suit son chef.", SOFT, bx + 18, dy + 10)
         _text(r, r.tiny, "Quand vous scindez, chaque nouveau clan a son chef de bande et son attachement.", NOTE, bx + 18, dy + 32)
-        for lines, x, y2 in ui.pop("_tips", []):
-            _tooltip(r, lines, x, y2)
+        for tip in ui.pop("_tips", []):
+            _tooltip(r, *tip)
         return
     who = band.leader.name if band.leader is not None else f"bande {band.id}"
     target = chiefs.loyalty_target(state, band)
@@ -388,8 +388,8 @@ def draw_tribe(r, state, layout, ui) -> None:
     if tribe.settled_at < 0:
         tip = "Obéit à 40 et plus · indocile de 20 à 40 · sous 20, le clan peut partir. Le chef à 3 cases : +10 par mois."
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
-    for lines, x, y2 in ui.pop("_tips", []):
-        _tooltip(r, lines, x, y2)
+    for tip in ui.pop("_tips", []):
+        _tooltip(r, *tip)
 
 
 # --- Villages (plus de nomades) --------------------------------------------------
@@ -525,8 +525,8 @@ def draw_villages(r, state, layout, ui) -> None:
     _text(r, r.tiny, r._fit(r.tiny, f"Besoin : {need:.1f} de chaque bien par semaine (tous vos villages). Métiers : écran du village.".replace(".", ",", 1), bw - 36), NOTE, bx + 18, ty + 16)
     tip = "Plus de nomades : le peuple vit dans ses villages."
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
-    for lines, x, y2 in ui.pop("_tips", []):
-        _tooltip(r, lines, x, y2)
+    for tip in ui.pop("_tips", []):
+        _tooltip(r, *tip)
 
 
 # --- Peuples ---------------------------------------------------------------------------
@@ -790,8 +790,8 @@ def draw_peoples(r, state, layout, ui) -> None:
         on = state.tribes[state.viewer].prestige >= diplo.INVITE_COST
         _button(r, rect, f"Inviter ({diplo.INVITE_COST} prest., ~{chance} %)", on=on)
         iy += 28
-    for rows, x, y in tips:
-        _tooltip(r, rows, x, y)
+    for tip in tips:
+        _tooltip(r, *tip)
 
 
 # --- evenements -------------------------------------------------------------------------
@@ -896,8 +896,8 @@ def draw_event_modal(r, state, ui) -> None:
                 tips.append((rows, bx - 8 - tw, rect[1]))
             else:
                 tips.append((rows, rect[0] + 20, rect[1] - 12 - 18 * len(rows)))
-    for rows, x, y in tips:
-        _tooltip(r, rows, x, y)
+    for tip in tips:
+        _tooltip(r, *tip)
 
 
 # --- Armee ------------------------------------------------------------------------------
@@ -1032,5 +1032,5 @@ def draw_army(r, state, layout, ui) -> None:
         y += 44
     tip = "Dissoute, une compagnie rentre à pied à son village. Les savoirs apportent de nouveaux types d'unités."
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
-    for lines, x, y2 in tips:
-        _tooltip(r, lines, x, y2)
+    for tip in tips:
+        _tooltip(r, *tip)

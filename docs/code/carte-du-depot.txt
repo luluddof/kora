@@ -884,6 +884,8 @@ test_chiefs.py             chefs, attachement, depart, succession
 test_diplo.py              contacts, raisons, pactes, cadeaux,
                            diffusion, clan invite
 test_events.py             evenements bien formes, cartes, suites
+test_ui_hover.py           la souris partout sur chaque ecran : aucune
+                           fiche au survol ne plante
 test_war_chiefdom.py       population en classes, batailles en jours,
                            fortune non binaire, general, repli, conquete,
                            tributaires, chefferie, revolte, sauvegarde

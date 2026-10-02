@@ -290,6 +290,11 @@ lente, bandes dessinees petites a taille fixe.
   - "Detaille le 1A." FAIT : 2026-10-02-voix-et-coutumes-detail.txt.
   - "Ne fais pas le 1A pour l'instant." NOTE : les voix et coutumes sont
     mises de cote (le document reste, pour plus tard).
+  - "Mon jeu vient de crash" (ecran Peuples, 0.5.0). CORRIGE (0.5.1) : une
+    fiche au survol d'un bouton de diplomatie passait le bouton a eviter et
+    la boucle de dessin attendait trois valeurs. Toutes les boucles de
+    fiches acceptent les deux formes ; tests/test_ui_hover.py promene la
+    souris sur chaque ecran (il reproduisait le plantage).
   - "Les combats durent plusieurs tics, un par jour (tues, blesses,
     demoralises) ; generaux, terrain selon les troupes et la defense, un jet
     qui ne decide pas de facon binaire." FAIT : battle.py jour apres jour,

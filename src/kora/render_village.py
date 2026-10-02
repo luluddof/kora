@@ -638,8 +638,8 @@ def draw_village(r, state, ui) -> None:
         _page_tab(r, rect, label, key == page, _hover(rect, mx, my))
     if page == "metiers":
         _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my)
-        for tip, tx, ty in ui.pop("_vtips", []):
-            _tip(r, tip, tx, ty)
+        for tip in ui.pop("_vtips", []):
+            _tip(r, *tip)
         return
     if page == "chef":
         _draw_chef(r, state, site, band, lay, ui, mx, my)
@@ -1166,8 +1166,8 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
         label = "Libérer" if home else "Dissoudre"
         on_d = not villages.dissolve_block(state, army.id)
         _button(screen, r.tiny, row["recall"], label, on_d, on_d and _hover(row["recall"], mx, my))
-    for tip, tx, ty in ui.pop("_vtips", []):
-        _tip(r, tip, tx, ty)
+    for tip in ui.pop("_vtips", []):
+        _tip(r, *tip)
 
 
 def _stats(u) -> str:
