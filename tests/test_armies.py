@@ -124,6 +124,9 @@ def test_a_troop_without_village_becomes_a_clan():
     villages.leave(st, 1)
     villages.update(st)
     assert army.kind == "" and army.home == 0
+    from src.kora import population
+
+    assert population.counts(army)["enfants"] == 0, "un clan d'hommes"
 
 
 def test_a_troop_away_leaves_the_harvest_short_of_hands():
@@ -178,3 +181,40 @@ def test_an_ai_village_raises_a_troop_when_threatened():
         st.tick_count = week
         decide_ai(st)
     assert villages.armies_of(st, site)
+
+
+def test_a_dissolved_troop_never_becomes_a_nomad_clan_of_a_settled_people():
+    """Un peuple sedentaire ne refait pas de tribu : une troupe dissoute loin,
+    sans chemin praticable, rentre quand meme au village (par d'autres voies)."""
+    from src.kora import population, sim
+
+    st, village, site = _village(pop=120)
+    army = villages.raise_army(st, 1)
+    n = army.population
+    army.position = offset_to_axial(55, 15)
+    real = sim.set_goto
+    sim.set_goto = lambda state, bid, goal, **kw: setattr(state.bands[bid], "path", [])
+    try:
+        assert villages.dissolve(st, army.id)
+    finally:
+        sim.set_goto = real
+    assert army.id not in st.bands, "la troupe a rejoint son village"
+    assert village.population == 120 and not any(b.kind == "" and not b.village and b.tribe_id == 1 for b in st.bands.values())
+    assert population.counts(village)["hommes"] >= n
+
+
+def test_a_troop_whose_village_is_gone_goes_home_to_another_village():
+    st, village, site = _village(pop=120)
+    for t in tech.TECHS:
+        tech.grant(st.tribes[1], t)
+    tech.invalidate()
+    st.bands[7] = Band(7, 1, offset_to_axial(45, 15), 100, 3000.0)
+    sites.make_camp(st, 7)
+    other = villages.found(st, 7)
+    assert other is not None
+    army = villages.raise_army(st, 1)
+    army.position = offset_to_axial(40, 15)
+    # Le village de la troupe disparait.
+    st.sites.pop(site.id)
+    villages.update(st)
+    assert army.kind == "armee" and army.home == other.id and (army.homebound or army.id not in st.bands)

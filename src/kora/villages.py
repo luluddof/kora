@@ -1573,13 +1573,46 @@ def _join_village(state, army, site) -> None:
 
 
 def _to_clan(state, band) -> None:
+    """Une troupe qui n'a plus son village. Un peuple sedentaire ne refait
+    JAMAIS de tribu nomade : elle rentre au village le plus proche de son
+    peuple (a pied ; sans chemin, ses hommes le rejoignent par d'autres
+    voies). Seul un peuple sans aucun village en refait un clan."""
+    homes = sorted(
+        (s for s in state.sites.values() if s.kind == "village" and s.tribe_id == band.tribe_id and band_of(state, s) is not None),
+        key=lambda s: (state.world.distance(s.hex, band.position), s.id),
+    )
+    if homes:
+        site = homes[0]
+        band.home = site.id
+        for u in band.units:
+            u[2] = site.id
+        band.homebound = False
+        if state.world.distance(site.hex, band.position) <= ARMY_HOME:
+            _join_village(state, band, site)
+            return
+        from src.kora.sim import set_goto
+
+        set_goto(state, band.id, site.hex, max_nodes=8000, max_cost=40000)
+        if band.path:
+            band.homebound = True
+            if state.tribes[band.tribe_id].is_player:
+                _note(state, LogKind.COMBAT, f"La troupe rentre à {name(site)}.", band.position, to=band.tribe_id)
+            return
+        # Aucun chemin : les hommes rentrent par d'autres voies.
+        if state.tribes[band.tribe_id].is_player:
+            _note(state, LogKind.COMBAT, f"Sans chemin praticable, les guerriers rentrent à {name(site)} par d'autres voies.", site.hex, to=band.tribe_id)
+        band.position = site.hex
+        _join_village(state, band, site)
+        return
+    # Un clan d'hommes (ni femmes ni enfants ne sortent de nulle part).
+    band.demo = dict(band.demo) if band.demo else {"hommes": 1.0}
     band.kind = ""
     band.home = 0
     band.units = []
     band.homebound = False
     if state.tribes[band.tribe_id].is_player:
         who = band.leader.name if band.leader else "?"
-        _note(state, LogKind.COMBAT, f"La troupe de {who} n'a plus de village : elle devient un clan errant.", band.position, to=band.tribe_id)
+        _note(state, LogKind.COMBAT, f"La troupe de {who} n'a plus aucun village où rentrer : elle devient un clan errant.", band.position, to=band.tribe_id)
 
 
 def _send_home(state, band, site) -> None:
@@ -1587,6 +1620,9 @@ def _send_home(state, band, site) -> None:
 
     band.homebound = False
     set_goto(state, band.id, site.hex, max_nodes=1200, max_cost=4000)
+    if not band.path and state.world.distance(site.hex, band.position) > ARMY_HOME:
+        # Loin : on cherche plus longtemps avant de renoncer.
+        set_goto(state, band.id, site.hex, max_nodes=8000, max_cost=40000)
     if band.path:
         band.homebound = True
     elif state.world.distance(site.hex, band.position) > ARMY_HOME:

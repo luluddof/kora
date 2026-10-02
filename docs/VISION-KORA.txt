@@ -295,6 +295,12 @@ lente, bandes dessinees petites a taille fixe.
     la boucle de dessin attendait trois valeurs. Toutes les boucles de
     fiches acceptent les deux formes ; tests/test_ui_hover.py promene la
     souris sur chaque ecran (il reproduisait le plantage).
+  - "Quand on dissout une armee elle redevient une tribu, or une fois qu'on
+    se sedentarise on ne peut plus faire de tribu." CORRIGE (0.5.2) : une
+    troupe sans chemin ou sans village rentre au village le plus proche de
+    son peuple (par d'autres voies s'il le faut) ; seul un peuple sans aucun
+    village en refait un clan (d'hommes). REGLE : un peuple sedentaire ne
+    refait jamais de bande nomade par une troupe.
   - "Les combats durent plusieurs tics, un par jour (tues, blesses,
     demoralises) ; generaux, terrain selon les troupes et la defense, un jet
     qui ne decide pas de facon binaire." FAIT : battle.py jour apres jour,
