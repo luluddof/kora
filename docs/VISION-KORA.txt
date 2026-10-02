@@ -324,9 +324,12 @@ lente, bandes dessinees petites a taille fixe.
   crise nouvelle dit son risque (Spec.risk) quand on peut la voir venir ;
   une fiche au survol d'un bouton passe avoid=rect (theme.tooltip).
   En attente de SON choix : signer l'exe (SignPath, licence du depot).
-  En attente de SON choix : la suite de la profondeur des ages (spec
-  2026-10-02, section 4 ; ma recommandation : N2 la chefferie, puis T2
-  les matieres lointaines).
+  En attente de SON choix : la suite de la profondeur des ages, toutes
+  les pistes reunies et detaillees dans
+  2026-10-02-profondeur-propositions-detaillees.txt (il a demande de
+  "redetailler") ; ma recommandation : 1. le pouvoir dans le peuple (voix
+  et coutumes + chefferie), 2. betail et guerre avec des buts, 3. memoire,
+  4. age tribal vivant, 5. civilisation vivante.
   En attente de SON choix : les propositions de profondeur des deux ages,
   deuxieme reflexion (docs/superpowers/specs/2026-09-26-profondeur-deuxieme-reflexion.txt ;
   ma recommandation : F1 Les Voix du peuple et les Coutumes d'abord).

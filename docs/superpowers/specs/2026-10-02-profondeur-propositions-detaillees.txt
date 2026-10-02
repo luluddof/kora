@@ -1,0 +1,233 @@
+Kora - La profondeur des deux âges : propositions détaillées (à choisir)
+=======================================================================
+Date : 2026-10-02. Statut : PROPOSITIONS, rien n'est codé. Elles remplacent
+et réunissent 2026-09-25-profondeur-deux-ages-propositions.txt,
+2026-09-26-profondeur-deuxieme-reflexion.txt (F1-F6) et la section 4 de
+2026-10-02-profondeur-epoques-situations.txt (T1-T4, N1-N4), en tenant
+compte de ce qui existe depuis (situations, savoir-faire, influence
+projetée, grand monument).
+
+Demande : "redétaille pour la profondeur".
+
+
+0. CE QUI EXISTE DÉJÀ, ET CE QUI MANQUE
+---------------------------------------
+Déjà là : saisons locales, faim, bandes qu'on divise et réunit, chefs,
+anciens et emprise, influence projetée selon le sol, savoirs vécus,
+diplomatie, ~50 événements en chaînes, villages (champs, sol, bâtiments,
+serments, stabilité), métiers et savoir-faire, routes commerciales,
+troupes et batailles, émancipation en proto-pays, 14 situations (crises et
+conjonctures), grand monument.
+
+Ce qui manque encore pour une vraie grande stratégie :
+  a. la POLITIQUE INTÉRIEURE : le peuple obéit comme un bloc ;
+  b. une RICHESSE qui se vole, se donne, se transmet : la guerre n'a pas
+     d'enjeu propre (on se bat pour des vivres) ;
+  c. la MÉMOIRE : rien ne reste des morts, des victoires, des famines ;
+  d. un ÂGE TRIBAL qui soit une lecture du monde : le gibier ne vit pas,
+     une année ressemble à la suivante ;
+  e. des BUTS à long terme choisis par le joueur.
+
+
+1. LE POUVOIR DANS LE PEUPLE (les deux âges) - a.
+-------------------------------------------------
+1A. LES VOIX DU PEUPLE ET LES COUTUMES
+  Réalité de l'époque : dans une société sans État, le chef n'a que
+  l'autorité qu'on lui reconnaît ; les anciens, les chasseurs, les
+  guerriers ont leur mot ; les coutumes (partage, mariage, succession)
+  font la société.
+  En jeu : des VOIX pèsent selon ce que font les gens.
+    Âge tribal : Chasseurs, Anciens (les rites), Jeunes guerriers.
+    Âge des villages : + Cultivateurs (champs), Artisans (équipes de
+    métier), Éleveurs (bêtes).
+  Le poids d'une voix = la part des gens qui font son activité + la
+  renommée de ses meneurs (les anciens existent déjà). Chacune a une
+  humeur (0 à 100) et des attentes.
+  COUTUMES, 2 à 4 choix par thème, changées par un débat de quelques mois :
+    partage du gibier (à tous / au chasseur), mariage (dans le clan / hors
+    du clan), succession (le plus renommé / l'aîné / l'élu des anciens),
+    terres (communes / par maisonnée), morts (enterrés / brûlés), guerre
+    (vengeance due / compensation).
+  Chaque coutume plaît à certaines voix et fâche les autres. L'humeur joue
+  sur la stabilité, l'attachement des clans, l'émancipation, le moral. Une
+  voix furieuse AGIT : les jeunes guerriers razzient sans ordre, les
+  anciens bloquent une union, les artisans partent pour un village frère,
+  les chasseurs emmènent un clan.
+  Le tournant : quand on se met à semer, les Chasseurs perdent leur poids.
+  La transition néolithique devient une crise POLITIQUE à gérer.
+  Choix du joueur : quelles coutumes, quelle voix ménager, quand changer.
+  Interface : onglet « Le peuple » (poids des voix en anneau, jauges
+  d'humeur, fiches des coutumes et de leurs effets).
+  IA : chaque peuple a ses coutumes ; ses crises intérieures font sa vie.
+  Liens : chefs et anciens, stabilité, émancipation, métiers, troupes,
+  situations (une nouvelle crise « La querelle des voix »).
+  Taille : grande.
+
+1B. LA CHEFFERIE (âge des villages)
+  Réalité de l'époque : au néolithique, des familles accumulent (greniers,
+  bétail, biens rares) ; un chef redistribue et se fait des obligés ; les
+  premières inégalités, les premières révoltes, puis un village qui domine
+  ses voisins.
+  En jeu :
+    - le GRENIER COMMUN du chef : une part de la récolte de chaque village
+      du peuple (taux choisi : 0 / 10 / 20 / 30 %) ; il sert à nourrir en
+      disette, à payer des fêtes, à lever des troupes, à bâtir ;
+    - les NOTABLES : 2 à 4 familles (avec un nom, un trait : riche en
+      bétail, maître potier, guerrière...) qui veulent leur part ; on leur
+      donne une charge (garde du grenier, chef de guerre, maître des
+      échanges) ou on les écarte ;
+    - l'ACCAPAREMENT : un taux haut enrichit le chef (prestige, troupes)
+      mais fâche les cultivateurs ; au-delà, révolte (une crise) ;
+    - la DOMINATION : un village voisin d'une autre autorité, plus faible,
+      peut devenir TRIBUTAIRE (par la force, le prestige ou le mariage) :
+      il paie, il suit à la guerre, il peut se rebeller. C'est la porte de
+      la cité, que la vision demande de préparer.
+  Choix du joueur : prendre beaucoup ou peu, à qui donner les charges,
+  soumettre ou s'allier.
+  Interface : dans l'écran du village, une page « Le chef et les
+  familles » ; sur la carte, les liens de tribut.
+  IA : des chefs avides et des chefs généreux (leurs traits existent).
+  Liens : l'essor des chefferies (conjoncture) devient le moment où l'on
+  se dispute la domination ; le grand monument coûte au grenier commun.
+  Taille : grande.
+
+  1A et 1B sont deux faces d'un même système : les voix au premier âge,
+  les familles et le grenier au second.
+
+
+2. LA RICHESSE QUI SE VOLE ET SE DONNE - b.
+-------------------------------------------
+2A. LES MATIÈRES LOINTAINES (âge tribal, puis tout le jeu)
+  Réalité : bien avant le commerce, l'ocre, l'ambre, les coquillages, le
+  silex fin, l'obsidienne voyagent sur des centaines de kilomètres, de
+  main en main, comme cadeaux et parures.
+  En jeu : des gisements rares sur la carte (déjà des ressources) ; une
+  bande qui y passe en prend un peu ; ces biens ne nourrissent pas, ils
+  font la RENOMMÉE : dots, cadeaux qui comptent double, prestige, et le
+  rassemblement des clans où ils brillent. Un peuple qui n'en a pas en
+  veut : des échanges de cadeaux entre bandes (avant les routes du
+  néolithique). Plus tard, le cuivre natif annonce l'âge suivant.
+  Choix : aller les chercher loin (risque), les garder (prestige) ou les
+  donner (alliances).
+  Liens : diplomatie (cadeaux), rassemblement (score), commerce (routes de
+  prestige, longues), savoir-faire (la taille du silex fin).
+  Taille : moyenne.
+
+2B. LE BÉTAIL (âge des villages)
+  Réalité : le troupeau est la richesse néolithique : il se compte, se
+  donne en dot, se paie en tribut, et surtout se VOLE ; les maladies des
+  bêtes passent aux gens.
+  En jeu : des troupeaux (en têtes) par village ; ils paissent (steppe,
+  plaine, collines), font des petits, demandent du fourrage l'hiver (une
+  part de la récolte), donnent lait, viande, laine (tisserands), cuir
+  (pelletiers), fumier (les champs) ; la RAZZIA de bétail devient la
+  guerre ordinaire ; on les garde (bergers, chiens, enclos). Plus tard,
+  une VOIE PASTORALE : des peuples sans village, riches en bêtes,
+  redoutables.
+  Choix : grain ou bétail, des bras aux champs ou aux pâturages, razzier
+  ou protéger, payer en têtes.
+  Liens : enclos et savoirs existants, métiers, le mal des bêtes (une
+  crise déjà là), tribut (1B), guerre (2C).
+  Taille : grande.
+
+2C. LA GUERRE AVEC DES BUTS
+  Réalité : on se bat pour venger un mort, prendre du bétail, chasser
+  d'un lieu, soumettre un village ; on fait la paix en échangeant des
+  otages et des compensations.
+  En jeu : on DÉCLARE un but (razzia de bétail, vengeance, reprendre la
+  terre des ancêtres, soumettre à tribut, chasser d'un lieu nommé) ; un
+  chef de guerre (un ancien) ; une TACTIQUE avant la bataille (embuscade,
+  tenir la palissade, charger, harceler) qui change les passes d'armes ;
+  des SIÈGES de quelques semaines ; des CAPTIFS adoptés (avec leurs
+  savoirs) ; la LASSITUDE ; une PAIX JURÉE (otages, compensation).
+  Liens : batailles et compagnies (existent), diplomatie, 1A (les jeunes
+  guerriers), 1B (le tribut), 2B (le bétail), 3A (les terres des
+  ancêtres).
+  Taille : grande.
+
+
+3. LA MÉMOIRE ET LES BUTS - c. et e.
+------------------------------------
+3A. LES TERRES DES ANCÊTRES ET LES MYTHES
+  Réalité : les morts sont enterrés près des camps et des villages ; les
+  lieux des ancêtres sont sacrés ; les grands moments deviennent des
+  récits.
+  En jeu : des TOMBES aux campements et aux villages ; une terre où
+  reposent vos ancêtres compte (stabilité, moral quand on la défend) ; un
+  voisin qui s'y installe : relation en chute et raison de guerre. Les
+  grands moments (la chasse légendaire, l'hiver terrible, une victoire,
+  la fondation, une crise surmontée) deviennent des MYTHES avec un petit
+  effet durable. Une CHRONIQUE du peuple (villages, chefs, guerres,
+  famines, situations, avec les dates), lisible dans une fenêtre.
+  Liens : influence (la carte prend des enjeux sans cases possédées),
+  situations (une crise surmontée devient un mythe), journal.
+  Taille : moyenne.
+
+3B. LES AMBITIONS
+  1 à 3 buts que le joueur choisit pour son peuple, tenus sur des années :
+  dix hivers sans famine, un rassemblement de cinq clans, trois villages,
+  un grand monument, cinq partenaires, un village tributaire. Atteints :
+  prestige, un trait pour le chef, un mythe. Le peuple IA en a aussi (on
+  les devine).
+  Taille : petite à moyenne.
+
+
+4. UN ÂGE TRIBAL VIVANT - d.
+----------------------------
+4A. LE CYCLE DE L'ANNÉE ET LES LIEUX NOMMÉS
+  Réalité : les chasseurs-cueilleurs suivent un cycle de lieux d'année en
+  année (le gué du printemps, le camp d'été, l'abri d'hiver) et se
+  retrouvent en été dans des lieux d'agrégation.
+  En jeu :
+    - l'ordre « Tournée » : une bande suit un cycle de lieux par saison,
+      d'année en année (moins de clics, plus de stratégie) ; la carte
+      dessine la route du clan ;
+    - des LIEUX NOMMÉS qu'on découvre (le gué aux aurochs, la source
+      chaude, la colline aux silex, la grotte d'hiver) : leur bonus joue à
+      la bonne saison ; en perdre un au profit d'un voisin coûte du
+      prestige ;
+    - le LIEU DE RASSEMBLEMENT d'un peuple (relié à la conjoncture) : y
+      revenir chaque été donne mariages et savoirs ; trois ans sans y
+      aller, les clans s'éloignent ;
+    - l'HIVERNAGE COMMUN : plusieurs clans hivernent ensemble (réserves
+      partagées, attachement), mais les fièvres y passent ;
+    - les PRÉSAGES : des signes annoncent l'année (hiver dur, année
+      grasse) ; on y croit ou pas.
+  Taille : moyenne.
+
+4B. LE GIBIER VIVANT
+  Réalité : aurochs, chevaux, rennes migrent avec les saisons ; trop
+  chassés, ils mettent des années à revenir.
+  En jeu : de vrais TROUPEAUX sur la carte qui se déplacent selon les
+  saisons ; on les suit ou on les attend au gué ; trop les chasser les
+  fait fondre (des années pour revenir). Le grand passage (conjoncture)
+  naît alors d'un vrai troupeau, et le gibier épuisé (crise) d'une vraie
+  surchasse.
+  Taille : grande (le calcul de la carte).
+
+
+5. LA CIVILISATION VIVANTE (vers la cité)
+-----------------------------------------
+  Entre les peuples d'une même culture : la FRATERNITÉ (entraide contre un
+  étranger, dons en famine), les QUERELLES DE FRÈRES (une terre, un lieu
+  nommé), le CONSEIL de la civilisation (au rassemblement de la culture :
+  guerre commune, grands travaux, arbitrage), la DÉRIVE (au fil des
+  coutumes, les peuples deviennent moins frères), et le CHEMIN VERS L'ÂGE
+  SUIVANT : le peuple le plus prestigieux rallie ses frères (mariages,
+  prestige, force, tribut) : la première cité qui domine.
+  Liens : civilisations et plafond commun (existent), 1A, 1B.
+  Taille : moyenne à grande.
+
+
+6. MA RECOMMANDATION, DANS L'ORDRE
+----------------------------------
+  1. LE POUVOIR DANS LE PEUPLE (1A + 1B) : c'est ce qui manque le plus, et
+     tout ce qui existe s'y branche (stabilité, émancipation, métiers,
+     troupes, situations, monument). C'est aussi ce qui prépare la cité.
+  2. LA RICHESSE ET LA GUERRE (2B + 2C, avec 2A) : la guerre aura enfin
+     un enjeu (bétail, tribut, terres).
+  3. LA MÉMOIRE (3A + 3B) : courte, et elle donne du sens à tout le reste.
+  4. L'ÂGE TRIBAL VIVANT (4A puis 4B).
+  5. LA CIVILISATION VIVANTE (5), qui ouvre l'âge suivant.
+  Chacune se livre entière (simulation, interface, IA, carte, événements,
+  situations, équilibrage, sauvegarde, multijoueur) avant la suivante.
