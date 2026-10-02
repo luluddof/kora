@@ -79,6 +79,8 @@ def digest(st) -> str:
 
     parts.append(str([sorted(situations.to_json(s).items(), key=str) for s in st.situations]))
     parts.append(str([(tid, st.tribes[tid].situation_effects) for tid in sorted(st.tribes)]))
+    # Savoir-faire et surproduction (production.py).
+    parts.append(str([(tid, sorted(st.tribes[tid].efficiency.items()), sorted(st.tribes[tid].glut.items())) for tid in sorted(st.tribes)]))
     return hashlib.sha1("\n".join(parts).encode()).hexdigest()
 
 

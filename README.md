@@ -67,7 +67,12 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   (grand passage des troupeaux, rassemblement des clans, grands travaux, route du sel, essor des chefferies). Elles
   naissent de ce qui se passe dans votre partie, et certaines sont rares. Un clic ouvre leur fenêtre : comment s'en
   sortir, ce que coûte chaque action, le temps qui reste. Une crise surmontée : tout redevient comme avant. Une
-  conjoncture gagnée face à d'autres peuples : un bonus de quelques années.
+  conjoncture gagnée face à d'autres peuples : un bonus de quelques années. Une crise que l'on peut voir venir est
+  annoncée (« Risque : … ») avec le moyen de l'éviter.
+- L'**influence** d'un peuple se projette autour de ses bandes et de ses villages, loin en plaine, à peine en
+  montagne. Avec les villages, le **savoir-faire** (chasse, agriculture, pêche, chaque métier) grandit doucement
+  quand il faut produire plus ; trop produire sans acheteurs mène à la **surproduction**, puis à l'effondrement du
+  commerce chez vos partenaires.
 
 Conseils : l'hiver tue. Faites des réserves à l'automne, cherchez les vallées, et ne laissez pas vos clans s'éloigner
 trop du chef. Au bout de quelques années, les savoirs du néolithique permettent de **fonder un village** : c'est un
@@ -93,7 +98,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **H** | Honorer un clan (il reste fidèle) |
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
-| **Z** / **R** / **X** | Modes de carte : zones d'influence / ressources / commerce |
+| **Z** / **R** / **X** | Modes de carte : influence / ressources / commerce |
 | **F5** | Sauvegarder (le jeu sauvegarde aussi tout seul) |
 | **Entrée** | À plusieurs : écrire aux autres joueurs |
 | **Échap** | Fermer une fenêtre · menu (Reprendre, Sauvegarder, Menu principal, Quitter) |

@@ -3,7 +3,11 @@
 Ce n'est pas un territoire : aucune case n'appartient a personne et rien
 ne bloque le passage. Chaque semaine on note ou se tiennent les bandes ;
 chaque mois l'influence s'use (x0,94 : demi-vie d'environ un an), puis
-chaque lieu note l'etend sur un disque dont le rayon vient des savoirs.
+chaque lieu note la PROJETTE autour de lui, aussi loin que porte son rayon
+(les savoirs). La projection suit le sol (PROJECTION) : chaque case
+traversee use la portee selon son terrain, peu en plaine et en vallee, un
+peu plus en steppe, plus en foret et en collines, beaucoup en desert et en
+montagne. Une plaine se tient de loin ; une montagne, seulement de pres.
 Campements et villages l'ancrent, meme vides.
 
 Une case est dans la zone d'un peuple si son influence y depasse
@@ -14,9 +18,11 @@ Pur Python : la simulation n'utilise pas numpy.
 
 from __future__ import annotations
 
+import heapq
 import math
 
 from src.kora import tech
+from src.kora.types import Terrain
 
 ZONE_MIN = 0.12
 CORE_MIN = 0.40
@@ -42,8 +48,64 @@ def note_presence(state) -> None:
         spots[band.position] = spots.get(band.position, 0.0) + weight
 
 
+# Ce que coute a l'influence chaque case traversee (une plaine : 1).
+PROJECTION = {
+    Terrain.PLAINE: 1.0,
+    Terrain.VALLEE: 1.0,
+    Terrain.COTE: 1.1,
+    Terrain.STEPPE: 1.3,
+    Terrain.FORET: 1.7,
+    Terrain.COLLINE: 1.7,
+    Terrain.EAU: 1.5,
+    Terrain.DESERT: 2.3,
+    Terrain.MONTAGNE: 2.3,
+    Terrain.SOMMET: 3.0,
+}
+_PROJ_CACHE_MAX = 40000
+
+
+def projection(world, center, radius: int) -> tuple[list, list]:
+    """Les cases que touche l'influence d'un lieu, et ce qu'il en coute
+    pour y arriver (somme des PROJECTION des cases traversees, le centre
+    compte 0) : le chemin le moins cher, dans le disque du rayon, sans
+    depasser `radius`. Le sol ne change pas : garde en cache."""
+    origin = world.canonicalize(center)
+    if origin is None:
+        return [], []
+    cache = getattr(world, "_proj_cache", None)
+    if cache is None:
+        cache = world._proj_cache = {}
+    key = (origin, radius)
+    hit = cache.get(key)
+    if hit is not None:
+        return hit
+    around, _dists = world.hexes_and_distances(origin, radius)
+    inside = set(around)
+    best = {origin: 0.0}
+    heap = [(0.0, 0, origin)]
+    n = 0
+    while heap:
+        cost, _k, h = heapq.heappop(heap)
+        if cost > best.get(h, 1e9):
+            continue
+        for nb in world.neighbors(h):
+            if nb not in inside:
+                continue
+            c = cost + PROJECTION.get(world.terrain(nb), 1.0)
+            if c <= radius + 1e-9 and c < best.get(nb, 1e9):
+                best[nb] = c
+                n += 1
+                heapq.heappush(heap, (c, n, nb))
+    hexes = [h for h in around if h in best]
+    costs = [best[h] for h in hexes]
+    if len(cache) > _PROJ_CACHE_MAX:
+        cache.clear()
+    cache[key] = (hexes, costs)
+    return hexes, costs
+
+
 def _spread(cells, world, center, tribe_id: int, radius: int, amount: float) -> None:
-    around, dists = world.hexes_and_distances(center, radius)
+    around, dists = projection(world, center, radius)
     span = max(1, radius)
     for h, d in zip(around, dists):
         row = h.r
@@ -172,5 +234,22 @@ def zone_lines(state, h) -> list[str]:
     if len(here) == 1:
         v, t = here[0]
         strength = "cœur" if v >= CORE_MIN else "zone"
-        return [f"Influence : {name(t)} ({strength})"]
-    return ["Influence partagée : " + ", ".join(name(t) for _v, t in here[:3])]
+        out = [f"Influence : {name(t)} ({strength})"]
+    else:
+        out = ["Influence partagée : " + ", ".join(name(t) for _v, t in here[:3])]
+    hard = projection_word(world.terrain(h))
+    if hard:
+        out.append(hard)
+    return out
+
+
+def projection_word(terrain) -> str:
+    """Ce que le sol fait a l'influence, pour la fiche de case."""
+    cost = PROJECTION.get(terrain, 1.0)
+    if cost >= 2.2:
+        return "L'influence porte à peine ici (terrain très difficile)"
+    if cost >= 1.6:
+        return "L'influence porte mal ici (terrain difficile)"
+    if cost >= 1.25:
+        return "L'influence porte un peu moins loin ici"
+    return ""

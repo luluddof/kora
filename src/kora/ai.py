@@ -423,7 +423,9 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     if site is not None and warm and villages.works(site) is None:
         # On batit au printemps et en ete, sur le surplus : pas avec les
         # vivres de l'hiver.
-        for bid in AI_BUILD_ORDER:
+        # Pendant les grands travaux, le monument passe d'abord.
+        order = (("monument",) + AI_BUILD_ORDER) if villages.monument_open(state, site) else AI_BUILD_ORDER
+        for bid in order:
             if weeks < AI_BUILD_RESERVE + villages.BUILDINGS[bid].cost_weeks:
                 continue
             if not villages.build_block(state, band.id, bid):

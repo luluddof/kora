@@ -1059,7 +1059,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         nonlocal side_panel, tech_pick, log_filter, log_newest, selected, globe_yaw, globe_pitch, tech_drag, last_mouse
         if not isinstance(choice, str):
             return False
-        if choice in ("tview", "tminimap", "tzoom_in", "tzoom_out", "tcenter"):
+        if choice in ("tview", "tzoom_in", "tzoom_out", "tcenter"):
             from src.kora import render_tech
             from src.kora.render import TREE_ZOOM_STEP, zoom_at
 
@@ -1072,11 +1072,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                 # Glisser la toile (le clic gauche sur un savoir le choisit).
                 tech_drag = 1
                 last_mouse = (mx, my)
-            elif choice == "tminimap":
-                mx0, my0, mw, _mh = lay["minimap"]
-                k = mw / world["size"][0]
-                wx, wy = (mx - mx0) / k, (my - my0) / k
-                ui["tech_cam"] = (wx - view[2] / (2 * cam[2]), wy - view[3] / (2 * cam[2]), cam[2])
             elif choice == "tcenter":
                 ui["tech_cam"] = render_tech.focus_cam(state, *screen.get_size())
             else:

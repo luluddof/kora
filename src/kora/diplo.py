@@ -65,6 +65,9 @@ MOD_TEXT = {
     "carrefour": ("Ils passent par vous", "Vous passez par eux", 0.3),
     "intimidation": ("Vous les avez menacés", "Ils vous ont menacés", 0.6),
     "domination": ("Vous dominez la vallée", "Ils dominent la vallée", 0.2),
+    "monument": ("Vous les avez reçus au pied du monument", "Ils vous ont reçus au pied de leur monument", 0.3),
+    "brade": ("Vous leur avez cédé vos surplus", "Ils vous ont cédé leurs surplus", 0.5),
+    "soutien": ("Vous les avez soutenus dans l'effondrement", "Ils vous ont soutenus dans l'effondrement", 0.3),
 }
 
 
@@ -1025,7 +1028,9 @@ def absorb(state, actor: int, target: int) -> None:
     a, t = state.tribes[actor], state.tribes[target]
     for tid in sorted(t.knowledge - a.knowledge):
         a.progress[tid] = max(a.progress.get(tid, 0.0), tech.TECHS[tid].cost * 0.5)
-    a.prestige = min(100, a.prestige + 8)
+    from src.kora.sim import gain_prestige
+
+    gain_prestige(state, a, 8)
     chiefs.after_absorb(state, actor, target)
     forget(state, target)
 

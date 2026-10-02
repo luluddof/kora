@@ -122,12 +122,17 @@ def _frac(state, inst) -> float:
 
 
 def draw_banner(r, state) -> None:
+    """Les dalles : les situations du joueur, puis les crises qui le
+    menacent (RISQUES, en ambre : on les voit venir ; leur conseil au
+    survol)."""
     r.situation_hits = {}
     items = banner_items(state)
-    if not items:
+    risks = situations.risks_of(state, state.viewer)[: max(0, 6 - len(items))]
+    n = len(items) + len(risks)
+    if not n:
         return
     w, _h = r.screen.get_size()
-    lay = banner_layout(w, len(items))
+    lay = banner_layout(w, n)
     t = pygame.time.get_ticks() / 1000.0
     hovered = None
     for i, inst in enumerate(items):
@@ -149,9 +154,24 @@ def draw_banner(r, state) -> None:
         line, lcol = _status(state, inst)
         theme.text(r.screen, line, "mini", lcol, (x + 54, y + 27), cw - 62)
         if over:
-            hovered = (inst, rect)
-    if hovered is not None:
-        inst, (x, y, cw, ch) = hovered
+            hovered = ("sit", inst, rect)
+    for k, (sid, text) in enumerate(risks):
+        spec = SPECS[sid]
+        rect = lay[len(items) + k]
+        x, y, cw, ch = rect
+        over = _hover(rect)
+        theme.panel(r.screen, rect, "creux")
+        pygame.draw.polygon(r.screen, C.alerte, theme.chamfer(rect, 6), 1)
+        r.screen.blit(theme.medallion(spec.icon, 16, "connu", C.alerte), (x + 8, y + 6))
+        theme.text(r.screen, f"Risque : {spec.name.lower()}", "petit_gras", C.alerte, (x + 54, y + 6), cw - 62)
+        theme.text(r.screen, "On la voit venir · survol : l'éviter", "mini", C.cendre, (x + 54, y + 27), cw - 62)
+        if over:
+            hovered = ("risk", (spec, text), rect)
+    if hovered is None:
+        return
+    what, obj, (x, y, cw, ch) = hovered
+    if what == "sit":
+        inst = obj
         spec = SPECS[inst.sid]
         kind = "Crise" if spec.kind == CRISE else "Conjoncture"
         lines = [(f"{kind} : {spec.name}", C.os, "petit_gras")]
@@ -159,7 +179,10 @@ def draw_banner(r, state) -> None:
             lines.append((spec.stage_name(inst), C.ocre_jaune))
         lines.append((spec.goal, C.lin))
         lines.append(("Clic : ouvrir.", C.cendre, "mini"))
-        theme.tooltip(r.screen, lines, x, y + ch + 6, 340)
+    else:
+        spec, text = obj
+        lines = [(f"Risque de crise : {spec.name}", C.alerte, "petit_gras"), (text, C.lin), (spec.about, C.cendre, "mini")]
+    theme.tooltip(r.screen, lines, x, y + ch + 6, 360)
 
 
 # --- la fenetre ------------------------------------------------------------------------

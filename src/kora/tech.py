@@ -648,10 +648,16 @@ class Bonuses:
     commerce: bool = False
     # Vitesse d'apprentissage (bonus de depart des Conteurs).
     learn: float = 1.0
+    # Prestige gagne (le grand monument, situations.py) et prix de vos
+    # ventes sur les routes (le marche refuge).
+    prestige_gain: float = 1.0
+    trade_price: float = 1.0
 
 
 _MULT = {
     "learn",
+    "prestige_gain",
+    "trade_price",
     "field_yield",
     "soil_loss",
     "grain_rot",
@@ -844,9 +850,9 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("max_bands"):
         out.append(f"Bandes : jusqu'à {BASE_MAX_BANDS + e['max_bands']} (au lieu de {BASE_MAX_BANDS})")
     if e.get("loyalty"):
-        out.append(f"Attachement des clans à la tribu : +{e['loyalty']}")
+        out.append(f"Attachement des clans à la tribu : {e['loyalty']:+d}")
     if e.get("stability"):
-        out.append(f"Stabilité de vos villages : +{e['stability']}")
+        out.append(f"Stabilité de vos villages : {e['stability']:+d}")
     if e.get("chief_reach"):
         out.append(f"Emprise du chef : +{e['chief_reach']} cases")
     if e.get("winter_prestige") or e.get("famine_prestige"):
@@ -860,7 +866,7 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("gifts"):
         out.append(f"Cadeaux aux autres peuples : {_pct(e['gifts'])} d'effet")
     if e.get("diplo"):
-        out.append(f"Vos propositions aux autres peuples : +{e['diplo']} d'acceptation")
+        out.append(f"Vos propositions aux autres peuples : {e['diplo']:+d} d'acceptation")
     if e.get("alliance"):
         out.append("Vous pouvez proposer une alliance (mariages entre les chefs)")
     if e.get("union"):
@@ -897,6 +903,10 @@ def effect_lines(tech: Tech) -> list[str]:
         out.append("Accords commerciaux : vos villages échangent leurs biens")
     if e.get("learn"):
         out.append(f"Apprentissage des savoirs : {_pct(e['learn'])}")
+    if e.get("prestige_gain"):
+        out.append(f"Prestige gagné : {_pct(e['prestige_gain'])}")
+    if e.get("trade_price"):
+        out.append(f"Prix de vos ventes sur les routes : {_pct(e['trade_price'])}")
     from src.kora.goods import CRAFTS, res_label
 
     for craft in CRAFTS.values():

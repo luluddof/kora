@@ -106,3 +106,35 @@ def test_lookouts_defend_better_at_home():
     away = defense_force(st, band)
     _live(st, 12)
     assert defense_force(st, band) > away * 1.1
+
+
+def test_influence_projects_far_on_plains_and_barely_in_mountains():
+    """La projection suit le sol : en plaine elle porte a tout le rayon ; en
+    foret et en collines moins loin ; en montagne a peine."""
+    from src.kora.world import make_filled_world
+
+    reach, weight = {}, {}
+    for terrain in (Terrain.PLAINE, Terrain.STEPPE, Terrain.FORET, Terrain.MONTAGNE):
+        world = make_filled_world(30, 20, terrain)
+        centre = offset_to_axial(15, 10)
+        hexes, costs = influence.projection(world, centre, 5)
+        reach[terrain] = max(world.distance(h, centre) for h in hexes)
+        # Ce que le lieu repand en tout (meme calcul que _spread).
+        weight[terrain] = sum(1.0 - 0.5 * c / 5 for c in costs)
+        assert costs[hexes.index(world.canonicalize(centre))] == 0.0
+    assert reach[Terrain.PLAINE] == 5 and reach[Terrain.STEPPE] == 3 and reach[Terrain.MONTAGNE] == 2
+    assert weight[Terrain.PLAINE] > weight[Terrain.STEPPE] > weight[Terrain.FORET] > weight[Terrain.MONTAGNE]
+
+
+def test_a_mountain_ridge_stops_the_influence_of_a_valley():
+    """Une vallee bordee d'une chaine : l'influence remplit la vallee, elle
+    passe mal la montagne (le chemin le moins cher compte)."""
+    world = make_filled_world(30, 20, Terrain.VALLEE)
+    for row in range(20):
+        for col in (17, 18):
+            world._terrains[row][col] = Terrain.MONTAGNE
+    centre = offset_to_axial(14, 10)
+    hexes, _costs = influence.projection(world, centre, 6)
+    cols = {h for h in hexes}
+    assert offset_to_axial(10, 10) in cols  # 4 cases de vallee
+    assert offset_to_axial(19, 10) not in cols  # derriere la chaine

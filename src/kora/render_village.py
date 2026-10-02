@@ -172,6 +172,12 @@ def glyph(surf, key: str, color, s: int) -> None:
         poly(surf, color, [(s * 0.08, s * 0.4), (c, s * 0.12), (s * 0.92, s * 0.4)])
         pygame.draw.rect(surf, color, (s * 0.16, s * 0.56, s * 0.26, s * 0.3), w)
         pygame.draw.rect(surf, color, (s * 0.58, s * 0.56, s * 0.26, s * 0.3), w)
+    elif key == "monument":
+        # Un dolmen : deux pierres debout, une table, un tertre.
+        pygame.draw.rect(surf, color, (s * 0.24, s * 0.36, s * 0.14, s * 0.46))
+        pygame.draw.rect(surf, color, (s * 0.62, s * 0.36, s * 0.14, s * 0.46))
+        poly(surf, color, [(s * 0.12, s * 0.36), (s * 0.18, s * 0.2), (s * 0.84, s * 0.16), (s * 0.9, s * 0.32)])
+        line(surf, color, (s * 0.06, s * 0.9), (s * 0.94, s * 0.9), w)
     else:
         pygame.draw.circle(surf, color, (c, c), s // 3, w)
 
@@ -675,8 +681,13 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         ls = r.small.render(f"{n}/{top_n}", True, INK if n else SOFT)
         screen.blit(ls, (mid_x + (44 - ls.get_width()) // 2, rects["minus"][1] + 2))
         if n:
+            from src.kora import production
+
             out = goods.output(state, site, cid)
             what = f"+{out:.0f} vivres / sem." if craft.food else f"+{_num(out)} {craft.good_name.lower()} / sem."
+            skill = production.of(state, site.tribe_id, production.craft_kind(cid))
+            if skill > 1.005:
+                what += f"  (savoir-faire +{round(100 * (skill - 1))} %)"
             ws = r.tiny.render(what, True, GOLD)
             screen.blit(ws, (rects["plus"][0] + rects["plus"][2] - ws.get_width(), rects["plus"][1] + 26))
         if why and _hover(rects["plus"], mx, my):
@@ -708,6 +719,20 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     ]
     for text, color in rows:
         screen.blit(r.tiny.render(_fit(r.tiny, text, sw), True, color), (sx, yy))
+        yy += 15
+    # Le savoir-faire (production.py) : il monte quand il faut produire plus.
+    from src.kora import production
+
+    yy = _section(r, sx, yy + 8, sw, "SAVOIR-FAIRE  ·  il grandit quand il faut produire plus")
+    for name_, eff, why in production.lines(state, tid):
+        pct = round(100 * (eff - 1.0))
+        col = GOLD if pct > 0 else SOFT
+        label = f"{name_} : +{pct} %" if pct > 0 else f"{name_} : débutants"
+        lw_ = r.tiny.size(label)[0]
+        screen.blit(r.tiny.render(_fit(r.tiny, label, sw), True, col), (sx, yy))
+        if why:
+            warn = "déborde" in why
+            screen.blit(r.tiny.render(_fit(r.tiny, "  ·  " + why, sw - lw_), True, WARN if warn else GOOD), (sx + lw_, yy))
         yy += 15
     yy = _section(r, sx, yy + 8, sw, "ÉCHANGES")
     _button(screen, r.small, lay["trade_btn"], "Routes commerciales [M]", True, _hover(lay["trade_btn"], mx, my))
@@ -826,7 +851,7 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         screen.blit(_gradient_card(cw, ch, top, bot, 6), (cx, cy))
         pygame.draw.rect(screen, (239, 228, 204) if bid == pick else edge, rect, 2 if bid == pick or hover else 1, border_radius=6)
         screen.blit(medal(bid, edge, top, 14), (cx + 6, cy + ch // 2 - 15))
-        parts = _wrap(r.tiny, b.name, cw - 48)[:2]
+        parts = _wrap(r.tiny, villages.building_name(site, bid, short=True), cw - 48)[:2]
         ty = cy + 10
         for part in parts:
             screen.blit(r.tiny.render(part, True, text_c), (cx + 40, ty))
@@ -852,7 +877,7 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     top, _bot, edge, _t = CARD[st]
     half = lay["today"][0] - 16 - dx
     screen.blit(medal(pick, edge, top, 17), (dx + 10, dy + 8))
-    screen.blit(head_font.render(_fit(head_font, b.name, half - 60), True, INK), (dx + 52, dy + 8))
+    screen.blit(head_font.render(_fit(head_font, villages.building_name(site, pick), half - 60), True, INK), (dx + 52, dy + 8))
     cost = villages.build_cost(state, site, pick)
     weeks = villages.build_weeks(site, pick)
     meta = f"{cost:.0f} vivres  ·  {weeks} semaines"
@@ -1037,22 +1062,11 @@ def _chip_off(r, rect, label: str) -> None:
     r.screen.blit(surf, (x + (w - surf.get_width()) // 2, y + (h - surf.get_height()) // 2))
 
 
-def _tip(r, lines, mx, my) -> None:
-    width = min(360, max(r.tiny.size(t)[0] for t, _c in lines) + 20)
-    rows = []
-    for text, color in lines:
-        for part in _wrap(r.tiny, text, width - 20):
-            rows.append((part, color))
-    h = 10 + 15 * len(rows)
-    sw, sh = r.screen.get_size()
-    x = min(mx + 16, sw - width - 8)
-    y = min(my + 18, sh - h - 8)
-    r.screen.blit(_gradient_card(width, h, (53, 41, 31), (34, 25, 20), 6), (x, y))
-    pygame.draw.rect(r.screen, GOLD_DIM, (x, y, width, h), 1, border_radius=6)
-    yy = y + 5
-    for text, color in rows:
-        r.screen.blit(r.tiny.render(text, True, color), (x + 10, yy))
-        yy += 15
+def _tip(r, lines, mx, my, avoid=None) -> None:
+    """La fiche au survol (charte : theme.tooltip) ; avoid : le bouton
+    survole, qu'elle ne cache jamais."""
+    if lines:
+        theme.tooltip(r.screen, lines, mx + 16, my + 18, 360, avoid=avoid)
 
 
 # --- le rapport de bataille ----------------------------------------------------------------

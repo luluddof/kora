@@ -154,6 +154,10 @@ class Tribe:
     # Effets des situations (situations.py) : [id, jusqu'a la semaine] ; -1 :
     # tant que la situation dure.
     situation_effects: list = field(default_factory=list)
+    # Savoir-faire des villages (production.py) : genre de production ->
+    # efficacite (1,0 au depart) ; et mois de surproduction par bien.
+    efficiency: dict = field(default_factory=dict)
+    glut: dict = field(default_factory=dict)
 
 
 @dataclass

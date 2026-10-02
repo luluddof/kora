@@ -98,9 +98,6 @@ def test_savoirs_tree_is_a_canvas_you_pan_and_zoom():
         for key in ("tzoom_in", "tzoom_out", "tcenter"):
             x, y, rw, rh = near["items"][key]
             assert side_hit(near, x + 3, y + 3) == key
-        if near["tech"]["minimap_on"]:
-            x, y, rw, rh = near["items"]["tminimap"]
-            assert side_hit(near, x + 3, y + 3) == "tminimap"
         # Un clic sur la toile vide : on la glisse.
         detail = near["tech"]["detail"]
         assert detail[1] > view[1] + view[3]
@@ -166,3 +163,19 @@ def test_fight_panel_sits_under_hud():
     assert bw >= 200
     assert bh >= 80
     assert layout["close"][1] >= by
+
+
+def test_a_tooltip_never_hides_the_button_it_explains():
+    """La fiche au survol (theme.tooltip, avoid) se place a cote du bouton,
+    meme colle au bord droit de l'ecran (le bouton Proposer du commerce)."""
+    from src.kora.theme import _beside
+
+    sw, sh = 1280, 720
+    for button in ((1180, 400, 90, 22), (1000, 690, 120, 24), (20, 20, 100, 22), (600, 300, 200, 30)):
+        bx, by, bw, bh = button
+        # La fiche voulait s'ouvrir sous la souris, au milieu du bouton.
+        x = min(bx + bw // 2 + 16, sw - 300 - 4)
+        y = min(by + bh // 2 + 18, sh - 140 - 4)
+        px, py = _beside(button, 300, 140, sw, sh, x, y)
+        assert px + 300 <= bx or px >= bx + bw or py + 140 <= by or py >= by + bh, button
+        assert 0 <= px and px + 300 <= sw and 0 <= py and py + 140 <= sh

@@ -588,8 +588,9 @@ def chip(surf, x: int, y: int, label: str, color=None, icon_key: str | None = No
     return w
 
 
-def tooltip(surf, lines, x: int, y: int, width: int = 360) -> None:
-    """lines : [(texte, couleur)] ou [(texte, couleur, role)]."""
+def tooltip(surf, lines, x: int, y: int, width: int = 360, avoid=None) -> None:
+    """lines : [(texte, couleur)] ou [(texte, couleur, role)]. avoid : un
+    rectangle (le bouton survole) que la fiche ne doit jamais cacher."""
     rows = []
     for item in lines:
         txt, col = item[0], item[1]
@@ -604,12 +605,38 @@ def tooltip(surf, lines, x: int, y: int, width: int = 360) -> None:
     sw, sh = surf.get_size()
     x = max(4, min(x, sw - w - 4))
     y = max(4, min(y, sh - h - 4))
+    if avoid is not None:
+        x, y = _beside(avoid, w, h, sw, sh, x, y)
     panel(surf, (x, y, w, h), "infobulle")
     pygame.draw.line(surf, C.braise, (x + 3, y + 6), (x + 3, y + h - 7), 2)
     yy = y + 7
     for t, c, f in rows:
         surf.blit(f.render(t, True, c), (x + 13, yy))
         yy += f.get_height() + 1
+
+
+def _beside(rect, w: int, h: int, sw: int, sh: int, x: int, y: int) -> tuple[int, int]:
+    """Une place pour une fiche w x h qui ne recouvre pas rect : la ou elle
+    etait si elle ne le touche pas, sinon a gauche, a droite, au-dessus ou
+    au-dessous du rectangle (le premier qui tient dans l'ecran)."""
+    ax, ay, aw, ah = rect
+
+    def clear(px, py):
+        return px + w <= ax or px >= ax + aw or py + h <= ay or py >= ay + ah
+
+    if clear(x, y):
+        return x, y
+    top = max(4, min(ay, sh - h - 4))
+    tries = (
+        (ax - w - 8, top),
+        (ax + aw + 8, top),
+        (max(4, min(ax + aw - w, sw - w - 4)), ay - h - 8),
+        (max(4, min(ax + aw - w, sw - w - 4)), ay + ah + 8),
+    )
+    for px, py in tries:
+        if 4 <= px and px + w <= sw - 4 and 4 <= py and py + h <= sh - 4 and clear(px, py):
+            return px, py
+    return x, y
 
 
 def veil(surf, alpha: int = 150) -> None:

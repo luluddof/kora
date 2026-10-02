@@ -3,9 +3,8 @@
 Un seul arbre vertical, dessine sur une TOILE qu'on parcourt (voir
 render.tech_panel_layout / tech_world / clamp_cam) : tout n'est pas a
 l'ecran ; on glisse a la souris (n'importe quel bouton) ou aux fleches, on
-zoome a la molette (autour du curseur) ou aux boutons ; une mini-carte montre
-ou l'on est (un clic y deplace la vue) ; "Recentrer" revient a la recherche
-en cours.
+zoome a la molette (autour du curseur) ou aux boutons ; "Recentrer" revient
+a la recherche en cours.
   - une banniere par age, avec son chiffre romain et le nom des colonnes ;
   - des cartes de savoir dont le detail suit le zoom : medaillon et nom ;
     puis l'etat (cout, semaines, ce qui manque) ; puis le premier effet ;
@@ -488,8 +487,6 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
             _lock(screen, x + w - 10, y + 10, style["edge"])
     screen.set_clip(None)
     pygame.draw.rect(screen, GOLD_DEEP, view, 1)
-    if lay["minimap_on"]:
-        _minimap(r, lay, states)
     _controls(r, lay, mx, my)
     sx0, sy0, _sw, sh0 = lay["strip"]
     zoom = f"zoom {int(round(100 * z))} %"
@@ -498,27 +495,6 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
     _detail(r, state, tribe, lay, pick, states, head_font)
     if hovered is not None and hovered != pick:
         _hover_tip(r, state, hovered, states[hovered], mx, my)
-
-
-def _minimap(r, lay, states) -> None:
-    """Tout l'arbre en petit, et le cadre de ce que montre la vue."""
-    screen = r.screen
-    mx0, my0, mw, mh = lay["minimap"]
-    world = lay["world"]
-    ww, wh = world["size"]
-    k = mw / ww
-    screen.blit(_gradient_card(mw, mh, (37, 28, 22), (23, 18, 14), 4), (mx0, my0))
-    pygame.draw.rect(screen, GOLD_DIM, lay["minimap"], 1, border_radius=4)
-    for sec in world["sections"]:
-        if sec["era"]:
-            _x, y, _w, _h = sec["head"]
-            pygame.draw.line(screen, (70, 100, 70), (mx0 + 2, my0 + int(y * k)), (mx0 + mw - 3, my0 + int(y * k)))
-    for tid, (x, y, w, h) in world["nodes"].items():
-        pygame.draw.rect(screen, STYLE[states[tid]]["edge"], (mx0 + int(x * k), my0 + int(y * k), max(2, int(w * k)), max(2, int(h * k))))
-    cx, cy, z = lay["cam"]
-    vw, vh = lay["view"][2] / z, lay["view"][3] / z
-    frame = (mx0 + int(cx * k), my0 + int(cy * k), max(4, int(vw * k)), max(4, int(vh * k)))
-    pygame.draw.rect(screen, (239, 228, 204), frame, 1)
 
 
 def _controls(r, lay, mx, my) -> None:

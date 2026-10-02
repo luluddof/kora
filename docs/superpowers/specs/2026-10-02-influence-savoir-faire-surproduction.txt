@@ -1,0 +1,129 @@
+Kora - Projection d'influence, savoir-faire, surproduction, grand monument
+==========================================================================
+Date : 2026-10-02 (suite). Statut : FAIT (version 0.4.0).
+
+Demandes (ses mots, raccourcis) :
+  1. "Ce truc de l'arbre de recherche, tu vires" (la mini-carte de l'arbre).
+  2. "Quand on fait des échanges, le bouton est caché par l'interface
+     d'acceptation."
+  3. "Le grand monument devrait permettre un bâtiment spécial dans nos
+     villages qui se construit en étapes ; celui qui a le plus d'étapes
+     gagne, ce qui donne des bonus de gain de prestige ; tous les perdants
+     voient leur monument détruit ; le gagnant ne l'aura plus. Cela évitera
+     une décision telle que dresser une pierre qui ne veut rien dire."
+  4. "Les messages en bas à droite, dans une sorte de carré invisible : les
+     textes longs reviennent à la ligne et restent dans le bloc."
+  5. "Réforme des zones de contrôle : de la projection d'influence, selon le
+     sol (diminue peu en plaine et vallée, un peu plus en steppe, plus en
+     collines et forêt, encore plus en désert et montagne)."
+  6. "L'efficacité de la production, qui augmente légèrement avec le temps
+     si on a besoin de produire plus (échanges pour les biens, besoins pour
+     la nourriture), par type (chasse, récolte, agriculture...). Discret,
+     seulement avec les villages. Peut mener à une catastrophe de
+     surproduction si un bien manufacturé est surproduit ; non résolue, une
+     conjoncture d'effondrement du commerce partagée à tous les partenaires,
+     en cascade jusqu'à un certain pas ; la catastrophe peut diminuer
+     l'efficacité durement gagnée."
+  7. "Si on risque une catastrophe, on prévient qu'on la risque
+     (contrairement aux conjonctures)."
+
+
+1. LA MINI-CARTE DE L'ARBRE : retirée (render.tech_panel_layout,
+   render_tech._minimap, app "tminimap", test_hud). Restent glisser,
+   molette, flèches, + / - et Recentrer.
+
+2. LES FICHES AU SURVOL ne cachent plus leur bouton : theme.tooltip(...,
+   avoid=rect) place la fiche à gauche, à droite, au-dessus ou au-dessous du
+   bouton (theme._beside) ; utilisé par le commerce (Proposer, convois,
+   Fermer, Ouvrir la route) et la diplomatie (Peuples). Le _tip des écrans
+   village / commerce passe par theme.tooltip (la charte). Test :
+   test_hud.test_a_tooltip_never_hides_the_button_it_explains.
+
+3. LE GRAND MONUMENT (villages.py "monument", situations.GrandsTravaux)
+   - Un bâtiment du village, seulement pendant les grands travaux (et dans
+     leur lieu) : chaque chantier ajoute UNE ÉTAPE (6 au plus), chacune plus
+     longue (8 + 2 x étapes semaines) et plus chère (2 + 0,5 x étapes
+     semaines de vivres du village). Il prend une place de bâtiment.
+   - Le score de chaque peuple = ses étapes (et l'étape en cours, au
+     prorata). "Dresser une pierre" n'existe plus ; restent la Corvée des
+     clans (prestige 6 : chaque chantier de monument avance d'un mois) et
+     la Fête des bâtisseurs (150 vivres : relation +5 avec les autres).
+   - Fin : le premier (s'ils étaient plusieurs) garde son monument (+2
+     prestige à chaque fin d'hiver) et gagne « Le grand monument » : prestige
+     gagné +30 % (sim.gain_prestige, le seul chemin du prestige gagné) et
+     stabilité +5, 30 ans ; il ne revivra plus les grands travaux
+     (flags["monument"]). Les perdants : leurs monuments sont ABATTUS.
+   - L'IA bâtit son monument en premier pendant les travaux (ai._village_ai).
+
+4. LES NOUVELLES (render.draw_toasts, toast_box) : en bas à droite, à gauche
+   des onglets et du panneau ouvert, au-dessus de la carte de bande si la
+   place manque ; un texte long revient à la ligne (6 lignes au plus) ; la
+   plus récente en bas.
+
+5. LA PROJECTION D'INFLUENCE (influence.projection, PROJECTION)
+   L'influence d'un lieu ne couvre plus un disque : elle se PROJETTE par le
+   chemin le moins cher, chaque case traversée coûtant selon son sol :
+     plaine, vallée 1,0 ; côte 1,1 ; steppe 1,3 ; eau 1,5 ; forêt, colline
+     1,7 ; désert, montagne 2,3 ; sommet 3,0.
+   Une case reçoit amount x (1 - 0,5 x coût / rayon) si le coût ne dépasse
+   pas le rayon. Une plaine se tient de loin, une montagne seulement de
+   près ; une chaîne arrête l'influence d'une vallée. Cache par (lieu,
+   rayon) : le sol ne change pas. Le mode de carte s'appelle « Influence » ;
+   la fiche de case dit quand le sol freine l'influence. Preuve : avec tous
+   les coûts à 1, l'empreinte est identique à l'ancienne (le calcul est
+   juste). Sa partie (steppe) : 38 cases de zone -> 26.
+
+6. LE SAVOIR-FAIRE (production.py ; Tribe.efficiency)
+   Avec les villages seulement. Genres : chasse et cueillette (collecte du
+   village), agriculture (récolte), pêche, et chaque métier (poterie, sel,
+   tissage, peaux, haches). 1,0 au départ, +30 % au plus.
+   - Nourriture : monte quand le grenier sera presque vide à la récolte
+     (moins de 3 semaines, villages.food_outlook) : +0,3 % par mois au plus.
+   - Métiers : monte quand on n'en fait pas assez pour l'usage et pour les
+     routes de vente (réserve sous son niveau, ou route qui part à vide) :
+     +0,5 % par mois au plus.
+   - Sans besoin, il ne bouge pas : il ne se perd que par une crise.
+   Effets : goods.output (métiers, pêche), villages.yield_mult (récolte),
+   villages.food_mult (collecte). Écran : Métiers et échanges, section
+   SAVOIR-FAIRE (et "savoir-faire +N %" sur chaque métier). Partie IA de
+   50 ans : à l'an 51, agriculture +14 % en moyenne, collecte +21 %,
+   métiers +6 à +18 %.
+
+7. LA SURPRODUCTION (crise, situations.Surproduction)
+   Un bien manufacturé dont la réserve est pleine (85 % de CAP), qu'on fait
+   au moins 1,5 fois plus vite qu'on ne l'use et le vend, avec un
+   savoir-faire d'au moins +8 % : chaque mois ainsi compte (Tribe.glut).
+   3 mois : le joueur est PRÉVENU (bandeau, journal) ; 6 mois : la crise
+   peut naître. Effets : prix du bien x0,6 chez lui, stabilité -4 puis -8
+   et attachement -2. Actions : Renvoyer des artisans aux champs (une
+   équipe de moins par village), Brader aux voisins (la moitié de la
+   réserve à vos partenaires, relation +3), Offrir aux ancêtres (60 % de la
+   réserve brûlée, +1 prestige). La jauge monte quand la réserve passe sous
+   les deux tiers (ou que l'on ne produit plus trop). Résolue : tout comme
+   avant (le savoir-faire est gardé). RATÉE : le métier perd 15 % de
+   savoir-faire, et
+8. L'EFFONDREMENT DU COMMERCE (conjoncture, situations.Effondrement)
+   commence avec tous les partenaires commerciaux ; chaque mois, il gagne
+   les partenaires des partenaires (40 %), jusqu'à 2 pas. Pendant ce temps,
+   les routes de ses peuples portent à bas prix (x0,6) et leurs métiers
+   perdent 0,6 % de savoir-faire par mois. Score : chaque bien encore
+   pourvu (2) et chaque route qui porte (3). Actions : Soutenir les
+   partenaires (150 vivres, relation +5, score +15), Fermer ses marchés
+   (toutes ses routes : on en sort, sans pouvoir gagner). Le premier :
+   « Marché refuge » (prix de vente +15 %, 5 ans).
+
+9. LES RISQUES (situations.Spec.risk, _risks, state.situation_risks)
+   Chaque mois, pour chaque joueur, les crises qui le menacent : une dalle
+   ambre au bandeau (« Risque : ... », le conseil au survol) et une fois au
+   journal (pas plus d'une fois tous les deux ans pour la même). Disette
+   (faim, réserves maigres), mal qui court (grosses bandes serrées), gibier
+   (pays du chef épuisé), rouille (champs sans jachère), mal des bêtes (gros
+   village avec enclos), crue (printemps, villages au bord de l'eau),
+   surproduction. Le grand hiver (une éruption lointaine) ne prévient pas ;
+   les conjonctures non plus.
+
+Vérifié : 485 tests (test_production 9, test_influence +2, test_hud +1) ;
+équilibrage 4 graines ; empreinte ré-enregistrée (avec savoir-faire et
+surplus) ; essai_graines sur SA partie (an 55 -> 67 : 48 empreintes
+identiques), essai_reseau identique ; sa partie (copie) 3 ans plus loin :
+poterie +10 % (ses ventes la tirent), le risque du mal des bêtes affiché.

@@ -105,6 +105,11 @@ class Spec:
     def end(self, state, inst) -> None:
         """La fin (inst.outcome est connu)."""
 
+    def risk(self, state, tid: int) -> str:
+        """Une crise qui menace ce peuple : ce qui la fait venir et comment
+        l'eviter ("" : rien). Les conjonctures ne previennent pas."""
+        return ""
+
     # --- communs ---------------------------------------------------------------
     def effect_id(self, stage: int) -> str:
         return f"sit:{self.id}:{stage}"
@@ -856,15 +861,16 @@ class Crue(Spec):
 
 class GrandsTravaux(Spec):
     id = "travaux"
-    goal = "Chaque mois, chaque village ajoute au monument (bien plus s'il a déjà une pierre levée ou un autel) ; dresser des pierres en plus."
+    goal = "Élever le grand monument dans ses villages (écran du village, Bâtiments), étape après étape : le peuple qui a le plus d'étapes à la fin l'emporte."
     name = "Les grands travaux"
     kind = CONJONCTURE
     era = 1
     icon = "dolmen"
-    about = "Les peuples voisins dressent des pierres pour leurs ancêtres. Le plus grand monument dira qui est le plus grand peuple."
-    stages = (("Les pierres se dressent", "On traîne des blocs sur des rondins ; chaque village veut sa pierre.", {}),)
+    about = "Les peuples voisins élèvent chacun un grand monument à leurs ancêtres. Le plus haut dira qui est le plus grand peuple : les monuments des autres seront abattus."
+    stages = (("Les pierres se dressent", "On traîne des blocs sur des rondins ; chaque village veut son tertre.", {}),)
     actions = (
-        Action("pierre", "Dresser une pierre", "Cent bras, des cordes, des rondins : une pierre de plus au monument.", vivres=200, score=10, cooldown=3 * MONTH),
+        Action("corvee", "Corvée des clans", "Tous les bras du peuple au chantier : chaque monument en cours avance d'un mois.", prestige=6, cooldown=4 * MONTH),
+        Action("fete", "Fête des bâtisseurs", "Un festin au pied du monument : les voisins y viennent et vous regardent autrement.", vivres=150, cooldown=6 * MONTH),
     )
     months = 6 * 12
     cooldown = 15 * YEAR
@@ -872,7 +878,10 @@ class GrandsTravaux(Spec):
     def candidates(self, state):
         if not 17 <= state.clock.week <= 20:
             return []
-        peoples = sorted({s.tribe_id for s in _villages(state) if "ancetres" in state.tribes[s.tribe_id].knowledge})
+        peoples = sorted({
+            s.tribe_id for s in _villages(state)
+            if "ancetres" in state.tribes[s.tribe_id].knowledge and not state.tribes[s.tribe_id].flags.get("monument")
+        })
         for tid in peoples:
             mine = _villages(state, tid)
             others = [t for t in peoples if t != tid and any(state.world.distance(a.hex, b.hex) <= 40 for a in mine for b in _villages(state, t))]
@@ -884,25 +893,54 @@ class GrandsTravaux(Spec):
         return 0.25
 
     def month(self, state, inst):
+        # Le score : les etapes du monument dans les villages du lieu, et
+        # l'etape en cours (au prorata de ce qui est fait).
         from src.kora import villages
 
         for tid in sorted(inst.participants):
+            score = 0.0
             for site in _villages(state, tid):
-                if in_zone(state, inst, site.hex):
-                    inst.participants[tid]["score"] += 1 + (3 if villages.has(site, "pierre") or villages.has(site, "autel") else 0)
+                if not in_zone(state, inst, site.hex):
+                    continue
+                score += villages.monument_stages(site)
+                job = villages.works(site)
+                if job and job[0] == "monument":
+                    total = max(1, villages.build_weeks(site, "monument"))
+                    score += 1.0 - job[1] / total
+            inst.participants[tid]["score"] = round(score, 3)
+
+    def act(self, state, inst, tid, action):
+        from src.kora import diplo, villages
+
+        if action == "corvee":
+            for site in _villages(state, tid):
+                job = villages.works(site)
+                if job and job[0] == "monument":
+                    site.data["build"] = [job[0], max(1, job[1] - MONTH)]
+        elif action == "fete":
+            for other in sorted(inst.participants):
+                if other != tid:
+                    diplo.add_mod(state, tid, other, "monument", 5, actor=tid)
 
     def end(self, state, inst):
+        from src.kora import villages
+
         win = inst.winner
         if not win:
+            for t in inst.participants:
+                _note(state, t, LogKind.DECOUVERTE, "Les grands travaux sont finis, sans vainqueur : chacun garde ce qu'il a élevé.")
             return
         tribe = state.tribes[win]
-        tribe.prestige = min(100, tribe.prestige + 20)
-        grant_effect(tribe, "sit:travaux:prix", state.tick_count + 10 * YEAR)
-        best = inst.participants[win]["score"]
-        for t, p in inst.participants.items():
-            if t != win and p["score"] >= best * 0.5:
-                state.tribes[t].prestige = min(100, state.tribes[t].prestige + 5)
-            _note(state, t, LogKind.DECOUVERTE, f"Les grands travaux sont finis : le grand monument est celui des {tribe.name} (prestige, stabilité, 10 ans).")
+        tribe.flags["monument"] = -1
+        grant_effect(tribe, "sit:travaux:prix", state.tick_count + 30 * YEAR)
+        for t in sorted(inst.participants):
+            if t == win:
+                continue
+            gone = sum(1 for site in _villages(state, t) if villages.pull_down_monument(state, site))
+            if gone:
+                _note(state, t, LogKind.DECOUVERTE, f"Les grands travaux sont perdus : nos monuments sont abattus ({gone}).")
+        for t in inst.participants:
+            _note(state, t, LogKind.DECOUVERTE, f"Les grands travaux sont finis : le grand monument est celui des {tribe.name}. Il reste debout ; leur prestige grandit plus vite (30 ans).")
 
 
 class RouteDuSel(Spec):
@@ -1020,7 +1058,299 @@ class Chefferies(Spec):
             _note(state, t, LogKind.POLITIQUE, f"La vallée a trouvé son maître : les {tribe.name} sont la chefferie dominante (10 ans).")
 
 
-SPECS: dict[str, Spec] = {s.id: s for s in (Disette(), MalQuiCourt(), GibierEpuise(), GrandHiver(), GrandPassage(), Rassemblement(), Rouille(), MalDesBetes(), Crue(), GrandsTravaux(), RouteDuSel(), Chefferies())}
+class Surproduction(Spec):
+    id = "surproduction"
+    name = "La surproduction"
+    kind = CRISE
+    era = 1
+    icon = "balance"
+    about = "Les artisans font bien plus qu'on n'en use et qu'on n'en vend : les réserves débordent, plus personne n'en veut, les gens de métier ne savent plus de quoi vivre."
+    goal = "Faire redescendre la réserve et la production du bien : moins d'artisans, des ventes, des offrandes. Quand la réserve passe sous les deux tiers, la jauge monte vite."
+    fail = "Ratée : le métier perd son savoir-faire (-15 %) et l'effondrement du commerce gagne vos partenaires."
+    stages = (
+        ("Les réserves débordent", "Les jarres s'entassent, les porteurs n'en veulent plus ; on brade.", {"stability": -4}),
+        ("Les artisans sans ouvrage", "Des familles entières n'ont plus rien à échanger ; elles grondent contre le chef.", {"stability": -8, "loyalty": -2}),
+    )
+    actions = (
+        Action("renvoyer", "Renvoyer des artisans aux champs", "Une équipe de moins à ce métier dans chaque village.", progress=25, cooldown=4 * MONTH),
+        Action("brader", "Brader aux voisins", "La moitié de la réserve part chez vos partenaires, presque pour rien : ils s'en souviendront.", progress=15, cooldown=3 * MONTH),
+        Action("offrandes", "Offrir aux ancêtres", "On brûle et on enterre le surplus : la réserve fond, les anciens sont contents.", progress=10, cooldown=3 * MONTH),
+    )
+    months = 12
+    cooldown = 4 * YEAR
+    natural = 0.0
+
+    def candidates(self, state):
+        from src.kora import goods, production
+
+        out = []
+        for tid in sorted(state.tribes):
+            tribe = state.tribes[tid]
+            mine = _villages(state, tid)
+            if not mine or not tribe.glut:
+                continue
+            for good in goods.GOODS:
+                if tribe.glut.get(good, 0) >= production.GLUT_CRISIS:
+                    out.append((mine[0].hex, 0, [tid], {"good": good}))
+                    break
+        return out
+
+    def chance(self, state):
+        return 0.35
+
+    def risk(self, state, tid):
+        from src.kora import goods, production
+
+        tribe = state.tribes.get(tid)
+        if tribe is None or not tribe.glut:
+            return ""
+        for good in goods.GOODS:
+            if tribe.glut.get(good, 0) >= production.GLUT_RISK:
+                return (f"{goods.GOOD_NAMES[good]} : la réserve déborde et l'on en fait bien plus qu'on n'en use ou vend. "
+                        "Moins d'artisans, ou plus de routes de vente, avant que les prix ne s'effondrent.")
+        return ""
+
+    def _good(self, inst) -> str:
+        return inst.data.get("good", "")
+
+    def stage_name(self, inst):
+        from src.kora import goods
+
+        base = super().stage_name(inst)
+        good = goods.GOOD_NAMES.get(self._good(inst), "")
+        return f"{base} ({good.lower()})" if good else base
+
+    def month(self, state, inst):
+        from src.kora import goods, production
+
+        tid = next(iter(inst.participants))
+        good = self._good(inst)
+        have = goods.stock(state, tid, good)
+        made = goods.made(state, tid, good)
+        use, _unmet = production.demand(state, tid, good)
+        if have < goods.CAP * 0.66:
+            inst.progress += 20
+        elif made <= 1.2 * max(use, 0.05):
+            inst.progress += 10
+        months = (state.tick_count - inst.started) // MONTH
+        if inst.stage == 0 and months >= 3 and inst.progress < 30:
+            inst.stage = 1
+            _note(state, tid, LogKind.POLITIQUE, "La surproduction s'aggrave : les artisans sont sans ouvrage.")
+
+    def act(self, state, inst, tid, action):
+        from src.kora import diplo, goods
+        from src.kora.sim import gain_prestige
+
+        good = self._good(inst)
+        cid = goods.GOOD_CRAFT.get(good)
+        tribe = state.tribes[tid]
+        if action == "renvoyer" and cid:
+            for site in _villages(state, tid):
+                n = goods.teams_of(site, cid)
+                if n > 0:
+                    goods.set_teams(state, site, cid, n - 1)
+        elif action == "brader":
+            have = tribe.goods.get(good, 0.0)
+            give = have / 2.0
+            friends = goods.partners(state, tid)
+            if give > 0:
+                tribe.goods[good] = have - give
+                for other in friends:
+                    o = state.tribes[other]
+                    o.goods[good] = min(goods.CAP, o.goods.get(good, 0.0) + give / len(friends))
+                    diplo.add_mod(state, tid, other, "brade", 3, actor=tid)
+        elif action == "offrandes":
+            have = tribe.goods.get(good, 0.0)
+            if have > 0:
+                tribe.goods[good] = have * 0.4
+            gain_prestige(state, tribe, 1)
+
+    def end(self, state, inst):
+        from src.kora import goods, production
+
+        tid = next(iter(inst.participants), None)
+        if tid is None:
+            return
+        tribe = state.tribes[tid]
+        good = self._good(inst)
+        tribe.glut.pop(good, None)
+        if inst.outcome != "ratee":
+            return
+        cid = goods.GOOD_CRAFT.get(good)
+        if cid:
+            production.adjust(tribe, production.craft_kind(cid), -0.15)
+        _note(state, tid, LogKind.POLITIQUE, f"La surproduction n'a pas été enrayée : le métier perd son savoir-faire ({goods.GOOD_NAMES.get(good, good).lower()}).")
+        friends = [t for t in goods.partners(state, tid) if not _busy(state, "effondrement", [t])]
+        if friends and not _busy(state, "effondrement", [tid]):
+            depth = {str(tid): 0}
+            depth.update({str(t): 1 for t in friends})
+            _start(state, SPECS["effondrement"], inst.center, 0, [tid] + friends, {"good": good, "origin": tid, "depth": depth})
+
+
+EFFONDREMENT_DEPTH = 2
+
+
+class Effondrement(Spec):
+    id = "effondrement"
+    name = "L'effondrement du commerce"
+    kind = CONJONCTURE
+    era = 1
+    icon = "commerce"
+    about = "Un peuple a trop produit : plus personne n'achète, les prix s'effondrent sur les routes et le mal gagne, de partenaire en partenaire. Qui saura le mieux tenir ?"
+    goal = "Tenir : chaque mois, chaque bien encore pourvu et chaque route qui porte comptent. Le peuple qui a le mieux tenu devient le marché refuge. En attendant, les routes portent à bas prix et les artisans perdent la main."
+    stages = (("Les marchés s'effondrent", "Les porteurs reviennent chargés ; les artisans perdent la main.", {}),)
+    actions = (
+        Action("soutenir", "Soutenir les partenaires", "Des vivres aux villages de vos partenaires qui ne vendent plus : ils ne l'oublieront pas.", vivres=150, score=15, cooldown=3 * MONTH),
+        Action("fermer", "Fermer ses marchés", "Toutes vos routes fermées : le mal ne vous touche plus, mais vous ne pouvez plus l'emporter.", score=-1.0, cooldown=12 * MONTH),
+    )
+    months = 12
+    cooldown = 6 * YEAR
+
+    def candidates(self, state):
+        # Seulement d'une surproduction ratee (Surproduction.end).
+        return []
+
+    def month(self, state, inst):
+        from src.kora import goods, production
+
+        depth = inst.data.setdefault("depth", {})
+        # Le mal gagne les partenaires des partenaires, jusqu'a EFFONDREMENT_DEPTH.
+        for tid in sorted(inst.participants):
+            d = int(depth.get(str(tid), 0))
+            if d >= EFFONDREMENT_DEPTH:
+                continue
+            for other in goods.partners(state, tid):
+                if other in inst.participants or str(other) in depth:
+                    continue
+                if _rand(state, inst.uid, "cascade", tid, other) < 0.4:
+                    depth[str(other)] = d + 1
+                    join(state, inst, other)
+        for tid in sorted(inst.participants):
+            tribe = state.tribes.get(tid)
+            if tribe is None:
+                continue
+            for kind in production.active_kinds(state, tid):
+                if kind not in ("collecte", "agriculture", "peche"):
+                    production.adjust(tribe, kind, -0.006)
+            supplied = sum(1 for g in goods.GOODS if goods.supplied(state, tid, g))
+            running = sum(1 for r in goods.routes_of(state, tid) if r.units > 0)
+            inst.participants[tid]["score"] += 2 * supplied + 3 * running
+
+    def act(self, state, inst, tid, action):
+        from src.kora import diplo, goods
+
+        if action == "soutenir":
+            for other in sorted(inst.participants):
+                if other != tid:
+                    diplo.add_mod(state, tid, other, "soutien", 5, actor=tid)
+        elif action == "fermer":
+            for r in list(goods.routes_of(state, tid)):
+                goods.close_route(state, tid, r)
+            inst.participants.pop(tid, None)
+            _note(state, tid, LogKind.POLITIQUE, "Vos marchés sont fermés : l'effondrement du commerce ne vous touche plus.")
+
+    def end(self, state, inst):
+        win = inst.winner
+        if win:
+            tribe = state.tribes[win]
+            grant_effect(tribe, "sit:effondrement:prix", state.tick_count + 5 * YEAR)
+        for t in inst.participants:
+            text = "Les marchés reprennent." + (f" Les {state.tribes[win].name} sont devenus le marché refuge (prix de vente +15 %, 5 ans)." if win else "")
+            _note(state, t, LogKind.POLITIQUE, text)
+
+
+def price_mult(state, tid: int, good: str) -> float:
+    """Les prix que font les situations : un bien en surproduction ne vaut
+    presque plus rien chez son peuple."""
+    for inst in getattr(state, "situations", ()):
+        if not inst.outcome and inst.sid == "surproduction" and tid in inst.participants and inst.data.get("good") == good:
+            return 0.6
+    return 1.0
+
+
+def route_mult(state, route) -> float:
+    """Les routes d'un peuple pris dans l'effondrement du commerce portent a
+    bas prix."""
+    for inst in getattr(state, "situations", ()):
+        if not inst.outcome and inst.sid == "effondrement" and (route.exporter in inst.participants or route.importer in inst.participants):
+            return 0.6
+    return 1.0
+
+
+# --- les risques : une crise que l'on voit venir -------------------------------------------
+
+
+def _risk_disette(self, state, tid):
+    bands = _bands(state, tid, village=False)
+    pop = sum(b.population for b in bands)
+    if pop < 30:
+        return ""
+    hungry = sum(b.population for b in bands if state.tick_count - b.famine_tick <= 2 * MONTH)
+    lean = _season(state) in (Season.AUTOMNE, Season.HIVER) and _mean_weeks(bands) < 2.0
+    if hungry * 4 >= pop or lean:
+        return "Les réserves sont trop maigres pour la saison. Chassez, faites des caches, descendez vers les vallées."
+    return ""
+
+
+def _risk_mal(self, state, tid):
+    for b in _bands(state, tid):
+        if b.population < 75:
+            continue
+        if any(o.id != b.id and o.population > 0 and state.world.distance(o.position, b.position) <= 3 for o in state.bands.values()):
+            return "Des bandes nombreuses vivent serrées : une fièvre pourrait courir, surtout l'été. Scindez les grosses bandes, écartez-les."
+    return ""
+
+
+def _risk_gibier(self, state, tid):
+    from src.kora import chiefs
+
+    if _has_village(state, tid):
+        return ""
+    heart = chiefs.chief_band(state, tid)
+    if heart is None or heart.village:
+        return ""
+    hexes = state.world.hexes_in_radius(heart.position, 5)
+    mean = sum(state.world.exhaustion(h) for h in hexes) / max(1, len(hexes))
+    if mean < 0.86:
+        return "Le pays du chef s'épuise (gibier, baies). Partez chasser ailleurs avant qu'il ne soit vide."
+    return ""
+
+
+def _risk_rouille(self, state, tid):
+    if not 10 <= state.clock.week <= 26 or "jachere" in state.tribes[tid].knowledge:
+        return ""
+    if any(len(s.data.get("fields", [])) >= 3 for s in _villages(state, tid)):
+        return "Beaucoup de champs sans jachère : la rouille des blés guette (le savoir Jachère l'éloigne)."
+    return ""
+
+
+def _risk_mal_betes(self, state, tid):
+    from src.kora import villages
+
+    for site in _villages(state, tid):
+        band = _village_band(state, site)
+        if band is not None and band.population >= 100 and villages.has(site, "enclos"):
+            return "Un gros village vit serré avec ses bêtes : le mal des bêtes peut naître et voyager par vos routes."
+    return ""
+
+
+def _risk_crue(self, state, tid):
+    if not 1 <= state.clock.week <= 12:
+        return ""
+    if any(state.world.terrain(s.hex) in (Terrain.VALLEE, Terrain.COTE) for s in _villages(state, tid)):
+        return "Au printemps, l'eau peut sortir de son lit près de vos villages : gardez des vivres pour relever les digues."
+    return ""
+
+
+Disette.risk = _risk_disette
+MalQuiCourt.risk = _risk_mal
+GibierEpuise.risk = _risk_gibier
+Rouille.risk = _risk_rouille
+MalDesBetes.risk = _risk_mal_betes
+Crue.risk = _risk_crue
+
+
+SPECS: dict[str, Spec] = {s.id: s for s in (Disette(), MalQuiCourt(), GibierEpuise(), GrandHiver(), GrandPassage(), Rassemblement(), Rouille(), MalDesBetes(), Crue(), GrandsTravaux(), RouteDuSel(), Chefferies(), Surproduction(), Effondrement())}
 
 # Les effets qui ne sont pas des etapes : actions et prix (tech.SITUATION_EFFECTS).
 EXTRA_EFFECTS = {
@@ -1033,7 +1363,8 @@ EXTRA_EFFECTS = {
     "sit:mal_betes:abattage": ("Bêtes abattues", {"village_food": 0.85}),
     "sit:mal_betes:troupeaux": ("Troupeaux décimés", {"village_food": 0.8}),
     "sit:crue:boue": ("Champs envasés", {"field_yield": 0.85}),
-    "sit:travaux:prix": ("Le grand monument", {"stability": 10, "diplo": 10}),
+    "sit:travaux:prix": ("Le grand monument", {"prestige_gain": 1.3, "stability": 5}),
+    "sit:effondrement:prix": ("Marché refuge", {"trade_price": 1.15, "diplo": 5}),
     "sit:sel:prix": ("Carrefour des échanges", {"diplo": 8, "gifts": 1.3}),
     "sit:chefferies:prix": ("Chefferie dominante", {"diplo": 15, "loyalty": 5}),
 }
@@ -1145,6 +1476,42 @@ def monthly(state) -> None:
             _finish(state, inst, "ratee" if spec.kind == CRISE else "finie")
     _sync_effects(state)
     _prune(state)
+    _risks(state)
+
+
+def _risks(state) -> None:
+    """Les crises qui menacent chaque joueur (Spec.risk) : au bandeau
+    (state.situation_risks), et une fois au journal (pas plus d'une fois
+    tous les deux ans pour la meme). Les conjonctures ne previennent pas."""
+    from src.kora.sim import humans
+
+    out = {}
+    last = state.situation_last
+    for tid in humans(state):
+        if tid not in state.tribes or not _alive(state, tid):
+            continue
+        living = {s.sid for s in of_tribe(state, tid)}
+        found = []
+        for sid in sorted(SPECS):
+            spec = SPECS[sid]
+            if spec.kind != CRISE or sid in living:
+                continue
+            text = spec.risk(state, tid)
+            if not text:
+                continue
+            found.append([sid, text])
+            key = f"risque:{sid}:{tid}"
+            if state.tick_count - last.get(key, -10 ** 6) >= 2 * YEAR:
+                last[key] = state.tick_count
+                _note(state, tid, LogKind.SURVIE, f"Risque : {spec.name.lower()}. {text}")
+        if found:
+            out[tid] = found
+    state.situation_risks = out
+
+
+def risks_of(state, tid: int) -> list:
+    """[[sid, texte]] : les crises qui menacent ce peuple (calcule chaque mois)."""
+    return list(getattr(state, "situation_risks", {}).get(tid, []))
 
 
 def _finish(state, inst, outcome: str) -> None:

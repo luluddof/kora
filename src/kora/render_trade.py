@@ -224,8 +224,8 @@ def draw_trade(r, state, ui) -> None:
     _draw_market(r, state, lay, tips, mx, my)
     _draw_routes(r, state, lay, routes, ui, tips, mx, my)
     _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my)
-    for rows, tx, ty in tips:
-        _tip(r, rows, tx, ty)
+    for tip in tips:
+        _tip(r, *tip)
 
 
 def _draw_market(r, state, lay, tips, mx, my) -> None:
@@ -328,10 +328,10 @@ def _draw_routes(r, state, lay, routes, ui, tips, mx, my) -> None:
             if _hover(rect, mx, my):
                 why = goods.level_block(state, state.viewer, route, k + 1)
                 load = goods.trade_load(state, route.exporter, route.importer)
-                tips.append(([(f"{k + 1} convoi{'s' if k else ''} : {load * (k + 1):.0f} charges par mois au plus", SOFT)] + ([(why, WARN)] if why and route.level != k + 1 else []), mx, my))
+                tips.append(([(f"{k + 1} convoi{'s' if k else ''} : {load * (k + 1):.0f} charges par mois au plus", SOFT)] + ([(why, WARN)] if why and route.level != k + 1 else []), mx, my, rect))
         _chip(r, row["close"], "Fermer", False, on=True, mx=mx, my=my)
         if _hover(row["close"], mx, my) and not mine:
-            tips.append(([("C'est leur route : la fermer les froissera (relation -3).", WARN)], mx, my))
+            tips.append(([("C'est leur route : la fermer les froissera (relation -3).", WARN)], mx, my, row["close"]))
     extra = len(goods.routes_of(state, state.viewer)) - len(routes)
     if extra > 0:
         screen.blit(r.tiny.render(f"... et {extra} autres routes", True, NOTE), (x, lay["routes"][-1]["card"][1] + 60))
@@ -392,7 +392,7 @@ def _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my) -> No
     on = not why
     _button(screen, r.small, lay["open"], "Ouvrir la route", on, on and _hover(lay["open"], mx, my))
     if why and pick is not None and _hover(lay["open"], mx, my):
-        tips.append(([(why, WARN)], mx, my))
+        tips.append(([(why, WARN)], mx, my, lay["open"]))
     elif why and pick is not None:
         s = r.tiny.render(_fit(r.tiny, why, w), True, WARN)
         screen.blit(s, (x, lay["open"][1] + 32))
@@ -442,4 +442,4 @@ def _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my) -> No
                 else:
                     rows = [(f"{'+' if val >= 0 else ''}{val}  {label}", GOOD if val > 0 else BAD if val < 0 else SOFT) for label, val in v.reasons]
                     rows.append((("Ils accepteraient" if v.accepted else "Ils refuseraient") + f" ({v.score:+d})", GOOD if v.accepted else BAD))
-                tips.append((rows, mx, my))
+                tips.append((rows, mx, my, row["ask"]))

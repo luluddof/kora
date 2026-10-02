@@ -212,7 +212,7 @@ def band_card_layout(width: int, height: int, n_lines: int) -> dict:
 
 MAP_MODES = (
     ("relief", "Relief"),
-    ("zones", "Zones [Z]"),
+    ("zones", "Influence [Z]"),
     ("ressources", "Ressources [R]"),
     ("commerce", "Commerce [X]"),
 )
@@ -237,6 +237,27 @@ def map_mode_hit(layout: dict, mx: int, my: int):
         if _contains(rect, mx, my):
             return key
     return None
+
+
+TOAST_W = 360
+
+
+def toast_box(width: int, height: int, panel=None, card=None) -> tuple[int, int, int, int]:
+    """Le bloc des nouvelles, en bas a droite : a gauche des onglets (et du
+    panneau ouvert), a droite de la carte de bande (au-dessus d'elle si la
+    place manque), sous le bandeau des situations. Les nouvelles s'y
+    empilent depuis le bas."""
+    right = width - TAB_W - 14
+    if panel is not None:
+        right = min(right, panel[0] - 12)
+    card_right = max(276, (width - BAND_CARD_W) // 2) + BAND_CARD_W
+    bw = max(220, min(TOAST_W, right - card_right - 12))
+    top = HUD_HEIGHT + 104
+    bottom = height - 14
+    x = right - bw
+    if card is not None and card[2] and x < card[0] + card[2] and x + bw > card[0]:
+        bottom = min(bottom, card[1] - 10)
+    return (x, top, bw, max(0, bottom - top))
 
 
 def toast_hit(hits: list, mx: int, my: int):
@@ -294,7 +315,6 @@ TREE_COLHEAD = 58
 TREE_BAND = 62
 TREE_ZOOM_MAX = 1.6
 TREE_ZOOM_STEP = 1.15
-TREE_MINI_W = 176
 # Anciens noms (d'autres modules les lisent encore).
 TECH_ROW_H = TREE_ROW
 TECH_GUTTER = TREE_GUTTER
@@ -392,7 +412,7 @@ def _clip(a, b):
 def tech_panel_layout(width: int, height: int, tab_w: int = 66, era: int = 0, cam=None) -> dict:
     """Ecran des savoirs (a la Victoria 3) : en tete la recherche en cours,
     au milieu la VUE sur la toile de l'arbre (camera `cam` : glisser pour se
-    deplacer, molette pour zoomer ; mini-carte et boutons dans un coin), en
+    deplacer, molette pour zoomer ; boutons dans la barre du haut), en
     bas la fiche du savoir choisi et le bouton Apprendre.
     `era` ne sert plus (ancien decoupage en pages)."""
     bw = max(640, width - tab_w - 16)
@@ -413,16 +433,10 @@ def tech_panel_layout(width: int, height: int, tab_w: int = 66, era: int = 0, ca
         c = _clip(rect, view)
         if c is not None:
             visible[tid] = c
-    ww, wh = world["size"]
-    mini_w = TREE_MINI_W
-    mini_h = max(40, int(mini_w * wh / ww))
-    minimap = (view[0] + view[2] - mini_w - 10, view[1] + view[3] - mini_h - 10, mini_w, mini_h)
     bxs = strip[0] + strip[2]
     center = (bxs - 96, strip[1] + 2, 96, 24)
     zoom_in = (center[0] - 6 - 28, strip[1] + 2, 28, 24)
     zoom_out = (zoom_in[0] - 4 - 28, strip[1] + 2, 28, 24)
-    # La mini-carte ne sert a rien quand tout l'arbre est a l'ecran.
-    minimap_on = cam[2] > tree_zoom_min(view, world) + 1e-6
     half = (bw - 40) // 2
     detail = (bx + 14, detail_top, bw - 28, detail_h)
     learn = (bx + bw - 14 - 12 - 170, detail_top + 7, 170, 28)
@@ -434,8 +448,6 @@ def tech_panel_layout(width: int, height: int, tab_w: int = 66, era: int = 0, ca
         "world": world,
         "nodes": nodes,
         "visible": visible,
-        "minimap": minimap,
-        "minimap_on": minimap_on,
         "strip": strip,
         "zoom_in": zoom_in,
         "zoom_out": zoom_out,
@@ -494,9 +506,7 @@ def side_layout(width: int, height: int, panel: str | None = None, era: int = 0,
         items["tview"] = tech_panel["view"]
         for key in ("zoom_in", "zoom_out", "center"):
             items["t" + key] = tech_panel[key]
-        if tech_panel["minimap_on"]:
-            items["tminimap"] = tech_panel["minimap"]
-        priority = ("tminimap", "tzoom_in", "tzoom_out", "tcenter")
+        priority = ("tzoom_in", "tzoom_out", "tcenter")
     elif panel in ("tribu", "peuples", "armee"):
         from src.kora.render_panels import panel_box
 
@@ -1641,36 +1651,55 @@ class Renderer:
     def _fit(self, font, text: str, width: int) -> str:
         return theme.fit(font, text, width)
 
-    def draw_toasts(self, toasts: list, top: int) -> None:
-        """Les nouvelles : de petites dalles qui glissent et s'eclairent, une
-        icone par genre ; un clic sur une nouvelle situee y emmene."""
-        y = top
+    def draw_toasts(self, toasts: list, top: int = 0) -> None:
+        """Les nouvelles : en bas a droite, dans un bloc invisible
+        (toast_box) ; chacune une petite dalle qui glisse et s'eclaire, une
+        icone par genre ; un texte long revient a la ligne et reste dans le
+        bloc. La plus recente en bas. Un clic sur une nouvelle situee y
+        emmene."""
         self.toast_hits = []
+        w, h = self.screen.get_size()
+        side = getattr(self, "side_hits", {}) or {}
+        card = (getattr(self, "band_hits", {}) or {}).get("box")
+        bx, by, bw, bh = toast_box(w, h, side.get("box") if side.get("box", (0, 0, 0, 0))[2] else None, card)
         f = theme.font("petit")
+        line_h = f.get_linesize()
+        shown = []
         for toast in toasts:
             age = float(toast.get("age", 0.0))
             fade = 1.0 if age < 3.0 else max(0.0, 1.0 - (age - 3.0) / 1.0)
             if fade <= 0:
                 continue
-            slide = int(max(0.0, 0.25 - age) / 0.25 * 30)
-            text = str(toast.get("text", ""))
-            kind = toast.get("kind") or ("combat" if toast.get("combat") else "survie")
             placed = toast.get("hex") is not None
-            tw = min(f.size(text)[0], 560)
-            w = tw + 46 + (22 if placed else 0)
-            x = 10 - slide
-            layer = pygame.Surface((w + 12, 34), pygame.SRCALPHA)
-            theme.panel(layer, (6, 3, w, 28), "toast")
+            text_w = bw - 52 - (22 if placed else 0)
+            lines = theme.wrap(f, str(toast.get("text", "")), text_w)
+            if len(lines) > 6:
+                lines = lines[:5] + [theme.fit(f, lines[5] + " " + " ".join(lines[6:]), text_w)]
+            th = 12 + line_h * len(lines)
+            shown.append((toast, age, fade, placed, lines, th))
+        y = by + bh
+        for toast, age, fade, placed, lines, th in reversed(shown):
+            if y - th < by:
+                break
+            y -= th
+            slide = int(max(0.0, 0.25 - age) / 0.25 * 30)
+            kind = toast.get("kind") or ("combat" if toast.get("combat") else "survie")
+            tw = max(f.size(line)[0] for line in lines)
+            cw = min(bw, tw + 52 + (22 if placed else 0))
+            x = bx + bw - cw + slide
+            layer = pygame.Surface((cw + 12, th + 6), pygame.SRCALPHA)
+            theme.panel(layer, (6, 3, cw, th), "toast")
             col = C.mauvais if kind == "combat" else C.ocre_jaune
-            layer.blit(theme.icon(KIND_ICONS.get(kind, "feu"), 18, col), (16, 8))
-            layer.blit(f.render(theme.fit(f, text, 560), True, C.os), (40, 8))
+            layer.blit(theme.icon(KIND_ICONS.get(kind, "feu"), 18, col), (16, 9))
+            for k, line in enumerate(lines):
+                layer.blit(f.render(line, True, C.os), (42, 8 + k * line_h))
             if placed:
-                layer.blit(theme.icon("voir", 16, C.lin), (40 + tw + 8, 9))
+                layer.blit(theme.icon("voir", 16, C.lin), (cw - 18, 9))
             layer.set_alpha(int(255 * fade))
             self.screen.blit(layer, (x - 6, y - 3))
             if placed:
-                self.toast_hits.append(((x, y, w, 28), toast))
-            y += 32
+                self.toast_hits.append(((x, y, cw, th), toast))
+            y -= 6
 
     def draw_inspect(self, hover_info: dict | None, pin_info: dict | None) -> None:
         w, h = self.screen.get_size()

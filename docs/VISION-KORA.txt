@@ -248,6 +248,30 @@ lente, bandes dessinees petites a taille fixe.
     doivent pas forcement toutes avoir lieu en 30 ans." FAIT : chacune
     PEUT naitre (contexte mesure sur 50 ans), beaucoup restent rares.
 
+2026-10-02 (suite, spec 2026-10-02-influence-savoir-faire-surproduction.txt)
+  - "Ce truc de l'arbre de recherche (la mini-carte), tu vires." FAIT.
+  - "Quand on fait des echanges, le bouton est cache par l'interface
+    d'acceptation." FAIT : une fiche ne cache jamais son bouton
+    (theme.tooltip avoid), commerce et diplomatie.
+  - "Le grand monument : un batiment special des villages, construit en
+    etapes ; le plus d'etapes gagne (bonus de gain de prestige) ; les
+    perdants voient leur monument detruit ; le gagnant ne l'aura plus ;
+    plus de 'dresser une pierre' qui ne veut rien dire." FAIT (0.4.0).
+  - "Les messages en bas a droite, dans un carre invisible : les textes
+    longs reviennent a la ligne et restent dans le bloc." FAIT.
+  - "Zones de controle -> PROJECTION D'INFLUENCE selon le sol (peu en
+    plaine et vallee, un peu plus en steppe, plus en collines et foret,
+    encore plus en desert et montagne)." FAIT (influence.projection).
+  - "L'EFFICACITE de la production, par type, qui monte legerement avec le
+    temps quand il faut produire plus (echanges pour les biens, besoins
+    pour la nourriture), discrete, avec les villages ; une catastrophe de
+    SURPRODUCTION d'un bien manufacture ; non resolue, une conjoncture
+    d'EFFONDREMENT DU COMMERCE en cascade chez les partenaires ; la
+    catastrophe peut faire perdre l'efficacite." FAIT (production.py,
+    situations Surproduction et Effondrement).
+  - "Si on risque une catastrophe, on previent (pas les conjonctures)."
+    FAIT : risques au bandeau et au journal (Spec.risk).
+
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -293,6 +317,12 @@ lente, bandes dessinees petites a taille fixe.
   = une classe Spec dans situations.py (contexte, etapes, actions, goal,
   fail, fin), son hasard par _rand (jamais story_rng), ses effets par
   Tribe.situation_effects ; les actions passent par commands.py.
+  Fait le 2026-10-02 (suite, 0.4.0) : projection d'influence, savoir-faire,
+  surproduction et effondrement du commerce, risques prevenus, grand
+  monument en etapes, nouvelles en bas a droite. REGLES NOUVELLES : tout
+  prestige GAGNE passe par sim.gain_prestige (bonus prestige_gain) ; une
+  crise nouvelle dit son risque (Spec.risk) quand on peut la voir venir ;
+  une fiche au survol d'un bouton passe avoid=rect (theme.tooltip).
   En attente de SON choix : signer l'exe (SignPath, licence du depot).
   En attente de SON choix : la suite de la profondeur des ages (spec
   2026-10-02, section 4 ; ma recommandation : N2 la chefferie, puis T2

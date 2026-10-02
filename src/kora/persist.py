@@ -216,6 +216,8 @@ def _tribe_to_json(tribe: Tribe) -> dict:
         "start_bonuses": list(tribe.start_bonuses),
         "start_bonus_until": tribe.start_bonus_until,
         "situation_effects": [list(e) for e in tribe.situation_effects],
+        "efficiency": dict(sorted(tribe.efficiency.items())),
+        "glut": dict(sorted(tribe.glut.items())),
     }
 
 
@@ -251,6 +253,8 @@ def _tribe_from_json(data: dict) -> Tribe:
         start_bonuses=[str(b) for b in data.get("start_bonuses", [])],
         start_bonus_until=int(data.get("start_bonus_until", -1)),
         situation_effects=[[str(e[0]), int(e[1])] for e in data.get("situation_effects", [])],
+        efficiency={str(k): float(v) for k, v in data.get("efficiency", {}).items()},
+        glut={str(k): int(v) for k, v in data.get("glut", {}).items()},
     )
 
 

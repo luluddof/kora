@@ -97,10 +97,11 @@ def _hover(rect) -> bool:
     return rect[0] <= mx <= rect[0] + rect[2] and rect[1] <= my <= rect[1] + rect[3]
 
 
-def _tooltip(r, lines, x, y):
-    """Petite fiche au survol : (texte, couleur)."""
+def _tooltip(r, lines, x, y, avoid=None):
+    """Petite fiche au survol : (texte, couleur) ; avoid : le bouton qu'elle
+    ne doit pas cacher."""
     if lines:
-        theme.tooltip(r.screen, lines, x, y)
+        theme.tooltip(r.screen, lines, x, y, avoid=avoid)
 
 
 def _signed(v: float) -> str:
@@ -774,7 +775,7 @@ def draw_peoples(r, state, layout, ui) -> None:
             rows = [(f"{_signed(v):>4}  {label}", GOOD if v > 0 else BAD if v < 0 else SOFT) for label, v in verdict.reasons]
             if action != "rompre":
                 rows.append((f"Total : {_signed(verdict.score)} (il faut plus de 0)", TEXT))
-            tips.append((rows, rect[0] + rect[2] + 10, rect[1] - 4))
+            tips.append((rows, rect[0] + rect[2] + 10, rect[1] - 4, rect))
     # Clans de ce peuple qui se detachent, pres de chez vous.
     iy = cy + 3 * ah + 4
     for band in diplo.invitable(state, state.viewer, pick)[:2]:

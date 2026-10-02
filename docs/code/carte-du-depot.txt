@@ -76,7 +76,7 @@ Regle dure :
   vision.py, persist.py, peoples.py, influence.py, sites.py, chiefs.py,
   diplo.py, events.py, events_data.py, resources.py, villages.py,
   orders.py, battle.py, units.py, goods.py, situations.py, commands.py,
-  francais.py n'importent JAMAIS pygame ni render.py.
+  francais.py, production.py n'importent JAMAIS pygame ni render.py.
   numpy : seulement dans globe_draw.py (rendu), mapgen.py et
   resources.generate_layers (cuisson de la carte, hors jeu).
   La simulation reste en python pur (petits calculs par bande).
@@ -98,7 +98,7 @@ Ici c'est plus petit, mais le meme decoupage :
                     ai_war.py, peoples.py, influence.py, sites.py,
                     chiefs.py, diplo.py, events.py (+ events_data.py),
                     resources.py, villages.py, orders.py, battle.py, units.py,
-                    goods.py, situations.py
+                    goods.py, situations.py, production.py
                     "une semaine avance"
 
   Persistance       persist.py, data/kora_map.json
@@ -441,6 +441,15 @@ src/kora/situations.py  (pas de pygame)
   la semaine et de cles, jamais story_rng). to_json / from_json (persist),
   copy_all (sim.snapshot).
 
+src/kora/production.py  (pas de pygame)
+  Le savoir-faire des villages : Tribe.efficiency (genre -> 1,0..EFF_MAX ;
+  collecte, agriculture, peche, et chaque metier), monte chaque mois
+  (monthly, appele par sim.tick apres goods.monthly) quand il faut produire
+  plus (food_pressure, craft_pressure, demand) ; of / craft_kind / adjust ;
+  lu par goods.output, villages.yield_mult, villages.food_mult. Les mois de
+  surproduction par bien (Tribe.glut, glutted) : GLUT_RISK -> le risque,
+  GLUT_CRISIS -> situations.Surproduction. lines() pour l'ecran.
+
 src/kora/render_situations.py
   draw_banner (dalles sous la barre du haut, jauge en anneau ; uid ->
   rect dans renderer.situation_hits), draw_window (la fenetre ;
@@ -688,6 +697,19 @@ Carte, polices, icones dans l'exe   Kora.spec ET Kora-unfichier.spec datas=
 Une couleur, une police, un bouton  theme.py (et docs/charte-graphique.txt)
 Un texte affiche                    en francais accentue ; verifier :
                                     python tools/accents.py --dry
+Influence selon le sol              influence.PROJECTION / projection (cache
+                                    world._proj_cache)
+Savoir-faire, surproduction         production.py ; crises Surproduction et
+                                    Effondrement dans situations.py
+Le grand monument                   villages "monument" (monument_stages,
+                                    monument_open, pull_down_monument) ;
+                                    situations.GrandsTravaux
+Gagner du prestige                  sim.gain_prestige (jamais
+                                    tribe.prestige += a la main)
+Le risque d'une crise (prevenir)    Spec.risk ; situations._risks ->
+                                    state.situation_risks (bandeau, journal)
+Les nouvelles (toasts)              render.toast_box / draw_toasts
+Une fiche au survol d'un bouton     theme.tooltip(..., avoid=rect)
 Une crise ou une conjoncture        situations.py : une classe Spec,
                                     l'ajouter a SPECS ; ses effets dans
                                     stages / EXTRA_EFFECTS ; tests dans
@@ -826,7 +848,9 @@ test_chiefs.py             chefs, attachement, depart, succession
 test_diplo.py              contacts, raisons, pactes, cadeaux,
                            diffusion, clan invite
 test_events.py             evenements bien formes, cartes, suites
-test_situations.py         les 12 situations : declencheurs, effets, crise
+test_production.py         savoir-faire, surproduction, effondrement en
+                           cascade, grand monument, risques prevenus
+test_situations.py         les situations : declencheurs, effets, crise
                            resolue = tout comme avant, prix a plusieurs,
                            sauvegarde, hasard propre, IA
 test_resources.py          couches cuites, plusieurs par case

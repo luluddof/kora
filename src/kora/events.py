@@ -400,7 +400,12 @@ def apply(state, inst, effect) -> None:
     if tribe is None:
         return
     if kind == "prestige":
-        tribe.prestige = max(0, min(100, tribe.prestige + args[0]))
+        if args[0] > 0:
+            from src.kora.sim import gain_prestige
+
+            gain_prestige(state, tribe, args[0])
+        else:
+            tribe.prestige = max(0, min(100, tribe.prestige + args[0]))
     elif kind == "flag":
         weeks = args[1] if len(args) > 1 else -1
         tribe.flags[args[0]] = -1 if weeks < 0 else state.tick_count + weeks

@@ -110,6 +110,9 @@ class GameState:
     situations: list = field(default_factory=list)
     next_situation_uid: int = 1
     situation_last: dict = field(default_factory=dict)
+    # Les crises qui menacent chaque joueur (situations._risks, chaque mois ;
+    # calcule, pas sauvegarde).
+    situation_risks: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -498,6 +501,19 @@ def _water_ok(state: GameState, tribe_id: int) -> bool:
 def _herd_ok(state: GameState, tribe_id: int) -> bool:
     tribe = state.tribes.get(tribe_id)
     return bool(tribe and tribe.troupeau)
+
+
+def gain_prestige(state, tribe, amount: int) -> int:
+    """Un peuple gagne du prestige (plafond 100) ; le bonus prestige_gain
+    (le grand monument) le multiplie. Rend ce qui a ete gagne."""
+    if tribe is None or amount <= 0:
+        return 0
+    mult = tech.bonuses(tribe).prestige_gain
+    if mult != 1.0:
+        amount = max(1, round(amount * mult))
+    before = tribe.prestige
+    tribe.prestige = min(100, tribe.prestige + amount)
+    return tribe.prestige - before
 
 
 def bonus_of(state: GameState, tribe_id: int) -> tech.Bonuses:
@@ -1417,7 +1433,7 @@ def resolve_raids(state: GameState) -> None:
                 note(state, LogKind.COMBAT, _raid_text(state, attacker, defender, winner, me) + battle.log_suffix(state, res, me), where=h, to=me)
             wt = state.tribes[winner.tribe_id]
             lt = state.tribes[loser.tribe_id]
-            wt.prestige = min(100, wt.prestige + (10 if res.wiped else 5))
+            gain_prestige(state, wt, 10 if res.wiped else 5)
             lt.prestige = max(0, lt.prestige - (8 if res.wiped else 4))
             winner.last_raid_tick = state.tick_count
             loser.last_raid_tick = state.tick_count
@@ -1478,7 +1494,7 @@ def update_prestige(state: GameState) -> None:
                 from src.kora import villages
 
                 gain = b.winter_prestige + chiefs.winter_prestige(state, tid) + villages.winter_prestige(state, tid)
-                tribe.prestige = min(100, tribe.prestige + gain)
+                gain_prestige(state, tribe, gain)
             tribe.famine_during_winter = False
     if state.tick_count > 0 and state.tick_count % 4 == 0:
         for tid, tribe in state.tribes.items():
@@ -1488,7 +1504,7 @@ def update_prestige(state: GameState) -> None:
             # Un grand peuple gagne du prestige, jusqu'a un plafond qui suit sa
             # taille (sinon toutes les IA finissaient a 100).
             if pop >= 80 and tribe.prestige < 40 + pop // 10:
-                tribe.prestige = min(100, tribe.prestige + 1)
+                gain_prestige(state, tribe, 1)
             elif pop < 20:
                 tribe.prestige = max(0, tribe.prestige - 1)
 
@@ -1539,6 +1555,8 @@ def _copy_tribe(tribe: Tribe) -> Tribe:
     out.trade = copy.deepcopy(tribe.trade)
     out.start_bonuses = list(tribe.start_bonuses)
     out.situation_effects = [list(e) for e in tribe.situation_effects]
+    out.efficiency = dict(tribe.efficiency)
+    out.glut = dict(tribe.glut)
     return out
 
 
@@ -1844,6 +1862,9 @@ def tick(state: GameState) -> None:
             tech.update_start_bonuses(state)
             diplo.monthly(state)
             goods.monthly(state)
+            from src.kora import production
+
+            production.monthly(state)
             chiefs.monthly(state)
             diplo.ai_monthly(state)
             events.monthly(state)

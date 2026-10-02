@@ -186,9 +186,16 @@ BUILDINGS = {
             "place", "Place d'échange", "Une place où les porteurs des voisins étalent leurs biens.",
             "echanges", 3, 8, ("+2 convois de porteurs (routes commerciales)", "Vos ventes : prix +10 %"), 10,
         ),
+        Building(
+            "monument", "Grand monument", "Un tertre de pierres dressées, que l'on élève étape après étape pendant les grands travaux.",
+            "", 2, 8, ("Une étape de plus au monument", "Le plus d'étapes gagne les grands travaux", "Gagné : il reste (+2 prestige par hiver) ; perdu : abattu"), 8,
+        ),
     )
 }
-BUILD_ORDER = ("palissade", "grenier", "puits", "maison_longue", "enclos", "guerriers", "tour", "autel", "pierre", "atelier", "place")
+BUILD_ORDER = ("palissade", "grenier", "puits", "maison_longue", "enclos", "guerriers", "tour", "autel", "pierre", "atelier", "place", "monument")
+# Le grand monument (situations.GrandsTravaux) : ses etapes, chacune plus
+# longue et plus chere que la precedente.
+MONUMENT_STAGES = 6
 
 # Troupes : part des habitants levee, vivres emportes, duree avant les
 # desertions.
@@ -273,6 +280,47 @@ def has(site, bid: str) -> bool:
     return site is not None and bid in built(site)
 
 
+def monument_stages(site) -> int:
+    return int(site.data.get("monument", 0)) if site is not None else 0
+
+
+def monument_open(state, site) -> bool:
+    """Le peuple de ce village vit les grands travaux, et le village est
+    dans leur lieu : il peut elever son monument."""
+    from src.kora import situations
+
+    return any(
+        inst.sid == "travaux" and situations.in_zone(state, inst, site.hex)
+        for inst in situations.of_tribe(state, site.tribe_id)
+    )
+
+
+def building_name(site, bid: str, short: bool = False) -> str:
+    """Le nom d'un batiment ; le monument dit ou il en est (short : pour
+    les petites cartes)."""
+    if bid == "monument":
+        n = monument_stages(site)
+        if not n:
+            return "Grand monument"
+        return f"Monument {n}/{MONUMENT_STAGES}" if short else f"Grand monument · {n}/{MONUMENT_STAGES}"
+    return BUILDINGS[bid].name
+
+
+def pull_down_monument(state, site) -> bool:
+    """Le monument d'un vaincu est abattu (situations.GrandsTravaux)."""
+    if site is None:
+        return False
+    had = monument_stages(site) > 0 or has(site, "monument")
+    site.data.pop("monument", None)
+    if "monument" in site.data.get("buildings", []):
+        site.data["buildings"].remove("monument")
+    job = works(site)
+    if job and job[0] == "monument":
+        site.data["build"] = None
+        had = True
+    return had
+
+
 def works(site):
     """Chantier en cours : (id, semaines restantes) ou None."""
     if site is None:
@@ -294,6 +342,8 @@ def used_slots(site) -> int:
 
 def build_weeks(site, bid: str) -> int:
     weeks = BUILDINGS[bid].weeks
+    if bid == "monument":
+        weeks += 2 * monument_stages(site)
     if bid == "palissade" and oath_of(site) == "pieux":
         weeks = max(1, weeks // 2)
     return weeks
@@ -304,7 +354,10 @@ def build_cost(state, site, bid: str) -> float:
     pop = band.population if band is not None else 0
     from src.kora import goods
 
-    cost = BUILDINGS[bid].cost_weeks * pop * goods.build_mult(state, site.tribe_id)
+    cost_weeks = BUILDINGS[bid].cost_weeks
+    if bid == "monument":
+        cost_weeks += 0.5 * monument_stages(site)
+    cost = cost_weeks * pop * goods.build_mult(state, site.tribe_id)
     if bid == "palissade" and oath_of(site) == "pieux":
         cost *= 0.5
     return float(math.floor(cost))
@@ -313,6 +366,16 @@ def build_cost(state, site, bid: str) -> float:
 def building_status(state, site, bid: str) -> str:
     """"bati", "chantier", "possible", "attente" (manque vivres ou place) ou
     "verrouille" (savoir)."""
+    if bid == "monument":
+        job = works(site)
+        if job and job[0] == bid:
+            return "chantier"
+        n = monument_stages(site)
+        if n >= MONUMENT_STAGES or (n and not monument_open(state, site)):
+            return "bati"
+        if not monument_open(state, site):
+            return "verrouille"
+        return "possible" if not build_block_site(state, site, bid) else "attente"
     if has(site, bid):
         return "bati"
     job = works(site)
@@ -331,7 +394,13 @@ def build_block_site(state, site, bid: str) -> str:
     band = band_of(state, site)
     if band is None:
         return "Le village est vide"
-    if has(site, bid):
+    monument = bid == "monument"
+    if monument:
+        if monument_stages(site) >= MONUMENT_STAGES:
+            return "Le grand monument est achevé"
+        if not monument_open(state, site):
+            return "Seulement pendant les grands travaux (une conjoncture)"
+    elif has(site, bid):
         return f"{b.name} : déjà bâti"
     job = works(site)
     if job:
@@ -340,7 +409,7 @@ def build_block_site(state, site, bid: str) -> str:
         return f"Un chantier à la fois ({BUILDINGS[job[0]].name})"
     if b.needs and b.needs not in state.tribes[site.tribe_id].knowledge:
         return f"Il faut connaître {tech.TECHS[b.needs].name}"
-    if used_slots(site) >= slots(state, site):
+    if used_slots(site) >= slots(state, site) and not (monument and has(site, "monument")):
         return f"Plus de place (il faut {SLOT_POP} habitants de plus)"
     cost = build_cost(state, site, bid)
     if band.stock < cost:
@@ -378,6 +447,14 @@ def _advance_works(state, site, band) -> None:
         site.data["build"] = [bid, left]
         return
     site.data["build"] = None
+    if bid == "monument":
+        n = monument_stages(site) + 1
+        site.data["monument"] = n
+        if "monument" not in site.data.setdefault("buildings", []):
+            site.data["buildings"].append("monument")
+        if state.tribes[band.tribe_id].is_player:
+            _note(state, LogKind.SURVIE, f"{name(site)} : le grand monument s'élève (étape {n} sur {MONUMENT_STAGES}).", site.hex, to=band.tribe_id)
+        return
     site.data.setdefault("buildings", []).append(bid)
     if state.tribes[band.tribe_id].is_player:
         text = f"{name(site)} : la palissade est debout." if bid == "palissade" else f"{name(site)} : {BUILDINGS[bid].name.lower()} achevée."
@@ -500,7 +577,10 @@ def food_mult(state, band) -> float:
     if has(site, "enclos"):
         mult *= 1.1
     if site is not None:
+        from src.kora import production
+
         mult *= goods.forage_mult(site, band)
+        mult *= production.of(state, band.tribe_id, "collecte")
     return mult
 
 
@@ -514,7 +594,10 @@ def winter_famine_mult(state, band) -> float:
 def yield_mult(state, site) -> float:
     from src.kora import goods
 
+    from src.kora import production
+
     mult = _bonus(state, site.tribe_id).field_yield * goods.yield_mult(state, site.tribe_id)
+    mult *= production.of(state, site.tribe_id, "agriculture")
     if oath_of(site) == "champs":
         mult *= 1.1
     return mult
@@ -555,6 +638,9 @@ def winter_prestige(state, tribe_id: int) -> int:
         if has(site, "autel"):
             gain += 1
         if has(site, "pierre"):
+            gain += 2
+        if has(site, "monument"):
+            # Seul le monument du vainqueur reste debout.
             gain += 2
         if oath_of(site) == "feu":
             gain += 1
@@ -1026,7 +1112,9 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
         # L'age des villages : prestige, les premieres troupes, et les clans
         # restes nomades qui s'eloignent (chiefs.loyalty_parts).
         tribe.flags["age_villages"] = -1
-        tribe.prestige = min(100, tribe.prestige + FIRST_VILLAGE_PRESTIGE)
+        from src.kora.sim import gain_prestige
+
+        gain_prestige(state, tribe, FIRST_VILLAGE_PRESTIGE)
     if tribe.settled_at < 0:
         tribe.settled_at = state.tick_count
     if first:

@@ -342,6 +342,10 @@ def output(state, site, cid: str) -> float:
     _count, best = deposits(state, site, cid)
     rich = 0.5 + best
     shop = WORKSHOP if villages.has(site, "atelier") else 1.0
+    # Le savoir-faire du peuple (production.py).
+    from src.kora import production
+
+    shop *= production.of(state, site.tribe_id, production.craft_kind(cid))
     if craft.food:
         mult = FISH_NETS if "filets" in state.tribes[site.tribe_id].knowledge else 1.0
         return n * craft.food * rich * mult * shop
@@ -523,7 +527,9 @@ def offers(state, giver: int, taker: int) -> list[str]:
 def price(state, tribe_id: int, good: str) -> float:
     """Prix d'une charge chez ce peuple : sa valeur, x1,6 quand il n'en a
     pas, x0,5 quand il en a deux fois sa reserve."""
-    base = value(good)
+    from src.kora import situations
+
+    base = value(good) * situations.price_mult(state, tribe_id, good)
     target = reserve(state, tribe_id)
     if target <= 0:
         return round(base * PRICE_NONE, 2)
@@ -708,9 +714,16 @@ def close_route(state, tribe_id: int, route) -> bool:
 def route_price(state, route) -> float:
     """Prix d'une charge sur cette route : le prix moyen des deux marches,
     +10 % si le vendeur a une Place d'echange."""
+    from src.kora import situations
+
     p = (price(state, route.exporter, route.good) + price(state, route.importer, route.good)) / 2.0
     if places(state, route.exporter):
         p *= PLACE_PRICE
+    # Le marche refuge vend plus cher ; l'effondrement du commerce fait tout baisser.
+    exp = state.tribes.get(route.exporter)
+    if exp is not None:
+        p *= tech.bonuses(exp).trade_price
+    p *= situations.route_mult(state, route)
     return round(p, 2)
 
 
