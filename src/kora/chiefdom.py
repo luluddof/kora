@@ -361,8 +361,12 @@ def stability_parts(state, tid: int) -> list[tuple[str, float]]:
 
 
 def army_morale(state, tid: int) -> float:
+    from src.kora import money
+
     tribe = state.tribes.get(tid)
-    return 5.0 if tribe is not None and getattr(tribe, "levy_rate", 0) >= 20 else 0.0
+    levy = 5.0 if tribe is not None and getattr(tribe, "levy_rate", 0) >= 20 else 0.0
+    # La solde payee (ou promise et pas payee) : money.py.
+    return levy + money.solde_morale(state, tid)
 
 
 # --- tributaires -----------------------------------------------------------------------

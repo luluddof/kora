@@ -226,6 +226,16 @@ def _tribe_to_json(tribe: Tribe) -> dict:
         "granary": tribe.granary,
         "families": [dict(f) for f in tribe.families],
         "feast_until": tribe.feast_until,
+        "base": tribe.base,
+        "base_changed": tribe.base_changed,
+        "base_reform_until": tribe.base_reform_until,
+        "operations": list(tribe.operations),
+        "math_progress": tribe.math_progress,
+        "math_effects": list(tribe.math_effects),
+        "money": tribe.money,
+        "budget": dict(sorted(tribe.budget.items())),
+        "money_month": dict(sorted(tribe.money_month.items())),
+        "money_hist": [list(h[:5]) + [dict(sorted(h[5].items()))] for h in tribe.money_hist],
     }
 
 
@@ -271,6 +281,16 @@ def _tribe_from_json(data: dict) -> Tribe:
             for f in data.get("families", [])
         ],
         feast_until=int(data.get("feast_until", -1)),
+        base=int(data.get("base", 0)),
+        base_changed=int(data.get("base_changed", -1000000)),
+        base_reform_until=int(data.get("base_reform_until", -1)),
+        operations=[str(o) for o in data.get("operations", [])],
+        math_progress=float(data.get("math_progress", 0.0)),
+        math_effects=[str(o) for o in data.get("math_effects", [])],
+        money=float(data.get("money", 0.0)),
+        budget={str(k): (v if isinstance(v, (bool, str)) else int(v)) for k, v in data.get("budget", {}).items()},
+        money_month={str(k): float(v) for k, v in data.get("money_month", {}).items()},
+        money_hist=[[int(h[0]), int(h[1]), float(h[2]), float(h[3]), float(h[4]), {str(k): float(v) for k, v in dict(h[5]).items()}] for h in data.get("money_hist", [])],
     )
 
 

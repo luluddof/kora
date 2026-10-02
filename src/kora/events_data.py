@@ -1063,6 +1063,106 @@ EVENTS: dict[str, Event] = {
                 Option("Montrer l'ouvrage à tous", effects=(("prestige", 3),), text="On vient de loin admirer l'ouvrage de {band}.", ai=0.9),
             ),
         ),
+        # --- les nombres et l'argent (numbers.py, money.py) -------------------------
+        Event(
+            "pierre_blanche",
+            "La pierre blanche",
+            "Un berger de {band} rapporte une pierre lourde, veinée de blanc. Frottée, elle brille comme la lune. "
+            "Il dit qu'il y en a toute une colline.",
+            conds=(("village",), ("knows", "argent_pese"), ("veins", "mineurs"), ("no_flag", "filon")),
+            weight=0.05,
+            cooldown=104,
+            mood="chance",
+            options=(
+                Option(
+                    "Ouvrir une mine",
+                    effects=(("craft_team", "mineurs"), ("flag", "filon"), ("money", 4)),
+                    text="On creuse la colline : le métal blanc remplit le trésor.",
+                    ai=1.3,
+                ),
+                Option(
+                    "Une offrande aux ancêtres",
+                    effects=(("prestige", 4), ("flag", "filon")),
+                    text="La pierre est posée sur l'autel. On en parle jusque chez les voisins.",
+                    ai=0.8,
+                ),
+            ),
+        ),
+        Event(
+            "faux_poids",
+            "Des poids trop légers",
+            "Les porteurs de {band} reviennent fâchés : chez les {other}, la balance penchait toujours du même côté. "
+            "Les sicles qu'on leur a rendus sont trop légers.",
+            conds=(("village",), ("has_money",), ("money_ge", 10), ("trade_partner",)),
+            weight=0.04,
+            cooldown=104,
+            mood="danger",
+            options=(
+                Option(
+                    "Exiger réparation",
+                    outcomes=(
+                        Outcome(0.55, (("money", 4), ("relation", -6)), (), "Les {other} rendent ce qu'ils doivent, de mauvaise grâce."),
+                        Outcome(0.45, (("relation", -15),), (), "Les {other} jurent que leurs poids sont justes. On se quitte fâchés."),
+                    ),
+                    ai=1.0,
+                ),
+                Option(
+                    "Peser soi-même, désormais",
+                    effects=(("money_pct", -0.1), ("math_points", 4)),
+                    text="On garde la perte, mais nos calculateurs taillent leurs propres poids.",
+                    ai=1.1,
+                ),
+            ),
+        ),
+        Event(
+            "calculatrice",
+            "Celle qui compte plus vite que tous",
+            "Une fille de {band} aligne les cailloux plus vite que les calculateurs eux-mêmes. "
+            "Elle trouve en un soir ce qu'ils cherchent depuis une lune.",
+            conds=(("village",), ("knows", "nombres"), ("craft_teams", "calculateurs")),
+            weight=0.04,
+            cooldown=156,
+            mood="chance",
+            options=(
+                Option(
+                    "La confier aux calculateurs",
+                    effects=(("math_points", 8),),
+                    text="Les calculateurs l'écoutent : la prochaine opération est plus proche.",
+                    ai=1.2,
+                ),
+                Option(
+                    "Qu'elle tienne les comptes du chef",
+                    effects=(("prestige", 2), ("loyalty", 5)),
+                    text="Le chef sait désormais ce que chaque famille doit et possède.",
+                    ai=0.9,
+                ),
+            ),
+        ),
+        Event(
+            "tresor_convoite",
+            "Le trésor convoité",
+            "On murmure dans {band} que le trésor du peuple n'est gardé que par un vieil homme qui dort beaucoup.",
+            conds=(("village",), ("has_money",), ("money_ge", 40)),
+            weight=0.04,
+            cooldown=156,
+            mood="danger",
+            options=(
+                Option(
+                    "Payer des gardiens",
+                    effects=(("money_pct", -0.05),),
+                    text="Deux guerriers veillent jour et nuit sur les sicles.",
+                    ai=1.2,
+                ),
+                Option(
+                    "Ne rien changer",
+                    outcomes=(
+                        Outcome(0.5, (), (), "Les rumeurs passent ; le vieil homme dort toujours."),
+                        Outcome(0.5, (("money_pct", -0.3),), (), "Une nuit, le coffre est vide. On ne retrouve personne."),
+                    ),
+                    ai=0.8,
+                ),
+            ),
+        ),
         Event(
             "nomades",
             "Des nomades rodent",

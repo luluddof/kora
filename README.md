@@ -82,6 +82,14 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   montagne. Avec les villages, le **savoir-faire** (chasse, agriculture, pêche, chaque métier) grandit doucement
   quand il faut produire plus ; trop produire sans acheteurs mène à la **surproduction**, puis à l'effondrement du
   commerce chez vos partenaires.
+- Les **nombres** : le comptage par bâtons (l'addition), puis les nombres additifs, où vous **choisissez la base**
+  de vos nombres (10 : on apprend mieux ; 12 : on vend mieux ; 20 : on compte les gens ; 60 : on mesure le grain),
+  presque pour toujours. Des **calculateurs**, un métier du village, trouvent les opérations suivantes (−, ×, ÷,
+  fractions), chacune avec son effet : *Savoirs*, onglet **Les nombres**.
+- L'**argent** : avec les valeurs d'échange, un **trésor** et son **budget** (écran du *Trésor*, touche **G**) :
+  l'impôt (et ce qu'il coûte en stabilité), la solde des troupes, les gages des gens de métier, le commerce payé en
+  argent, les présents aux familles. Avec l'argent pesé, les **mineurs** creusent les filons des collines ; avec les
+  droits de passage, les convois étrangers paient pour traverser votre pays.
 
 Conseils : l'hiver tue. Faites des réserves à l'automne, cherchez les vallées, et ne laissez pas vos clans s'éloigner
 trop du chef. Au bout de quelques années, les savoirs du néolithique permettent de **fonder un village** : c'est un
@@ -99,6 +107,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **J** | Le journal |
 | **A** | L'armée (dès le premier village) |
 | **M** | L'écran du commerce (dès le premier village) |
+| **G** | Le trésor et le budget (avec Valeurs d'échange) |
 | **E** | Ouvrir l'événement en attente |
 | **S** | Scinder la bande choisie (former un clan) |
 | **F** | Réunir les bandes proches |

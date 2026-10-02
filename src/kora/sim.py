@@ -1641,6 +1641,11 @@ def _copy_tribe(tribe: Tribe) -> Tribe:
     out.efficiency = dict(tribe.efficiency)
     out.glut = dict(tribe.glut)
     out.families = [dict(f) for f in tribe.families]
+    out.operations = list(tribe.operations)
+    out.math_effects = list(tribe.math_effects)
+    out.budget = dict(tribe.budget)
+    out.money_month = dict(tribe.money_month)
+    out.money_hist = [list(h[:5]) + [dict(h[5])] for h in tribe.money_hist]
     return out
 
 
@@ -1994,6 +1999,10 @@ def _week(state: GameState, battle_days: int) -> None:
         from src.kora import chiefdom
 
         chiefdom.monthly(state)
+        from src.kora import money, numbers
+
+        numbers.monthly(state)
+        money.monthly(state)
         chiefs.monthly(state)
         diplo.ai_monthly(state)
         events.monthly(state)

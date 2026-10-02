@@ -216,6 +216,12 @@ ICON_FILES = {
     "migration": "delapouite/bison",
     "volcan": "delapouite/smoking-volcano",
     "couronne": "lorc/laurel-crown",
+    # les nombres et l'argent
+    "abaque": "delapouite/abacus",
+    "tablette": "lorc/stone-tablet",
+    "pieces": "delapouite/two-coins",
+    "tresor": "lorc/locked-chest",
+    "mine": "lorc/mining",
 }
 _ICONS: dict = {}
 

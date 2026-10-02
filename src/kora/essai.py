@@ -33,6 +33,15 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
         ready = sorted((tid for tid in tech.TECHS if tech.status(state, me, tid) == "disponible"), key=lambda t: (tech.TECHS[t].cost, t))
         if ready:
             issue(make(me, "learn", ready[0]))
+    # Les nombres et l'argent : une base, un budget (ordres "base", "budget").
+    from src.kora import money
+
+    b = tech.bonuses(tribe)
+    if b.numbers and not tribe.base:
+        issue(make(me, "base", (10, 12, 20, 60)[me % 4]))
+    if b.money and rng.random() < 0.1:
+        issue(make(me, "budget", "tax", rng.randrange(4)))
+        issue(make(me, "budget", rng.choice(money.TOGGLE_KEYS), rng.random() < 0.5))
     # Les situations : une action permise, de temps en temps (ordre "situation").
     from src.kora import situations
 

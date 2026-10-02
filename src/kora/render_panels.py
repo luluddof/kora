@@ -913,6 +913,17 @@ def commerce_ready(state) -> bool:
     return bool(sites.of_tribe(state, state.viewer, "village"))
 
 
+def treasury_alert(state) -> bool:
+    """L'onglet Tresor s'allume quand la solde ou les gages ne sont pas payes."""
+    from src.kora import money
+
+    tribe = state.tribes.get(state.viewer)
+    if tribe is None or not money.has_money(state, state.viewer):
+        return False
+    b = money.budget(tribe)
+    return "impayee" in (b.get("etat_solde"), b.get("etat_gages"))
+
+
 def commerce_alert(state) -> bool:
     """L'onglet s'allume quand une route du joueur, ouverte par lui, ne porte
     plus rien."""

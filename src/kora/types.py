@@ -168,6 +168,19 @@ class Tribe:
     granary: float = 0.0
     families: list = field(default_factory=list)
     feast_until: int = -1
+    # Les nombres (numbers.py) : la base, les operations, les points de
+    # calcul, les effets en vigueur ; la derniere reforme.
+    base: int = 0
+    base_changed: int = -1000000
+    base_reform_until: int = -1
+    operations: list = field(default_factory=list)
+    math_progress: float = 0.0
+    math_effects: list = field(default_factory=list)
+    # L'argent (money.py) : le tresor, le budget, le mois en cours, l'histoire.
+    money: float = 0.0
+    budget: dict = field(default_factory=dict)
+    money_month: dict = field(default_factory=dict)
+    money_hist: list = field(default_factory=list)
 
 
 @dataclass

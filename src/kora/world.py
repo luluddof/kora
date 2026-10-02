@@ -298,6 +298,11 @@ class World:
 
         n = self.width * self.height
         self.resources = {k: bytes(v) for k, v in layers.items() if k in NAMES and len(v) == n}
+        if "argent" not in self.resources and self.resources:
+            # Les filons d'argent viennent du relief (resources.derive_silver).
+            from src.kora.resources import derive_silver
+
+            self.resources["argent"] = derive_silver(self.width, self.height, self._terrains)
         if rich is None or len(rich) != n:
             rich = richness(self.resources, self.width, self.height)
         self._rich = bytes(rich)

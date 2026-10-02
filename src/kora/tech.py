@@ -56,6 +56,7 @@ BRANCHES = (
     "Pays et campements",
     "Foyer et société",
     "Voisins",
+    "Nombres",
 )
 # Un seul arbre, vertical : une colonne par branche. Au neolithique, chaque
 # colonne prend un nouveau nom, dans le prolongement de la branche tribale
@@ -64,11 +65,12 @@ NEO_BRANCHES = (
     "Guerre et défense",
     "Champs",
     "Greniers et artisans",
-    "",
+    "Valeurs et passages",
     "Troupeaux",
     "Villages",
     "Esprits et pouvoir",
     "Échanges",
+    "Nombres et métal",
 )
 # (nom de l'age, paliers, noms des colonnes)
 ERAS = (
@@ -451,6 +453,42 @@ TECHS: dict[str, Tech] = {
             conds=(Cond("allies", 1), Cond("contacts", 4)),
             effects={"diffusion": 0.15, "trade": True},
         ),
+        # --- les nombres et l'argent (numbers.py, money.py) --------------------
+        Tech(
+            "comptage", "Comptage par bâtons", 2, 8,
+            "Des encoches sur un bâton, une par lune, une par bête : on compte ce qu'on ne voit plus.",
+            prereqs=("rites",),
+            conds=(Cond("winters", 3),),
+            effects={"math": True},
+        ),
+        Tech(
+            "nombres", "Nombres additifs", 4, 8,
+            "Un signe pour un, un autre pour dix, et on les aligne : les nombres s'écrivent. Il faut choisir sa base.",
+            prereqs=("comptage", "semis"),
+            conds=(Cond("villages", 1),),
+            effects={"numbers": True},
+        ),
+        Tech(
+            "valeurs", "Valeurs d'échange", 4, 3,
+            "Les perles, les coquillages, les haches polies valent tant : on paie, on doit, on garde un trésor.",
+            prereqs=("comptage", "semis"),
+            conds=(Cond("contacts", 2), Cond("village_years", 2)),
+            effects={"money": True},
+        ),
+        Tech(
+            "argent_pese", "Argent pesé", 5, 8,
+            "Le métal blanc des collines, pesé à la balance : un sicle vaut partout un sicle.",
+            prereqs=("valeurs", "nombres"),
+            conds=(Cond("village_years", 4),),
+            effects={"silver": True},
+        ),
+        Tech(
+            "peages", "Droits de passage", 5, 3,
+            "Les porteurs qui traversent votre pays paient leur passage : un gué, un col, une halte gardée.",
+            prereqs=("valeurs", "reperes"),
+            conds=(Cond("contacts", 4),),
+            effects={"tolls": True},
+        ),
     )
 }
 
@@ -540,6 +578,21 @@ START_BONUSES: dict[str, StartBonus] = {
         ),
     )
 }
+
+
+_MATH: dict = {}
+
+
+def math_effect(eid: str):
+    """L'effet d'une base ou d'une operation (numbers.py), comme un savoir."""
+    if not (eid.startswith("base:") or eid.startswith("op:")):
+        return None
+    if not _MATH:
+        from src.kora.numbers import effect_specs
+
+        for k, (name, effects) in effect_specs().items():
+            _MATH[k] = StartBonus(k, name, "", effects)
+    return _MATH.get(eid)
 
 
 _SIT: dict = {}
@@ -655,10 +708,18 @@ class Bonuses:
     # Villages freres : les villages de sa civilisation et ses tributaires
     # sont des freres (diplo, sim.helpers_of).
     kin: bool = False
+    # Les nombres et l'argent (numbers.py, money.py).
+    math: bool = False
+    numbers: bool = False
+    money: bool = False
+    silver: bool = False
+    tolls: bool = False
+    tax: float = 1.0
 
 
 _MULT = {
     "learn",
+    "tax",
     "prestige_gain",
     "trade_price",
     "field_yield",
@@ -678,7 +739,7 @@ _MULT = {
     "home_defense",
     "gifts",
 }
-_FLAGS = {"alliance", "union", "palisade", "clearing", "trade", "commerce", "kin"}
+_FLAGS = {"alliance", "union", "palisade", "clearing", "trade", "commerce", "kin", "math", "numbers", "money", "silver", "tolls"}
 _CACHE: dict[frozenset, Bonuses] = {}
 NO_BONUS = Bonuses(food={})
 
@@ -696,7 +757,7 @@ def bonuses_of(known) -> Bonuses:
         if name not in ("food", "move")
     }
     for tid in sorted(key):
-        tech = TECHS.get(tid) or START_BONUSES.get(tid) or situation_effect(tid)
+        tech = TECHS.get(tid) or START_BONUSES.get(tid) or situation_effect(tid) or math_effect(tid)
         if tech is None:
             continue
         for name, value in tech.effects.items():
@@ -753,6 +814,10 @@ def bonuses(tribe) -> Bonuses:
     if sit:
         # Les situations (crises, prix des conjonctures) aussi.
         known = set(known or ()) | {e[0] for e in sit}
+    maths = getattr(tribe, "math_effects", None)
+    if maths:
+        # La base des nombres et les operations connues (numbers.py).
+        known = set(known or ()) | set(maths)
     bonus = bonuses_of(known) if known else NO_BONUS
     if memo is not None:
         memo[id(tribe)] = (tribe, bonus)
@@ -813,7 +878,8 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("winter_famine"):
         out.append(f"Famine pendant l'hiver local : {_pct(e['winter_famine'])} de morts")
     if e.get("stock_weeks"):
-        out.append(f"Réserves : +{e['stock_weeks']} semaines de stock par personne")
+        n = e["stock_weeks"]
+        out.append(f"Réserves : +{n} semaine{'s' if n > 1 else ''} de stock par personne")
     if e.get("caches"):
         if e["caches"] >= 3:
             out.append(f"Caches de vivres : jusqu'à {e['caches']} (bouton Déposer de la bande)")
@@ -912,6 +978,19 @@ def effect_lines(tech: Tech) -> list[str]:
         out.append(f"Prix de vos ventes sur les routes : {_pct(e['trade_price'])}")
     if e.get("kin"):
         out.append("Les villages de votre civilisation et vos tributaires : relation +15, ils viennent en renfort")
+    if e.get("math"):
+        out.append("On compte : l'addition (+), et l'onglet des nombres dans les savoirs")
+    if e.get("numbers"):
+        out.append("Choisir la base de vos nombres (10, 12, 20 ou 60), chacune son avantage")
+        out.append("Un métier : les calculateurs, qui trouvent de nouvelles opérations")
+    if e.get("money"):
+        out.append("L'argent : un trésor, un budget (impôt, solde, gages), le commerce en argent")
+    if e.get("silver"):
+        out.append("Un métier : les mineurs d'argent (filons des collines) ; l'impôt rentre mieux (+25 %)")
+    if e.get("tolls"):
+        out.append("Les convois étrangers qui traversent votre pays paient leur passage")
+    if e.get("tax"):
+        out.append(f"Rendement de l'impôt : {_pct(e['tax'])}")
     from src.kora.goods import CRAFTS, res_label
 
     for craft in CRAFTS.values():
@@ -966,7 +1045,10 @@ def _bands(state, tribe_id: int) -> int:
 
 
 def _plural(n: int, word: str) -> str:
-    return f"{n} {word}{'s' if n > 1 else ''}"
+    # Chaque mot s'accorde : "2 autres peuples", "2 villages frères".
+    if n <= 1:
+        return f"{n} {word}"
+    return f"{n} " + " ".join(w + "s" for w in word.split(" "))
 
 
 def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, int, str]:
@@ -990,7 +1072,7 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
             return have, need, f"{need} sem. {cond.label}"
         return have, need, f"{need} sem. en {cond.label}"
     if kind == "winters":
-        return tribe.practice.get("hivers", 0), cond.need, f"{_plural(cond.need, 'hiver')} traverse{'s' if cond.need > 1 else ''}"
+        return tribe.practice.get("hivers", 0), cond.need, f"{_plural(cond.need, 'hiver')} traversé{'s' if cond.need > 1 else ''}"
     if kind == "prestige":
         return tribe.prestige, cond.need, f"Prestige {cond.need}"
     if kind == "bands":

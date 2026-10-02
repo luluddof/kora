@@ -58,8 +58,8 @@ ERA_STYLE = (
 )
 # Une icone par branche de l'arbre (game-icons, theme.ICON_FILES).
 BRANCH_ICONS = (
-    ("chasse", "baies", "cache", "peche", "froid", "camp", "feu", "gens"),
-    ("palissade", "ble", "grenier", "pirogue", "boeuf", "hutte", "menhir", "commerce"),
+    ("chasse", "baies", "cache", "peche", "froid", "camp", "feu", "gens", "tablette"),
+    ("palissade", "ble", "grenier", "pieces", "boeuf", "hutte", "menhir", "commerce", "abaque"),
 )
 MEDAL_STATE = {"connu": "connu", "en_cours": "actif", "disponible": "normal", "attente": "normal", "verrouille": "eteint"}
 
@@ -304,7 +304,14 @@ def _status_line(state, tribe, tid: str, st: str) -> tuple[str, tuple]:
     return "Pas encore", STYLE["attente"]["text"]
 
 
-def draw(r, state, lay: dict, pick: str | None) -> None:
+def _tabs(r, lay, mx, my) -> None:
+    for key, label in (("arbre", "L'arbre"), ("nombres", "Les nombres")):
+        rect = lay["tabs"][key]
+        hover = rect[0] <= mx <= rect[0] + rect[2] and rect[1] <= my <= rect[1] + rect[3]
+        theme.button(r.screen, rect, label, "second", True, hover, icon_key="abaque" if key == "nombres" else "savoir", active=lay.get("tab", "arbre") == key)
+
+
+def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
     tribe = state.tribes.get(state.viewer)
     if tribe is None or lay is None:
         return
@@ -318,6 +325,13 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
     world = lay["world"]
     states = {tid: tech.status(state, state.viewer, tid) for tid in world["nodes"]}
     _header(r, state, tribe, lay, states, title_font, head_font)
+    if lay.get("tabs"):
+        _tabs(r, lay, mx, my)
+    if lay.get("numbers") is not None:
+        from src.kora import render_numbers
+
+        render_numbers.draw(r, state, lay, ui)
+        return
     view, cam = lay["view"], lay["cam"]
     z = cam[2]
     vx, vy, vw, vh = view
@@ -491,7 +505,14 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
     sx0, sy0, _sw, sh0 = lay["strip"]
     zoom = f"zoom {int(round(100 * z))} %"
     hint = r.tiny.render(f"Glisser (n'importe quel bouton) : se déplacer  ·  molette : zoomer  ·  flèches, + et -  ·  {zoom}", True, NOTE)
-    screen.blit(hint, (sx0 + 4, sy0 + (sh0 - hint.get_height()) // 2))
+    hx = sx0 + 4
+    if lay.get("tabs"):
+        t = lay["tabs"]["nombres"]
+        hx = t[0] + t[2] + 14
+    room = lay["zoom_out"][0] - 10 - hx
+    if hint.get_width() > room:
+        hint = r.tiny.render(_fit(r.tiny, f"Glisser : se déplacer  ·  molette : zoomer  ·  {zoom}", room), True, NOTE)
+    screen.blit(hint, (hx, sy0 + (sh0 - hint.get_height()) // 2))
     _detail(r, state, tribe, lay, pick, states, head_font)
     if hovered is not None and hovered != pick:
         _hover_tip(r, state, hovered, states[hovered], mx, my)

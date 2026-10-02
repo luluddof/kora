@@ -21,7 +21,7 @@ KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
     "teams", "diplo", "invite", "build", "raise", "reequip", "dissolve",
     "honor", "promote", "heir", "learn", "event", "situation",
-    "battle_retreat", "levy_rate", "feast", "charge",
+    "battle_retreat", "levy_rate", "feast", "charge", "base", "budget",
 )
 IN_BATTLE = "En bataille : ordonnez le repli d'abord"
 NOT_YOURS = "Ce n'est pas à vous"
@@ -346,7 +346,21 @@ def _charge(state, tid, fam_id, charge):
     return _out(chiefdom.set_charge(state, tid, int(fam_id), str(charge)))
 
 
+def _base(state, tid, base):
+    from src.kora import numbers
+
+    return _out(numbers.choose(state, tid, int(base)))
+
+
+def _budget(state, tid, key, value):
+    from src.kora import money
+
+    return _out(money.set_budget(state, tid, str(key), value))
+
+
 _HANDLERS = {
+    "base": _base,
+    "budget": _budget,
     "battle_retreat": _battle_retreat,
     "levy_rate": _levy_rate,
     "feast": _feast,

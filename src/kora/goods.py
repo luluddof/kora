@@ -99,6 +99,9 @@ class Craft:
     herd: str = ""  # savoir qui tient lieu de ressource (laine des troupeaux)
     value: float = 0.0  # vivres par charge, prix de base aux echanges
     food: float = 0.0  # vivres par equipe et par semaine
+    # "calcul" : des points de calcul (numbers.py) ; "argent" : du metal pour
+    # le tresor (money.py).
+    special: str = ""
 
 
 CRAFTS = {
@@ -141,9 +144,21 @@ CRAFTS = {
             ("12 vivres par équipe et par semaine", "Filets et nasses : x1,5"),
             food=12.0,
         ),
+        Craft(
+            "calculateurs", "Calculateurs", "", "Calculs", (), "nombres",
+            "On aligne des cailloux, on taille des encoches : on cherche d'autres façons de compter.",
+            ("Des points de calcul : de nouvelles opérations",),
+            special="calcul",
+        ),
+        Craft(
+            "mineurs", "Mineurs d'argent", "", "Argent", ("argent",), "argent_pese",
+            "On creuse le filon, on fond le minerai, on pèse le métal blanc.",
+            ("De l'argent pour le trésor",),
+            special="argent",
+        ),
     )
 }
-CRAFT_ORDER = ("potiers", "sauniers", "tisserands", "pelletiers", "tailleurs", "pecheurs")
+CRAFT_ORDER = ("potiers", "sauniers", "tisserands", "pelletiers", "tailleurs", "pecheurs", "calculateurs", "mineurs")
 GOODS = tuple(CRAFTS[c].good for c in CRAFT_ORDER if CRAFTS[c].good)
 GOOD_NAMES = {c.good: c.good_name for c in CRAFTS.values() if c.good}
 GOOD_CRAFT = {c.good: c.id for c in CRAFTS.values() if c.good}
@@ -168,6 +183,11 @@ def value(good: str) -> float:
 # --- terres ------------------------------------------------------------------------
 
 
+# Les filons d'argent comptent jusqu'a cette distance du village (les mineurs
+# montent aux collines voisines) ; les autres ressources : ses terres.
+FAR_RES = {"argent": 6}
+
+
 def riches(world, h) -> dict:
     """Ressources des terres d'un village : nom -> (gisements, meilleure
     valeur). La carte ne change pas : memorise."""
@@ -185,6 +205,15 @@ def riches(world, h) -> dict:
     if world.resources:
         for x in world.hexes_in_radius(h, FIELD_RADIUS):
             for n in NAMES:
+                if n in FAR_RES:
+                    continue
+                v = world.resource(x, n)
+                if v >= PRESENT:
+                    count, best = out.get(n, (0, 0.0))
+                    out[n] = (count + 1, max(best, v))
+        # Les mineurs vont jusqu'aux collines voisines.
+        for n, radius in FAR_RES.items():
+            for x in world.hexes_in_radius(h, radius):
                 v = world.resource(x, n)
                 if v >= PRESENT:
                     count, best = out.get(n, (0, 0.0))
@@ -197,6 +226,9 @@ def deposits(state, site, cid: str) -> tuple[int, float]:
     """(gisements, richesse) d'un metier pour ce village : la mieux fournie
     de ses ressources."""
     craft = CRAFTS[cid]
+    if craft.special == "calcul":
+        # Les calculateurs n'ont besoin que de gens.
+        return MAX_TEAMS, 0.5
     found = riches(state.world, site.hex)
     count, best = 0, 0.0
     for res in craft.res:
@@ -214,14 +246,30 @@ def wild_source(state, site, cid: str) -> str:
     from src.kora.resources import LABELS
 
     found = riches(state.world, site.hex)
+    if not CRAFTS[cid].res:
+        return ""
     best = max(CRAFTS[cid].res, key=lambda r: found.get(r, (0, 0.0)))
     return LABELS.get(best, best) if found.get(best) else ""
+
+
+def absent_text(cid: str) -> str:
+    if cid in CRAFTS and any(r in FAR_RES for r in CRAFTS[cid].res):
+        far = max(FAR_RES[r] for r in CRAFTS[cid].res if r in FAR_RES)
+        return f"Pas de filon d'argent à moins de {far} cases du village"
+    return f"Pas {de(res_label(cid))} dans les terres du village"
+
+
+def de(word: str) -> str:
+    """ "de sel", "d'argile", "d'argent"."""
+    return ("d'" if word[:1].lower() in "aeiouyhéèêâ" else "de ") + word
 
 
 def res_label(cid: str) -> str:
     from src.kora.resources import LABELS
 
     labels = [LABELS.get(r, r) for r in CRAFTS[cid].res]
+    if not labels:
+        return "rien"
     return labels[0] if len(labels) == 1 else "gibier (" + ", ".join(labels) + ")"
 
 
@@ -288,7 +336,7 @@ def add_block(state, site, cid: str) -> str:
         return f"Il faut connaître {tech.TECHS[craft.needs].name}"
     top = max_teams(state, site, cid)
     if top <= 0:
-        return f"Pas de {res_label(cid)} dans les terres du village"
+        return absent_text(cid)
     if teams_of(site, cid) >= top:
         return f"Tous les gisements sont pris ({top})"
     if total_teams(site) >= team_cap(band):
@@ -351,6 +399,11 @@ def output(state, site, cid: str) -> float:
     if n <= 0:
         return 0.0
     craft = CRAFTS[cid]
+    if craft.special == "calcul":
+        # Des equipes de calculateurs (numbers.points en fait des points).
+        from src.kora import money
+
+        return n * money.wage_mult(state, site.tribe_id, "calcul")
     _count, best = deposits(state, site, cid)
     rich = 0.5 + best
     shop = WORKSHOP if villages.has(site, "atelier") else 1.0
@@ -362,6 +415,11 @@ def output(state, site, cid: str) -> float:
         from src.kora import chiefdom
 
         shop *= chiefdom.craft_mult(state, site.tribe_id)
+    from src.kora import money
+
+    shop *= money.wage_mult(state, site.tribe_id)
+    if craft.special == "argent":
+        return n * money.SILVER_OUT * rich * shop
     if craft.food:
         mult = FISH_NETS if "filets" in state.tribes[site.tribe_id].knowledge else 1.0
         return n * craft.food * rich * mult * shop
@@ -426,8 +484,14 @@ def update(state) -> None:
             if n <= 0 or cid not in CRAFTS:
                 continue
             craft = CRAFTS[cid]
+            if craft.special == "calcul":
+                continue
             got = output(state, site, cid)
-            if craft.food:
+            if craft.special == "argent":
+                from src.kora import money
+
+                money.earn(state, band.tribe_id, "mines", got)
+            elif craft.food:
                 band.stock = min(stock_max(band, state), band.stock + got)
             else:
                 tribe.goods[craft.good] = min(CAP, tribe.goods.get(craft.good, 0.0) + got)
@@ -839,6 +903,11 @@ def _run_pair(state, routes: list) -> None:
         receiver = b if payer == a else a
         due = owe[payer] - owe[receiver]
         can = _can_pay(state, payer)
+        from src.kora import money
+
+        if money.pays_in_money(state, payer, receiver):
+            # Le tresor paie aussi (money.py).
+            can += state.tribes[payer].money * money.VPS
         if due <= can + 1e-9 or owe[payer] <= 0:
             break
         # Il ne peut pas payer tout son solde : il prend moins.
@@ -870,7 +939,13 @@ def _run_pair(state, routes: list) -> None:
     receiver = b if payer == a else a
     due = owe[payer] - owe[receiver]
     if due > 0:
-        _pay(state, payer, receiver, due)
+        from src.kora import money
+
+        if money.pays_in_money(state, payer, receiver):
+            # En argent d'abord ; le reste en vivres.
+            due -= money.pay_route(state, payer, receiver, due)
+        if due > 1e-9:
+            _pay(state, payer, receiver, due)
 
 
 def monthly(state) -> None:
@@ -909,6 +984,9 @@ def monthly(state) -> None:
                 delivered.add(key)
                 if _player_in(state, r):
                     _reveal(state, r)
+    from src.kora import money
+
+    money.collect_tolls(state)
     for a, b in sorted(delivered):
         mods = d.mods.get((a, b), [])
         now = next((m.value for m in mods if m.key == "echanges"), 0.0)
@@ -1035,7 +1113,7 @@ def _note_player(state) -> None:
 # --- IA ----------------------------------------------------------------------------
 
 # Ce que l'IA met au travail, dans l'ordre : le sel et les pots d'abord.
-AI_ORDER = ("sauniers", "potiers", "tisserands", "pelletiers", "tailleurs", "pecheurs")
+AI_ORDER = ("sauniers", "potiers", "tisserands", "pelletiers", "tailleurs", "pecheurs", "calculateurs", "mineurs")
 
 
 def ai_crafts(state, site, band, weeks: float) -> None:

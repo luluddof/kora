@@ -178,6 +178,19 @@ def glyph(surf, key: str, color, s: int) -> None:
         pygame.draw.rect(surf, color, (s * 0.62, s * 0.36, s * 0.14, s * 0.46))
         poly(surf, color, [(s * 0.12, s * 0.36), (s * 0.18, s * 0.2), (s * 0.84, s * 0.16), (s * 0.9, s * 0.32)])
         line(surf, color, (s * 0.06, s * 0.9), (s * 0.94, s * 0.9), w)
+    elif key == "calculateurs":
+        # Un boulier : un cadre, trois tiges, des perles.
+        pygame.draw.rect(surf, color, (s * 0.1, s * 0.14, s * 0.8, s * 0.72), w)
+        for k, beads in enumerate((2, 3, 1)):
+            y = s * (0.32 + 0.18 * k)
+            line(surf, color, (s * 0.14, y), (s * 0.86, y), 1)
+            for b in range(beads):
+                pygame.draw.circle(surf, color, (int(s * (0.24 + 0.14 * b)), int(y)), max(2, s // 12))
+    elif key == "mineurs":
+        # Un pic et un lingot.
+        line(surf, color, (s * 0.18, s * 0.88), (s * 0.6, s * 0.3), w + 1)
+        pygame.draw.arc(surf, color, (s * 0.3, s * 0.06, s * 0.6, s * 0.5), math.pi * 0.15, math.pi * 0.95, w + 1)
+        poly(surf, color, [(s * 0.56, s * 0.9), (s * 0.66, s * 0.7), (s * 0.94, s * 0.7), (s * 0.94, s * 0.9)])
     else:
         pygame.draw.circle(surf, color, (c, c), s // 3, w)
 
@@ -437,12 +450,16 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     # echanges a droite.
     craft_w = int(inner * 0.58)
     crafts = {}
-    row_h = max(48, min(96, (body_h - 24) // len(goods.CRAFT_ORDER) - 6))
+    # Huit metiers : en petite fenetre, des cartes basses (une ligne de nom,
+    # une d'etat).
+    gap = 6 if (body_h - 24) // len(goods.CRAFT_ORDER) >= 54 else 4
+    row_h = max(38, min(96, (body_h - 24) // len(goods.CRAFT_ORDER) - gap))
     for i, cid in enumerate(goods.CRAFT_ORDER):
         rx = bx + 24
-        ry = body_y + 24 + i * (row_h + 6)
-        plus = (rx + craft_w - 12 - 26, ry + 10, 26, 22)
-        minus = (plus[0] - 8 - 44 - 8 - 26, ry + 10, 26, 22)
+        ry = body_y + 24 + i * (row_h + gap)
+        by_ = ry + (10 if row_h >= 48 else (row_h - 22) // 2)
+        plus = (rx + craft_w - 12 - 26, by_, 26, 22)
+        minus = (plus[0] - 8 - 44 - 8 - 26, by_, 26, 22)
         crafts[cid] = {"card": (rx, ry, craft_w, row_h), "minus": minus, "plus": plus}
     stores = (bx + 24 + craft_w + 16, body_y, inner - craft_w - 16, body_h)
     trade_btn = (stores[0], stores[1] + stores[3] - 30, stores[2], 28)
@@ -770,6 +787,14 @@ CRAFT_CARD = {
 }
 
 
+def numbers_mult(state, tid: int) -> float:
+    """Ce qu'une equipe de calculateurs rapporte en points (numbers.points)."""
+    from src.kora import numbers, tech
+
+    tribe = state.tribes.get(tid)
+    return numbers.TEAM_POINTS * (tech.bonuses(tribe).learn if tribe is not None else 1.0)
+
+
 def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     from src.kora import diplo, goods, tech
 
@@ -787,14 +812,37 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         top, bot, edge, text_c = CRAFT_CARD[st]
         screen.blit(_gradient_card(cw_, ch, top, bot, 6), (cx, cy))
         pygame.draw.rect(screen, edge, rects["card"], 1, border_radius=6)
-        screen.blit(medal(cid, edge, top, 17), (cx + 8, cy + ch // 2 - 18))
+        compact = ch < 48
+        screen.blit(medal(cid, edge, top, 13 if compact else 17), (cx + 8 if not compact else cx + 10, cy + ch // 2 - (14 if compact else 18)))
         right = rects["minus"][0] - 12
-        screen.blit(head_font.render(_fit(head_font, craft.name, right - cx - 52), True, text_c), (cx + 50, cy + (6 if ch >= 74 else 2)))
+        n = goods.teams_of(site, cid)
+        what = ""
+        if n:
+            from src.kora import production
+
+            out = goods.output(state, site, cid)
+            if craft.special == "calcul":
+                what = f"+{_num(out * numbers_mult(state, site.tribe_id))} points de calcul / mois"
+            elif craft.special == "argent":
+                what = f"+{_num(out)} sicles / sem."
+            else:
+                what = f"+{out:.0f} vivres / sem." if craft.food else f"+{_num(out)} {craft.good_name.lower()} / sem."
+            skill = production.of(state, site.tribe_id, production.craft_kind(cid))
+            if skill > 1.005 and not craft.special:
+                what += f"  (savoir-faire +{round(100 * (skill - 1))} %)"
+        name_w = right - cx - 52
+        if compact and what:
+            ws = r.tiny.render(_fit(r.tiny, what, max(60, name_w // 2)), True, GOLD)
+            screen.blit(ws, (right - ws.get_width(), cy + 4))
+            name_w -= ws.get_width() + 8
+        screen.blit(head_font.render(_fit(head_font, craft.name, name_w), True, text_c), (cx + 50, cy + (6 if ch >= 74 else 2)))
         count, best = goods.deposits(state, site, cid)
         if st == "verrouille":
             info, tint = f"Il faut connaître {tech.TECHS[craft.needs].name}", BAD
         elif st == "absent":
-            info, tint = f"Pas de {goods.res_label(cid)} dans les terres du village", NOTE
+            info, tint = goods.absent_text(cid), NOTE
+        elif craft.special == "calcul":
+            info, tint = "Des gens qui comptent : il n'y faut que du monde · hommes et femmes", SOFT
         else:
             src = goods.wild_source(state, site, cid) or "vos troupeaux"
             word = "riche" if best >= 0.7 else "correct" if best >= 0.55 else "maigre"
@@ -808,10 +856,9 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         if ch >= 74:
             screen.blit(r.tiny.render(_fit(r.tiny, craft.text, cw_ - 62), True, NOTE), (cx + 50, cy + 44))
             screen.blit(r.tiny.render(_fit(r.tiny, eff, cw_ - 62), True, green), (cx + 50, cy + min(ch - 16, 60)))
-        else:
+        elif not compact:
             # Petite fenetre : les effets seulement.
             screen.blit(r.tiny.render(_fit(r.tiny, eff, cw_ - 62), True, green), (cx + 50, cy + ch - 16))
-        n = goods.teams_of(site, cid)
         top_n = goods.max_teams(state, site, cid)
         why = goods.add_block(state, site, cid)
         _button(screen, r.small, rects["minus"], "-", n > 0, n > 0 and _hover(rects["minus"], mx, my))
@@ -819,14 +866,7 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         mid_x = rects["minus"][0] + rects["minus"][2] + 8
         ls = r.small.render(f"{n}/{top_n}", True, INK if n else SOFT)
         screen.blit(ls, (mid_x + (44 - ls.get_width()) // 2, rects["minus"][1] + 2))
-        if n:
-            from src.kora import production
-
-            out = goods.output(state, site, cid)
-            what = f"+{out:.0f} vivres / sem." if craft.food else f"+{_num(out)} {craft.good_name.lower()} / sem."
-            skill = production.of(state, site.tribe_id, production.craft_kind(cid))
-            if skill > 1.005:
-                what += f"  (savoir-faire +{round(100 * (skill - 1))} %)"
+        if what and not compact:
             ws = r.tiny.render(what, True, GOLD)
             screen.blit(ws, (rects["plus"][0] + rects["plus"][2] - ws.get_width(), rects["plus"][1] + 26))
         if why and _hover(rects["plus"], mx, my):

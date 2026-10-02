@@ -248,6 +248,36 @@ def test_a_situation_is_lived_the_same_on_both_machines():
         _close(host, client)
 
 
+def test_numbers_and_budget_orders_are_the_same_on_both_machines():
+    """Chacun choisit sa base et tient son budget par un ordre ; les mois
+    passent (impot, tresor) ; les deux machines restent identiques."""
+    from src.kora import money, tech
+
+    host, client = _started()
+    try:
+        hs, cs = host.state, client.state
+        for st in (hs, cs):
+            for tid in (1, 2):
+                st.tribes[tid].knowledge.update(("comptage", "nombres", "valeurs"))
+            tech.invalidate()
+        host.issue(make(1, "base", 60))
+        client.issue(make(2, "base", 12))
+        host.issue(make(1, "budget", "tax", 2))
+        client.issue(make(2, "budget", "commerce", True))
+        client.issue(make(2, "budget", "tax", 1))
+        host.set_speed(5)
+        assert _until(lambda: hs.tick_count >= 12, lambda: host.pump(0.05), lambda: client.pump(0.05), timeout=30)
+        host.toggle_pause()
+        assert _until(lambda: cs.tick_count == hs.tick_count, lambda: host.pump(0.05), lambda: client.pump(0.05))
+        assert cs.tribes[1].base == 60 and cs.tribes[2].base == 12
+        assert money.budget(cs.tribes[1])["tax"] == 2 and money.budget(cs.tribes[2])["commerce"] is True
+        assert cs.tribes[1].money_hist
+        assert session.sync_digest(hs) == session.sync_digest(cs)
+        assert client.resyncs == 0
+    finally:
+        _close(host, client)
+
+
 def test_a_battle_between_two_players_is_fought_day_by_day_the_same():
     """Le clan de l'ami attaque celui de l'hote : le temps passe en jours
     pour tous ; les deux machines vivent la meme bataille."""

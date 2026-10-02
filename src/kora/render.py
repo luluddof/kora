@@ -409,7 +409,7 @@ def _clip(a, b):
     return (int(x0), int(y0), int(x1 - x0), int(y1 - y0))
 
 
-def tech_panel_layout(width: int, height: int, tab_w: int = 66, era: int = 0, cam=None) -> dict:
+def tech_panel_layout(width: int, height: int, tab_w: int = 66, era: int = 0, cam=None, tab: str = "arbre") -> dict:
     """Ecran des savoirs (a la Victoria 3) : en tete la recherche en cours,
     au milieu la VUE sur la toile de l'arbre (camera `cam` : glisser pour se
     deplacer, molette pour zoomer ; boutons dans la barre du haut), en
@@ -441,7 +441,20 @@ def tech_panel_layout(width: int, height: int, tab_w: int = 66, era: int = 0, ca
     detail = (bx + 14, detail_top, bw - 28, detail_h)
     learn = (bx + bw - 14 - 12 - 170, detail_top + 7, 170, 28)
     current = (bx + bw - 14 - 460, by + 10, 460, 46)
+    # Deux onglets dans la barre : l'arbre, les nombres (render_numbers.py).
+    tabs = {
+        "arbre": (strip[0] + 2, strip[1] + 2, 96, 24),
+        "nombres": (strip[0] + 2 + 96 + 6, strip[1] + 2, 124, 24),
+    }
+    numbers = None
+    if tab == "nombres":
+        from src.kora import render_numbers
+
+        numbers = render_numbers.page_layout((bx + 14, top + 6, bw - 28, by + bh - 12 - top - 6))
     return {
+        "tab": tab,
+        "tabs": tabs,
+        "numbers": numbers,
         "box": (bx, by, bw, bh),
         "view": view,
         "cam": cam,
@@ -475,17 +488,19 @@ SIDE_TABS = (
 # l'onglet Commerce aussi (il ouvre l'ecran du commerce, render_trade.py).
 ARMY_TAB = ("armee", "Armée")
 COMMERCE_TAB = ("commerce", "Commerce")
+# L'onglet Tresor vient avec l'argent (Valeurs d'echange : render_treasury.py).
+TREASURY_TAB = ("tresor", "Trésor")
 
 
-def side_tabs(army: bool = False, commerce: bool = False) -> tuple:
-    return SIDE_TABS + ((ARMY_TAB,) if army else ()) + ((COMMERCE_TAB,) if commerce else ())
+def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False) -> tuple:
+    return SIDE_TABS + ((ARMY_TAB,) if army else ()) + ((COMMERCE_TAB,) if commerce else ()) + ((TREASURY_TAB,) if treasury else ())
 
 
-def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None) -> dict:
+def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None, tech_tab: str = "arbre", treasury: bool = False) -> dict:
     tab_w, gap = TAB_W, 6
     tab_x = width - tab_w - 4
     top = HUD_HEIGHT + 44
-    shown = side_tabs(army, commerce)
+    shown = side_tabs(army, commerce, treasury)
     n = len(shown)
     tab_h = max(54, min(TAB_H, (height - top - 8 - gap * (n - 1)) // n))
     tabs = {key: (tab_x, top + i * (tab_h + gap), tab_w, tab_h) for i, (key, _l) in enumerate(shown)}
@@ -497,16 +512,24 @@ def side_layout(width: int, height: int, panel: str | None = None, era: int = 0,
     priority: tuple = ()
     rail = tab_w + 4
     if panel == "savoirs":
-        tech_panel = tech_panel_layout(width, height, rail, era, tech_cam)
+        tech_panel = tech_panel_layout(width, height, rail, era, tech_cam, tech_tab)
         box = tech_panel["box"]
-        # Seuls les savoirs dans la vue se cliquent (la toile deborde).
-        for tid, rect in tech_panel["visible"].items():
-            items[f"tech:{tid}"] = rect
-        items["learn"] = tech_panel["learn"]
-        items["tview"] = tech_panel["view"]
-        for key in ("zoom_in", "zoom_out", "center"):
-            items["t" + key] = tech_panel[key]
-        priority = ("tzoom_in", "tzoom_out", "tcenter")
+        for key, rect in tech_panel["tabs"].items():
+            items["ttab:" + key] = rect
+        if tech_panel["numbers"] is not None:
+            from src.kora import render_numbers
+
+            items.update(render_numbers.items(tech_panel["numbers"]))
+            priority = ("ttab:arbre", "ttab:nombres")
+        else:
+            # Seuls les savoirs dans la vue se cliquent (la toile deborde).
+            for tid, rect in tech_panel["visible"].items():
+                items[f"tech:{tid}"] = rect
+            items["learn"] = tech_panel["learn"]
+            items["tview"] = tech_panel["view"]
+            for key in ("zoom_in", "zoom_out", "center"):
+                items["t" + key] = tech_panel[key]
+            priority = ("tzoom_in", "tzoom_out", "tcenter", "ttab:arbre", "ttab:nombres")
     elif panel in ("tribu", "peuples", "armee"):
         from src.kora.render_panels import panel_box
 
@@ -824,6 +847,7 @@ class Renderer:
         self.found_hits: dict = {}
         # Ecran du commerce (render_trade.py).
         self.trade_hits: dict = {}
+        self.treasury_hits: dict = {}
         self.trade_partners: list = []
         self.trade_routes: list = []
         self.trade_candidates: list = []
@@ -1053,6 +1077,12 @@ class Renderer:
             render_trade.draw_trade(self, state, ui)
         else:
             self.trade_hits = {}
+        if ui.get("treasury_open"):
+            from src.kora import render_treasury
+
+            render_treasury.draw_treasury(self, state, ui)
+        else:
+            self.treasury_hits = {}
         if ui.get("situation_open") is not None:
             render_situations.draw_window(self, state, ui)
         else:
@@ -1556,6 +1586,9 @@ class Renderer:
 
         army = render_panels.army_ready(state)
         commerce = render_panels.commerce_ready(state)
+        from src.kora import money
+
+        treasury = money.has_money(state, state.viewer)
         if panel == "savoirs" and ui.get("tech_cam") is None:
             # Premiere ouverture : la vue se pose sur la recherche en cours.
             from src.kora import render_tech
@@ -1563,13 +1596,13 @@ class Renderer:
             ui["tech_cam"] = render_tech.focus_cam(state, w, h)
         layout = side_layout(
             w, h, panel=panel if (panel != "armee" or army) else None, era=ui.get("era", 0), army=army, commerce=commerce,
-            tech_cam=ui.get("tech_cam"),
+            tech_cam=ui.get("tech_cam"), tech_tab=ui.get("tech_tab", "arbre"), treasury=treasury,
         )
         if layout.get("tech") is not None:
             ui["tech_cam"] = layout["tech"]["cam"]
         self.side_hits = layout
         if panel == "savoirs":
-            self.draw_savoirs(state, layout["tech"], tech_pick)
+            self.draw_savoirs(state, layout["tech"], tech_pick, ui)
         if panel == "tribu":
             render_panels.draw_tribe(self, state, layout, ui)
         elif panel == "peuples":
@@ -1595,6 +1628,8 @@ class Renderer:
             self._draw_tab(tabs["armee"], "Armée", panel == "armee", False, "armee")
         if "commerce" in tabs:
             self._draw_tab(tabs["commerce"], "Commerce", bool(ui.get("trade_open")), render_panels.commerce_alert(state), "commerce")
+        if "tresor" in tabs:
+            self._draw_tab(tabs["tresor"], "Trésor", bool(ui.get("treasury_open")), render_panels.treasury_alert(state), "tresor")
         self._draw_tab(tabs["journal"], "Journal", panel == "journal", False, "journal")
 
     _TECH_COLORS = {
@@ -1654,11 +1689,11 @@ class Renderer:
         "note": (175, 159, 136),
     }
 
-    def draw_savoirs(self, state: GameState, lay: dict, pick: str | None) -> None:
+    def draw_savoirs(self, state: GameState, lay: dict, pick: str | None, ui: dict | None = None) -> None:
         # Ecran des savoirs a la maniere de Victoria 3 : voir render_tech.py.
         from src.kora import render_tech
 
-        render_tech.draw(self, state, lay, pick)
+        render_tech.draw(self, state, lay, pick, ui)
 
     def _fit(self, font, text: str, width: int) -> str:
         return theme.fit(font, text, width)
@@ -1779,7 +1814,14 @@ class Renderer:
         stock = sum(b.stock for b in state.bands.values() if b.tribe_id == state.viewer)
         x = width - 16
         num = theme.font("chiffre")
-        for key, value, col in (("vivres", f"{stock:.0f}", C.lin), ("gens", str(pop), C.os), ("prestige", str(tribe.prestige), C.ocre_jaune)):
+        chips = [("vivres", f"{stock:.0f}", C.lin), ("gens", str(pop), C.os)]
+        from src.kora import money as _money
+
+        if _money.has_money(state, state.viewer):
+            # Le tresor (sicles) : un clic ou [G] ouvre l'ecran du tresor.
+            chips.append(("pieces", f"{tribe.money:.0f}", (196, 204, 222)))
+        chips.append(("prestige", str(tribe.prestige), C.ocre_jaune))
+        for key, value, col in chips:
             img = num.render(value, True, col)
             x -= img.get_width()
             self.screen.blit(num.render(value, True, C.nuit), (x + 1, (HUD_HEIGHT - img.get_height()) // 2 + 2))
@@ -1791,7 +1833,9 @@ class Renderer:
         if tribe.learning and tribe.learning in tech.TECHS:
             t = tech.TECHS[tribe.learning]
             done = tribe.progress.get(tribe.learning, 0.0) / max(1.0, t.cost)
-            box_w = 190
+            # Jamais sur les boutons du temps (petites fenetres).
+            speeds_end = max(rx + rw for rx, _ry, rw, _rh in layout["speeds"].values())
+            box_w = max(110, min(190, x - speeds_end - 16))
             x -= box_w
             self.screen.blit(theme.icon("savoir", 22, C.savoir), (x, 8))
             theme.text(self.screen, t.name, "mini_gras", C.os, (x + 28, 7), box_w - 32)

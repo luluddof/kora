@@ -290,8 +290,8 @@ def lines(band) -> list[str]:
 # que la troupe existe ; dissoute, ils retournent a leurs autres travaux).
 
 # Les metiers et le sexe de ceux qui les font ("" : les deux).
-CRAFT_SEX = {"potiers": "femmes", "tisserands": "femmes", "tailleurs": "hommes", "pecheurs": "hommes", "sauniers": "", "pelletiers": ""}
-CRAFT_WORKERS = {"potiers": "potières", "tisserands": "tisserandes", "tailleurs": "tailleurs de silex", "pecheurs": "pêcheurs", "sauniers": "sauniers", "pelletiers": "pelletiers"}
+CRAFT_SEX = {"potiers": "femmes", "tisserands": "femmes", "tailleurs": "hommes", "pecheurs": "hommes", "sauniers": "", "pelletiers": "", "calculateurs": "", "mineurs": "hommes"}
+CRAFT_WORKERS = {"potiers": "potières", "tisserands": "tisserandes", "tailleurs": "tailleurs de silex", "pecheurs": "pêcheurs", "sauniers": "sauniers", "pelletiers": "pelletiers", "calculateurs": "calculateurs", "mineurs": "mineurs"}
 SEX_WORD = {"hommes": "des hommes", "femmes": "des femmes", "": "hommes et femmes"}
 
 

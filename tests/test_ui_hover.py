@@ -28,7 +28,24 @@ def test_every_screen_survives_the_mouse_everywhere(monkeypatch):
     others = sorted(t for t in st.tribes if t != PLAYER_TRIBE_ID)[:3]
     home = next(b for b in st.bands.values() if b.tribe_id == PLAYER_TRIBE_ID)
     inst = situations._start(st, situations.SPECS["passage"], home.position, 6, [PLAYER_TRIBE_ID] + others[:1], {"dq": 1, "dr": 0})
-    screens = []
+    # Les nombres et l'argent (0.7.0) : une base, des operations, un tresor
+    # qui a deja un mois de comptes.
+    from src.kora import money, numbers, tech
+
+    me = st.tribes[PLAYER_TRIBE_ID]
+    me.knowledge.update(("comptage", "nombres", "valeurs", "argent_pese", "peages"))
+    tech.invalidate()
+    numbers.monthly(st)
+    numbers.choose(st, PLAYER_TRIBE_ID, 60)
+    me.operations = ["add", "sub"]
+    me.math_progress = 12.0
+    me.money = 42.0
+    money.set_budget(st, PLAYER_TRIBE_ID, "tax", 2)
+    money.set_budget(st, PLAYER_TRIBE_ID, "solde", True)
+    money.monthly(st)
+    money.earn(st, PLAYER_TRIBE_ID, "mines", 3.0)
+    money.monthly(st)
+    screens = [("savoirs", {"tech_tab": "nombres", "base_confirm": 12}), (None, {"treasury_open": True})]
     for pick in others[:2]:
         screens.append(("peuples", {"people_pick": pick}))
     for panel in ("tribu", "savoirs", "journal", "armee"):

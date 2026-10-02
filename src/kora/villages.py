@@ -724,6 +724,9 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
     from src.kora import chiefdom
 
     parts.extend(chiefdom.stability_parts(state, band.tribe_id))
+    from src.kora import money
+
+    parts.extend(money.stability_parts(state, band.tribe_id))
     if chiefs.is_chief_band(state, band):
         parts.append(("Le chef y gouverne", 10.0))
     else:

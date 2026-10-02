@@ -34,8 +34,12 @@ RESOURCES = (
     ("silex", "silex", "matiere"),
     ("argile", "argile", "matiere"),
     ("sel", "sel", "matiere"),
+    # L'argent-metal (derive_silver : tire du relief, sans recuire la carte).
+    ("argent", "argent (métal)", "matiere"),
 )
 NAMES = tuple(r[0] for r in RESOURCES)
+# Les couches de la carte cuite (l'argent se tire du relief au chargement).
+BAKED = tuple(n for n in NAMES if n != "argent")
 LABELS = {r[0]: r[1] for r in RESOURCES}
 KINDS = {r[0]: r[2] for r in RESOURCES}
 GAME = ("aurochs", "chevaux", "chevres", "rennes")
@@ -59,6 +63,7 @@ COLORS = {
     "silex": (120, 120, 130),
     "argile": (200, 110, 80),
     "sel": (250, 250, 250),
+    "argent": (196, 204, 222),
 }
 
 
@@ -70,6 +75,43 @@ def level_word(value: float) -> str:
     if value >= 0.15:
         return "un peu"
     return ""
+
+
+# --- l'argent-metal ----------------------------------------------------------------
+#
+# Les filons d'argent ne sont pas dans la carte cuite : on les tire du relief
+# (collines, montagnes, sommets), par grandes taches (un filon tous les
+# quelques massifs), avec un hasard fixe (crc32 des coordonnees) : le meme
+# sur chaque machine, sans recuire la carte ni changer les parties.
+
+SILVER_CELL = 7
+SILVER_VEINS = 0.45
+
+
+def _unit(text: str) -> float:
+    return zlib.crc32(text.encode("ascii")) / 4294967295.0
+
+
+def derive_silver(width: int, height: int, terrains) -> bytes:
+    """La couche d'argent (octets 0..255, rangee par rangee) a partir des
+    terrains (terrains[row][col])."""
+    from src.kora.types import Terrain
+
+    hills = (Terrain.COLLINE, Terrain.MONTAGNE, Terrain.SOMMET)
+    out = bytearray(width * height)
+    for row in range(height):
+        line = terrains[row]
+        for col in range(width):
+            if line[col] not in hills:
+                continue
+            cx, cy = col // SILVER_CELL, row // SILVER_CELL
+            if _unit(f"ag:{cx}:{cy}") >= SILVER_VEINS:
+                continue
+            strength = 0.45 + 0.55 * _unit(f"agf:{cx}:{cy}")
+            fine = _unit(f"ag:{col}:{row}")
+            v = strength * (0.5 + 0.5 * fine) if fine < 0.65 else 0.15 * fine
+            out[row * width + col] = min(255, int(v * 255 + 0.5))
+    return bytes(out)
 
 
 # --- stockage ------------------------------------------------------------------
@@ -174,7 +216,7 @@ def generate_layers(seed: int, grid, climate) -> dict:
         * blobs(3.5, 0.3),
     }
     out = {}
-    for name in NAMES:
+    for name in BAKED:
         raw = np.clip(layers[name], 0.0, None)
         # Chaque ressource couvre une part voulue des terres (seuil 0,4) :
         # le produit des facteurs la rendait sinon beaucoup trop rare.
@@ -199,4 +241,6 @@ COVER = {
     "silex": 0.06,
     "argile": 0.06,
     "sel": 0.03,
+    # Pas cuit : derive_silver (filons des collines), environ 5 % des terres.
+    "argent": 0.05,
 }

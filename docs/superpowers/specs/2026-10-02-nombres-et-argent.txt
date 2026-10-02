@@ -1,0 +1,170 @@
+Kora - Les nombres et l'argent
+==============================
+Date : 2026-10-02 (suite). Statut : FAIT (version 0.7.0).
+
+Demande (ses mots, raccourcis) :
+  1. "Mets une ou des techs sur l'argent pendant le néolithique, pour
+     inclure une nouvelle ressource : l'argent." Puis, à la question :
+     "Métal, puis monnaie" (des valeurs d'échange d'abord, puis le métal
+     des collines, pesé en sicles, dans un trésor).
+  2. "Pour les mathématiques, ce sera au total 3 technologies, dont deux
+     maintenant : le comptage par bâtons, puis les nombres additifs ; et
+     bien plus tard, la numération de position (nos chiffres)."
+  3. "Dès les nombres additifs, on choisit sa base, avec des bonus selon la
+     base : petit bonus de recherche en base 10, d'efficacité commerciale
+     en base 12, de gestion des stocks en base 60, etc." Puis : la base est
+     "définitive ou très compliquée à changer à terme".
+  4. "Un onglet dans la recherche qui détaille toutes les opérations
+     mathématiques de la civilisation, ce qui donne des bonus ; on commence
+     avec le + ; elles n'apparaissent qu'avec des mathématiciens." Puis :
+     les mathématiciens sont "un métier du village".
+  5. "L'apparition de l'argent vient avec le panneau de gestion du
+     budget." Puis : "impôt en argent, solde des soldats, gages des
+     spécialistes, commerce en argent, et avec les techs les douanes si ça
+     correspond à l'époque".
+
+
+1. LES SAVOIRS (tech.py ; branche « Nombres » / « Nombres et métal »)
+--------------------------------------------------------------------
+  Comptage par bâtons    âge tribal, palier 2, après Rites ; 3 hivers.
+                         On compte : l'ADDITION (+), et l'onglet des
+                         nombres s'ouvre.
+  Nombres additifs       néolithique, palier 4, après Comptage et Semis ;
+                         un village. On CHOISIT SA BASE ; un métier : les
+                         calculateurs.
+  Valeurs d'échange      néolithique, palier 4 (branche « Valeurs et
+                         passages »), après Comptage et Semis ; 2 contacts,
+                         2 ans de village. L'ARGENT : un trésor, le budget
+                         (écran du Trésor), le commerce en argent.
+  Argent pesé            néolithique, palier 5, après Valeurs et Nombres ;
+                         4 ans de village. Le métal blanc des collines :
+                         un métier (mineurs d'argent), l'impôt rend +25 %.
+  Droits de passage      néolithique, palier 5, après Valeurs et Repères ;
+                         4 contacts. Les convois étrangers qui traversent
+                         votre pays paient leur passage (sa demande : les
+                         douanes, à l'échelle de l'époque : un gué, un col,
+                         une halte gardée).
+  La 3e mathématique (numération de position, le zéro) viendra avec un
+  âge suivant : l'onglet la montre, grisée.
+
+2. LA BASE ET LES OPÉRATIONS (numbers.py)
+-----------------------------------------
+  BASE (Tribe.base), au choix une fois Nombres additifs connu :
+    10  doigts        savoirs +5 %
+    12  phalanges     prix de vos ventes sur les routes +6 %
+    20  doigts, orteils  stabilité +3, famine d'hiver -5 % de morts
+    60  lunes, saisons   greniers +4 semaines, grain perdu -20 %
+  Le premier choix est gratuit (deux clics : « Choisir », puis
+  « Confirmer ce choix »). En changer est une RÉFORME : 40 de prestige,
+  trois ans sans l'avantage de la nouvelle base, une fois tous les 30 ans
+  au plus. L'IA choisit selon son pays (steppe ou côte : 12 ; vallée : 60 ;
+  forêt : 20 ; ailleurs : 10). Le joueur qui n'a pas choisi en reçoit le
+  rappel chaque année.
+  OPÉRATIONS (Tribe.operations), chacune son effet :
+    +   Addition        (au Comptage)     réserves +1 semaine
+    −   Soustraction    10 points         grain perdu -10 %
+    ×   Multiplication  25 points         récolte +5 %
+    ÷   Division        50 points         stabilité +4
+    ½   Fractions       90 points         ventes +4 %, impôt +10 %
+  Les POINTS DE CALCUL viennent des CALCULATEURS (goods.py, métier
+  « calculateurs », hommes et femmes, il n'y faut que du monde) : une
+  équipe donne 1 point par mois (x savoirs, x 1,25 si leurs gages sont
+  payés). Sans calculateurs, on reste à l'addition. Une équipe seule
+  trouve les fractions en 15 ans environ.
+  Les effets passent par Tribe.math_effects (« base:60 », « op:sub ») lus
+  par tech.bonuses comme des savoirs (tech.math_effect).
+
+3. L'ARGENT ET LE BUDGET (money.py)
+-----------------------------------
+  Le TRÉSOR (Tribe.money, en sicles) ; chaque mois, le BUDGET
+  (Tribe.budget) :
+    RENTRÉES
+      impôt        Aucun, Léger (0,02 sicle par villageois et par mois),
+                   Moyen (0,04), Lourd (0,07) ; stabilité 0, -3, -6, -10 ;
+                   Argent pesé x1,25, Fractions x1,1
+      mines        les mineurs d'argent : 0,6 sicle par équipe et par
+                   semaine x richesse du filon (x gages, ateliers...)
+      ventes       les routes payées en argent par l'acheteur
+      tribut       10 % du trésor de chaque tributaire, chaque mois
+      péages       un demi-sicle par convoi étranger et 10 % de sa charge
+                   (celui qui domine le milieu du chemin, à 50 % d'influence,
+                   et connaît Droits de passage ; sans argent, l'étranger
+                   paie en vivres)
+      événements
+    DÉPENSES
+      solde        0,08 sicle par homme sous les armes : payée, moral +5 et
+                   deux fois moins de fuyards ; promise et pas payée :
+                   moral -5 et 30 % de fuyards en plus
+      gages        0,06 sicle par artisan : payés, métiers +10 % et
+                   calculateurs +25 % ; promis et pas payés : -10 %
+      présents     aux familles qui comptent : 3 % du trésor par mois (au
+                   moins un sicle par famille) : faveur +1,5 par mois,
+                   stabilité des villages +3 (le trésor ne dort pas)
+      achats       les routes que l'on paie en argent
+  COMMERCE EN ARGENT : quand l'acheteur le veut et que les deux peuples
+  connaissent l'argent, le solde d'une route se paie d'abord en sicles (un
+  sicle = 20 vivres), le reste en vivres ; ce qu'un peuple peut payer
+  compte aussi son trésor.
+  L'IA : l'impôt selon son chef (ambitieux : moyen ; généreux : aucun ;
+  sinon léger), mais aucun quand son trésor dépasse 4 fois sa réserve (un
+  an de solde et de gages + 30), léger au-delà de 2 fois ; la solde quand
+  elle a des troupes, les gages quand elle peut, des présents quand le
+  trésor déborde, le commerce en argent toujours. Résultat (essai de 30 ans
+  sur sa partie) : les trésors tiennent entre 250 et 330 sicles (6 000 sans
+  ces règles).
+
+4. L'ARGENT-MÉTAL SUR LA CARTE (resources.py)
+---------------------------------------------
+  Une couche nouvelle, « argent (métal) », tirée du relief au chargement
+  (resources.derive_silver : collines, montagnes, sommets ; des massifs à
+  filons, un hasard fixe par crc32 des coordonnées) : la carte cuite ne
+  change pas, la même sur chaque machine. Environ 5 % des terres. Les
+  MINEURS vont jusqu'aux collines voisines (6 cases du village :
+  goods.FAR_RES) : sur sa partie, 9 villages sur 60 peuvent miner ; les
+  autres achètent l'argent par le commerce. La légende de la carte des
+  ressources montre la couche.
+
+5. LES ÉCRANS
+-------------
+  SAVOIRS, onglet « Les nombres » (render_numbers.py ; boutons « L'arbre »
+  et « Les nombres » dans la barre de l'écran) : à gauche, les quatre
+  bases (chiffre, nom, récit, effets ; Choisir / Confirmer / Réformer,
+  la raison au survol quand c'est impossible) et les calculateurs (équipes,
+  points par mois, gages, prochaine opération) ; à droite, les opérations
+  de la civilisation (signe, nom, récit, effet ; connue, en recherche avec
+  sa barre, à trouver), puis la numération de position grisée.
+  TRÉSOR (render_treasury.py ; onglet latéral « Trésor » avec l'argent,
+  touche [G], aussi la pastille de sicles dans la barre du haut) : tuiles
+  (trésor, rentrées, dépenses, balance, impôt, solde), le compte du
+  dernier mois et le mois prochain, le budget (quatre crans d'impôt ;
+  solde, gages, commerce en argent, présents ; leur état payé / IMPAYÉ),
+  les droits de passage, le graphe du trésor (24 mois) et le total par
+  poste. L'onglet s'allume quand la solde ou les gages sont impayés.
+  VILLAGE, page Métiers : huit métiers (calculateurs, mineurs d'argent ;
+  cartes plus basses en petite fenêtre) ; l'équipe de calculateurs montre
+  ses points par mois, celle des mineurs ses sicles.
+
+6. ÉVÉNEMENTS (events_data.py)
+------------------------------
+  « La pierre blanche » (Argent pesé, un filon près du village) : ouvrir
+  une mine (une équipe de mineurs, 4 sicles) ou une offrande (prestige).
+  « Des poids trop légers » (un partenaire de commerce, un trésor) : exiger
+  réparation (55 % : 4 sicles, relation -6 ; sinon relation -15) ou peser
+  soi-même (10 % du trésor perdu, 4 points de calcul).
+  « Celle qui compte plus vite que tous » (des calculateurs) : 8 points de
+  calcul, ou les comptes du chef (prestige, attachement).
+  « Le trésor convoité » (40 sicles et plus) : des gardiens (5 % du
+  trésor) ou rien (une chance sur deux d'en perdre 30 %).
+  Conditions nouvelles : has_money, money_ge, craft_teams, veins ; effets :
+  money, money_pct, math_points, craft_team.
+
+7. TECHNIQUE
+------------
+  Tribe : base, base_changed, base_reform_until, operations, math_progress,
+  math_effects, money, budget, money_month, money_hist (sauvegardés,
+  copiés par sim._copy_tribe). Commandes : « base » (valeur), « budget »
+  (clé, valeur). sim._week, chaque mois : numbers.monthly puis
+  money.monthly (après la chefferie) ; goods.monthly appelle
+  money.collect_tolls après les routes. numbers.py et money.py n'importent
+  pas pygame. Tests : tests/test_numbers_money.py (+ souris sur les deux
+  écrans dans test_ui_hover).

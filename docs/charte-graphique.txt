@@ -108,7 +108,8 @@ Guard13007 et leurs auteurs ; voir data/icons/CREDITS.txt), teintees :
   - nues dans le bandeau du haut, les onglets, les boutons d'action.
 Un mot devient une icone + un chiffre quand il revient sans cesse
 (prestige, gens, vivres, saison, savoir en cours).
-Liste des icones : theme.ICONS (cle -> fichier).
+Liste des icones : theme.ICON_FILES (cle -> fichier ; les nombres et
+l'argent : abaque, tablette, pieces, tresor, mine).
 
 
 6. LES ECRANS
@@ -116,7 +117,11 @@ Liste des icones : theme.ICONS (cle -> fichier).
   Bandeau du haut : une planche de bois sombre ; a gauche la saison
     (icone + "Été · an 5 · semaine 42"), au centre le temps (pause,
     vitesses 1-5 en encoches), a droite des icones-chiffres (prestige,
-    gens, vivres, savoir en cours avec sa barre).
+    tresor en sicles quand le peuple a l'argent - pieces, teinte argent
+    (196, 204, 222) -, gens, vivres, savoir en cours avec sa barre).
+  Chiffres et signes (onglet « Les nombres ») : le chiffre de la base et
+    le signe de chaque operation en "chiffre_grand", ocre jaune quand c'est
+    connu, braise en recherche, cendre a trouver.
   Rail de droite : onglets en pastilles (icone + nom court), plus de
     texte vertical ; l'onglet ouvert est relie a sa fenetre.
   Fenetres laterales : "peau", titre en Alegreya SC souligne d'un trait

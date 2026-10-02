@@ -344,6 +344,33 @@ lente, bandes dessinees petites a taille fixe.
     qui ne decide pas de facon binaire." FAIT : battle.py jour apres jour,
     fortune 0,8-1,2 ; "le temps ralentit en bataille" (son choix) : un pas =
     un jour quand une bataille touche un joueur.
+  - "Dis-moi, sans rien changer, quand sont apparues les premieres
+    mathematiques et les premieres traces de la monnaie." REPONDU (texte
+    seul) : batons a encoches (Ishango, ~20 000 ans), jetons d'argile
+    (Mesopotamie, ~8000 av. J.-C.), nombres ecrits (~3200), base 60
+    sumerienne ; valeurs d'echange (coquillages, orge), argent pese en
+    sicles (~2500), premieres pieces (Lydie, ~600).
+  - "Mets une ou des techs sur l'argent au neolithique : une nouvelle
+    ressource, l'argent (metal, puis monnaie). Les maths : 3 techs, deux
+    maintenant (comptage par batons, nombres additifs), la numeration de
+    position bien plus tard. Des les nombres additifs, choisir sa base
+    (10 recherche, 12 commerce, 60 stocks...), definitive ou tres dure a
+    changer. Un onglet de la recherche qui detaille les operations de la
+    civilisation, avec leurs bonus : on commence avec le +, les autres
+    viennent des mathematiciens (un metier du village). L'argent vient avec
+    le panneau du budget : impot, solde, gages, commerce en argent, et les
+    douanes si l'epoque s'y prete." FAIT (0.7.0) : Comptage par batons,
+    Nombres additifs, Valeurs d'echange, Argent pese, Droits de passage
+    (les douanes de l'epoque : un passage garde) ; bases 10, 12, 20, 60
+    (reforme : 40 de prestige, 3 ans sans l'avantage, une fois en 30 ans) ;
+    operations + - x / et fractions trouvees par les CALCULATEURS ; onglet
+    « Les nombres » des savoirs ; une couche d'argent-metal dans les
+    collines et les MINEURS ; le TRESOR (impot en 4 crans, solde, gages,
+    commerce en argent, presents aux familles, tribut, peages ; ecran,
+    touche G, pastille dans la barre) ; 4 evenements ; l'IA tient son
+    budget sans thesauriser. Spec : 2026-10-02-nombres-et-argent.txt.
+    A FAIRE plus tard (sa demande) : la numeration de position, a un age
+    suivant (l'onglet la montre deja, grisee).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -409,6 +436,17 @@ lente, bandes dessinees petites a taille fixe.
   demoralises, repli de l'IA, loups des troupes. A FAIRE plus tard (sa
   demande) : de nouveaux savoirs pour ces ages (l'arbre s'epuise vers
   l'an 50) ; les renforts pendant les jours de bataille.
+  Fait le 2026-10-02 (0.7.0) : les nombres et l'argent (bases,
+  operations, calculateurs ; tresor, budget, mines, peages ; onglet « Les
+  nombres », ecran du Tresor). REGLES NOUVELLES : un effet qui n'est pas un
+  savoir (base, operation) passe par Tribe.math_effects comme les
+  situations par situation_effects ; tout sicle qui entre ou sort passe par
+  money.earn / money.book (le compte du mois et l'histoire du tresor) ;
+  une ressource ajoutee apres la cuisson de la carte se TIRE du relief au
+  chargement (resources.derive_silver, hasard fixe) sans recuire la carte ;
+  un tresor d'IA doit avoir ou aller (reserve, presents) : verifier par un
+  essai long qu'il ne gonfle pas. A FAIRE (sa demande) : la numeration de
+  position a un age suivant.
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes

@@ -236,11 +236,14 @@ def _fresh_ui() -> dict:
         "village_pick": None,
         "village_page": "village",
         "trade_open": False,
+        "treasury_open": False,
         "trade_partner": None,
         "trade_good": None,
         "trade_sell": True,
         "trade_level": 1,
         "tech_cam": None,
+        "tech_tab": "arbre",
+        "base_confirm": None,
         "levy": "troupe",
         "levy_role": "melee",
         "leave_confirm": 0.0,
@@ -699,7 +702,24 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         ui["village_pick"] = None
         ui["leave_confirm"] = 0.0
         ui["trade_open"] = False
+        ui["treasury_open"] = False
         side_panel = None
+
+    def treasury_click(choice) -> None:
+        """Clic dans l'ecran du tresor : le budget passe par commands.py."""
+        from src.kora import money
+
+        if choice == "mclose":
+            ui["treasury_open"] = False
+            return
+        if choice.startswith("mtax:"):
+            issue(commands.make(me(), "budget", "tax", int(choice.split(":")[1])))
+            return
+        if choice.startswith("mtoggle:"):
+            key = choice.split(":")[1]
+            tribe = state.tribes.get(me())
+            if tribe is not None:
+                issue(commands.make(me(), "budget", key, not money.budget(tribe)[key]))
 
     def trade_click(choice) -> None:
         """Clic dans l'ecran du commerce."""
@@ -1101,11 +1121,19 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             if key == "commerce":
                 ui["trade_open"] = not ui["trade_open"]
                 ui["village_open"] = None
+                ui["treasury_open"] = False
+                side_panel = None
+                return True
+            if key == "tresor":
+                ui["treasury_open"] = not ui["treasury_open"]
+                ui["village_open"] = None
+                ui["trade_open"] = False
                 side_panel = None
                 return True
             side_panel = None if side_panel == key else key
             ui["village_open"] = None
             ui["trade_open"] = False
+            ui["treasury_open"] = False
             return True
         if choice == "trade_with":
             ui["trade_open"] = True
@@ -1123,6 +1151,19 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             return True
         if choice.startswith("tech:"):
             tech_pick = choice[5:]
+            return True
+        if choice.startswith("ttab:"):
+            ui["tech_tab"] = choice[5:]
+            ui["base_confirm"] = None
+            return True
+        if choice.startswith("nbase:"):
+            # Deux clics : la base est presque definitive.
+            base = int(choice[6:])
+            if ui.get("base_confirm") == base:
+                ui["base_confirm"] = None
+                issue(commands.make(me(), "base", base))
+            else:
+                ui["base_confirm"] = base
             return True
         if choice.startswith("era:"):
             ui["era"] = int(choice[4:])
@@ -1240,6 +1281,8 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         ui["village_open"] = None
                     elif ui["trade_open"]:
                         ui["trade_open"] = False
+                    elif ui["treasury_open"]:
+                        ui["treasury_open"] = False
                     elif open_fight is not None:
                         open_fight = None
                     elif side_panel:
@@ -1285,6 +1328,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         continue
                     side_panel = None if side_panel == key else key
                     ui["village_open"] = None
+                    ui["treasury_open"] = False
                 elif event.key == pygame.K_m:
                     from src.kora.render_panels import commerce_ready
 
@@ -1293,6 +1337,17 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         continue
                     ui["trade_open"] = not ui["trade_open"]
                     ui["village_open"] = None
+                    ui["treasury_open"] = False
+                    side_panel = None
+                elif event.key == pygame.K_g:
+                    from src.kora import money
+
+                    if not money.has_money(state, state.viewer):
+                        toast("Le trésor vient avec Valeurs d'échange.")
+                        continue
+                    ui["treasury_open"] = not ui["treasury_open"]
+                    ui["village_open"] = None
+                    ui["trade_open"] = False
                     side_panel = None
                 elif event.key == pygame.K_z:
                     renderer.map_mode = "relief" if renderer.map_mode == "zones" else "zones"
@@ -1376,7 +1431,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             elif event.type == pygame.MOUSEWHEEL:
                 tlay = renderer.side_hits.get("tech") if side_panel == "savoirs" else None
                 wx_, wy_ = pygame.mouse.get_pos()
-                if tlay and _in_rect(tlay["view"], wx_, wy_):
+                if tlay and tlay.get("numbers") is None and _in_rect(tlay["view"], wx_, wy_):
                     # La molette zoome l'arbre des savoirs, autour du curseur.
                     from src.kora.render import TREE_ZOOM_STEP, zoom_at
 
@@ -1396,7 +1451,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     mx, my = event.pos
                     in_village = (ui["village_open"] is not None and bool(renderer.village_hits) and _in_rect(renderer.village_hits["box"], mx, my)) or (
                         ui["trade_open"] and bool(renderer.trade_hits) and _in_rect(renderer.trade_hits["box"], mx, my)
-                    )
+                    ) or (ui["treasury_open"] and bool(renderer.treasury_hits) and _in_rect(renderer.treasury_hits["box"], mx, my))
                     if side_hit(renderer.side_hits, mx, my) is None and not in_village:
                         dragging = True
                         drag_button = event.button
@@ -1412,6 +1467,17 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         continue
                     if ui_hit == "bar":
                         continue
+                    if ui["treasury_open"] and renderer.treasury_hits:
+                        from src.kora.render_treasury import treasury_hit
+
+                        mchoice = treasury_hit(renderer.treasury_hits, mx, my)
+                        if mchoice is not None:
+                            if mchoice != "panel":
+                                treasury_click(mchoice)
+                            continue
+                        if side_hit(renderer.side_hits, mx, my) is None:
+                            ui["treasury_open"] = False
+                            continue
                     if ui["trade_open"] and renderer.trade_hits:
                         from src.kora.render_trade import trade_hit
 
@@ -1634,6 +1700,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             or ui["situation_open"] is not None
             or (ui["village_open"] is not None and bool(renderer.village_hits) and _in_rect(renderer.village_hits["box"], mx, my))
             or (ui["trade_open"] and bool(renderer.trade_hits) and _in_rect(renderer.trade_hits["box"], mx, my))
+            or (ui["treasury_open"] and bool(renderer.treasury_hits) and _in_rect(renderer.treasury_hits["box"], mx, my))
             or my < HUD_HEIGHT
             or band_card_hit(renderer.band_hits, mx, my) is not None
         )

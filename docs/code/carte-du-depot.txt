@@ -52,7 +52,7 @@ ni la nourriture ni les raids.
   data/kora_map.json      carte cuite (768 x 384, wrap est-ouest)
                           + noms de l'atlas precalcules
   data/fonts/             polices Alegreya / Alegreya Sans (OFL, OFL.txt)
-  data/icons/             87 icones game-icons.net (CC BY 3.0, CREDITS.txt)
+  data/icons/             92 icones game-icons.net (CC BY 3.0, CREDITS.txt)
   docs/charte-graphique.txt  la charte « Feu et ocre » (a lire avant tout
                           dessin) ; docs/charte/planche.png sa planche
   tools/empreinte.py      preuve qu'un refactoring ne change pas le jeu
@@ -76,7 +76,8 @@ Regle dure :
   vision.py, persist.py, peoples.py, influence.py, sites.py, chiefs.py,
   diplo.py, events.py, events_data.py, resources.py, villages.py,
   orders.py, battle.py, units.py, goods.py, situations.py, commands.py,
-  francais.py, production.py, population.py, chiefdom.py n'importent
+  francais.py, production.py, population.py, chiefdom.py, numbers.py,
+  money.py n'importent
   JAMAIS pygame ni render.py.
   numpy : seulement dans globe_draw.py (rendu), mapgen.py et
   resources.generate_layers (cuisson de la carte, hors jeu).
@@ -100,7 +101,7 @@ Ici c'est plus petit, mais le meme decoupage :
                     chiefs.py, diplo.py, events.py (+ events_data.py),
                     resources.py, villages.py, orders.py, battle.py, units.py,
                     goods.py, situations.py, production.py, population.py,
-                    chiefdom.py
+                    chiefdom.py, numbers.py, money.py
                     "une semaine avance (ou un jour, en bataille)"
 
   Persistance       persist.py, data/kora_map.json
@@ -109,7 +110,8 @@ Ici c'est plus petit, mais le meme decoupage :
   Presentation      look.py, atlas.py, globe.py, globe_draw.py,
                     theme.py (la charte), render.py, render_panels.py,
                     render_tech.py, render_village.py, render_trade.py,
-                    render_menu.py, render_situations.py, app.py
+                    render_menu.py, render_situations.py, render_numbers.py,
+                    render_treasury.py, app.py
                     "on dessine et on recoit la souris"
 
 Dependances autorisees (fleche = "importe") :
@@ -237,7 +239,9 @@ src/kora/villages.py
 
 src/kora/goods.py
   Metiers (CRAFTS : potiers, sauniers, tisserands, pelletiers, tailleurs,
-  pecheurs ; une ressource des terres + un savoir), equipes par village
+  pecheurs ; une ressource des terres + un savoir ; Craft.special :
+  "calcul" pour les calculateurs, des points et pas de bien, "argent" pour
+  les mineurs, des sicles au tresor), equipes par village
   (site.data "teams" ; add_block, set_teams, _fit_teams), production
   (output, Ateliers x1,25, update chaque semaine), reserve du PEUPLE
   (Tribe.goods) et consommation, effets quand le peuple est pourvu
@@ -466,6 +470,44 @@ src/kora/chiefdom.py  (pas de pygame)
   peuple a un seul village) ; kin_villages / kin_of (Villages freres) ;
   split_extra_villages (un village par peuple : les autres deviennent des
   freres tributaires) ; monthly (familles, grenier, tribut, IA).
+
+src/kora/numbers.py  (pas de pygame)
+  Les nombres : BASES (10, 12, 20, 60 et leurs effets), OPS (+ - x / et
+  fractions : cout en points, effet, recit). Tribe.base / base_changed /
+  base_reform_until / operations / math_progress / math_effects. choose /
+  choose_block (le premier choix ; puis une reforme : REFORM_PRESTIGE,
+  REFORM_WEEKS sans l'avantage, REFORM_EVERY), ai_base (selon le pays),
+  points (equipes de calculateurs x savoirs x gages), monthly (l'addition
+  au Comptage, l'IA choisit, les points trouvent l'operation suivante,
+  rappel au joueur), _sync -> Tribe.math_effects (lus par tech.bonuses :
+  tech.math_effect), page (ce que montre l'onglet), lines.
+
+src/kora/money.py  (pas de pygame)
+  L'argent : Tribe.money (sicles), budget (tax 0..3, solde, gages,
+  commerce, dons ; etat_* : payee / impayee), money_month (le compte du
+  mois : book / earn), money_hist (24 mois). has_money, set_budget
+  (ordre "budget"), tax_income, solde_cost, gage_cost, don_cost, reserve,
+  stability_parts (impot, presents ; lu par villages.stability_parts),
+  wage_mult (lu par goods.output, numbers.points), solde_morale (lu par
+  chiefdom.army_morale), flee_mult (battle._flee) ; commerce en argent :
+  pays_in_money / pay_route (goods._run_pair) ; peages : toll_owner,
+  collect_tolls (apres les routes, goods.monthly) ; monthly (impot,
+  tribut des tributaires, solde, gages, presents, histoire ; IA : _ai).
+  Les filons d'argent : resources.derive_silver (tire du relief au
+  chargement, world.set_resources) ; les mineurs vont a goods.FAR_RES cases.
+
+src/kora/render_numbers.py
+  Onglet « Les nombres » de l'ecran des savoirs : page_layout / items
+  (purs ; render.tech_panel_layout(tab="nombres") les met dans
+  side_layout : "nbase:<b>", "ttab:arbre", "ttab:nombres"), draw. app.py :
+  ui["tech_tab"], ui["base_confirm"] (deux clics avant l'ordre "base").
+
+src/kora/render_treasury.py
+  L'ecran du Tresor : treasury_layout / treasury_hit (purs ; "mtax:<n>",
+  "mtoggle:<cle>", "mclose"), draw_treasury (tuiles, compte du mois,
+  budget, peages, graphe). app.py : ui["treasury_open"], treasury_click
+  (ordre "budget"), touche G, onglet lateral "tresor" (render.side_tabs,
+  render_panels.treasury_alert) ; la pastille de sicles dans la barre.
 
 src/kora/production.py  (pas de pygame)
   Le savoir-faire des villages : Tribe.efficiency (genre -> 1,0..EFF_MAX ;

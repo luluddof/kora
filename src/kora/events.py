@@ -323,6 +323,25 @@ def check(state, inst, cond) -> bool:
     if kind == "army_moving":
         # Une troupe en marche (les loups suivent les colonnes, l'hiver).
         return band.kind == "armee" and bool(band.path)
+    if kind == "has_money":
+        # L'argent (money.py : Valeurs d'echange).
+        from src.kora import money
+
+        return money.has_money(state, tribe.id)
+    if kind == "money_ge":
+        return getattr(tribe, "money", 0.0) >= args[0]
+    if kind == "craft_teams":
+        # Des equipes de ce metier au village (calculateurs, mineurs...).
+        from src.kora import goods, villages
+
+        site = villages.site_of(state, band)
+        return site is not None and goods.teams_of(site, args[0]) > 0
+    if kind == "veins":
+        # Le village a dans ses terres de quoi faire ce metier (des filons).
+        from src.kora import goods, villages
+
+        site = villages.site_of(state, band)
+        return site is not None and goods.deposits(state, site, args[0])[0] > 0
     if kind == "crafts":
         # Des gens de metier au village (goods.py).
         from src.kora import goods, villages
@@ -527,6 +546,31 @@ def apply(state, inst, effect) -> None:
                 tribe.goods[good] = left
             else:
                 del tribe.goods[good]
+    elif kind == "money":
+        from src.kora import money
+
+        if args[0] > 0:
+            money.earn(state, tribe.id, "evenements", args[0])
+        else:
+            take = min(getattr(tribe, "money", 0.0), -args[0])
+            tribe.money -= take
+            money.book(state, tribe.id, "evenements", -take)
+    elif kind == "money_pct":
+        from src.kora import money
+
+        take = getattr(tribe, "money", 0.0) * -args[0]
+        if take > 0:
+            tribe.money -= take
+            money.book(state, tribe.id, "evenements", -take)
+    elif kind == "math_points":
+        tribe.math_progress = getattr(tribe, "math_progress", 0.0) + args[0]
+    elif kind == "craft_team":
+        # Une equipe de plus a ce metier, s'il y a la place.
+        from src.kora import goods, villages
+
+        site = villages.site_of(state, band)
+        if site is not None and not goods.add_block(state, site, args[0]):
+            goods.set_teams(state, site, args[0], goods.teams_of(site, args[0]) + 1)
     elif kind == "craft_bonus":
         # Une belle veine : de chaque bien que fait le village.
         from src.kora import goods, villages
@@ -778,7 +822,18 @@ EFFECT_TEXT = {
     "good": lambda a: f"+{a[1]} {_good_name(a[0])} à la réserve du peuple",
     "craft_bonus": lambda a: f"+{a[0]} de chaque bien que fait le village",
     "lose_goods": lambda a: f"-{a[0]} charges de votre réserve",
+    "money": lambda a: f"{'+' if a[0] >= 0 else ''}{a[0]:g} sicles au trésor",
+    "money_pct": lambda a: f"{round(a[0] * 100)} % du trésor",
+    "math_points": lambda a: f"+{a[0]:g} points de calcul",
+    "craft_team": lambda a: f"une équipe de {_craft_name(a[0])} de plus",
 }
+
+
+def _craft_name(cid: str) -> str:
+    from src.kora import goods
+
+    craft = goods.CRAFTS.get(cid)
+    return craft.name.lower() if craft is not None else cid
 
 
 def _good_name(good: str) -> str:
