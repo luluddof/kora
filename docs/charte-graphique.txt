@@ -130,17 +130,20 @@ Liste des icones : theme.ICONS (cle -> fichier).
     qu'elle explique (theme.tooltip avoid).
   Evenements et situations : dalle de pierre, illustration-icone dans un
     grand medaillon, recit en italique, choix en boutons larges.
-  Situations (render_situations.py) : sous la barre, une dalle par
-    situation : medaillon rouge de sang (crise) ou braise (conjoncture),
-    la jauge en ANNEAU autour (vert : resolution ; ocre jaune : votre
-    place), le temps qui reste ; une situation nouvelle respire (lueur).
+  Situations (render_situations.py) : DANS la barre du haut, entre la date
+    et le temps (2026-10-02 : "ça prend trop de place"), un petit medaillon
+    par situation : rouge de sang (crise) ou braise (conjoncture), la jauge
+    en ANNEAU autour (vert : resolution ; ocre jaune : votre place), une
+    pastille avec les mois qui restent ; le nom et le detail au survol ;
+    une situation nouvelle respire (un cercle qui bat). Sur la carte, son
+    cercle n'apparait qu'au survol du medaillon ou fenetre ouverte.
     Sa fenetre : etiquettes CRISE / CONJONCTURE et le temps en puces,
     deux colonnes a pointilles (ce qui pese ou le prix ; la jauge ou le
     classement), les actions en larges cartes (cout et effet en puces a
     droite, la raison du refus en ambre). Sur la carte : un cercle de
     points a la couleur du genre et le medaillon au-dessus du lieu. Un
-    RISQUE (une crise que l'on voit venir) : une dalle creuse cerclee
-    d'ambre, « Risque : ... », le conseil au survol.
+    RISQUE (une crise que l'on voit venir) : un petit medaillon ambre avec
+    une pastille « ! », le conseil au survol.
   Bataille en cours (render_battle.py) : une dalle de pierre au centre,
     lueur rouge qui respire, medaillon des haches ; les deux camps en
     colonnes (trait de couleur du peuple, combattants en barre, morts et

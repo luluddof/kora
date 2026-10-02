@@ -1,9 +1,10 @@
 """Les situations a l'ecran (situations.py), dans la charte « Feu et ocre ».
 
-  LE BANDEAU : sous la barre du haut, au centre, une dalle par situation du
-  joueur (rouge : une crise, ocre : une conjoncture), sa jauge en anneau
-  autour du medaillon, le temps qui reste. Une situation finie y reste
-  quelques semaines avec son issue. Un clic ouvre sa fenetre.
+  LE BANDEAU : DANS la barre du haut, entre la date et le temps, un petit
+  medaillon par situation du joueur (rouge : une crise, braise : une
+  conjoncture), sa jauge en anneau, une pastille avec les mois qui restent ;
+  le nom et le detail au survol. Une situation finie y reste quelques
+  semaines, eteinte. Un clic ouvre sa fenetre.
   LA FENETRE : le recit, l'etape, la jauge de resolution (crise) ou le
   classement des peuples (conjoncture), ce qui pese, le prix, les actions
   avec leur cout et pourquoi on ne peut pas, les peuples touches.
@@ -21,7 +22,8 @@ from src.kora.peoples import color_of
 from src.kora.situations import CRISE, SPECS
 from src.kora.theme import C
 
-CARD_W, CARD_H = 228, 48
+# Une case du bandeau (dans la barre du haut).
+CARD_W, CARD_H = 40, 40
 # Une situation finie reste au bandeau ce nombre de semaines.
 RECENT = 8
 # Une situation nouvelle brille ce nombre de semaines.
@@ -43,16 +45,20 @@ def banner_items(state) -> list:
 
 
 def banner_layout(width: int, n: int) -> dict:
-    """Les dalles, centrees entre le bord gauche et les onglets, sous les
-    pastilles de mode de carte (rien d'autre n'est a cette hauteur au centre)."""
-    from src.kora.render import HUD_HEIGHT, TAB_W
+    """Les medaillons, dans la barre du haut, entre la date (a gauche) et les
+    boutons du temps ; s'il y en a trop, la suite passe juste dessous."""
+    from src.kora.render import HUD_HEIGHT, hud_layout
 
-    room = width - TAB_W - 20
-    cw = CARD_W if n * (CARD_W + 8) <= room - 340 else max(150, (room - 340) // max(1, n) - 8)
-    total = n * cw + (n - 1) * 8
-    x = max(10, (room - total) // 2)
-    y = HUD_HEIGHT + 44
-    return {i: (x + i * (cw + 8), y, cw, CARD_H) for i in range(n)}
+    left = 236
+    right = hud_layout(width)["pause"][0] - 12
+    per_row = max(1, (right - left + 6) // (CARD_W + 6))
+    out = {}
+    for i in range(n):
+        row, col = divmod(i, per_row)
+        x = left + col * (CARD_W + 6)
+        y = (HUD_HEIGHT - CARD_H) // 2 if row == 0 else HUD_HEIGHT + 4 + (row - 1) * (CARD_H + 4)
+        out[i] = (x, y, CARD_W, CARD_H)
+    return out
 
 
 def people_name(state, tid: int) -> str:
@@ -121,13 +127,24 @@ def _frac(state, inst) -> float:
     return mine / best
 
 
+def _badge(r, x: int, y: int, text: str, color) -> None:
+    """Une petite pastille (les mois qui restent) au coin d'un medaillon."""
+    f = theme.font("mini")
+    w = max(16, f.size(text)[0] + 6)
+    rect = (x - w, y - 14, w, 14)
+    pygame.draw.rect(r.screen, C.nuit, rect, border_radius=4)
+    pygame.draw.rect(r.screen, color, rect, 1, border_radius=4)
+    r.screen.blit(f.render(text, True, C.os), (rect[0] + (w - f.size(text)[0]) // 2, rect[1] - 1))
+
+
 def draw_banner(r, state) -> None:
-    """Les dalles : les situations du joueur, puis les crises qui le
-    menacent (RISQUES, en ambre : on les voit venir ; leur conseil au
-    survol)."""
+    """Les medaillons : les situations du joueur, puis les crises qui le
+    menacent (RISQUES, en ambre : on les voit venir) ; tout le detail au
+    survol."""
     r.situation_hits = {}
+    r.situation_hover = None
     items = banner_items(state)
-    risks = situations.risks_of(state, state.viewer)[: max(0, 6 - len(items))]
+    risks = situations.risks_of(state, state.viewer)[: max(0, 8 - len(items))]
     n = len(items) + len(risks)
     if not n:
         return
@@ -139,33 +156,35 @@ def draw_banner(r, state) -> None:
         spec = SPECS[inst.sid]
         rect = lay[i]
         x, y, cw, ch = rect
+        cx, cy = x + cw // 2, y + ch // 2
         r.situation_hits[inst.uid] = rect
         crisis = spec.kind == CRISE
         col = C.mauvais if crisis else C.braise
-        if not inst.outcome and state.tick_count - inst.started <= NEW:
-            theme.glow(r.screen, rect, col, 0.3 + 0.6 * theme.pulse(t + i * 0.5))
         over = _hover(rect)
-        theme.panel(r.screen, rect, "carte_survol" if over else "carte")
+        if not inst.outcome and state.tick_count - inst.started <= NEW:
+            pygame.draw.circle(r.screen, col, (cx, cy), 20 + int(2 * theme.pulse(t + i * 0.5)), 2)
         state_key = "eteint" if inst.outcome else ("danger" if crisis else "actif")
-        r.screen.blit(theme.medallion(spec.icon, 16, state_key), (x + 8, y + 6))
+        med = theme.medallion(spec.icon, 14, state_key)
+        r.screen.blit(med, (cx - med.get_width() // 2, cy - med.get_height() // 2))
         if not inst.outcome:
-            _gauge(r.screen, x + 26, y + 24, 21, _frac(state, inst), C.bon if crisis else C.ocre_jaune)
-        theme.text(r.screen, spec.name, "petit_gras", C.os if not inst.outcome else C.cendre, (x + 54, y + 6), cw - 62)
-        line, lcol = _status(state, inst)
-        theme.text(r.screen, line, "mini", lcol, (x + 54, y + 27), cw - 62)
+            _gauge(r.screen, cx, cy, 18, _frac(state, inst), C.bon if crisis else C.ocre_jaune)
+            left = situations.months_left(state, inst)
+            _badge(r, x + cw + 2, y + ch + 2, str(left), C.alerte if left <= 2 else col)
         if over:
+            pygame.draw.circle(r.screen, C.os, (cx, cy), 19, 1)
             hovered = ("sit", inst, rect)
+            r.situation_hover = inst.uid
     for k, (sid, text) in enumerate(risks):
         spec = SPECS[sid]
         rect = lay[len(items) + k]
         x, y, cw, ch = rect
+        cx, cy = x + cw // 2, y + ch // 2
         over = _hover(rect)
-        theme.panel(r.screen, rect, "creux")
-        pygame.draw.polygon(r.screen, C.alerte, theme.chamfer(rect, 6), 1)
-        r.screen.blit(theme.medallion(spec.icon, 16, "connu", C.alerte), (x + 8, y + 6))
-        theme.text(r.screen, f"Risque : {spec.name.lower()}", "petit_gras", C.alerte, (x + 54, y + 6), cw - 62)
-        theme.text(r.screen, "On la voit venir · survol : l'éviter", "mini", C.cendre, (x + 54, y + 27), cw - 62)
+        med = theme.medallion(spec.icon, 13, "connu", C.alerte)
+        r.screen.blit(med, (cx - med.get_width() // 2, cy - med.get_height() // 2))
+        _badge(r, x + cw + 2, y + ch + 2, "!", C.alerte)
         if over:
+            pygame.draw.circle(r.screen, C.os, (cx, cy), 18, 1)
             hovered = ("risk", (spec, text), rect)
     if hovered is None:
         return
@@ -174,7 +193,8 @@ def draw_banner(r, state) -> None:
         inst = obj
         spec = SPECS[inst.sid]
         kind = "Crise" if spec.kind == CRISE else "Conjoncture"
-        lines = [(f"{kind} : {spec.name}", C.os, "petit_gras")]
+        line, lcol = _status(state, inst)
+        lines = [(f"{kind} : {spec.name}", C.os, "petit_gras"), (line, lcol)]
         if not inst.outcome and spec.stages:
             lines.append((spec.stage_name(inst), C.ocre_jaune))
         lines.append((spec.goal, C.lin))
@@ -182,7 +202,7 @@ def draw_banner(r, state) -> None:
     else:
         spec, text = obj
         lines = [(f"Risque de crise : {spec.name}", C.alerte, "petit_gras"), (text, C.lin), (spec.about, C.cendre, "mini")]
-    theme.tooltip(r.screen, lines, x, y + ch + 6, 360)
+    theme.tooltip(r.screen, lines, x, y + ch + 8, 360)
 
 
 # --- la fenetre ------------------------------------------------------------------------
@@ -229,6 +249,7 @@ def _prize_lines(spec) -> tuple[str, list]:
 
 def draw_window(r, state, ui) -> None:
     uid = ui.get("situation_open")
+    r.situation_open_uid = uid
     inst = situations.find(state, uid)
     if inst is None:
         r.situation_window = {}
@@ -425,12 +446,14 @@ def _ring_hexes(world, center, radius: int) -> list:
 
 
 def draw_on_map(r, state, yaw, pitch, zoom) -> None:
-    """Le lieu des situations du joueur : un cercle de pointilles a son rayon
-    et le medaillon au centre."""
+    """Le lieu d'une situation du joueur, seulement quand on la regarde (son
+    medaillon survole, ou sa fenetre ouverte) : un cercle de pointilles a son
+    rayon et le medaillon au centre. Le reste du temps, la carte est libre."""
     from src.kora.globe import hex_to_globe_screen
     from src.kora.render import HUD_HEIGHT, view_params
 
-    items = [s for s in situations.of_tribe(state, state.viewer) if s.center is not None and s.radius > 0]
+    shown = {getattr(r, "situation_hover", None), getattr(r, "situation_open_uid", None)}
+    items = [s for s in situations.of_tribe(state, state.viewer) if s.center is not None and s.radius > 0 and s.uid in shown]
     if not items:
         return
     w, h = r.screen.get_size()

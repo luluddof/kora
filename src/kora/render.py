@@ -1029,8 +1029,9 @@ class Renderer:
         # les panneaux ouverts.
         render_panels.draw_event_cards(self, state, ui)
         if open_fight is None:
-            render_situations.draw_banner(self, state)
+            # La dalle de bataille d'abord : les fiches du bandeau passent dessus.
             render_battle.draw(self, state)
+            render_situations.draw_banner(self, state)
         else:
             self.situation_hits, self.battle_hits = {}, {}
         # Le rapport de bataille ouvert passe par-dessus les cartes et le bandeau.
@@ -1056,6 +1057,7 @@ class Renderer:
             render_situations.draw_window(self, state, ui)
         else:
             self.situation_window = {}
+            self.situation_open_uid = None
         if ui.get("event_open") is not None:
             render_panels.draw_event_modal(self, state, ui)
         if menu_open:

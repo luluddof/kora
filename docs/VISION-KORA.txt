@@ -335,6 +335,10 @@ lente, bandes dessinees petites a taille fixe.
     . "L'IA doit se replier si elle n'a rien a perdre (interceptee en
       allant attaquer, loin de chez elle)." FAIT.
     . 68 peuples : "c'est bon".
+  - "Pour les crises et conjonctures, reduis leur interface, ca prend trop
+    de place." FAIT (0.6.1) : de petits medaillons DANS la barre du haut
+    (jauge en anneau, mois qui restent, detail au survol) ; leur cercle sur
+    la carte seulement au survol ou fenetre ouverte.
   - "Les combats durent plusieurs tics, un par jour (tues, blesses,
     demoralises) ; generaux, terrain selon les troupes et la defense, un jet
     qui ne decide pas de facon binaire." FAIT : battle.py jour apres jour,

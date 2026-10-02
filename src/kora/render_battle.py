@@ -38,7 +38,7 @@ def layout(width: int, height: int) -> dict:
 
     bw = min(PANEL_W, width - TAB_W - 40)
     bx = (width - TAB_W - bw) // 2
-    by = HUD_HEIGHT + 100
+    by = HUD_HEIGHT + 52
     return {
         "box": (bx, by, bw, PANEL_H),
         "retreat": (bx + bw - 190, by + PANEL_H - 42, 170, 30),
