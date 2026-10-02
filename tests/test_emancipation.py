@@ -373,13 +373,16 @@ def test_more_villages_and_disobedience_speed_the_split():
     far.loyalty = 10.0
     indocile = chiefs.autonomy_rate(st, far)
     assert indocile > base
-    # Trois villages de plus : le chef a d'autres soucis.
-    st.tribes[1].knowledge |= {"maisons", "freres"}
+    # Trois villages freres (des peuples de la meme civilisation) : chacun
+    # veut le sien.
     for k, col in enumerate((40, 50, 70)):
         bid = 20 + k
         st.bands[bid] = Band(bid, 1, offset_to_axial(col, 5), 40, 800.0)
+        new = chiefs.secede(st, bid, independence=True)
+        assert new
+        st.tribes[new].knowledge |= set(st.tribes[1].knowledge)
         sites.make_camp(st, bid)
-        villages.found(st, bid)
+        assert villages.found(st, bid) is not None
     assert chiefs.autonomy_rate(st, far) > indocile * 2
     labels = [lab for lab, _v in chiefs.autonomy_parts(st, far)]
     assert any("4 villages" in lab for lab in labels) and any("Indocile" in lab for lab in labels)

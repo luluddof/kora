@@ -17,7 +17,7 @@ CONDS = {
     "season", "terrain", "stock_lt", "stock_ge", "pop_ge", "pop_lt", "winter_long", "chief_band",
     "not_chief_band", "at_camp", "crowded", "leader_trait", "leader_not_trait", "loyalty_lt",
     "near_chief", "chief_stronger", "site_alive", "is_rival", "village", "not_village", "foreign_near",
-    "crafts", "no_trade", "trade_partner",
+    "crafts", "no_trade", "trade_partner", "army_moving",
 }
 
 

@@ -89,13 +89,15 @@ def _column(r, state, bt, x, y, w, bands, attacker, mine_side) -> None:
     start = bt.start_a if attacker else bt.start_d
     killed = sum(bt.killed.get(b.id, 0) for b in bands)
     hurt = sum(b.wounded for b in bands)
+    key = "a" if attacker else "d"
+    fled = sum(d.get("r" + key, 0) for d in bt.days)
     general = bt.general_a if attacker else bt.general_d
     morale = bt.morale_a if attacker else bt.morale_d
     yy = y + 26
     theme.text(r.screen, f"{round(fighters)} combattants sur {round(start)}", "petit", C.lin, (x, yy), w)
     theme.bar(r.screen, (x, yy + 20, w, 8), fighters / max(1.0, start), col)
     yy += 32
-    theme.text(r.screen, f"{killed} morts  ·  {hurt} blessés", "petit", C.alerte if killed else C.lin, (x, yy), w)
+    theme.text(r.screen, f"{killed} morts  ·  {hurt} blessés" + (f"  ·  {fled} ont fui" if fled else ""), "petit", C.alerte if killed else C.lin, (x, yy), w)
     yy += 20
     theme.text(r.screen, f"Général : {general[0]} ({general[1]})" if general and general[0] else "Sans général", "mini", C.cendre, (x, yy), w)
     yy += 18

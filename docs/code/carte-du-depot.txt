@@ -450,6 +450,9 @@ src/kora/population.py  (pas de pygame)
   population equivalente), levable (LEVY_MAX des hommes valides) ; grow,
   add, take_men, kill (poids : FAMINE_WEIGHTS), kill_fighters, wound,
   lose_wounded, mix, split_wounded ; monthly (structure, guerison).
+  Qui fait quoi : occupations (chasse, cueillette, champs, metiers,
+  soldats ; CRAFT_SEX : le sexe de chaque metier), free_for_craft (lu par
+  goods.add_block), occupation_lines.
 
 src/kora/chiefdom.py  (pas de pygame)
   La chefferie : Tribe.levy_rate / granary / families / feast_until.
@@ -459,8 +462,10 @@ src/kora/chiefdom.py  (pas de pygame)
   tributaires : pacte diplo "vassal" (payer = le tributaire), overlord_of,
   vassals_of, make_vassal, village_taken (battle._end) -> carte
   "conquete" (joueur) ou ai_choice, conquer (soumettre / piller), unrest,
-  _pay_vassal, _revolt, village_secedes ; monthly (familles, grenier,
-  tribut, IA).
+  _pay_vassal, _revolt, village_secedes, overthrow (revolte ratee d'un
+  peuple a un seul village) ; kin_villages / kin_of (Villages freres) ;
+  split_extra_villages (un village par peuple : les autres deviennent des
+  freres tributaires) ; monthly (familles, grenier, tribut, IA).
 
 src/kora/production.py  (pas de pygame)
   Le savoir-faire des villages : Tribe.efficiency (genre -> 1,0..EFF_MAX ;
@@ -886,6 +891,9 @@ test_diplo.py              contacts, raisons, pactes, cadeaux,
 test_events.py             evenements bien formes, cartes, suites
 test_ui_hover.py           la souris partout sur chaque ecran : aucune
                            fiche au survol ne plante
+test_one_village.py        un village par peuple, villages freres, chaines
+                           de tributaires, metiers selon le sexe, fuite,
+                           repli de l'IA, loups des troupes
 test_war_chiefdom.py       population en classes, batailles en jours,
                            fortune non binaire, general, repli, conquete,
                            tributaires, chefferie, revolte, sauvegarde

@@ -71,6 +71,7 @@ MOD_TEXT = {
     "soumis": ("Vous les avez soumis", "Ils vous ont soumis", 0.2),
     "revolte": ("Ils se sont révoltés", "Vous vous êtes révoltés", 0.3),
     "protection": ("Ils sont sous votre protection", "Vous êtes sous leur protection", 0.2),
+    "freres": ("Un village né du vôtre", "Votre village est né du leur", 0.1),
 }
 
 
@@ -298,6 +299,11 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
             out.append(("Suzerain et tributaire", -8.0))
         elif p.kind == "commerce":
             out.append(("Accord commercial", 8.0))
+    # Villages freres : la meme civilisation, ou suzerain et tributaire.
+    from src.kora import chiefdom
+
+    if b in chiefdom.kin_of(state, a) or a in chiefdom.kin_of(state, b):
+        out.append(("Villages frères", 15.0))
     for t in (a, b):
         chief = _chief_traits(state, t)
         if "querelleur" in chief:

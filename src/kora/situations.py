@@ -1267,7 +1267,7 @@ class Revolte(Spec):
     icon = "faucille"
     about = "Le chef prend trop : les cultivateurs cachent le grain, les familles murmurent, on parle de partir."
     goal = "Rendre au peuple ce qu'on lui prend : baisser le prélèvement, distribuer le grenier du chef, ou mater la révolte par la force. La jauge monte quand le prélèvement est léger et les villages calmes."
-    fail = "Ratée : un village fait sécession et devient un peuple à part."
+    fail = "Ratée : le chef est renversé (un nouveau chef, le prélèvement aboli, prestige -15)."
     stages = (
         ("Le grain caché", "On cache des jarres sous les maisons ; la part du chef arrive moins pleine.", {"stability": -8, "field_yield": 0.9}),
         ("La révolte ouverte", "Des villages refusent de payer ; les familles se rangent d'un côté ou de l'autre.", {"stability": -15, "field_yield": 0.8}),
@@ -1350,8 +1350,12 @@ class Revolte(Spec):
         from src.kora import chiefdom
 
         tid = next(iter(inst.participants), None)
-        if tid is not None:
-            chiefdom.village_secedes(state, tid)
+        if tid is None:
+            return
+        # Un peuple n'a qu'un village en cet age : le chef est renverse
+        # (une vieille partie a plusieurs villages : le plus grand s'en va).
+        if not chiefdom.village_secedes(state, tid):
+            chiefdom.overthrow(state, tid)
 
 
 class RevolteTributaires(Spec):

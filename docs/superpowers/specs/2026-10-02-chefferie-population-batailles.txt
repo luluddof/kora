@@ -135,3 +135,42 @@ les jours de bataille ne mangent plus des semaines) ; empreinte : identique
 tant qu'il n'y a ni bataille ni levée (la population en classes ne change
 rien d'autre), puis ré-enregistrée ; essais réseau et graines ; captures sur
 SA partie (copie, an 55, Litasen).
+
+
+5. APRÈS L'AUDIT (0.6.0)
+------------------------
+Ses réponses à l'audit de sa partie :
+  - Chiens de chasse : l'événement des loups vient aussi aux troupes en
+    marche (loups_troupe, puis louveteaux_troupe) : un peuple fixé peut
+    l'avoir.
+  - UN PEUPLE = UN VILLAGE (en cet âge) : la fondation d'un second village
+    est bloquée ; une vieille partie à plusieurs villages se défait d'elle-
+    même (chiefdom.split_extra_villages) : le village du chef reste au
+    peuple, chacun des autres devient un peuple frère, son tributaire.
+    « Villages frères » demande 2 villages de sa civilisation (ou de ses
+    tributaires) ; il donne relation +15 avec eux, leurs renforts au combat,
+    stabilité +10. L'émancipation des clans compte les villages de la
+    civilisation. Une révolte ratée renverse le chef (plus de sécession
+    d'un village : il n'y en a qu'un).
+  - QUI FAIT QUOI (population.occupations) : chasse (hommes), cueillette
+    (femmes), champs (les deux), métiers (potières et tisserandes :
+    femmes ; tailleurs de silex et pêcheurs : hommes ; sauniers et
+    pelletiers : les deux), à la guerre (le temps de la levée). Une équipe
+    de métier exige des gens du bon sexe ; les bras des champs se comptent
+    après les métiers ; les soldats rentrent à leurs travaux.
+  - CHAÎNES DE TRIBUTAIRES : un peuple soumis change de suzerain et garde
+    ses propres tributaires ; qui soumet un peuple placé au-dessus de lui
+    se libère d'abord de son suzerain (pas de cercle).
+  - FUITE : sous 50 de moral, une part des combattants s'enfuit chaque
+    jour (8 % au plus, au hasard du jour) : les déserteurs d'une troupe
+    rentrent au village, les hommes d'un clan lâchent le combat.
+  - REPLI DE L'IA : quand elle perd (rapport de force et moral sous 0,8) et
+    qu'elle n'a rien à perdre : l'attaquant, une troupe, une bande
+    interceptée en marche, ou loin de chez elle sans familles ; un clan qui
+    couvre ses familles ne cède qu'au bord de la déroute. IA seule, 40 ans :
+    un quart des batailles finit en repli, les anéantissements passent de
+    9 à 1.
+Vérifié : 515 tests (test_one_village 8), empreinte ré-enregistrée, essais
+graines (SA partie an 45 -> 57) et réseau identiques ; sa partie (copie) 10
+ans : un village par peuple, Villages frères à sa portée (11 villages
+frères dans sa civilisation), Confédération et Routes du sel aussi.

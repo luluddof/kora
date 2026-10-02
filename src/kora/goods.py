@@ -293,6 +293,13 @@ def add_block(state, site, cid: str) -> str:
         return f"Tous les gisements sont pris ({top})"
     if total_teams(site) >= team_cap(band):
         return f"Plus de bras (une équipe par {TEAM_POP} habitants)"
+    from src.kora import population
+
+    # Chaque metier ses gens : les potieres et les tisserandes sont des femmes,
+    # les tailleurs de silex et les pecheurs des hommes.
+    if population.free_for_craft(state, band, cid) < TEAM:
+        sex = population.CRAFT_SEX.get(cid, "")
+        return f"Il manque {population.SEX_WORD[sex]} valides pour ce métier ({TEAM} par équipe)"
     return ""
 
 

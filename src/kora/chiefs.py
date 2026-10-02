@@ -413,11 +413,19 @@ def _autonomy(state, band) -> tuple[float, list]:
     if villages.nearest_village(state, band, villages.NEAR) is not None:
         rate *= AUTONOMY_NEAR
         parts.append(("Près d'un de vos villages", f"x{AUTONOMY_NEAR:.1f}"))
-    count = len(sites.of_tribe(state, band.tribe_id, "village"))
+    # Plus la civilisation a de villages (le sien, ses freres, ses
+    # tributaires), plus les clans veulent le leur.
+    own = len(sites.of_tribe(state, band.tribe_id, "village"))
+    if own:
+        from src.kora import chiefdom
+
+        count = own + chiefdom.kin_villages(state, band.tribe_id)
+    else:
+        count = 0
     if count > 1:
         pull = 1.0 + AUTONOMY_VILLAGE_PULL * (count - 1)
         rate *= pull
-        parts.append((f"{count} villages : le chef a d'autres soucis", f"x{pull:.1f}"))
+        parts.append((f"{count} villages dans votre civilisation : chacun veut le sien", f"x{pull:.1f}"))
     return rate, [(label, v.replace(".", ",")) for label, v in parts]
 
 

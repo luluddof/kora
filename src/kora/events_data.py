@@ -65,6 +65,51 @@ EVENTS: dict[str, Event] = {
             ),
         ),
         Event(
+            "loups_troupe",
+            "Les loups suivent la colonne",
+            "La neige tombe sur la marche de {band}. Chaque soir, des loups tournent autour du camp "
+            "des guerriers et emportent ce qui traîne de la viande.",
+            conds=(("army_moving",), ("season", "automne", "hiver"), ("terrain", *HUNT_LAND)),
+            weight=0.05,
+            cooldown=52,
+            mood="danger",
+            options=(
+                Option(
+                    "Les chasser à l'épieu",
+                    outcomes=(
+                        Outcome(0.6, (("prestige", 2), ("renown", 6)), (), "Les guerriers chassent la meute : on en parlera au village."),
+                        Outcome(0.4, (("stock", -2),), (), "La meute s'enfuit avec une part des vivres."),
+                    ),
+                    ai=1.0,
+                ),
+                Option(
+                    "Leur laisser les restes",
+                    effects=(("stock", -1),),
+                    follow=(Follow("louveteaux_troupe", 0.4, (4, 12)),),
+                    text="Chaque soir, on jette les os loin du camp : les loups suivent, sans approcher.",
+                    ai=1.3,
+                ),
+            ),
+        ),
+        Event(
+            "louveteaux_troupe",
+            "Des louveteaux dans la troupe",
+            "Un guerrier de {band} rapporte des louveteaux trouvés près des os laissés aux loups. "
+            "Ils suivent les hommes comme leurs frères.",
+            trigger="follow",
+            conds=(("no_flag", "louveteaux"),),
+            mood="chance",
+            options=(
+                Option(
+                    "Les garder",
+                    effects=(("flag", "louveteaux"),),
+                    text="Les jeunes loups grandiront au village. Un savoir devient possible : Chiens de chasse.",
+                    ai=1.5,
+                ),
+                Option("Les laisser", text="On laisse les louveteaux à la neige."),
+            ),
+        ),
+        Event(
             "loups_reviennent",
             "La grande louve",
             "Les loups sont revenus, plus nombreux. Une grande louve grise les mène, et elle n'a "

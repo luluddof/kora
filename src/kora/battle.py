@@ -304,6 +304,15 @@ WOUNDED_LOST = {"deroute": 0.5, "retraite": 0.15}
 # Au mur d'un village attaque : les hommes valides, et une part des femmes.
 WALL_WOMEN = 0.3
 GENERAL_STEP = 0.06
+# Sous ce moral, des combattants fuient (une part, jamais tous, pas chaque
+# jour pareil) : une troupe perd ses deserteurs (ils rentrent au village),
+# un clan ses hommes qui ne se battent plus.
+FLEE_MORALE = 50.0
+FLEE_RATE = 0.08
+# L'IA se replie quand elle perd et n'a rien a perdre : loin de chez elle,
+# interceptee, ou une troupe qui se brise.
+AI_LOSING = 0.8
+AI_FAR = 12
 
 
 @dataclass
@@ -333,6 +342,8 @@ class Battle:
     morale0_a: float = 0.0
     morale0_d: float = 0.0
     units0: dict = field(default_factory=dict)
+    fled: dict = field(default_factory=dict)
+    intercepted: str = ""
 
 
 def battles(state) -> list:
@@ -401,7 +412,7 @@ def _now(state, bt, attacker: bool) -> Side:
     bands = _alive(state, bt.attackers if attacker else bt.defenders)
     h = bt.hex
     terrain = state.world.terrain(h)
-    start = {b.id: fighters_now(b, attacker) for b in bands}
+    start = {b.id: max(0.0, fighters_now(b, attacker) - bt.fled.get(b.id, 0)) for b in bands}
     quality = {b.id: sim.band_quality(state, b) for b in bands}
     cover = 1.0
     if not attacker and bands:
@@ -445,8 +456,12 @@ def start(state, attacker: Band, defender: Band, h, hunted: bool = False) -> Bat
         morale0_a=a.morale, morale0_d=d.morale,
         units0={b.id: [list(u) for u in b.units] for b in a.bands + d.bands if b.kind == "armee"},
     )
-    from src.kora.types import stay_order
+    from src.kora.types import OrderKind, stay_order
 
+    # Intercepte : le defenseur marchait lui-meme a l'attaque (ou une troupe
+    # loin de chez elle).
+    if defender.order.kind is OrderKind.MARCH_TO_BAND or (defender.kind == "armee" and not defender.homebound):
+        bt.intercepted = "d"
     for b in a.bands + d.bands:
         if b.position == h and not b.village:
             b.path = []
@@ -530,10 +545,14 @@ def day(state, bt) -> bool:
     ka, wa = _hits(state, bt, a, hit_a, prudent_a)
     bt.morale_d = max(0.0, bt.morale_d - SHOCK * (kd + wd) / bt.start_d - PRESSURE * max(0.0, min(MAX_RATIO, pa / max(0.1, pd)) - 1.0))
     bt.morale_a = max(0.0, bt.morale_a - SHOCK * (ka + wa) / bt.start_a - PRESSURE * max(0.0, min(MAX_RATIO, pd / max(0.1, pa)) - 1.0))
+    # Les demoralises fuient.
+    ra = _flee(state, bt, _now(state, bt, True), bt.morale_a, rng)
+    rd = _flee(state, bt, _now(state, bt, False), bt.morale_d, rng)
     bt.day += 1
     bt.days.append({"ka": ka, "wa": wa, "kd": kd, "wd": wd, "ma": round(bt.morale_a, 1), "md": round(bt.morale_d, 1),
-                    "fa": round(fa, 2), "fd": round(fd, 2)})
+                    "fa": round(fa, 2), "fd": round(fd, 2), "ra": ra, "rd": rd})
     a, d = _now(state, bt, True), _now(state, bt, False)
+    _ai_retreat(state, bt, a, d)
     if bt.morale_a < ROUT or bt.morale_d < ROUT or a.total() <= 0 or d.total() <= 0:
         broken = a if (a.total() <= 0 or (d.total() > 0 and bt.morale_a <= bt.morale_d)) else d
         _end(state, bt, a, d, broken, "deroute")
@@ -546,6 +565,71 @@ def day(state, bt) -> bool:
         _end(state, bt, a, d, broken, "retraite")
         return True
     return False
+
+
+def _flee(state, bt, side: Side, morale: float, rng) -> int:
+    """Sous FLEE_MORALE, une part des combattants s'enfuit (plus le moral est
+    bas, plus ils sont nombreux ; jamais tous, pas chaque jour pareil)."""
+    from src.kora import population, villages
+
+    if morale >= FLEE_MORALE or not side.bands:
+        return 0
+    share = FLEE_RATE * (FLEE_MORALE - morale) / FLEE_MORALE * (0.5 + rng.random())
+    gone = 0
+    for b in side.bands:
+        n = int(math.floor(side.now[b.id] * share))
+        if n <= 0:
+            continue
+        if b.kind == "armee":
+            # Des deserteurs : ils rentrent chez eux.
+            n = min(n, b.population - b.wounded - 1)
+            if n <= 0:
+                continue
+            home = villages.home_of(state, b)
+            _kill(b, n)
+            band = villages.band_of(state, home) if home is not None else None
+            if band is not None:
+                population.add(band, n, "hommes")
+        else:
+            bt.fled[b.id] = bt.fled.get(b.id, 0) + n
+        gone += n
+    return gone
+
+
+def _side_tribes(state, ids) -> set:
+    return {state.bands[b].tribe_id for b in ids if b in state.bands}
+
+
+def _ai_retreat(state, bt, a: Side, d: Side) -> None:
+    """L'IA se replie quand elle perd et n'a rien a perdre : elle n'est pas
+    au mur de son village, et elle est loin de chez elle, ou interceptee,
+    ou c'est une troupe ; ou son moral s'effondre."""
+    from src.kora import sites
+
+    if bt.retreat or bt.outcome:
+        return
+    for side, key, ids in ((a, "a", bt.attackers), (d, "d", bt.defenders)):
+        if not side.bands or any(sim.is_human(state, t) for t in _side_tribes(state, ids)):
+            continue
+        if any(b.village for b in side.bands):
+            continue
+        other = d if side is a else a
+        mine_m = bt.morale_a if key == "a" else bt.morale_d
+        their_m = bt.morale_d if key == "a" else bt.morale_a
+        ratio = side.power() * max(1.0, mine_m) / max(0.1, other.power() * max(1.0, their_m))
+        if ratio >= AI_LOSING:
+            continue
+        main = side.bands[0]
+        homes = [s.hex for s in sites.of_tribe(state, main.tribe_id) if s.kind in ("village", "camp")]
+        far = not homes or min(state.world.distance(h, main.position) for h in homes) > AI_FAR
+        # Rien a perdre : l'attaquant (il peut renoncer), une troupe, une bande
+        # interceptee en marche, ou loin de chez elle sans familles a couvrir.
+        families = main.kind != "armee" and key == "d"
+        nothing = key == "a" or main.kind == "armee" or bt.intercepted == key or (far and not families)
+        # Un clan qui couvre ses familles ne cede qu'au bord de la deroute.
+        if nothing or mine_m < ROUT + 7:
+            bt.retreat = key
+            return
 
 
 def advance(state, days: int, humans: bool) -> None:
@@ -760,6 +844,7 @@ def _side_report(state, bt, side: Side, ids: list, before: dict, pursuit: int, k
         "lost": sum(before.get(b, 0) - now[b] for b in ids),
         "killed": sum(bt.killed.get(b, 0) for b in ids),
         "wounded": sum(bt.hurt.get(b, 0) for b in ids),
+        "fled": sum(d.get("r" + key, 0) for d in bt.days),
         "pursuit": pursuit,
         "power": round(sum(side.start[b.id] * side.quality[b.id] for b in side.bands) * math.sqrt(side.cover), 1) if side.bands else 0.0,
         "hits": [d["k" + key] + d["w" + key] for d in bt.days],
@@ -862,6 +947,7 @@ def to_json(bt) -> dict:
         "general_a": list(bt.general_a), "general_d": list(bt.general_d), "retreat": bt.retreat,
         "morale0_a": bt.morale0_a, "morale0_d": bt.morale0_d,
         "units0": [[k, v] for k, v in sorted(bt.units0.items())],
+        "fled": [[k, v] for k, v in sorted(bt.fled.items())], "intercepted": bt.intercepted,
     }
 
 
@@ -884,6 +970,7 @@ def from_json(d: dict):
             retreat=str(d.get("retreat", "")),
             morale0_a=float(d.get("morale0_a", 0.0)), morale0_d=float(d.get("morale0_d", 0.0)),
             units0={int(k): [list(u) for u in v] for k, v in d.get("units0", [])},
+            fled={int(k): int(v) for k, v in d.get("fled", [])}, intercepted=str(d.get("intercepted", "")),
         )
     except (KeyError, ValueError, TypeError):
         return None

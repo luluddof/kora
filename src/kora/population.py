@@ -280,3 +280,101 @@ def lines(band) -> list[str]:
     if extra:
         out.append(" · ".join(extra))
     return out
+
+
+# --- qui fait quoi : les metiers de la population active ---------------------------
+#
+# Les adultes valides travaillent : la chasse (des hommes), la cueillette
+# (des femmes), les champs (les deux), les metiers (chacun selon son metier),
+# et, le temps d'une levee, la guerre (des hommes : soldat est un metier tant
+# que la troupe existe ; dissoute, ils retournent a leurs autres travaux).
+
+# Les metiers et le sexe de ceux qui les font ("" : les deux).
+CRAFT_SEX = {"potiers": "femmes", "tisserands": "femmes", "tailleurs": "hommes", "pecheurs": "hommes", "sauniers": "", "pelletiers": ""}
+CRAFT_WORKERS = {"potiers": "potières", "tisserands": "tisserandes", "tailleurs": "tailleurs de silex", "pecheurs": "pêcheurs", "sauniers": "sauniers", "pelletiers": "pelletiers"}
+SEX_WORD = {"hommes": "des hommes", "femmes": "des femmes", "": "hommes et femmes"}
+
+
+def _craft_take(cid: str, need: int, men: int, women: int) -> tuple[int, int]:
+    """(hommes, femmes) pris par une equipe de ce metier."""
+    sex = CRAFT_SEX.get(cid, "")
+    if sex == "hommes":
+        return min(need, men), 0
+    if sex == "femmes":
+        return 0, min(need, women)
+    m = min(men, need // 2)
+    w = min(women, need - m)
+    m = min(men, need - w)
+    return m, w
+
+
+def occupations(state, band) -> dict:
+    """Qui fait quoi dans une bande : {"chasse", "cueillette", "champs",
+    "metiers" (metier -> gens), "soldats" (partis a la guerre), "valides"}."""
+    men, women = fit_men(band), fit_women(band)
+    out = {"chasse": 0, "cueillette": 0, "champs": 0, "metiers": {}, "soldats": 0, "valides": men + women}
+    if band.kind == "armee":
+        out["soldats"] = men
+        return out
+    if band.village:
+        from src.kora import goods, villages
+
+        site = villages.site_of(state, band)
+        if site is not None:
+            for cid, n in sorted(goods.teams(site).items()):
+                if n <= 0 or cid not in goods.CRAFTS:
+                    continue
+                m, w = _craft_take(cid, goods.TEAM * n, men, women)
+                men -= m
+                women -= w
+                out["metiers"][cid] = m + w
+            fields = len(site.data.get("fields", []))
+            need = int(round(fields * villages.FIELD_HANDS * ACTIVE_NORM))
+            free = men + women
+            take = min(need, free)
+            if take > 0 and free > 0:
+                m = int(round(take * men / free))
+                w = take - m
+                men -= m
+                women -= w
+                out["champs"] = take
+            out["soldats"] = sum(
+                u[1] for a in state.bands.values() if a.kind == "armee" and a.tribe_id == band.tribe_id for u in a.units if u[2] == site.id
+            )
+    out["chasse"] = men
+    out["cueillette"] = women
+    return out
+
+
+def free_for_craft(state, band, cid: str) -> int:
+    """Combien de gens du bon sexe pourraient encore entrer a ce metier."""
+    from src.kora import goods, villages
+
+    men, women = fit_men(band), fit_women(band)
+    site = villages.site_of(state, band)
+    if site is not None:
+        for other, n in sorted(goods.teams(site).items()):
+            if n <= 0 or other not in goods.CRAFTS:
+                continue
+            m, w = _craft_take(other, goods.TEAM * n, men, women)
+            men -= m
+            women -= w
+    sex = CRAFT_SEX.get(cid, "")
+    return men if sex == "hommes" else women if sex == "femmes" else men + women
+
+
+def occupation_lines(state, band) -> list[str]:
+    o = occupations(state, band)
+    parts = []
+    if o["chasse"]:
+        parts.append(f"{o['chasse']} à la chasse")
+    if o["cueillette"]:
+        parts.append(f"{o['cueillette']} à la cueillette")
+    if o["champs"]:
+        parts.append(f"{o['champs']} aux champs")
+    for cid, n in o["metiers"].items():
+        parts.append(f"{n} {CRAFT_WORKERS.get(cid, cid)}")
+    if o["soldats"] and band.kind != "armee":
+        parts.append(f"{o['soldats']} à la guerre")
+    return [" · ".join(parts)] if parts else []
+

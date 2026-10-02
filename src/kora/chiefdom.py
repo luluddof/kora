@@ -73,6 +73,72 @@ CHARGE_TEXT = {
 }
 
 
+def kin_villages(state, tid: int) -> int:
+    """Villages freres : ceux des autres peuples de sa civilisation, et ceux
+    de ses tributaires."""
+    from src.kora.peoples import civ_of
+
+    tribe = state.tribes.get(tid)
+    if tribe is None:
+        return 0
+    civ = civ_of(state, tribe)
+    vs = set(vassals_of(state, tid))
+    n = 0
+    for s in state.sites.values():
+        if s.kind != "village" or s.tribe_id == tid or s.tribe_id not in state.tribes:
+            continue
+        if s.tribe_id in vs or civ_of(state, state.tribes[s.tribe_id]) == civ:
+            n += 1
+    return n
+
+
+def kin_of(state, tid: int) -> set:
+    """Les peuples freres d'un peuple qui connait Villages freres : ceux de
+    sa civilisation qui ne se sont pas razzies l'un l'autre depuis un an, et
+    ses tributaires. (Pas la relation : elle compte deja les freres.)"""
+    from src.kora import diplo, tech
+    from src.kora.peoples import civ_of
+
+    tribe = state.tribes.get(tid)
+    if tribe is None or not tech.bonuses(tribe).kin:
+        return set()
+    civ = civ_of(state, tribe)
+    alive = {b.tribe_id for b in state.bands.values() if b.population > 0}
+    out = set(vassals_of(state, tid))
+    for t, other in state.tribes.items():
+        if t == tid or t not in alive or civ_of(state, other) != civ:
+            continue
+        if diplo._recent_raid(state, tid, t, 52) is None and diplo._recent_raid(state, t, tid, 52) is None:
+            out.add(t)
+    return out
+
+
+def split_extra_villages(state) -> None:
+    """En cet age, un peuple ne tient qu'un village (anciennes parties : il en
+    avait plusieurs). Le village du chef reste le sien ; chacun des autres
+    devient un peuple frere, tributaire du premier."""
+    from src.kora import chiefs, villages
+
+    for tid in sorted(state.tribes):
+        mine = _village_bands(state, tid)
+        if len(mine) <= 1:
+            continue
+        heart = chiefs.chief_band(state, tid)
+        keep = heart if heart in mine else max(mine, key=lambda b: (b.population, -b.id))
+        for band in sorted(mine, key=lambda b: b.id):
+            if band is keep or chiefs.is_chief_band(state, band):
+                continue
+            site = villages.site_of(state, band)
+            new = chiefs.secede(state, band.id, independence=True)
+            if not new or site is None:
+                continue
+            site.tribe_id = band.tribe_id
+            tribe = state.tribes[tid]
+            tribe.families = [f for f in tribe.families if f.get("village") != site.id]
+            make_vassal(state, tid, band.tribe_id, "fondation")
+            _note(state, tid, LogKind.POLITIQUE, f"{villages.name(site)} a désormais son propre chef : un village frère, votre tributaire.", site.hex)
+
+
 def has_chiefdom(state, tid: int) -> bool:
     return any(s.kind == "village" and s.tribe_id == tid for s in state.sites.values())
 
@@ -324,16 +390,38 @@ def vassals_of(state, tid: int) -> list[int]:
 def make_vassal(state, lord: int, vassal: int, how: str = "force") -> None:
     from src.kora import diplo
 
-    k = diplo.pair(lord, vassal)
     d = state.diplo
-    kept = [p for p in d.pacts.get(k, []) if p.kind not in ("tribut", "treve", "vassal")]
-    if kept:
-        d.pacts[k] = kept
-    else:
-        d.pacts.pop(k, None)
+
+    def drop(a: int, b: int, kinds) -> None:
+        k = diplo.pair(a, b)
+        kept = [p for p in d.pacts.get(k, []) if p.kind not in kinds]
+        if kept:
+            d.pacts[k] = kept
+        else:
+            d.pacts.pop(k, None)
+
+    drop(lord, vassal, ("tribut", "treve", "vassal"))
+    # Le vaincu change de suzerain : il quitte l'ancien (il garde ses propres
+    # tributaires).
+    old = overlord_of(state, vassal)
+    if old:
+        drop(old, vassal, ("vassal",))
+    # Pas de cercle : si le vaincu etait au-dessus du vainqueur (son suzerain,
+    # ou celui de son suzerain), le vainqueur s'en libere.
+    chain = []
+    up = overlord_of(state, lord)
+    while up and up not in chain:
+        chain.append(up)
+        up = overlord_of(state, up)
+    if vassal in chain:
+        # Il conquiert un peuple au-dessus de lui : il se libere de son
+        # propre suzerain d'abord.
+        drop(lord, chain[0], ("vassal",))
     diplo.add_pact(state, lord, vassal, "vassal", 0, payer=vassal)
     if how == "force":
         diplo.add_mod(state, lord, vassal, "soumis", -15, actor=lord)
+    elif how == "fondation":
+        diplo.add_mod(state, lord, vassal, "freres", 30, actor=lord)
     lname, vname = state.tribes[lord].name, state.tribes[vassal].name
     _note(state, lord, LogKind.POLITIQUE, f"Les {vname} sont vos tributaires : ils paieront chaque mois et vous suivront à la guerre.")
     _note(state, vassal, LogKind.POLITIQUE, f"Vous voilà tributaires des {lname} : vous leur paierez chaque mois une part de vos réserves.")
@@ -348,7 +436,8 @@ def village_taken(state, winner, loser, site_id: int) -> str:
 
     w, l = winner.tribe_id, loser.tribe_id
     if overlord_of(state, l) == w:
-        return ""
+        # Deja son tributaire (il s'etait dresse contre lui) : on pille.
+        return conquer(state, w, l, site_id, "piller")
     if is_human(state, w):
         if events.hook(state, "conquete", tribe_id=w, band_id=winner.id, other=l, site_id=site_id):
             return ""
@@ -359,8 +448,6 @@ def village_taken(state, winner, loser, site_id: int) -> str:
 def ai_choice(state, w: int, l: int) -> str:
     from src.kora import diplo
 
-    if overlord_of(state, l) or vassals_of(state, l):
-        return "piller"
     if diplo.relation(state, w, l) < -60:
         return "piller"
     return "soumettre" if has_chiefdom(state, w) else "piller"
@@ -463,6 +550,7 @@ def monthly(state) -> None:
     from src.kora import diplo, villages
     from src.kora.sim import gain_prestige, is_human
 
+    split_extra_villages(state)
     for tid in sorted(state.tribes):
         tribe = state.tribes[tid]
         if not has_chiefdom(state, tid):
@@ -527,6 +615,31 @@ def monthly(state) -> None:
                 _note(state, lord, LogKind.POLITIQUE, f"Le tribut des {state.tribes[vassal].name} : {paid:.0f} vivres.")
             # Qui gronde : une crise du suzerain (situations.RevolteTributaires).
     del diplo
+
+
+def overthrow(state, tid: int) -> None:
+    """Une revolte ratee, dans un peuple d'un seul village : le chef est
+    renverse. Un autre prend sa place ; le prelevement est aboli, la moitie
+    du grenier revient au village ; le peuple perd du prestige."""
+    from src.kora import chiefs, villages
+
+    tribe = state.tribes.get(tid)
+    if tribe is None:
+        return
+    heart = chiefs.chief_band(state, tid)
+    tribe.prestige = max(0, tribe.prestige - 15)
+    tribe.levy_rate = 0
+    give = tribe.granary / 2.0
+    tribe.granary -= give
+    bands = _village_bands(state, tid)
+    if bands:
+        bands[0].stock += give
+    for fam in tribe.families or []:
+        fam["favour"] = max(fam["favour"], 50.0)
+    site = villages.site_of(state, bands[0]) if bands else None
+    _note(state, tid, LogKind.POLITIQUE, "La révolte l'emporte : le chef est renversé. Le nouveau chef abolit le prélèvement.", site.hex if site else None)
+    if heart is not None and heart.leader is not None:
+        chiefs.leader_dies(state, heart, "renversé par les siens")
 
 
 def village_secedes(state, tid: int) -> int:

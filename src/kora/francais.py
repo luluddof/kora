@@ -93,6 +93,7 @@ A_APRES = set("jusqu grace grâce face quant pret prêt prets prêts prete prêt
 A_VERBE = set("y il elle on qui ce cela ça ca chacun personne rien".split())
 # Apres coup : les « à » qui etaient des verbes.
 APRES = [
+    (r"\bpeuple à son\b", "peuple a son"),
     (r"\bà une idée\b", "a une idée"), (r"\bà un nom\b", "a un nom"), (r"\bclan à son chef\b", "clan a son chef"),
     (r"\bà tout emporte\b", "a tout emporté"), (r"\bà tout pris\b", "a tout pris"), (r"\ba tourne\b", "a tourné"),
     (r"([lL]\\?')honoré\b", r"\1honore"),

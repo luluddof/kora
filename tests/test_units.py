@@ -80,24 +80,6 @@ def test_a_dissolved_troop_walks_home_and_rejoins_the_village():
     assert village.population == left + n
 
 
-def test_companies_from_two_villages_go_back_each_to_its_own():
-    st, village, site = _village()
-    other = Band(9, 1, offset_to_axial(40, 15), 150, 5000.0)
-    st.bands[9] = other
-    chiefs.ensure(st)
-    st.tribes[1].knowledge.add("maisons")
-    sites.make_camp(st, 9)
-    site2 = villages.found(st, 9)
-    a = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"])
-    b = villages.raise_army(st, 9, villages.LEVY_SHARE["poignee"])
-    b.position = a.position = offset_to_axial(35, 15)
-    merge_bands(st, a.id)
-    assert {u[2] for u in a.units} == {site.id, site2.id}
-    villages.dissolve(st, a.id)
-    walkers = [x for x in st.bands.values() if x.kind == "armee" and x.homebound]
-    assert {x.home for x in walkers} == {site.id, site2.id}
-
-
 def test_archers_shoot_first_and_shields_hold():
     st, village, site = _village(known=("huttes", "semis", "arc", "palissade"))
     # Loin les unes des autres : pas de renforts entre elles.

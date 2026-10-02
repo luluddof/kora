@@ -908,10 +908,23 @@ def hands_mult(band, fields: int, busy: int = 0) -> float:
     return max(0.3, hands / need)
 
 
-def field_hands_mult(site, band) -> float:
-    from src.kora import goods
+def field_hands_mult(site, band, state=None) -> float:
+    """Assez de bras aux champs ? Les adultes valides qui ne sont pas aux
+    metiers (population.occupations) ; les hommes partis a la guerre manquent."""
+    from src.kora import goods, population
 
-    return hands_mult(band, len(site.data.get("fields", [])), goods.workers(site, band))
+    fields = len(site.data.get("fields", []))
+    need = fields * FIELD_HANDS * population.ACTIVE_NORM
+    if need <= 0:
+        return 1.0
+    men, women = population.fit_men(band), population.fit_women(band)
+    for cid, n in sorted(goods.teams(site).items()):
+        if n > 0 and cid in goods.CRAFTS:
+            m, w = population._craft_take(cid, goods.TEAM * n, men, women)
+            men -= m
+            women -= w
+    hands = men + women
+    return 1.0 if hands >= need else max(0.3, hands / need)
 
 
 def expected_harvest(state, site, band=None) -> float:
@@ -1052,8 +1065,10 @@ def found_block(state, band_id: int) -> str:
     camp = sites.own_site_at(state, band)
     if camp is None or camp.kind != "camp":
         return "Il faut être sur un de vos campements"
-    if len(sites.of_tribe(state, band.tribe_id, "village")) >= know.villages:
-        return f"Villages : {len(sites.of_tribe(state, band.tribe_id, 'village'))}/{know.villages}"
+    if sites.of_tribe(state, band.tribe_id, "village"):
+        # En cet age, un chef ne tient qu'un village : les autres sont ses
+        # tributaires, ou des villages freres independants.
+        return "Votre peuple a son village : un chef n'en tient qu'un (les autres lui sont tributaires, ou frères)"
     if band.population < MIN_FOUND_POP:
         return f"Il faut {MIN_FOUND_POP} personnes"
     if not any(fertility(state, band.tribe_id, h) > 0.35 for h in state.world.hexes_in_radius(camp.hex, FIELD_RADIUS)):

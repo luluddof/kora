@@ -203,18 +203,13 @@ def test_a_dissolved_troop_never_becomes_a_nomad_clan_of_a_settled_people():
     assert population.counts(village)["hommes"] >= n
 
 
-def test_a_troop_whose_village_is_gone_goes_home_to_another_village():
+def test_a_settled_people_holds_a_single_village():
+    """En cet age, un chef ne tient qu'un village : un second ne se fonde pas."""
     st, village, site = _village(pop=120)
     for t in tech.TECHS:
         tech.grant(st.tribes[1], t)
     tech.invalidate()
     st.bands[7] = Band(7, 1, offset_to_axial(45, 15), 100, 3000.0)
     sites.make_camp(st, 7)
-    other = villages.found(st, 7)
-    assert other is not None
-    army = villages.raise_army(st, 1)
-    army.position = offset_to_axial(40, 15)
-    # Le village de la troupe disparait.
-    st.sites.pop(site.id)
-    villages.update(st)
-    assert army.kind == "armee" and army.home == other.id and (army.homebound or army.id not in st.bands)
+    assert "un chef n'en tient qu'un" in villages.found_block(st, 7)
+    assert villages.found(st, 7) is None

@@ -392,7 +392,7 @@ def band_summary(state: GameState, band_id: int) -> dict | None:
         )
         if band.retreating
         else 0,
-        "extra": _people_lines(band) + chiefs.band_lines_extra(state, band) + _village_lines(state, band) + _army_lines(state, band) + _raid_lines(state, band),
+        "extra": _people_lines(band) + _work_lines(state, band) + chiefs.band_lines_extra(state, band) + _village_lines(state, band) + _army_lines(state, band) + _raid_lines(state, band),
         "army": band.kind == "armee",
         "force": band_force(state, band),
         "obeys": chiefs.obeys(state, band),
@@ -442,6 +442,14 @@ def _people_lines(band: Band) -> list[str]:
     if c["blesses"]:
         line += f" · {c['blesses']} blessés"
     return [line]
+
+
+def _work_lines(state: GameState, band: Band) -> list[str]:
+    """Qui fait quoi (population.occupations) : pour un clan, la chasse et la
+    cueillette."""
+    if band.kind == "armee" or band.village:
+        return []
+    return population.occupation_lines(state, band)
 
 
 def band_lines(info: dict) -> list[str]:
@@ -1200,10 +1208,12 @@ def helpers_of(state: GameState, band: Band) -> list[Band]:
     for a, b in state.diplo.pacts:
         if tid in (a, b) and diplo.allied(state, a, b):
             friends.add(b if a == tid else a)
-    # Les tributaires suivent leur suzerain a la guerre.
+    # Les tributaires suivent leur suzerain a la guerre ; avec Villages
+    # freres, les villages de sa civilisation viennent aussi.
     from src.kora import chiefdom
 
     friends.update(chiefdom.vassals_of(state, tid))
+    friends.update(chiefdom.kin_of(state, tid))
     world = state.world
     pool = bands_near(state, band.position, reach) if state.band_grid is not None else state.bands.values()
     for ally in pool:

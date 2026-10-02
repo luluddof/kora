@@ -220,11 +220,15 @@ def test_a_band_in_battle_cannot_walk_away():
 def test_a_battle_in_progress_is_saved_and_goes_on_the_same():
     st = _state(player=True)
     a = _band(st, 1, 1, 120)
-    d = _band(st, 2, 2, 110)
+    d = _band(st, 2, 2, 150)
     chiefs.ensure(st)
+    from src.kora.vision import recompute_vision
+
+    recompute_vision(st)
     _attack(d, a)
     resolve_raids(st)
     battle.day(st, st.battles[0])
+    assert st.battles, "la bataille dure"
     loaded, _v = persist.loads_game(persist.dumps_game(st), st.world)
     assert len(loaded.battles) == 1 and loaded.battles[0].day == 1
     one, two = copy.deepcopy(st), loaded
@@ -339,22 +343,21 @@ def test_a_feast_costs_the_granary_and_calms_the_villages():
     assert "il y a peu" in chiefdom.feast_block(st, 1)
 
 
-def test_too_heavy_a_levy_warns_then_revolts_and_a_failed_revolt_loses_a_village():
+def test_too_heavy_a_levy_warns_then_revolts_and_a_failed_revolt_overthrows_the_chief():
     st = _state(Terrain.VALLEE)
-    for t in tech.TECHS:
-        tech.grant(st.tribes[1], t)
-    tech.invalidate()
-    chief_v, _s1 = _village(st, 1, 1, pop=120, col=10)
-    other, s2 = _village(st, 1, 3, pop=100, col=30)
+    chief_v, s1 = _village(st, 1, 1, pop=120, col=10)
     tribe = st.tribes[1]
     tribe.levy_rate = 30
-    tribe.families = [{"id": 1, "name": "Arvo", "trait": "rites", "charge": "", "favour": 10.0, "village": s2.id}]
+    tribe.granary = 400.0
+    tribe.families = [{"id": 1, "name": "Arvo", "trait": "rites", "charge": "", "favour": 10.0, "village": s1.id}]
+    old_chief = chief_v.leader.name
     assert SPECS_REVOLT().risk(st, 1)
     cands = SPECS_REVOLT().candidates(st)
     assert any(1 in c[2] for c in cands)
     inst = situations._start(st, situations.SPECS["revolte"], None, 0, [1], {})
     situations.act(st, inst.uid, 1, "baisser")
     assert tribe.levy_rate == 10
+    tribe.levy_rate = 30
     inst.until = st.tick_count
     inst.progress = 0.0
     situations.SPECS["revolte"].month = lambda *_a: None
@@ -363,7 +366,9 @@ def test_too_heavy_a_levy_warns_then_revolts_and_a_failed_revolt_loses_a_village
     finally:
         del situations.SPECS["revolte"].month
     assert inst.outcome == "ratee"
-    assert s2.tribe_id != 1, "un village a fait secession"
+    assert chief_v.leader.name != old_chief, "le chef est renverse"
+    assert tribe.levy_rate == 0 and tribe.granary < 400.0
+    assert s1.tribe_id == 1, "le village reste au peuple"
 
 
 def SPECS_REVOLT():

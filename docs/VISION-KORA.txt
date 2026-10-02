@@ -53,6 +53,9 @@ lente, bandes dessinees petites a taille fixe.
       celui du peuple d'origine (8, 12 avec les savoirs).
       La domination d'une cite, puis d'un pays, sur d'autres villages :
       PLUS TARD (mais tout doit y preparer).
+      (2026-10-02, sa regle) EN CET AGE, UN PEUPLE = UN VILLAGE : un chef ne
+      tient directement qu'un village ; les autres lui sont TRIBUTAIRES, ou
+      forment avec lui une civilisation de villages independants (FRERES).
   P4  Les villages ne doivent pas stagner : ils grandissent avec les
       savoirs, exploitent des RESSOURCES (avec des savoirs), et
       ECHANGENT avec les peuples lies par un ACCORD COMMERCIAL. Le
@@ -304,6 +307,34 @@ lente, bandes dessinees petites a taille fixe.
     son peuple (par d'autres voies s'il le faut) ; seul un peuple sans aucun
     village en refait un clan (d'hommes). REGLE : un peuple sedentaire ne
     refait jamais de bande nomade par une troupe.
+  - "Regarde et dis-moi s'il y a des ecarts avec ce que je veux." FAIT
+    (audit de sa partie). Ses reponses, faites en 0.6.0 :
+    . "Chiens de chasse : mets l'evenement des loups pour les armees en
+      mouvement aussi." FAIT (loups_troupe, louveteaux_troupe).
+    . "Villages freres : avoir le controle direct de plusieurs villages ne
+      va pas ; en cet age, un dirigeant tient un village, les autres sont
+      vassalises, ou forment ensemble une civilisation de villages
+      independants." FAIT : un village par peuple (fondation bloquee, les
+      vieilles parties : les autres villages deviennent des peuples freres
+      tributaires) ; Villages freres = 2 villages de sa civilisation ou
+      tributaires ; effet : relation +15, renforts, stabilite +10.
+    . Plafond : "comme tu as corrige le bug, c'est bon."
+    . Savoirs des ages : "on verra plus tard" (en ajouter a ces ages).
+    . "La population active travaille dans differents domaines, le sexe
+      exclut certains domaines ; soldat est un metier le temps de la
+      conscription, puis ils retournent aux autres metiers." FAIT :
+      population.occupations (chasse : hommes, cueillette : femmes, champs,
+      metiers : potieres et tisserandes femmes, tailleurs et pecheurs
+      hommes, a la guerre) ; un metier exige des gens du bon sexe.
+    . "Les peuples n'auront qu'un village ; un village qui a des tributaires
+      et qu'on rend tributaire devient vassal de son vainqueur et garde ses
+      vassaux." FAIT (chaines ; pas de cercle).
+    . "La demoralisation fait aussi partir des troupes, parfois." FAIT
+      (deserteurs qui rentrent au village ; hommes d'un clan qui lachent).
+    . Les renforts figes pendant les jours : "pas si grave pour l'instant".
+    . "L'IA doit se replier si elle n'a rien a perdre (interceptee en
+      allant attaquer, loin de chez elle)." FAIT.
+    . 68 peuples : "c'est bon".
   - "Les combats durent plusieurs tics, un par jour (tues, blesses,
     demoralises) ; generaux, terrain selon les troupes et la defense, un jet
     qui ne decide pas de facon binaire." FAIT : battle.py jour apres jour,
@@ -369,6 +400,11 @@ lente, bandes dessinees petites a taille fixe.
   state.step (un pas = un jour en bataille d'un joueur, sinon une semaine),
   state.tick_count reste le compteur des SEMAINES ; un essai qui veut N
   annees boucle sur tick_count, pas sur le nombre de pas.
+  Fait le 2026-10-02 (0.6.0) : un village par peuple, villages freres,
+  chaines de tributaires, qui fait quoi (metiers selon le sexe), fuite des
+  demoralises, repli de l'IA, loups des troupes. A FAIRE plus tard (sa
+  demande) : de nouveaux savoirs pour ces ages (l'arbre s'epuise vers
+  l'an 50) ; les renforts pendant les jours de bataille.
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes

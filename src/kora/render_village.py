@@ -694,6 +694,10 @@ def _draw_chef(r, state, site, band, lay, ui, mx, my) -> None:
     for line in population.lines(band):
         theme.text(r.screen, line, "petit", C.lin, (lx, yy), lw)
         yy += 19
+    for line in population.occupation_lines(state, band):
+        for part in _wrap(r.tiny, "Qui fait quoi : " + line, lw)[:3]:
+            theme.text(r.screen, part, "mini", C.ocre_jaune, (lx, yy), lw)
+            yy += 16
     theme.text(r.screen, "Seule une part des hommes valides part en guerre.", "mini", C.cendre, (lx, yy), lw)
     yy += 26
     yy = _section(r, lx, yy, lw, "TRIBUTAIRES")
@@ -794,7 +798,9 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         else:
             src = goods.wild_source(state, site, cid) or "vos troupeaux"
             word = "riche" if best >= 0.7 else "correct" if best >= 0.55 else "maigre"
-            info = f"{src.capitalize()} : {count} gisement{'s' if count > 1 else ''}, {word}"
+            from src.kora import population as _pop
+
+            info = f"{src.capitalize()} : {count} gisement{'s' if count > 1 else ''}, {word} · {_pop.SEX_WORD[_pop.CRAFT_SEX.get(cid, '')]}"
             tint = SOFT
         screen.blit(r.tiny.render(_fit(r.tiny, info, right - cx - 52), True, tint), (cx + 50, cy + (28 if ch >= 74 else 20)))
         eff = " · ".join(craft.lines)
@@ -845,8 +851,11 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         yy += 40
     yy = _section(r, sx, yy + 4, sw, "BRAS")
     hands = villages.field_hands_mult(site, band)
+    from src.kora import population as _pop
+
+    occ = _pop.occupation_lines(state, band)
     rows = [
-        (f"{busy} aux métiers, {band.population - busy} aux champs et à la chasse", SOFT),
+        ((occ[0] if occ else f"{busy} aux métiers"), SOFT),
         (f"Récolte rentrée : x{hands:.2f}".replace(".", ",") + ("" if hands >= 1 else " (il manque des bras)"), SOFT if hands >= 1 else WARN),
         (f"Collecte du village : x{goods.forage_mult(site, band):.2f} (les gens de métier chassent moins)".replace(".", ","), SOFT),
     ]
@@ -1241,6 +1250,7 @@ def _side(r, state, rect, side: dict, won: bool, attacker: bool) -> None:
         (f"Combattants : {side['fighters']} -> {side['fighters_left']}", SOFT),
         (f"Gens : {side['pop']} -> {side['left']}", SOFT),
         (f"Morts : {side.get('killed', side['lost'])}  ·  blessés : {side.get('wounded', 0)}"
+         + (f"  ·  {side['fled']} ont fui" if side.get("fled") else "")
          + (f"  ·  {side['pursuit']} perdus dans la fuite" if side.get("pursuit") else ""), BAD if side["lost"] else SOFT),
         (f"Général : {general[0]} (compétence {general[1]})" if general[0] else "Sans général", SOFT),
         (f"Puissance : {side['power']:.0f}".replace(".", ","), SOFT),

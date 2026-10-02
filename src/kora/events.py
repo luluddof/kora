@@ -192,6 +192,8 @@ def names(state, inst) -> dict:
     count = sum(1 for b in state.bands.values() if b.tribe_id == inst.tribe_id and b.population > 0)
     if band is None:
         band_txt = "la tribu"
+    elif band.kind == "armee":
+        band_txt = f"la troupe de {leader}"
     elif count <= 1:
         band_txt = "votre bande"
     elif chiefs.is_chief_band(state, band):
@@ -318,6 +320,9 @@ def check(state, inst, cond) -> bool:
         return bool(band.village)
     if kind == "not_village":
         return not band.village
+    if kind == "army_moving":
+        # Une troupe en marche (les loups suivent les colonnes, l'hiver).
+        return band.kind == "armee" and bool(band.path)
     if kind == "crafts":
         # Des gens de metier au village (goods.py).
         from src.kora import goods, villages
@@ -1168,13 +1173,19 @@ def monthly(state) -> None:
             continue  # l'IA tire un mois sur deux : moins de calcul
         found = []
         bands = _band_scopes(state, tid)
+        # Les troupes en marche : seulement pour les histoires qui les visent.
+        marching = sorted(
+            (b for b in state.bands.values() if b.tribe_id == tid and b.population > 0 and b.kind == "armee" and b.path),
+            key=lambda b: b.id,
+        )
         for ev in pulses:
             if ev.scope == "tribe":
                 inst = _new_instance(state, ev, tid, bands[0].id if bands else 0, {"rival": _rival_id(state, tid)})
                 if _eligible(state, ev, inst):
                     found.append((ev, inst))
                 continue
-            for band in bands:
+            pool = marching if ("army_moving",) in ev.conds else bands
+            for band in pool:
                 inst = _new_instance(state, ev, tid, band.id, {"rival": _rival_id(state, tid)})
                 if _eligible(state, ev, inst):
                     found.append((ev, inst))

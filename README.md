@@ -73,6 +73,9 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   la fortune du jour comptent ; quand une bataille vous touche, le temps passe en jours. Vous pouvez vous replier.
 - Vos gens sont des **enfants, des hommes, des femmes, des anciens, des blessés** : seule une part des hommes valides
   part en guerre. Un village pris n'est pas massacré : vous le **soumettez** (il devient tributaire) ou le pillez.
+- En cet âge, **un peuple n'a qu'un village** : les autres villages de votre civilisation sont des frères
+  indépendants, ou vos tributaires. Chacun travaille selon son sexe et son métier (chasse, cueillette, champs,
+  poterie, silex…) ; un soldat retourne à son travail quand la troupe est dissoute.
 - Avec les villages vient la **chefferie** (écran du village, *Le chef et les familles*) : le grenier du chef (sa part
   des récoltes), les fêtes, les familles qui comptent et leurs charges ; trop prendre mène à la révolte.
 - L'**influence** d'un peuple se projette autour de ses bandes et de ses villages, loin en plaine, à peine en

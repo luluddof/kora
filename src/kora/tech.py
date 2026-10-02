@@ -380,7 +380,7 @@ TECHS: dict[str, Tech] = {
             "Des murs de terre et de bois, des toits de chaume : on vit mieux, on tombe moins malade.",
             prereqs=("campement",),
             conds=(Cond("village_years", 3),),
-            effects={"villages": 1, "disease": 0.6, "village_growth": 1.1},
+            effects={"disease": 0.6, "village_growth": 1.1},
         ),
         Tech(
             "ancetres", "Culte des ancêtres", 4, 6,
@@ -432,10 +432,10 @@ TECHS: dict[str, Tech] = {
         ),
         Tech(
             "freres", "Villages frères", 5, 5,
-            "Des villages nés du même village : un même sang, un même chef.",
+            "Des villages nés du même village : un même sang, chacun son chef. On s'entraide.",
             prereqs=("maisons",),
-            conds=(Cond("villages", 2),),
-            effects={"villages": 2, "stability": 10},
+            conds=(Cond("kin_villages", 2),),
+            effects={"kin": True, "stability": 10},
         ),
         Tech(
             "megalithes", "Pierres levées", 5, 6,
@@ -652,6 +652,9 @@ class Bonuses:
     # ventes sur les routes (le marche refuge).
     prestige_gain: float = 1.0
     trade_price: float = 1.0
+    # Villages freres : les villages de sa civilisation et ses tributaires
+    # sont des freres (diplo, sim.helpers_of).
+    kin: bool = False
 
 
 _MULT = {
@@ -675,7 +678,7 @@ _MULT = {
     "home_defense",
     "gifts",
 }
-_FLAGS = {"alliance", "union", "palisade", "clearing", "trade", "commerce"}
+_FLAGS = {"alliance", "union", "palisade", "clearing", "trade", "commerce", "kin"}
 _CACHE: dict[frozenset, Bonuses] = {}
 NO_BONUS = Bonuses(food={})
 
@@ -907,6 +910,8 @@ def effect_lines(tech: Tech) -> list[str]:
         out.append(f"Prestige gagné : {_pct(e['prestige_gain'])}")
     if e.get("trade_price"):
         out.append(f"Prix de vos ventes sur les routes : {_pct(e['trade_price'])}")
+    if e.get("kin"):
+        out.append("Les villages de votre civilisation et vos tributaires : relation +15, ils viennent en renfort")
     from src.kora.goods import CRAFTS, res_label
 
     for craft in CRAFTS.values():
@@ -1020,6 +1025,10 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
             "allies": _plural(cond.need, "allié"),
         }[kind]
         return have, cond.need, label
+    if kind == "kin_villages":
+        from src.kora import chiefdom
+
+        return chiefdom.kin_villages(state, tribe.id), cond.need, f"{_plural(cond.need, 'village frère')} (de votre civilisation, ou tributaire)"
     if kind in ("villages", "village_years"):
         from src.kora import sites
 
