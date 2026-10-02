@@ -1,6 +1,7 @@
 Kora - 1A. Les voix du peuple et les coutumes (détail, à valider)
 =================================================================
-Date : 2026-10-02. Statut : PROPOSITION DÉTAILLÉE, rien n'est codé.
+Date : 2026-10-02. Statut : MIS DE CÔTÉ à sa demande (« ne fais pas le 1A pour
+l'instant ») ; proposition détaillée, rien n'est codé.
 Demande : "détaille le 1A". Il a validé la chefferie (1B, faite en 0.5.0) et
 annoncé "plus tard, un système de lois" : les coutumes ci-dessous en sont
 la forme tribale ; les lois des cités prendront la suite.

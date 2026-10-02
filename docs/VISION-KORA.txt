@@ -287,8 +287,9 @@ lente, bandes dessinees petites a taille fixe.
     se battent et partent ; "pour l'instant seuls les hommes en travail
     actif, mais pas tous ; plus tard un systeme de LOIS" (a faire : les
     coutumes du 1A en seront la forme tribale).
-  - "Detaille le 1A." FAIT : 2026-10-02-voix-et-coutumes-detail.txt
-    (attend SA validation).
+  - "Detaille le 1A." FAIT : 2026-10-02-voix-et-coutumes-detail.txt.
+  - "Ne fais pas le 1A pour l'instant." NOTE : les voix et coutumes sont
+    mises de cote (le document reste, pour plus tard).
   - "Les combats durent plusieurs tics, un par jour (tues, blesses,
     demoralises) ; generaux, terrain selon les troupes et la defense, un jet
     qui ne decide pas de facon binaire." FAIT : battle.py jour apres jour,
@@ -354,6 +355,8 @@ lente, bandes dessinees petites a taille fixe.
   state.step (un pas = un jour en bataille d'un joueur, sinon une semaine),
   state.tick_count reste le compteur des SEMAINES ; un essai qui veut N
   annees boucle sur tick_count, pas sur le nombre de pas.
+  MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
+  sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes
   les pistes reunies et detaillees dans
   2026-10-02-profondeur-propositions-detaillees.txt (il a demande de
