@@ -40,24 +40,24 @@ OFFER_COOLDOWN = 26
 
 # key -> (vu par celui qui a agi, vu par l'autre, usure par mois)
 MOD_TEXT = {
-    "raid": ("Vous les avez attaques", "Ils vous ont attaques", 1.0),
+    "raid": ("Vous les avez attaqués", "Ils vous ont attaqués", 1.0),
     "accrochage": ("Accrochage", "Accrochage", 1.0),
     "cadeau": ("Vos cadeaux", "Leurs cadeaux", 1.0),
-    "meme_souche": ("Meme souche", "Meme souche", 0.2),
-    "separation": ("Separation", "Separation", 0.5),
+    "meme_souche": ("Même souche", "Même souche", 0.2),
+    "separation": ("Séparation", "Séparation", 0.5),
     "trahison": ("Vous les avez trahis", "Ils vous ont trahis", 0.4),
-    "reputation": ("Votre reputation de traitre", "Leur reputation de traitres", 0.3),
+    "reputation": ("Votre réputation de traître", "Leur réputation de traîtres", 0.3),
     "mariage": ("Mariages entre vos chefs", "Mariages entre vos chefs", 0.3),
-    "pillage": ("Vous avez pille leurs vivres", "Ils ont pille vos vivres", 1.0),
+    "pillage": ("Vous avez pillé leurs vivres", "Ils ont pillé vos vivres", 1.0),
     "tribut_refuse": ("Ils ont refuse votre tribut", "Vous avez refuse leur tribut", 0.8),
     "debauchage": ("Vous avez pris leurs gens", "Ils ont pris vos gens", 0.6),
     "rupture": ("Vous avez rompu un pacte", "Ils ont rompu un pacte", 0.6),
     "accueil": ("Vous les avez bien accueillis", "Ils vous ont bien accueillis", 0.8),
     "chasses": ("Vous les avez chasses", "Ils vous ont chasses", 0.8),
     "entraide": ("Entraide", "Entraide", 0.6),
-    "echanges": ("Echanges reguliers", "Echanges reguliers", 0.3),
+    "echanges": ("Échanges réguliers", "Échanges réguliers", 0.3),
     "route_fermee": ("Vous avez ferme une de leurs routes", "Ils ont ferme une de vos routes", 0.5),
-    "union_refusee": ("Union refusee", "Union refusee", 0.8),
+    "union_refusee": ("Union refusée", "Union refusée", 0.8),
 }
 
 
@@ -276,7 +276,7 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
         out.append(("Terres qui se chevauchent", -min(25.0, shared / 6.0)))
     for p in _pacts(state, a, b):
         if p.kind == "treve":
-            out.append(("Treve", 10.0))
+            out.append(("Trêve", 10.0))
         elif p.kind == "alliance":
             out.append(("Alliance", 25.0))
         elif p.kind == "tribut":
@@ -288,7 +288,7 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
         if "querelleur" in chief:
             out.append(("Chef querelleur", -5.0))
         if "genereux" in chief:
-            out.append(("Chef genereux", 3.0))
+            out.append(("Chef généreux", 3.0))
     return out
 
 
@@ -379,7 +379,7 @@ def level_of(rel: float) -> str:
     if rel <= -15:
         return "Hostiles"
     if rel < 15:
-        return "Mefiants"
+        return "Méfiants"
     if rel < 50:
         return "Cordiaux"
     return "Amis"
@@ -387,7 +387,7 @@ def level_of(rel: float) -> str:
 
 def level(state, a: int, b: int) -> str:
     if allied(state, a, b):
-        return "Allies"
+        return "Alliés"
     return level_of(relation(state, a, b))
 
 
@@ -396,7 +396,7 @@ def status_line(state, a: int, b: int) -> str:
     for p in _pacts(state, a, b):
         left = max(0, p.until - state.tick_count) if p.until else 0
         if p.kind == "treve":
-            parts.append(f"Treve ({left} sem.)")
+            parts.append(f"Trêve ({left} sem.)")
         elif p.kind == "alliance":
             parts.append("Alliance")
         elif p.kind == "tribut":
@@ -535,7 +535,7 @@ def monthly(state) -> None:
             if a not in alive or b not in alive:
                 continue
             if p.until and state.tick_count >= p.until:
-                what = {"treve": "La treve", "tribut": "Le tribut", "alliance": "L'alliance", "commerce": "L'accord commercial"}.get(p.kind, "Le pacte")
+                what = {"treve": "La trêve", "tribut": "Le tribut", "alliance": "L'alliance", "commerce": "L'accord commercial"}.get(p.kind, "Le pacte")
                 for me, other in ((a, b), (b, a)):
                     if state.tribes[me].is_player:
                         _note(state, LogKind.POLITIQUE, f"{what} avec les {state.tribes[other].name} prend fin.", to=me)
@@ -656,9 +656,9 @@ def pop_of(state, tid: int) -> int:
 ACTIONS = ("cadeau", "treve", "alliance", "commerce", "tribut", "union", "rompre")
 ACTION_LABELS = {
     "cadeau": "Offrir des vivres",
-    "treve": "Proposer une treve",
+    "treve": "Proposer une trêve",
     "alliance": "Proposer une alliance",
-    "commerce": "Proposer des echanges",
+    "commerce": "Proposer des échanges",
     "tribut": "Exiger un tribut",
     "union": "Proposer l'union",
     "rompre": "Rompre le pacte",
@@ -717,34 +717,34 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
     if action == "cadeau":
         carrier = gift_carrier(state, actor, target)
         if carrier is None:
-            return Verdict(blocked=f"Aucune de vos bandes a moins de {GIFT_RANGE} cases d'eux")
-        return Verdict(score=1, reasons=[("Un cadeau est toujours accepte", 1)])
+            return Verdict(blocked=f"Aucune de vos bandes à moins de {GIFT_RANGE} cases d'eux")
+        return Verdict(score=1, reasons=[("Un cadeau est toujours accepté", 1)])
     if action == "rompre":
         if not has_pact(state, actor, target):
             return Verdict(blocked="Aucun pacte avec eux")
-        return Verdict(score=1, reasons=[("Rompre coute du prestige (-3) et de la relation (-20)", 0)])
+        return Verdict(score=1, reasons=[("Rompre coûte du prestige (-3) et de la relation (-20)", 0)])
     if action == "treve":
         if at_peace(state, actor, target):
-            return Verdict(blocked="Vous etes deja en paix")
+            return Verdict(blocked="Vous êtes déjà en paix")
         out.append(("Base", -10))
         out.append(("Relation", round(rel * 0.5)))
         if ratio > 1.3:
-            out.append(("Vous etes plus forts", 15))
+            out.append(("Vous êtes plus forts", 15))
         elif ratio < 0.6:
-            out.append(("Vous etes plus faibles", -10))
+            out.append(("Vous êtes plus faibles", -10))
         if _recent_raid(state, target, actor):
-            out.append(("Leurs raids reussissent", -15))
+            out.append(("Leurs raids réussissent", -15))
         if _recent_raid(state, actor, target):
-            out.append(("Vos raids les epuisent", 15))
+            out.append(("Vos raids les épuisent", 15))
         if _other_enemy(state, target, actor):
             out.append(("Ils ont d'autres ennemis", 10))
         if _warlike(state, target):
             out.append(("Peuple guerrier", -5))
     elif action == "alliance":
         if not bonus.alliance:
-            return Verdict(blocked="Il faut connaitre Mariages entre clans")
+            return Verdict(blocked="Il faut connaître Mariages entre clans")
         if allied(state, actor, target):
-            return Verdict(blocked="Vous etes deja allies")
+            return Verdict(blocked="Vous êtes déjà alliés")
         if rel < 20:
             return Verdict(blocked=f"Relation trop basse ({rel:.0f}, il faut 20)")
         out.append(("Base", -30))
@@ -754,20 +754,20 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         if 0.5 <= ratio <= 2.0:
             out.append(("Forces comparables", 10))
         elif ratio < 0.5:
-            out.append(("Vous etes trop faibles", -10))
+            out.append(("Vous êtes trop faibles", -10))
         if ally_count(state, target) >= 2:
-            out.append(("Ils ont deja deux allies", -15))
+            out.append(("Ils ont déjà deux alliés", -15))
     elif action == "commerce":
         from src.kora import goods
 
         if not bonus.commerce:
-            return Verdict(blocked="Il faut connaitre Echanges lointains")
+            return Verdict(blocked="Il faut connaître Échanges lointains")
         if has_pact(state, actor, target, "commerce"):
-            return Verdict(blocked="Un accord commercial est deja en place")
+            return Verdict(blocked="Un accord commercial est déjà en place")
         if not goods.has_village(state, actor):
             return Verdict(blocked="Il vous faut un village")
         if not goods.has_village(state, target):
-            return Verdict(blocked="Ils n'ont pas de village : rien a echanger")
+            return Verdict(blocked="Ils n'ont pas de village : rien a échanger")
         dist, reach = goods.trade_distance(state, actor, target), goods.trade_range(state, actor, target)
         if dist > reach:
             return Verdict(blocked=f"Trop loin : {dist} cases entre vos villages ({reach} au plus)")
@@ -780,31 +780,31 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         if goods.offers(state, target, actor):
             out.append(("Ils ont de quoi vendre", 5))
         if tech.bonuses(state.tribes[target]).commerce:
-            out.append(("Ils connaissent les echanges", 10))
+            out.append(("Ils connaissent les échanges", 10))
         if dist <= 20:
             out.append(("Voisins", 5))
         if _recent_raid(state, actor, target, 52):
-            out.append(("Vos raids recents", -20))
+            out.append(("Vos raids récents", -20))
     elif action == "tribut":
         if has_pact(state, actor, target, "tribut"):
-            return Verdict(blocked="Un tribut est deja en place")
+            return Verdict(blocked="Un tribut est déjà en place")
         if allied(state, actor, target):
-            return Verdict(blocked="On n'exige rien d'un allie")
+            return Verdict(blocked="On n'exige rien d'un allié")
         out.append(("Base", -40))
         out.append(("Rapport de forces", max(-30, min(50, round((ratio - 1.0) * 25)))))
         dist = gap(state, actor, target)
         if dist <= 20:
-            out.append(("Vous etes a leur porte", 10))
+            out.append(("Vous êtes à leur porte", 10))
         elif dist > 40:
-            out.append(("Vous etes loin", -20))
+            out.append(("Vous êtes loin", -20))
         out.append(("Relation", round(rel * 0.2)))
         if state.tribes[target].prestige >= 50:
             out.append(("Trop fiers pour payer", -10))
     elif action == "union":
         if not bonus.union:
-            return Verdict(blocked="Il faut connaitre Confederation")
+            return Verdict(blocked="Il faut connaître Confédération")
         if state.tribes[target].is_player:
-            return Verdict(blocked="Un peuple mene par un joueur ne se fond pas dans un autre")
+            return Verdict(blocked="Un peuple mené par un joueur ne se fond pas dans un autre")
         if rel < 50:
             return Verdict(blocked=f"Relation trop basse ({rel:.0f}, il faut 50)")
         pa, pt = max(1, pop_of(state, actor)), pop_of(state, target)
@@ -812,7 +812,7 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
             return Verdict(blocked="Ils sont trop nombreux (40 % de votre peuple au plus)")
         out.append(("Base", -20))
         out.append(("Relation", round((rel - 50) * 0.8)))
-        out.append(("Vous etes bien plus nombreux", round((1.0 - pt / pa) * 30)))
+        out.append(("Vous êtes bien plus nombreux", round((1.0 - pt / pa) * 30)))
         out.append(("Fiers de leur nom", -round(state.tribes[target].prestige * 0.3)))
         if state.tribes[target].minor:
             out.append(("Petit peuple", 10))
@@ -875,7 +875,7 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
 
         amount = min(amount, max(0.0, carrier.stock - 2 * carrier.population))
         if amount <= 0:
-            return "Pas assez de vivres a donner"
+            return "Pas assez de vivres à donner"
         carrier.stock -= amount
         receiver.stock = min(stock_max(receiver, state), receiver.stock + amount)
         add_mod(state, actor, target, "cadeau", gift_value(state, actor, target, amount), actor=actor)
@@ -897,7 +897,7 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         if not events.hook(state, HUMAN_OFFERS[action], tribe_id=target, band_id=band_id, other=actor):
             return f"Les {names} ne peuvent pas examiner cette proposition pour l'instant."
         d.cooldown[f"{action}:{actor}:{target}"] = state.tick_count
-        return f"Proposition portee aux {names} : a eux de decider."
+        return f"Proposition portée aux {names} : à eux de décider."
     d.cooldown[f"{action}:{actor}:{target}"] = state.tick_count
     if not verdict.accepted:
         if action == "tribut":
@@ -909,21 +909,21 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         return f"Les {names} refusent."
     if action == "treve":
         add_pact(state, actor, target, "treve", TRUCE_WEEKS)
-        return f"Treve conclue avec les {names} (2 ans)."
+        return f"Trêve conclue avec les {names} (2 ans)."
     if action == "alliance":
         add_pact(state, actor, target, "alliance")
         add_mod(state, actor, target, "mariage", 15)
         from src.kora import chiefs
 
         chiefs.marriage_note(state, actor, target)
-        return f"Alliance scellee avec les {names} par des mariages."
+        return f"Alliance scellée avec les {names} par des mariages."
     if action == "tribut":
         add_pact(state, actor, target, "tribut", TRIBUTE_WEEKS, payer=target)
         return f"Les {names} paieront un tribut chaque saison (2 ans)."
     if action == "commerce":
         add_pact(state, actor, target, "commerce")
         add_mod(state, actor, target, "echanges", 5)
-        return f"Accord commercial avec les {names} : vos villages echangeront leurs biens chaque mois."
+        return f"Accord commercial avec les {names} : vos villages échangeront leurs biens chaque mois."
     if action == "union":
         absorb(state, actor, target)
         return f"Les {names} rejoignent votre peuple."
@@ -969,7 +969,7 @@ def invite(state, actor: int, band_id: int) -> str:
 
     band = state.bands.get(band_id)
     if band is None or band not in invitable(state, actor, band.tribe_id):
-        return "Ce clan ne peut pas etre invite"
+        return "Ce clan ne peut pas être invite"
     tribe = state.tribes[actor]
     if tribe.prestige < INVITE_COST:
         return f"Il faut {INVITE_COST} de prestige"

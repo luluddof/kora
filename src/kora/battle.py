@@ -77,14 +77,14 @@ LOOT = 0.5
 VILLAGE_SHIELD = 6
 PLACE = {
     _T.PLAINE: "dans la plaine",
-    _T.VALLEE: "dans la vallee",
+    _T.VALLEE: "dans la vallée",
     _T.STEPPE: "dans la steppe",
-    _T.FORET: "en foret",
+    _T.FORET: "en forêt",
     _T.COLLINE: "sur les collines",
     _T.MONTAGNE: "dans la montagne",
     _T.SOMMET: "sur les hauteurs",
-    _T.COTE: "sur la cote",
-    _T.DESERT: "dans le desert",
+    _T.COTE: "sur la côte",
+    _T.DESERT: "dans le désert",
     _T.EAU: "sur l'eau",
 }
 
@@ -174,16 +174,16 @@ def start_morale(state, band: Band, attacker: bool, h) -> tuple[float, list[tupl
 
         parts.append(("Troupe aguerrie", ARMY_MORALE + villages.army_morale(state, band)))
     elif not attacker:
-        parts.append(("Defend les siens", KIN_MORALE))
+        parts.append(("Défend les siens", KIN_MORALE))
     if band.village and not attacker:
-        parts.append(("Defend son village", VILLAGE_MORALE))
+        parts.append(("Défend son village", VILLAGE_MORALE))
         from src.kora import villages
 
         site = villages.site_of(state, band)
         if site is not None:
             s = round((villages.stability(state, site, band) - villages.STABILITY_BASE) / 5.0)
             if s:
-                parts.append(("Village stable" if s > 0 else "Village agite", s))
+                parts.append(("Village stable" if s > 0 else "Village agité", s))
     if influence.is_home(state.world, h, band.tribe_id):
         parts.append(("Sur ses terres", HOME_MORALE))
     # Le prestige compte deja dans la valeur des combattants : ici, un peu.
@@ -191,7 +191,7 @@ def start_morale(state, band: Band, attacker: bool, h) -> tuple[float, list[tupl
     if abs(p) >= 1:
         parts.append(("Prestige", round(p)))
     if band.famine_in_period:
-        parts.append(("Affames", HUNGER_MORALE))
+        parts.append(("Affamés", HUNGER_MORALE))
     if not attacker and "sur_gardes" in tribe.flags:
         # Evenement "Ils n'ont pas oublie" : la tribu veille.
         parts.append(("Sur ses gardes", GUARD_MORALE))
@@ -407,7 +407,7 @@ def fight(state, attacker: Band, defender: Band, h) -> Result:
         side = report["attacker" if lose is a else "defender"]
         side["lost"] -= scattered
         report["scattered"] = scattered
-        report["headline"] = f"La bande des {side['name']} est dispersee"
+        report["headline"] = f"La bande des {side['name']} est dispersée"
     return Result(
         winner=winner,
         loser=loser,
@@ -468,7 +468,7 @@ def place_of(state, h) -> str:
         if dist <= 3 and (best is None or dist < best[0]):
             best = (dist, villages.name(site))
     if best is not None:
-        return f"pres de {best[1]}" if best[0] else f"a {best[1]}"
+        return f"près de {best[1]}" if best[0] else f"à {best[1]}"
     return PLACE.get(state.world.terrain(h), "")
 
 
@@ -518,14 +518,14 @@ def headline(rep: dict, loser: Band | None = None) -> str:
     what = {"troupe": "La troupe", "village": "Le village", "clan": "La bande"}.get(side["kind"], "La bande")
     out = rep["outcome"]
     if out == "aneanti":
-        return f"{what} des {name} est aneantie"
+        return f"{what} des {name} est anéantie"
     if out == "rase":
-        return f"Le village des {name} est rase"
+        return f"Le village des {name} est rasé"
     if out == "pille":
-        return f"Le village des {name} est pille"
+        return f"Le village des {name} est pillé"
     if out == "retraite":
         return f"Les {name} se retirent en bon ordre"
-    return f"Deroute des {name}"
+    return f"Déroute des {name}"
 
 
 def log_suffix(state, res: Result, me: int | None = None) -> str:
@@ -534,13 +534,13 @@ def log_suffix(state, res: Result, me: int | None = None) -> str:
         mine = res.loser.tribe_id == (sim.PLAYER_TRIBE_ID if me is None else me)
         left = res.report.get("scattered", 0)
         if left:
-            return f" La bande est dispersee ; {left} survivants rejoignent les leurs."
+            return f" La bande est dispersée ; {left} survivants rejoignent les leurs."
         what = "troupe" if res.loser.kind == "armee" else "bande"
-        return f" Votre {what} est aneantie." if mine else " Ils sont aneantis !"
+        return f" Votre {what} est anéantie." if mine else " Ils sont anéantis !"
     if res.outcome == "rase":
-        return " Le village est rase."
+        return " Le village est rasé."
     if res.report.get("encircled"):
-        return " Encercles, ils ont ete massacres dans la fuite."
+        return " Encerclés, ils ont été massacrés dans la fuite."
     return ""
 
 

@@ -28,7 +28,7 @@ def test_the_first_village_opens_an_age():
     assert site.name == info["name"] and villages.oath_of(site) == "grenier"
     assert st.tribes[1].prestige == prestige + villages.FIRST_VILLAGE_PRESTIGE
     assert "age_villages" in st.tribes[1].flags
-    assert any("age des villages" in e.text for e in st.log.entries)
+    assert any("âge des villages" in e.text for e in st.log.entries)
 
 
 def test_the_proposed_name_does_not_move_while_the_window_is_open():
@@ -61,7 +61,7 @@ def test_a_building_costs_food_takes_weeks_then_works():
     assert villages.build(st, 1, "grenier")
     assert band.stock == before - villages.build_cost(st, site, "grenier")
     assert villages.building_status(st, site, "grenier") == "chantier"
-    assert "a la fois" in villages.build_block(st, 1, "puits")
+    assert "à la fois" in villages.build_block(st, 1, "puits")
     for _ in range(villages.BUILDINGS["grenier"].weeks):
         villages.update(st)
     assert villages.has(site, "grenier")
@@ -116,7 +116,7 @@ def test_the_village_button_opens_the_village_and_leaving_is_apart():
     st, band = _state()
     site = villages.found(st, 1)
     assert orders.band_actions(st, 1)["village"] == ""
-    assert orders.labels(st, 1)["village"] == "Gerer [V]"
+    assert orders.labels(st, 1)["village"] == "Gérer [V]"
     orders.perform(st, 1, "village")
     assert band.village == site.id
     _sel, msg = orders.perform(st, 1, "leave")

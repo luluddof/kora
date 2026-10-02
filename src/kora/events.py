@@ -209,7 +209,7 @@ def names(state, inst) -> dict:
         "rival": leader_rival,
         "chief": chief.name if chief is not None else "le chef",
         "tribe": tribe.name if tribe is not None else "?",
-        "other": other.name if other is not None else "etrangers",
+        "other": other.name if other is not None else "étrangers",
         "pop": str(band.population) if band is not None else "?",
         **{k: str(v) for k, v in inst.data.items()},
     }
@@ -713,7 +713,7 @@ def _require_text(cond) -> str:
         "not_chief_band": "Pas pour la bande du chef",
         "chief_band": "Seulement pour la bande du chef",
         "stock_ge": f"Il faut {args[0] if args else ''} semaines de vivres",
-        "can_split": "Trop de bandes deja",
+        "can_split": "Trop de bandes déjà",
         "knows": "Il faut un savoir",
     }.get(kind, "Impossible pour l'instant")
 
@@ -722,40 +722,40 @@ EFFECT_TEXT = {
     "prestige": lambda a: f"{'+' if a[0] >= 0 else ''}{a[0]} prestige",
     "stock": lambda a: f"{'+' if a[0] >= 0 else ''}{a[0]:g} sem. de vivres",
     "stock_all": lambda a: f"{'+' if a[0] >= 0 else ''}{a[0]:g} sem. de vivres pour toute la tribu",
-    "stock_near": lambda a: f"{'+' if a[0] >= 0 else ''}{a[0]:g} sem. de vivres pour les clans presents",
-    "pop": lambda a: (f"{-a[1]} a {-a[0]} morts" if a[0] < 0 else f"+{a[0]} a {a[1]} personnes"),
+    "stock_near": lambda a: f"{'+' if a[0] >= 0 else ''}{a[0]:g} sem. de vivres pour les clans présents",
+    "pop": lambda a: (f"{-a[1]} à {-a[0]} morts" if a[0] < 0 else f"+{a[0]} à {a[1]} personnes"),
     "pop_pct": lambda a: f"{round(-a[0] * 100)} % de la bande meurt" if a[0] < 0 else f"+{round(a[0] * 100)} % de monde",
     "loyalty": lambda a: f"attachement {'+' if a[0] >= 0 else ''}{a[0]}",
-    "loyalty_set": lambda a: f"attachement ramene a {a[0]}",
+    "loyalty_set": lambda a: f"attachement ramené à {a[0]}",
     "loyalty_all": lambda a: f"attachement de tous les clans {'+' if a[0] >= 0 else ''}{a[0]}",
-    "loyalty_near": lambda a: f"attachement des clans presents {'+' if a[0] >= 0 else ''}{a[0]}",
+    "loyalty_near": lambda a: f"attachement des clans présents {'+' if a[0] >= 0 else ''}{a[0]}",
     "rival_loyalty": lambda a: f"attachement de son clan {'+' if a[0] >= 0 else ''}{a[0]}",
-    "renown": lambda a: f"renommee {'+' if a[0] >= 0 else ''}{a[0]}",
-    "chief_renown": lambda a: f"renommee du chef {'+' if a[0] >= 0 else ''}{a[0]}",
+    "renown": lambda a: f"renommée {'+' if a[0] >= 0 else ''}{a[0]}",
+    "chief_renown": lambda a: f"renommée du chef {'+' if a[0] >= 0 else ''}{a[0]}",
     "relation": lambda a: f"relation {'+' if a[0] >= 0 else ''}{a[0]}",
-    "stop": lambda a: "la bande s'arrete",
-    "goto_far": lambda a: f"la bande part ({a[0]} a {a[1]} cases)",
+    "stop": lambda a: "la bande s'arrête",
+    "goto_far": lambda a: f"la bande part ({a[0]} à {a[1]} cases)",
     "goto_warm": lambda a: "la bande part vers un hiver plus court",
     "split": lambda a: "une partie de la bande part fonder un clan",
     "secede": lambda a: "le clan quitte la tribu",
-    "heir": lambda a: "il devient l'heritier",
+    "heir": lambda a: "il devient l'héritier",
     "crown": lambda a: "il devient chef",
     "camp": lambda a: "un campement ici",
     "steal_cache": lambda a: "les vivres de la cache",
     "tech_progress": lambda a: f"un de leurs savoirs avance de {round(a[0] * 100)} %",
     "tech_progress_id": lambda a: f"{_tech_name(a[0])} avance de {round(a[1] * 100)} %",
     "learn_boost": lambda a: f"le savoir en cours avance de {round(a[0] * 100)} %",
-    "reveal": lambda a: "une contree lointaine apparait sur la carte",
+    "reveal": lambda a: "une contree lointaine apparaît sur la carte",
     "provoke": lambda a: "ils pourraient venir se venger",
-    "pact": lambda a: {"treve": "treve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : echanges chaque mois"}.get(a[0], a[0]),
+    "pact": lambda a: {"treve": "trêve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : échanges chaque mois"}.get(a[0], a[0]),
     "casus": lambda a: "ils pourront vous raider sans trahir",
     "stock_pct": lambda a: f"{round(a[0] * 100)} % du grenier" if a[0] < 0 else f"+{round(a[0] * 100)} % au grenier",
     "seed_pct": lambda a: f"{round(a[0] * 100)} % des semences",
     "eat_seed": lambda a: "on mange les semences : pas de champs au printemps",
-    "burn": lambda a: "la prochaine recolte sera maigre",
-    "good": lambda a: f"+{a[1]} {_good_name(a[0])} a la reserve du peuple",
+    "burn": lambda a: "la prochaine récolte sera maigre",
+    "good": lambda a: f"+{a[1]} {_good_name(a[0])} à la réserve du peuple",
     "craft_bonus": lambda a: f"+{a[0]} de chaque bien que fait le village",
-    "lose_goods": lambda a: f"-{a[0]} charges de votre reserve",
+    "lose_goods": lambda a: f"-{a[0]} charges de votre réserve",
 }
 
 
@@ -836,7 +836,7 @@ def _mod_text(cond) -> str:
         who = "Chef de bande" if kind == "leader_trait" else "Chef"
         return f"{who} {_trait_name(args[0]).lower()}"
     if kind == "near_chief":
-        return "Le chef est tout pres"
+        return "Le chef est tout près"
     if kind == "chief_stronger":
         return "La bande du chef est plus nombreuse"
     return kind
@@ -855,7 +855,7 @@ def _succession_options(state, inst) -> list[dict]:
             {
                 "label": f"{band.leader.name} ({chiefs.age(state, band.leader)} ans, {traits})",
                 "blocked": "",
-                "summary": f"Mene un clan de {band.population} personnes · renommee {band.leader.renown}",
+                "summary": f"Mène un clan de {band.population} personnes · renommée {band.leader.renown}",
                 "details": [line for t in band.leader.traits if t in chiefs.TRAITS for line in chiefs.trait_lines(chiefs.TRAITS[t])],
                 "band": bid,
             }
@@ -915,7 +915,7 @@ def fire(state, inst: Instance) -> bool:
             decide_default(state, mine[0].uid)
         inst.deadline = state.tick_count + ev.deadline
         book.pending.append(inst)
-        _log(state, tribe.id, LogKind.DECOUVERTE, f"A decider : {ev.title}.")
+        _log(state, tribe.id, LogKind.DECOUVERTE, f"À décider : {ev.title}.")
         return True
     opts = options_for(state, inst)
     choices = [i for i, o in enumerate(opts) if not o["blocked"]]
@@ -951,7 +951,7 @@ def resolve(state, inst: Instance, index: int) -> str:
         bid = opts[index]["band"]
         apply(state, inst, ("crown", bid))
         band = state.bands.get(bid)
-        text = f"{band.leader.name} mene desormais la tribu." if band is not None and band.leader else ""
+        text = f"{band.leader.name} mène désormais la tribu." if band is not None and band.leader else ""
         if tribe.is_player and text:
             _log(state, tribe.id, LogKind.POLITIQUE, text)
         # Un ambitieux ecarte peut contester.
@@ -993,7 +993,7 @@ def resolve(state, inst: Instance, index: int) -> str:
     other = state.tribes.get(inst.other)
     if ev.trigger in OFFERS and other is not None and other.is_player and other.id != tribe.id:
         # La proposition venait d'un autre joueur : il apprend la reponse.
-        _log(state, other.id, LogKind.POLITIQUE, f"Les {tribe.name} ont repondu a votre proposition : {options[index].label.lower()}.")
+        _log(state, other.id, LogKind.POLITIQUE, f"Les {tribe.name} ont répondu à votre proposition : {options[index].label.lower()}.")
     return shown
 
 
@@ -1056,7 +1056,7 @@ def decide_default(state, uid: int) -> None:
     opts = options_for(state, inst)
     label = opts[index]["label"] if index < len(opts) else "?"
     if ev is not None:
-        _log(state, inst.tribe_id, LogKind.DECOUVERTE, f"Decide d'office ({ev.title}) : {label}.")
+        _log(state, inst.tribe_id, LogKind.DECOUVERTE, f"Décidé d'office ({ev.title}) : {label}.")
     choose(state, uid, index)
 
 

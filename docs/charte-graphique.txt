@@ -1,0 +1,146 @@
+KORA - CHARTE GRAPHIQUE « FEU ET OCRE »
+=======================================
+Date : 2026-10-02. Statut : en place (version 0.3). Code : src/kora/theme.py.
+Planche (rendue par le jeu lui-meme) : docs/charte/planche.png
+  (python tools/planche_charte.py la refait).
+
+Demande : "une refonte graphique des interfaces, avec une charte que tu
+definiras : faire plus JEU VIDEO, une IDENTITE PROPRE au jeu, plutot
+qu'une interface qui fait franchement IA."
+
+Ce qui faisait "IA" (constate sur sa partie, 2026-10-02) : une police de
+code (Consolas) partout ; le francais SANS ACCENTS ; des rectangles noirs
+plats a filet fin, tous pareils ; du "dore" generique ; aucune icone (des
+mots : "Prestige 41") ; des onglets en texte vertical ; des boutons-cadres
+identiques quelle que soit leur importance.
+
+
+1. L'IDEE
+---------
+Kora raconte les premiers peuples : le feu, la pierre taillee, l'ocre des
+grottes, les peaux tannees, le charbon de bois. L'interface est faite DE
+CES MATIERES, comme si la tribu l'avait fabriquee :
+  - les fenetres sont des PEAUX TENDUES sur un cadre de bois sombre (grain
+    leger, bord taille) ; les ecrans "solennels" (fondation, evenement,
+    situation) sont des DALLES DE PIERRE ;
+  - les traits sont des traits de CHARBON ou d'OCRE (soulignements,
+    separateurs en pointilles comme les points des parois ornees) ;
+  - la lumiere, c'est le FEU : ce qui est actif, survole, urgent RAYONNE
+    en braise ; le reste est dans la penombre.
+  - l'age du village (neolithique) ajoute la TERRE CUITE et le LIN :
+    l'accent de l'interface change avec l'age du peuple du joueur.
+
+
+2. LES COULEURS (theme.C)
+-------------------------
+Fonds et matieres
+  nuit        #0E0B09   le fond, derriere tout
+  charbon     #17120E   fond des fenetres
+  cuir        #241B15   fond des cartes, des lignes
+  cuir_clair  #33271E   ce qui est souleve (survol, carte choisie)
+  bois        #4A3727   cadres, bordures
+  pierre      #5B5047   dalles des ecrans solennels
+Textes
+  os          #EFE4CC   texte principal
+  lin         #CDBB9C   texte secondaire
+  cendre      #8E8172   texte tertiaire, desactive
+Accents
+  ocre        #C8662F   l'accent de Kora (boutons principaux, titres, choix)
+  braise      #F2A03D   lumiere : survol, actif, urgent
+  ocre_jaune  #D9A441   prestige, savoirs connus
+  terre_cuite #B9583A   accent de l'age des villages
+Sens
+  bon         #9DBF6E   lichen : positif, pourvu, accepte
+  mauvais     #D9573F   sang d'ocre : perte, danger, refus
+  alerte      #E8963A   braise : attention
+  savoir      #5FB0A6   pigment de cuivre : savoirs, information, eau
+  froid       #8FB4D6   hiver, neige
+Regle : jamais de bleu ou de vert "interface" (boutons bleus, onglets
+verts) ; le vert et le bleu ne servent qu'a dire un SENS (bon, savoir,
+froid). Les couleurs des peuples restent sur la carte et les pastilles.
+
+
+3. LES LETTRES (theme.font)
+---------------------------
+Polices embarquees (data/fonts, licence SIL OFL, voir data/fonts/OFL.txt) :
+  Alegreya SC    titres, noms propres mis en avant, chiffres d'apparat
+                 (petites capitales calligraphiees)
+  Alegreya Sans  tout le reste : texte, boutons, chiffres
+  Alegreya Sans Italic : le recit (texte des evenements, des situations)
+Echelle (theme.font(role)) :
+  logo 92 · titre 32 · h1 26 · h2 21 · h3 18 · texte 16 · petit 14 · mini 12
+  chiffres : Alegreya Sans Bold (hud 18, grand 24)
+Regles :
+  - LE FRANCAIS AVEC SES ACCENTS, toujours (Été, Réserves, Échap, à, où).
+  - Pas de police a chasse fixe. Pas de MAJUSCULES pour crier : les
+    petites capitales d'Alegreya SC servent aux titres.
+  - Un titre, une ligne d'etiquette, un texte : jamais plus de trois
+    tailles dans une meme carte.
+
+
+4. LES FORMES (theme.panel, theme.frame, theme.button...)
+---------------------------------------------------------
+  - PIERRE TAILLEE : les coins des fenetres sont coupes en biseau (pas
+    arrondis), avec un fil d'ocre interieur et une encoche aux angles.
+  - Fenetres (panel "peau") : fond charbon a grain, bord bois, fil ocre,
+    ombre portee douce.
+  - Dalles (panel "pierre") : fond pierre a grain plus marque, gravure
+    claire en haut, sombre en bas.
+  - Cartes (panel "carte") : cuir, biseau de 6 px, souleve au survol.
+  - Boutons : trois rangs.
+      principal : ocre plein, texte nuit, lueur braise au survol ;
+      second    : cuir, bord bois, texte os ;
+      discret   : texte lin seul, souligne au survol.
+    Desactive : cendre, sans relief. Toujours un retour au survol.
+  - Separateurs : pointilles d'ocre (les points des parois).
+  - Barres (attachement, stabilite, savoir) : rainure sombre, remplissage
+    pigment avec reflet, graduation fine.
+  - Infobulles : petite dalle charbon, fil braise a gauche.
+
+
+5. LES ICONES (theme.icon)
+--------------------------
+Silhouettes de game-icons.net (CC BY 3.0 : Lorc, Delapouite, Skoll,
+Guard13007 et leurs auteurs ; voir data/icons/CREDITS.txt), teintees :
+  - os sur fond sombre, nuit sur fond ocre ;
+  - dans un MEDAILLON (disque cuir, cercle ocre) quand l'icone represente
+    une chose du jeu (un savoir, un batiment, une situation) ;
+  - nues dans le bandeau du haut, les onglets, les boutons d'action.
+Un mot devient une icone + un chiffre quand il revient sans cesse
+(prestige, gens, vivres, saison, savoir en cours).
+Liste des icones : theme.ICONS (cle -> fichier).
+
+
+6. LES ECRANS
+-------------
+  Bandeau du haut : une planche de bois sombre ; a gauche la saison
+    (icone + "Été · an 5 · semaine 42"), au centre le temps (pause,
+    vitesses 1-5 en encoches), a droite des icones-chiffres (prestige,
+    gens, vivres, savoir en cours avec sa barre).
+  Rail de droite : onglets en pastilles (icone + nom court), plus de
+    texte vertical ; l'onglet ouvert est relie a sa fenetre.
+  Fenetres laterales : "peau", titre en Alegreya SC souligne d'un trait
+    de charbon, sections a pointilles.
+  Fiche de bande : carte en bas, actions en boutons-icones avec leur
+    touche.
+  Journal, toasts : petites dalles, une icone par genre (combat, survie,
+    decouverte, politique, saison).
+  Evenements et situations : dalle de pierre, illustration-icone dans un
+    grand medaillon, recit en italique, choix en boutons larges.
+  Menu de demarrage : la planete dans la nuit, le logo KORA grave dans
+    l'ocre avec une lueur de feu.
+
+
+7. LE MOUVEMENT
+---------------
+  - Ce qui arrive glisse et s'eclaire (toasts : 0,25 s) ; ce qui part
+    s'efface.
+  - Ce qui attend une decision respire (lueur braise lente, 2 s).
+  - Rien ne clignote vite ; rien ne bouge sans raison.
+
+
+8. CE QU'ON NE FAIT PAS
+-----------------------
+  Police de code ; texte sans accents ; bleu/vert d'interface ;
+  coins arrondis "application" ; degrade generique ; icones emoji ;
+  plus de trois tailles de texte par carte ; une fenetre sans titre.

@@ -43,37 +43,37 @@ TIER_NAMES = {
     0: "Connu",
     1: "Premiers savoirs",
     2: "Savoirs du clan",
-    3: "Aube du neolithique",
+    3: "Aube du néolithique",
     4: "Premiers villages",
-    5: "Villages prosperes",
+    5: "Villages prospères",
 }
 BRANCHES = (
     "Chasse et guerre",
     "Terre et cueillette",
-    "Reserves",
+    "Réserves",
     "Eau",
     "Froid et voyage",
     "Pays et campements",
-    "Foyer et societe",
+    "Foyer et société",
     "Voisins",
 )
 # Un seul arbre, vertical : une colonne par branche. Au neolithique, chaque
 # colonne prend un nouveau nom, dans le prolongement de la branche tribale
 # (Reserves -> Greniers, Pays et campements -> Villages...).
 NEO_BRANCHES = (
-    "Guerre et defense",
+    "Guerre et défense",
     "Champs",
     "Greniers et artisans",
     "",
     "Troupeaux",
     "Villages",
     "Esprits et pouvoir",
-    "Echanges",
+    "Échanges",
 )
 # (nom de l'age, paliers, noms des colonnes)
 ERAS = (
-    ("Age tribal", (0, 1, 2, 3), BRANCHES),
-    ("Neolithique", (4, 5), NEO_BRANCHES),
+    ("Âge tribal", (0, 1, 2, 3), BRANCHES),
+    ("Néolithique", (4, 5), NEO_BRANCHES),
 )
 START_KNOWLEDGE = ("feu", "outils")
 # Conditions de la pirogue et du troupeau (reprises des anciennes decisions).
@@ -86,13 +86,13 @@ SEE_RADIUS = 16
 _T = Terrain
 _TERRAIN_FR = {
     _T.PLAINE: "plaine",
-    _T.VALLEE: "vallee",
+    _T.VALLEE: "vallée",
     _T.STEPPE: "steppe",
-    _T.FORET: "foret",
+    _T.FORET: "forêt",
     _T.COLLINE: "colline",
     _T.MONTAGNE: "montagne",
-    _T.COTE: "cote",
-    _T.DESERT: "desert",
+    _T.COTE: "côte",
+    _T.DESERT: "désert",
 }
 
 
@@ -145,7 +145,7 @@ TECHS: dict[str, Tech] = {
         # --- palier 0 : connu ---------------------------------------------
         Tech(
             "feu", "Feu", 0, 6,
-            "Chaleur, cuisson, lumiere. Sans lui, aucun hiver n'est possible.",
+            "Chaleur, cuisson, lumière. Sans lui, aucun hiver n'est possible.",
             effects={"base": True},
         ),
         Tech(
@@ -155,7 +155,7 @@ TECHS: dict[str, Tech] = {
         ),
         # --- palier 1 : premiers savoirs -----------------------------------
         Tech(
-            "epieu", "Chasse a l'epieu", 1, 0,
+            "epieu", "Chasse à l'épieu", 1, 0,
             "Des pieux durcis au feu et des chasseurs qui rabattent ensemble le gros gibier.",
             prereqs=("outils",),
             conds=(Cond("pop", 30), _weeks(6, _T.PLAINE, _T.STEPPE, label="plaine ou steppe")),
@@ -163,27 +163,27 @@ TECHS: dict[str, Tech] = {
         ),
         Tech(
             "cueillette", "Cueillette savante", 1, 1,
-            "Savoir quelles baies, racines et noix se mangent, et ou les trouver selon la saison.",
+            "Savoir quelles baies, racines et noix se mangent, et où les trouver selon la saison.",
             prereqs=("outils",),
-            conds=(_weeks(8, _T.FORET, _T.VALLEE, label="foret ou vallee"),),
+            conds=(_weeks(8, _T.FORET, _T.VALLEE, label="forêt ou vallée"),),
             effects={"food": {_T.FORET: 1.12, _T.VALLEE: 1.06}},
         ),
         Tech(
-            "fumage", "Fumage et sechage", 1, 2,
-            "La viande et le poisson fumes se gardent des mois : on prepare l'hiver, on cache des vivres.",
+            "fumage", "Fumage et séchage", 1, 2,
+            "La viande et le poisson fumés se gardent des mois : on prépare l'hiver, on cache des vivres.",
             prereqs=("feu",),
             conds=(Cond("winters", 1),),
             effects={"stock_weeks": 4, "caches": 3, "cache_cap": 300},
         ),
         Tech(
-            "peche", "Peche au harpon", 1, 3,
-            "Harpons d'os et pieges a poissons au bord de l'eau.",
+            "peche", "Pêche au harpon", 1, 3,
+            "Harpons d'os et pièges a poissons au bord de l'eau.",
             prereqs=("outils",),
-            conds=(Cond("seen", label="rivage"), _weeks(4, _T.COTE, _T.VALLEE, label="cote ou vallee")),
+            conds=(Cond("seen", label="rivage"), _weeks(4, _T.COTE, _T.VALLEE, label="côte ou vallée")),
             effects={"water_food": 0.25, "food": {_T.COTE: 1.08}},
         ),
         Tech(
-            "peaux", "Vetements de peau", 1, 4,
+            "peaux", "Vêtements de peau", 1, 4,
             "Aiguilles d'os et peaux cousues : on survit au froid.",
             prereqs=("feu", "outils"),
             conds=(Cond("weeks", 10, ("hiver",), "hiver local"),),
@@ -197,25 +197,25 @@ TECHS: dict[str, Tech] = {
             effects={"camps": 2, "camp_shelter": 0.6},
         ),
         Tech(
-            "rites", "Rites et sepultures", 1, 6,
-            "Ocre, parures, morts enterres avec leurs outils : les clans partagent les memes ancetres.",
+            "rites", "Rites et sépultures", 1, 6,
+            "Ocre, parures, morts enterrés avec leurs outils : les clans partagent les mêmes ancêtres.",
             prereqs=("feu",),
             conds=(Cond("winters", 2), Cond("pop", 40)),
             effects={"loyalty": 6, "chief_reach": 3},
         ),
         Tech(
             "palabres", "Dons et palabres", 1, 7,
-            "Echanger des presents, s'asseoir autour du meme feu : on parle avant de se battre.",
+            "Échanger des présents, s'asseoir autour du même feu : on parle avant de se battre.",
             prereqs=("feu",),
             conds=(Cond("contacts", 1),),
             effects={"gifts": 1.5, "diplo": 10},
         ),
         # --- palier 2 : savoirs du clan ------------------------------------
         Tech(
-            "arc", "Arc et fleches", 2, 0,
-            "Tuer de loin : le petit gibier des forets, et l'ennemi avant qu'il n'approche.",
+            "arc", "Arc et flèches", 2, 0,
+            "Tuer de loin : le petit gibier des forêts, et l'ennemi avant qu'il n'approche.",
             prereqs=("epieu",),
-            conds=(Cond("pop", 80), _weeks(12, _T.FORET, label="foret")),
+            conds=(Cond("pop", 80), _weeks(12, _T.FORET, label="forêt")),
             effects={"combat": 1.15, "food": {_T.FORET: 1.06}},
         ),
         Tech(
@@ -231,38 +231,38 @@ TECHS: dict[str, Tech] = {
         ),
         Tech(
             "salaison", "Salaison", 2, 2,
-            "Le sel garde la viande et le poisson : des reserves plus grandes, des caches qui durent.",
+            "Le sel garde la viande et le poisson : des réserves plus grandes, des caches qui durent.",
             prereqs=("fumage",),
-            conds=(Cond("res", 10, ("sel",), "pres du sel"), Cond("winters", 2)),
+            conds=(Cond("res", 10, ("sel",), "près du sel"), Cond("winters", 2)),
             effects={"stock_weeks": 3, "cache_cap": 200, "cache_decay": 0.5},
         ),
         Tech(
             "pirogue", "Pirogue", 2, 3,
-            "Un tronc creuse au feu : on longe les rives, on traverse les lacs et les detroits.",
+            "Un tronc creuse au feu : on longe les rives, on traverse les lacs et les détroits.",
             prereqs=("peche",),
             conds=(
                 Cond("seen", label="rivage"),
-                _weeks(PIROGUE_COAST_WEEKS, _T.COTE, label="cote"),
+                _weeks(PIROGUE_COAST_WEEKS, _T.COTE, label="côte"),
                 Cond("pop", PIROGUE_POP),
             ),
             effects={"cabotage": True},
         ),
         Tech(
             "portage", "Raquettes et portage", 2, 4,
-            "Raquettes, traineaux, sentiers battus : la foret et les collines ralentissent moins.",
+            "Raquettes, traîneaux, sentiers battus : la forêt et les collines ralentissent moins.",
             prereqs=("peaux",),
-            conds=(_weeks(14, _T.FORET, _T.COLLINE, label="foret ou collines"),),
+            conds=(_weeks(14, _T.FORET, _T.COLLINE, label="forêt ou collines"),),
             effects={"move": {_T.FORET: 15, _T.COLLINE: 12, _T.MONTAGNE: 45}},
         ),
         Tech(
-            "reperes", "Pistes et reperes", 2, 5,
-            "Chaque source, chaque gue, chaque passage des betes a un nom : on connait son pays.",
+            "reperes", "Pistes et repères", 2, 5,
+            "Chaque source, chaque gué, chaque passage des bêtes a un nom : on connaît son pays.",
             prereqs=("huttes",),
             conds=(Cond("bands", 2), Cond("winters", 3)),
             effects={"influence_radius": 1, "home_food": 1.08, "chief_reach": 4},
         ),
         Tech(
-            "conte", "Recits autour du feu", 2, 6,
+            "conte", "Récits autour du feu", 2, 6,
             "Les anciens racontent les hivers passes : la tribu se souvient et se tient.",
             prereqs=("feu",),
             conds=(Cond("winters", 3), Cond("pop", 70)),
@@ -278,27 +278,27 @@ TECHS: dict[str, Tech] = {
         # --- palier 3 : aube du neolithique --------------------------------
         Tech(
             "guetteurs", "Guetteurs et signaux", 3, 0,
-            "Des veilleurs sur les hauteurs et des signaux de fumee : on voit venir, on s'entraide.",
+            "Des veilleurs sur les hauteurs et des signaux de fumée : on voit venir, on s'entraide.",
             prereqs=("arc", "conte"),
             conds=(Cond("bands", 4), Cond("pop", 160)),
             effects={"vision": 4, "reinforce": 1, "home_defense": 1.15},
         ),
         Tech(
-            "semis", "Premieres semailles", 3, 1,
-            "Replanter les graines des meilleures plantes pres du camp : le debut des champs.",
+            "semis", "Premières semailles", 3, 1,
+            "Replanter les graines des meilleures plantes près du camp : le début des champs.",
             prereqs=("cueillette", "fumage"),
             conds=(
                 Cond("pop", 160),
                 Cond("winters", 5),
-                Cond("res", 20, ("cereales", "racines"), "pres de cereales ou de racines sauvages"),
+                Cond("res", 20, ("cereales", "racines"), "près de céréales ou de racines sauvages"),
             ),
             effects={"food": {_T.VALLEE: 1.2, _T.PLAINE: 1.1}, "recovery": 0.1, "villages": 1},
         ),
         Tech(
             "poterie", "Poterie", 3, 2,
-            "Des pots d'argile cuite : grain et graisse a l'abri de l'humidite et des rongeurs.",
+            "Des pots d'argile cuite : grain et graisse à l'abri de l'humidité et des rongeurs.",
             prereqs=("fumage",),
-            conds=(Cond("pop", 180), Cond("winters", 6), Cond("res", 8, ("argile",), "pres de l'argile")),
+            conds=(Cond("pop", 180), Cond("winters", 6), Cond("res", 8, ("argile",), "près de l'argile")),
             effects={
                 "stock_weeks": 6,
                 "winter_famine": 0.85,
@@ -309,9 +309,9 @@ TECHS: dict[str, Tech] = {
         ),
         Tech(
             "filets", "Filets et nasses", 3, 3,
-            "Filets tresses et nasses en osier : la mer et les lacs nourrissent vraiment.",
+            "Filets tressés et nasses en osier : la mer et les lacs nourrissent vraiment.",
             prereqs=("pirogue",),
-            conds=(Cond("pop", 140), _weeks(30, _T.COTE, label="cote")),
+            conds=(Cond("pop", 140), _weeks(30, _T.COTE, label="côte")),
             effects={"water_food": 0.15, "food": {_T.COTE: 1.08}},
         ),
         Tech(
@@ -323,21 +323,21 @@ TECHS: dict[str, Tech] = {
         ),
         Tech(
             "campement", "Grand campement", 3, 5,
-            "Un camp tenu d'annee en annee, avec ses reserves et ses tombes : le coeur du pays.",
+            "Un camp tenu d'année en année, avec ses réserves et ses tombes : le cœur du pays.",
             prereqs=("reperes",),
             conds=(Cond("camp_years", 3), Cond("pop", 150)),
             effects={"camps": 1, "influence_radius": 1, "camp_growth": 1.10},
         ),
         Tech(
             "chefferie", "Chefferie", 3, 6,
-            "Un chef reconnu par plusieurs clans : la tribu peut s'etendre sans se defaire.",
+            "Un chef reconnu par plusieurs clans : la tribu peut s'étendre sans se défaire.",
             prereqs=("conte",),
             conds=(Cond("pop", 250), Cond("prestige", 50), Cond("winters", 8)),
             effects={"max_bands": 4, "growth": 1.05, "loyalty": 8, "chief_reach": 8, "camps": 1},
         ),
         Tech(
-            "confederation", "Confederation", 3, 7,
-            "Plusieurs peuples sous les memes serments : les petits se joignent aux grands.",
+            "confederation", "Confédération", 3, 7,
+            "Plusieurs peuples sous les mêmes serments : les petits se joignent aux grands.",
             prereqs=("mariages",),
             conds=(Cond("allies", 1), Cond("prestige", 40)),
             effects={"union": True, "diffusion": 0.15},
@@ -345,23 +345,23 @@ TECHS: dict[str, Tech] = {
         # --- neolithique, palier 4 : premiers villages ---------------------
         Tech(
             "palissade", "Palissades", 4, 0,
-            "Des pieux plantes en cercle autour des maisons : le village ne fuit pas, il se defend.",
+            "Des pieux plantes en cercle autour des maisons : le village ne fuit pas, il se défend.",
             prereqs=("semis",),
             conds=(Cond("villages", 1),),
             effects={"palisade": True},
         ),
         Tech(
             "champs", "Champs cultives", 4, 1,
-            "On choisit les meilleures graines, on desherbe, on garde les oiseaux : les champs rendent enfin.",
+            "On choisit les meilleures graines, on désherbe, on garde les oiseaux : les champs rendent enfin.",
             prereqs=("semis",),
-            conds=(Cond("village_years", 2), Cond("res", 20, ("cereales", "racines"), "pres de cereales ou de racines")),
+            conds=(Cond("village_years", 2), Cond("res", 20, ("cereales", "racines"), "près de céréales ou de racines")),
             effects={"field_yield": 1.4},
         ),
         Tech(
-            "chevres", "Chevres et moutons", 4, 4,
-            "Des betes qui suivent le berger : du lait, de la laine, de la viande sur pied.",
+            "chevres", "Chèvres et moutons", 4, 4,
+            "Des bêtes qui suivent le berger : du lait, de la laine, de la viande sur pied.",
             prereqs=("epieu",),
-            conds=(Cond("res", 20, ("chevres",), "pres des chevres sauvages"), Cond("pop", 120)),
+            conds=(Cond("res", 20, ("chevres",), "près des chèvres sauvages"), Cond("pop", 120)),
             effects={
                 "food": {_T.COLLINE: 1.2, _T.MONTAGNE: 1.2, _T.PLAINE: 1.05},
                 "village_food": 1.1,
@@ -370,7 +370,7 @@ TECHS: dict[str, Tech] = {
         ),
         Tech(
             "greniers", "Greniers", 4, 2,
-            "Des greniers sureleves, a l'abri des rats et de l'eau : le grain dure.",
+            "Des greniers surélevés, à l'abri des rats et de l'eau : le grain dure.",
             prereqs=("poterie",),
             conds=(Cond("villages", 1), Cond("winters", 8)),
             effects={"granary": 8, "grain_rot": 0.5},
@@ -383,14 +383,14 @@ TECHS: dict[str, Tech] = {
             effects={"villages": 1, "disease": 0.6, "village_growth": 1.1},
         ),
         Tech(
-            "ancetres", "Culte des ancetres", 4, 6,
-            "Les morts reposent sous les maisons : le village appartient a ceux qui y sont nes.",
+            "ancetres", "Culte des ancêtres", 4, 6,
+            "Les morts reposent sous les maisons : le village appartient a ceux qui y sont nés.",
             prereqs=("rites",),
             conds=(Cond("villages", 1), Cond("winters", 10)),
             effects={"stability": 10, "winter_prestige": 2},
         ),
         Tech(
-            "echanges", "Echanges lointains", 4, 7,
+            "echanges", "Échanges lointains", 4, 7,
             "Du silex contre du sel, des perles contre des peaux : les biens voyagent de main en main.",
             prereqs=("palabres",),
             conds=(Cond("contacts", 3), Cond("pop", 150)),
@@ -399,23 +399,23 @@ TECHS: dict[str, Tech] = {
         # --- neolithique, palier 5 : villages prosperes -----------------------
         Tech(
             "haches", "Haches polies", 5, 0,
-            "La pierre polie abat les arbres et les ennemis : la foret recule devant les champs.",
+            "La pierre polie abat les arbres et les ennemis : la forêt recule devant les champs.",
             prereqs=("palissade",),
-            conds=(Cond("res", 20, ("silex",), "pres du silex"), Cond("pop", 200)),
+            conds=(Cond("res", 20, ("silex",), "près du silex"), Cond("pop", 200)),
             effects={"combat": 1.1, "clearing": True},
         ),
         Tech(
-            "jachere", "Jachere", 5, 1,
-            "Laisser reposer la terre une annee sur trois : le sol ne s'epuise plus.",
+            "jachere", "Jachère", 5, 1,
+            "Laisser reposer la terre une année sur trois : le sol ne s'épuise plus.",
             prereqs=("champs",),
             conds=(Cond("village_years", 5),),
             effects={"soil_loss": 0.5, "field_yield": 1.2},
         ),
         Tech(
-            "bovins", "Boeufs et vaches", 5, 4,
-            "L'aurochs dompte : de la viande, du lait, et le fumier qui engraisse les champs.",
+            "bovins", "Bœufs et vaches", 5, 4,
+            "L'aurochs dompté : de la viande, du lait, et le fumier qui engraisse les champs.",
             prereqs=("chevres",),
-            conds=(Cond("res", 30, ("aurochs",), "pres des aurochs"), Cond("pop", 200)),
+            conds=(Cond("res", 30, ("aurochs",), "près des aurochs"), Cond("pop", 200)),
             effects={
                 "food": {_T.PLAINE: 1.12, _T.VALLEE: 1.08},
                 "village_food": 1.15,
@@ -425,28 +425,28 @@ TECHS: dict[str, Tech] = {
         ),
         Tech(
             "tissage", "Tissage", 5, 2,
-            "Le lin et la laine tisses : des vetements chauds, et des etoffes qu'on echange.",
+            "Le lin et la laine tissés : des vêtements chauds, et des étoffes qu'on échange.",
             prereqs=("poterie",),
             conds=(Cond("villages", 1), Cond("pop", 200)),
             effects={"winter_famine": 0.8, "winter_prestige": 1},
         ),
         Tech(
-            "freres", "Villages freres", 5, 5,
-            "Des villages nes du meme village : un meme sang, un meme chef.",
+            "freres", "Villages frères", 5, 5,
+            "Des villages nés du même village : un même sang, un même chef.",
             prereqs=("maisons",),
             conds=(Cond("villages", 2),),
             effects={"villages": 2, "stability": 10},
         ),
         Tech(
-            "megalithes", "Pierres levees", 5, 6,
-            "Des pierres dressees que tous les clans ont tirees ensemble : on les voit de loin.",
+            "megalithes", "Pierres levées", 5, 6,
+            "Des pierres dressées que tous les clans ont tirées ensemble : on les voit de loin.",
             prereqs=("ancetres",),
             conds=(Cond("prestige", 60), Cond("pop", 300)),
             effects={"winter_prestige": 3, "stability": 15, "influence_radius": 1},
         ),
         Tech(
             "routes", "Routes du sel et du silex", 5, 7,
-            "Des sentiers de peuple en peuple, jalonnes de haltes : on se connait, on commerce.",
+            "Des sentiers de peuple en peuple, jalonnés de haltes : on se connaît, on commerce.",
             prereqs=("echanges",),
             conds=(Cond("allies", 1), Cond("contacts", 4)),
             effects={"diffusion": 0.15, "trade": True},
@@ -495,27 +495,27 @@ START_BONUSES: dict[str, StartBonus] = {
         ),
         StartBonus(
             "bonus:froid", "Enfants du froid",
-            "Nes dans la neige, ils savent passer l'hiver.",
+            "Nés dans la neige, ils savent passer l'hiver.",
             {"winter_famine": 0.6, "winter_hills": 1.3}, 4,
         ),
         StartBonus(
-            "bonus:prevoyants", "Prevoyants",
-            "On seche, on fume, on cache : il y a toujours une reserve.",
+            "bonus:prevoyants", "Prévoyants",
+            "On sèche, on fume, on cache : il y a toujours une réserve.",
             {"stock_weeks": 4, "caches": 1, "cache_cap": 200}, 2,
         ),
         StartBonus(
-            "bonus:fertiles", "Peuple fecond",
+            "bonus:fertiles", "Peuple fécond",
             "Beaucoup d'enfants, et qui survivent.",
             {"growth": 1.3}, 5,
         ),
         StartBonus(
-            "bonus:guerriers", "Guerriers redoutes",
+            "bonus:guerriers", "Guerriers redoutés",
             "Vos chasseurs sont aussi des combattants.",
             {"combat": 1.2, "home_defense": 1.1}, 0,
         ),
         StartBonus(
-            "bonus:eclaireurs", "Eclaireurs",
-            "Des yeux percants sur chaque colline.",
+            "bonus:eclaireurs", "Éclaireurs",
+            "Des yeux perçants sur chaque colline.",
             {"vision": 3}, 5,
         ),
         StartBonus(
@@ -525,7 +525,7 @@ START_BONUSES: dict[str, StartBonus] = {
         ),
         StartBonus(
             "bonus:rassembleur", "Chef rassembleur",
-            "Les clans suivent le chef, meme loin de lui.",
+            "Les clans suivent le chef, même loin de lui.",
             {"loyalty": 10, "chief_reach": 4}, 6,
         ),
         StartBonus(
@@ -534,7 +534,7 @@ START_BONUSES: dict[str, StartBonus] = {
             {"diplo": 15, "gifts": 1.5}, 7,
         ),
         StartBonus(
-            "bonus:campeurs", "Batisseurs de camps",
+            "bonus:campeurs", "Bâtisseurs de camps",
             "Des huttes solides, des camps qu'on retrouve chaque saison.",
             {"camps": 1, "camp_shelter": 0.7, "camp_growth": 1.1}, 5,
         ),
@@ -571,7 +571,7 @@ def update_start_bonuses(state) -> None:
             if tribe.is_player:
                 from src.kora.sim import note
 
-                note(state, LogKind.DECOUVERTE, f"Les bonus de depart s'eteignent ({names}) : votre peuple vole de ses propres ailes.", to=tribe.id)
+                note(state, LogKind.DECOUVERTE, f"Les bonus de départ s'éteignent ({names}) : votre peuple vole de ses propres ailes.", to=tribe.id)
 
 
 # --- effets ----------------------------------------------------------------
@@ -758,16 +758,16 @@ def _terrain_list(terrains) -> str:
 
 def _slower(mult: float) -> str:
     if mult <= 0:
-        return "ne se gatent plus"
+        return "ne se gâtent plus"
     times = 1.0 / mult
-    return f"se gatent {_num(times)} fois moins vite"
+    return f"se gâtent {_num(times)} fois moins vite"
 
 
 def effect_lines(tech: Tech) -> list[str]:
     e = tech.effects
     out: list[str] = []
     if e.get("base"):
-        out.append("Deja pris en compte dans le jeu de base.")
+        out.append("Déjà pris en compte dans le jeu de base.")
     groups: dict[float, list] = {}
     for terrain, mult in e.get("food", {}).items():
         groups.setdefault(mult, []).append(terrain)
@@ -775,20 +775,20 @@ def effect_lines(tech: Tech) -> list[str]:
         out.append(f"{_terrain_list(terrains)} : {_pct(mult)} de nourriture")
     if e.get("water_food"):
         per = 2.0 * e["water_food"]
-        out.append(f"Eau pres des rives (mer, lacs) : +{_num(per)} nourriture par case (printemps)")
+        out.append(f"Eau près des rives (mer, lacs) : +{_num(per)} nourriture par case (printemps)")
     if e.get("winter_hills"):
         out.append(f"Collines et montagnes en hiver : nourriture x{_num(e['winter_hills'])}")
     if e.get("combat"):
         out.append(f"Force au combat : {_pct(e['combat'])}")
     if e.get("home_defense"):
-        out.append(f"Defense dans votre zone d'influence : {_pct(e['home_defense'])}")
+        out.append(f"Défense dans votre zone d'influence : {_pct(e['home_defense'])}")
     if e.get("winter_famine"):
         out.append(f"Famine pendant l'hiver local : {_pct(e['winter_famine'])} de morts")
     if e.get("stock_weeks"):
-        out.append(f"Reserves : +{e['stock_weeks']} semaines de stock par personne")
+        out.append(f"Réserves : +{e['stock_weeks']} semaines de stock par personne")
     if e.get("caches"):
         if e["caches"] >= 3:
-            out.append(f"Caches de vivres : jusqu'a {e['caches']} (bouton Deposer de la bande)")
+            out.append(f"Caches de vivres : jusqu'à {e['caches']} (bouton Déposer de la bande)")
         else:
             out.append(f"Caches de vivres : +{e['caches']}")
     if e.get("cache_cap"):
@@ -797,7 +797,7 @@ def effect_lines(tech: Tech) -> list[str]:
         out.append(f"Les caches {_slower(e['cache_decay'])}")
     if e.get("camps"):
         if e["camps"] >= 2:
-            out.append(f"Campements : jusqu'a {e['camps']} (bouton Camper ici)")
+            out.append(f"Campements : jusqu'à {e['camps']} (bouton Camper ici)")
         else:
             out.append(f"Campements : +{e['camps']}")
     if e.get("camp_shelter"):
@@ -813,31 +813,31 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("vision"):
         out.append(f"Vue : +{e['vision']} cases autour de vos bandes")
     if e.get("reinforce"):
-        out.append(f"Renforts : vos bandes s'entraident jusqu'a {BASE_REINFORCE + e['reinforce']} cases (au lieu de {BASE_REINFORCE})")
+        out.append(f"Renforts : vos bandes s'entraident jusqu'à {BASE_REINFORCE + e['reinforce']} cases (au lieu de {BASE_REINFORCE})")
     if e.get("influence_radius"):
         out.append(f"Zone d'influence : +{e['influence_radius']} case autour de vos bandes et camps")
     if e.get("home_food"):
         out.append(f"Dans votre zone d'influence : {_pct(e['home_food'])} de nourriture")
     if e.get("recovery"):
-        out.append("Terres epuisees autour de vos camps : se refont 2 fois plus vite")
+        out.append("Terres épuisées autour de vos camps : se refont 2 fois plus vite")
     if e.get("growth"):
         out.append(f"Naissances : {_pct(e['growth'])}")
     if e.get("max_bands"):
-        out.append(f"Bandes : jusqu'a {BASE_MAX_BANDS + e['max_bands']} (au lieu de {BASE_MAX_BANDS})")
+        out.append(f"Bandes : jusqu'à {BASE_MAX_BANDS + e['max_bands']} (au lieu de {BASE_MAX_BANDS})")
     if e.get("loyalty"):
-        out.append(f"Attachement des clans a la tribu : +{e['loyalty']}")
+        out.append(f"Attachement des clans à la tribu : +{e['loyalty']}")
     if e.get("stability"):
-        out.append(f"Stabilite de vos villages : +{e['stability']}")
+        out.append(f"Stabilité de vos villages : +{e['stability']}")
     if e.get("chief_reach"):
         out.append(f"Emprise du chef : +{e['chief_reach']} cases")
     if e.get("winter_prestige") or e.get("famine_prestige"):
         good = BASE_WINTER_PRESTIGE + e.get("winter_prestige", 0)
         bad = BASE_FAMINE_PRESTIGE + e.get("famine_prestige", 0)
-        out.append(f"Prestige a la fin de l'hiver : +{good} sans famine, {bad} avec (au lieu de +4 / -6)")
+        out.append(f"Prestige à la fin de l'hiver : +{good} sans famine, {bad} avec (au lieu de +4 / -6)")
     if e.get("herd"):
-        out.append("Steppe : nourriture x1,35 au printemps, x1,65 en ete, x1,5 en automne et en hiver")
+        out.append("Steppe : nourriture x1,35 au printemps, x1,65 en été, x1,5 en automne et en hiver")
     if e.get("cabotage"):
-        out.append("Vos bandes peuvent longer l'eau pres des rives (mer et lacs)")
+        out.append("Vos bandes peuvent longer l'eau près des rives (mer et lacs)")
     if e.get("gifts"):
         out.append(f"Cadeaux aux autres peuples : {_pct(e['gifts'])} d'effet")
     if e.get("diplo"):
@@ -845,7 +845,7 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("alliance"):
         out.append("Vous pouvez proposer une alliance (mariages entre les chefs)")
     if e.get("union"):
-        out.append("Vous pouvez proposer l'union a un petit peuple ami")
+        out.append("Vous pouvez proposer l'union à un petit peuple ami")
     if e.get("diffusion"):
         out.append(f"Savoirs connus des voisins : +{round(100 * e['diffusion'])} % d'apprentissage en plus")
     if e.get("villages"):
@@ -854,35 +854,35 @@ def effect_lines(tech: Tech) -> list[str]:
         else:
             out.append(f"Villages : +{e['villages']}")
     if e.get("palisade"):
-        out.append("Vos villages peuvent batir une palissade (defense x1,6) et une maison des guerriers")
+        out.append("Vos villages peuvent bâtir une palissade (défense x1,6) et une maison des guerriers")
     if e.get("field_yield"):
-        out.append(f"Recolte des champs : {_pct(e['field_yield'])}")
+        out.append(f"Récolte des champs : {_pct(e['field_yield'])}")
     if e.get("soil_loss"):
-        out.append(f"Epuisement des champs : {_pct(e['soil_loss'])}")
+        out.append(f"Épuisement des champs : {_pct(e['soil_loss'])}")
     if e.get("granary"):
-        out.append(f"Greniers des villages : +{e['granary']} semaines de reserve")
+        out.append(f"Greniers des villages : +{e['granary']} semaines de réserve")
     if e.get("grain_rot"):
-        out.append(f"Grain perdu au grenier (rats, humidite) : {_pct(e['grain_rot'])}")
+        out.append(f"Grain perdu au grenier (rats, humidité) : {_pct(e['grain_rot'])}")
     if e.get("disease"):
-        out.append(f"Fievres dans les villages : {_pct(e['disease'])}")
+        out.append(f"Fièvres dans les villages : {_pct(e['disease'])}")
     if e.get("village_growth"):
         out.append(f"Naissances dans les villages : {_pct(e['village_growth'])}")
     if e.get("village_food"):
         out.append(f"Collecte autour des villages (troupeaux) : {_pct(e['village_food'])}")
     if e.get("clearing"):
-        out.append("Les villages peuvent defricher la foret pour y faire des champs")
+        out.append("Les villages peuvent défricher la forêt pour y faire des champs")
     if e.get("trade"):
-        out.append("Relations avec vos voisins : +1 par mois (echanges), jusqu'a +10")
-        out.append("Echanges des accords commerciaux : charges x2, portee x2")
+        out.append("Relations avec vos voisins : +1 par mois (échanges), jusqu'à +10")
+        out.append("Échanges des accords commerciaux : charges x2, portée x2")
     if e.get("commerce"):
-        out.append("Accords commerciaux : vos villages echangent leurs biens")
+        out.append("Accords commerciaux : vos villages échangent leurs biens")
     if e.get("learn"):
         out.append(f"Apprentissage des savoirs : {_pct(e['learn'])}")
     from src.kora.goods import CRAFTS, res_label
 
     for craft in CRAFTS.values():
         if craft.needs == tech.id:
-            out.append(f"Metier du village : {craft.name.lower()} ({res_label(craft.id)} des terres)")
+            out.append(f"Métier du village : {craft.name.lower()} ({res_label(craft.id)} des terres)")
     return out
 
 
@@ -944,7 +944,7 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
         # un peuple fixe, reduit a ses villages, n'est pas sans savoirs.
         own = _pop(state, tribe.id)
         have = max(own, _lineage_pop(state, tribe.id))
-        label = f"Peuple {cond.need}" + (" (avec les peuples nes du votre)" if have > own else "")
+        label = f"Peuple {cond.need}" + (" (avec les peuples nés du votre)" if have > own else "")
         return have, cond.need, label
     if kind in ("weeks", "res"):
         need = -(-cond.need // 2) if eased else cond.need
@@ -986,9 +986,9 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
             "allies": diplo.ally_count,
         }[kind](state, tribe.id)
         label = {
-            "contacts": f"Connaitre {_plural(cond.need, 'autre peuple')}",
+            "contacts": f"Connaître {_plural(cond.need, 'autre peuple')}",
             "friends": f"{_plural(cond.need, 'peuple')} cordia{'ux' if cond.need > 1 else 'l'} (relation 20)",
-            "allies": _plural(cond.need, "allie"),
+            "allies": _plural(cond.need, "allié"),
         }[kind]
         return have, cond.need, label
     if kind in ("villages", "village_years"):
@@ -1002,7 +1002,7 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
 
 # Drapeaux poses par les evenements, lus par les conditions de savoirs.
 _FLAG_LABELS = {
-    "louveteaux": "Avoir apprivoise des louveteaux (evenement)",
+    "louveteaux": "Avoir apprivoisé des louveteaux (événement)",
 }
 
 
@@ -1271,12 +1271,12 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
         out.append(("Savoir connu.", "ok"))
         return out
     if tech.prereqs:
-        out.append(("Il faut connaitre :", "note"))
+        out.append(("Il faut connaître :", "note"))
         for pid in tech.prereqs:
             out.append((f"  {TECHS[pid].name}", "ok" if pid in tribe.knowledge else "manque"))
     teachers = _neighbors_know(state, tribe_id, tech_id)
     if tech.conds:
-        out.append(("Il faut avoir vecu :", "note"))
+        out.append(("Il faut avoir vécu :", "note"))
         for cond in tech.conds:
             have, need, label = cond_progress(state, tribe, cond, bool(teachers))
             shown = f"  {label}  ({min(have, need)}/{need})" if cond.kind not in ("seen", "flag") else f"  {label}"
@@ -1284,7 +1284,7 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
     if teachers:
         names = ", ".join(state.tribes[t].name for t in teachers[:3])
         bonus = round(100 * diffusion_bonus(state, tribe_id, tech_id))
-        out.append((f"Connu de : {names}  -  apprentissage +{bonus} %, semaines vecues divisees par 2", "ok"))
+        out.append((f"Connu de : {names}  -  apprentissage +{bonus} %, semaines vécues divisées par 2", "ok"))
     if st in ("disponible", "en_cours"):
         done = tribe.progress.get(tech_id, 0.0)
         out.append(

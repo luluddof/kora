@@ -201,7 +201,7 @@ def _partners(known_b=("echanges",)):
 def test_a_trade_pact_needs_the_knowledge_and_villages():
     st, site, band, osite, other = _partners()
     st.tribes[1].knowledge.discard("echanges")
-    assert "Echanges lointains" in diplo.evaluate(st, 1, 2, "commerce").blocked
+    assert "Échanges lointains" in diplo.evaluate(st, 1, 2, "commerce").blocked
     st.tribes[1].knowledge.add("echanges")
     v = diplo.evaluate(st, 1, 2, "commerce")
     assert not v.blocked and v.accepted
@@ -272,7 +272,7 @@ def test_prices_follow_scarcity():
     assert goods.price(st, 1, "sel") == round(base * goods.PRICE_HIGH, 2)
     st.tribes[1].goods["sel"] = 3 * goods.reserve(st, 1)
     assert goods.price(st, 1, "sel") == round(base * goods.PRICE_LOW, 2)
-    assert goods.price_word(st, 1, "sel") == "bon marche"
+    assert goods.price_word(st, 1, "sel") == "bon marché"
 
 
 def test_ai_trades_with_the_player_who_may_close():
@@ -485,7 +485,7 @@ def test_peoples_born_of_yours_count_for_knowledge():
     st.tribes[3] = kin
     st.bands[9] = Band(9, 3, offset_to_axial(5, 5), 90, 100.0)
     have, need, label = tech.cond_progress(st, tribe, cond)
-    assert have == 190 and have >= need and "nes du votre" in label
+    assert have == 190 and have >= need and "nés du votre" in label
 
 
 def test_imported_salt_teaches_what_salt_is():

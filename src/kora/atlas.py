@@ -21,20 +21,20 @@ LAND_NAMES = (
     "Belak",
 )
 SEA_NAMES = (
-    "Grand Ocean",
-    "Ocean du Couchant",
-    "Ocean du Levant",
+    "Grand Océan",
+    "Océan du Couchant",
+    "Océan du Levant",
     "Mer du Sel",
-    "Mer Pale",
+    "Mer Pâle",
     "Mer Verte",
     "Golfe Brumeux",
     "Mer Froide",
     "Bassin d'Ivoire",
-    "Mer Interieure",
+    "Mer Intérieure",
 )
 ICE_NAMES = ("Banquise du Nord", "Banquise du Sud")
 INLAND_NAMES = (
-    "Mer Interieure",
+    "Mer Intérieure",
     "Lac Profond",
     "Mer Close",
     "Lac des Brumes",

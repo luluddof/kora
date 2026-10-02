@@ -49,7 +49,7 @@ def test_after_the_first_village_nomad_clans_grow_independent():
     st.tick_count = 4
     chiefs.monthly(st)
     assert far.autonomy > near.autonomy > 0 and village.autonomy == 0.0
-    assert "independance" in chiefs.band_lines_extra(st, far)[1]
+    assert "indépendance" in chiefs.band_lines_extra(st, far)[1]
 
 
 def test_a_clan_leaves_when_its_independence_is_full_and_honor_slows_it():
@@ -117,7 +117,7 @@ def test_a_clan_that_leaves_founds_a_people_of_your_stock():
     kin = st.tribes[new]
     assert culture_of(kin).id == "souche"
     assert "semis" in kin.knowledge and kin.origin == 1
-    assert any("independance" in e.text for e in st.log.entries)
+    assert any("indépendance" in e.text for e in st.log.entries)
 
 
 def test_the_kin_people_camps_on_good_land_then_founds_its_village():
@@ -308,7 +308,7 @@ def test_neolithic_knowledge_steadies_villages_not_nomad_clans():
     nomad_before = chiefs.loyalty_target(st, st.bands[3])
     st.tribes[1].knowledge.update(("ancetres", "megalithes"))
     assert stability(st, site) == base + 25
-    assert any(label == "Savoirs du neolithique" for label, _v in stability_parts(st, site))
+    assert any(label == "Savoirs du néolithique" for label, _v in stability_parts(st, site))
     assert chiefs.loyalty_target(st, st.bands[3]) == nomad_before
 
 

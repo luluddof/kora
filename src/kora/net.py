@@ -108,7 +108,7 @@ class Conn:
         except (OSError, ValueError) as exc:
             self.why = self.why or str(exc)
         self.alive = False
-        self._inbox.put({"t": "_closed", "why": self.why or "connexion fermee"})
+        self._inbox.put({"t": "_closed", "why": self.why or "connexion fermée"})
 
     def _write(self) -> None:
         try:

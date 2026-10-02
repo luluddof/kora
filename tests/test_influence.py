@@ -79,7 +79,7 @@ def test_two_peoples_in_the_same_place_share_it():
     st.bands[2] = Band(id=2, tribe_id=2, position=band.position, population=40, stock=200)
     _live(st, 12)
     assert st.overlap.get((1, 2), 0) > 0
-    assert "partagee" in " ".join(influence.zone_lines(st, band.position))
+    assert "partagée" in " ".join(influence.zone_lines(st, band.position))
 
 
 def test_landmarks_feed_more_at_home_only():

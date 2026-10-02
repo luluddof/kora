@@ -24,58 +24,60 @@ import pygame.gfxdraw
 
 from src.kora import tech
 from src.kora.render import TREE_GUTTER, TREE_PAD, TREE_ROW, cam_on, tech_panel_layout, to_screen
+from src.kora import theme
+from src.kora.theme import C
 
-GOLD = (214, 180, 104)
-GOLD_DIM = (132, 108, 62)
-GOLD_DEEP = (84, 66, 36)
-INK = (234, 226, 206)
-SOFT = (192, 190, 180)
-NOTE = (146, 150, 158)
-GOOD = (150, 208, 136)
-BAD = (226, 138, 112)
+# La charte (theme.C) : ocre, os, lin, cendre.
+GOLD = C.ocre_jaune
+GOLD_DIM = C.bois_clair
+GOLD_DEEP = C.bois
+INK = C.os
+SOFT = C.lin
+NOTE = C.cendre
+GOOD = C.bon
+BAD = C.mauvais
 
 STYLE = {
-    "connu": {"top": (86, 70, 38), "bot": (54, 43, 24), "edge": (226, 190, 106), "text": (246, 236, 208), "icon": (240, 206, 126)},
-    "en_cours": {"top": (36, 62, 90), "bot": (22, 38, 60), "edge": (124, 186, 240), "text": (232, 240, 248), "icon": (156, 204, 244)},
-    "disponible": {"top": (36, 66, 42), "bot": (22, 42, 27), "edge": (132, 208, 120), "text": (234, 244, 228), "icon": (166, 224, 146)},
-    "attente": {"top": (40, 42, 48), "bot": (28, 30, 35), "edge": (96, 100, 108), "text": (184, 186, 192), "icon": (144, 148, 156)},
-    "verrouille": {"top": (27, 28, 32), "bot": (20, 21, 24), "edge": (58, 60, 66), "text": (116, 118, 124), "icon": (84, 86, 92)},
+    "connu": {"top": (72, 54, 30), "bot": (48, 35, 21), "edge": C.ocre_jaune, "text": C.os, "icon": C.ocre_jaune},
+    "en_cours": {"top": (92, 52, 26), "bot": (60, 33, 18), "edge": C.braise, "text": C.os, "icon": C.braise},
+    "disponible": {"top": (32, 58, 54), "bot": (20, 38, 35), "edge": C.savoir, "text": C.os, "icon": C.savoir},
+    "attente": {"top": (44, 34, 26), "bot": (31, 24, 19), "edge": C.bois_clair, "text": C.lin, "icon": C.cendre},
+    "verrouille": {"top": (28, 22, 18), "bot": (21, 17, 13), "edge": (58, 46, 36), "text": C.cendre, "icon": (92, 80, 68)},
 }
 STATE_LABEL = {
     "connu": "Connu",
     "en_cours": "En cours",
     "disponible": "Disponible",
     "attente": "Pas encore",
-    "verrouille": "Verrouille",
+    "verrouille": "Verrouillé",
 }
-# (fond des rangees, haut et bas de la banniere, couleur de l'age)
+# (fond des rangees, haut et bas de la banniere, couleur de l'age) : l'ocre
+# du feu pour l'age tribal, la terre cuite pour l'age des villages.
 ERA_STYLE = (
-    ((24, 22, 19), (52, 42, 28), (30, 26, 20), (222, 190, 116)),
-    ((17, 26, 21), (40, 64, 42), (22, 36, 25), (160, 214, 126)),
+    ((22, 17, 13), (66, 44, 26), (34, 25, 18), C.ocre_jaune),
+    ((24, 16, 13), (80, 40, 28), (40, 22, 16), (226, 132, 96)),
 )
+# Une icone par branche de l'arbre (game-icons, theme.ICON_FILES).
+BRANCH_ICONS = (
+    ("chasse", "baies", "cache", "peche", "froid", "camp", "feu", "gens"),
+    ("palissade", "ble", "grenier", "pirogue", "boeuf", "hutte", "menhir", "commerce"),
+)
+MEDAL_STATE = {"connu": "connu", "en_cours": "actif", "disponible": "normal", "attente": "normal", "verrouille": "eteint"}
+
 ROMAN = ("I", "II", "III", "IV", "V", "VI")
 
 _CACHE: dict = {}
 
 
 def _fonts(r):
-    if not hasattr(r, "tech_title"):
-        r.tech_title = pygame.font.SysFont("georgia", 26)
-        r.tech_head = pygame.font.SysFont("georgia", 18)
-        r.tech_era = pygame.font.SysFont("georgia", 17, bold=True)
-        r.tech_num = pygame.font.SysFont("georgia", 15, bold=True)
-    return r.tech_title, r.tech_head, r.tech_era, r.tech_num
+    return theme.font("titre"), theme.font("h3"), theme.font_file("sc-bold", 18), theme.font_file("sans-bold", 15)
 
 
 def _era_font(r, name: str, width: int):
     """Le plus grand titre d'age qui tient dans la marge (chaque mot entier)."""
-    # Garde sur le Renderer (comme _fonts) : une police ne survit pas a un
-    # pygame.quit (les tests en font).
-    cache = r.__dict__.setdefault("_era_fonts", {})
-    for size in (17, 15, 13, 12):
-        font = cache.get(size)
-        if font is None:
-            font = cache[size] = pygame.font.SysFont("georgia", size, bold=True)
+    font = None
+    for size in (19, 17, 15, 13):
+        font = theme.font_file("sc-bold", size)
         if all(font.size(word)[0] <= width for word in name.split(" ")):
             return font
     return font
@@ -86,6 +88,7 @@ def _lerp(a, b, t):
 
 
 def _gradient_card(w: int, h: int, top, bot, radius: int) -> pygame.Surface:
+    """Une carte en pierre taillee (theme.chamfer), degrade et grain."""
     key = ("card", w, h, top, bot, radius)
     hit = _CACHE.get(key)
     if hit is not None:
@@ -93,8 +96,12 @@ def _gradient_card(w: int, h: int, top, bot, radius: int) -> pygame.Surface:
     surf = pygame.Surface((w, h), pygame.SRCALPHA)
     for y in range(h):
         pygame.draw.line(surf, _lerp(top, bot, y / max(1, h - 1)) + (255,), (0, y), (w, y))
+    g = theme.grain(12)
+    for gx in range(0, w, g.get_width()):
+        for gy in range(0, h, g.get_height()):
+            surf.blit(g, (gx, gy))
     mask = pygame.Surface((w, h), pygame.SRCALPHA)
-    pygame.draw.rect(mask, (255, 255, 255, 255), (0, 0, w, h), border_radius=radius)
+    pygame.draw.polygon(mask, (255, 255, 255, 255), theme.chamfer((0, 0, w, h), max(3, min(radius, 10))))
     surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
     if len(_CACHE) > 400:
         _CACHE.clear()
@@ -131,11 +138,7 @@ def _wrap(font, text: str, width: int) -> list[str]:
 
 
 def _fit(font, text: str, width: int) -> str:
-    if font.size(text)[0] <= width:
-        return text
-    while text and font.size(text + ".")[0] > width:
-        text = text[:-1]
-    return text.rstrip() + "."
+    return theme.fit(font, text, width)
 
 
 # --- medaillons : un dessin par branche --------------------------------------------
@@ -213,24 +216,10 @@ def _glyph(surf, era: int, col: int, color, s: int) -> None:
 
 
 def medallion(era: int, col: int, state: str, radius: int) -> pygame.Surface:
-    key = ("med", era, col, state, radius)
-    hit = _CACHE.get(key)
-    if hit is not None:
-        return hit
-    st = STYLE[state]
-    d = radius * 2 + 2
-    surf = pygame.Surface((d, d), pygame.SRCALPHA)
-    c = radius
-    ring = st["edge"]
-    pygame.gfxdraw.filled_circle(surf, c, c, radius, _lerp(st["bot"], (0, 0, 0), 0.35) + (255,))
-    pygame.gfxdraw.aacircle(surf, c, c, radius, ring + (255,))
-    pygame.gfxdraw.aacircle(surf, c, c, radius - 3, _lerp(ring, (0, 0, 0), 0.5) + (255,))
-    s = int(radius * 1.15)
-    icon = pygame.Surface((s, s), pygame.SRCALPHA)
-    _glyph(icon, era, col, st["icon"] + (255,), s)
-    surf.blit(icon, (c - s // 2, c - s // 2))
-    _CACHE[key] = surf
-    return surf
+    """Le medaillon d'une branche : son icone, la couleur de son etat."""
+    icons = BRANCH_ICONS[min(era, len(BRANCH_ICONS) - 1)]
+    ring = C.savoir if state == "disponible" else None
+    return theme.medallion(icons[col % len(icons)], radius, MEDAL_STATE.get(state, "normal"), ring)
 
 
 def _check(screen, cx, cy, color, r=6) -> None:
@@ -253,12 +242,12 @@ def _lock(screen, cx, cy, color) -> None:
 
 
 def _ornate_frame(screen, rect) -> None:
+    """Le bord d'une fenetre de la charte : bois, fil d'ocre, encoches."""
     x, y, w, h = rect
-    pygame.draw.rect(screen, GOLD_DIM, rect, 2, border_radius=6)
-    pygame.draw.rect(screen, GOLD_DEEP, (x + 5, y + 5, w - 10, h - 10), 1, border_radius=4)
+    pygame.draw.polygon(screen, C.bois, theme.chamfer(rect, 10), 2)
+    pygame.draw.polygon(screen, C.ocre_sombre, theme.chamfer((x + 5, y + 5, w - 10, h - 10), 7), 1)
     for cx, cy in ((x + 5, y + 5), (x + w - 6, y + 5), (x + 5, y + h - 6), (x + w - 6, y + h - 6)):
-        pygame.draw.polygon(screen, GOLD, [(cx, cy - 5), (cx + 5, cy), (cx, cy + 5), (cx - 5, cy)])
-        pygame.draw.polygon(screen, GOLD_DEEP, [(cx, cy - 5), (cx + 5, cy), (cx, cy + 5), (cx - 5, cy)], 1)
+        pygame.draw.polygon(screen, C.ocre, [(cx, cy - 4), (cx + 4, cy), (cx, cy + 4), (cx - 4, cy)])
 
 
 def _bezier(p0, p3, steps: int = 14) -> list:
@@ -278,15 +267,8 @@ def _bezier(p0, p3, steps: int = 14) -> list:
 
 
 def _button(screen, font, rect, label: str, on: bool, hover: bool) -> None:
-    x, y, w, h = rect
-    if on:
-        card = _gradient_card(w, h, (196, 160, 84) if hover else (150, 118, 58), (110, 84, 38) if hover else (88, 66, 30), 6)
-    else:
-        card = _gradient_card(w, h, (48, 50, 56), (34, 36, 40), 6)
-    screen.blit(card, (x, y))
-    pygame.draw.rect(screen, GOLD if on else (70, 72, 78), rect, 1, border_radius=6)
-    surf = font.render(label, True, (28, 20, 8) if on and hover else INK if on else (126, 128, 134))
-    screen.blit(surf, (x + (w - surf.get_width()) // 2, y + (h - surf.get_height()) // 2))
+    """Le bouton principal de la charte (ocre plein)."""
+    theme.button(screen, rect, label, "principal", on, hover, role="bouton" if rect[3] >= 30 else "bouton_petit")
 
 
 # --- l'ecran --------------------------------------------------------------------------
@@ -314,7 +296,7 @@ def _status_line(state, tribe, tid: str, st: str) -> tuple[str, tuple]:
         return f"{t.cost} pts · ~{tech.weeks_left(state, state.viewer, tid)} sem.", STYLE["disponible"]["edge"]
     if st == "verrouille":
         missing = tech.missing_prereqs(tribe, t)
-        return ("Il faut : " + ", ".join(m.name for m in missing[:2])) if missing else "Verrouille", STYLE["verrouille"]["text"]
+        return ("Il faut : " + ", ".join(m.name for m in missing[:2])) if missing else "Verrouillé", STYLE["verrouille"]["text"]
     for cond in t.conds:
         have, need, label = tech.cond_progress(state, tribe, cond)
         if have < need:
@@ -330,7 +312,7 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
     screen = r.screen
     title_font, head_font, era_font, num_font = _fonts(r)
     bx, by, bw, bh = lay["box"]
-    back = _gradient_card(bw, bh, (26, 30, 40), (13, 15, 20), 8)
+    back = _gradient_card(bw, bh, (41, 31, 24), (20, 15, 12), 8)
     screen.blit(back, (bx, by))
     _ornate_frame(screen, (bx, by, bw, bh))
     mx, my = pygame.mouse.get_pos()
@@ -341,7 +323,7 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
     z = cam[2]
     vx, vy, vw, vh = view
     screen.set_clip(view)
-    pygame.draw.rect(screen, (14, 16, 20), view)
+    pygame.draw.rect(screen, (20, 16, 12), view)
     cols, rows = world["cols"], world["rows"]
     col_w = world["col_w"]
 
@@ -387,7 +369,7 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
             elif known:
                 color, width = (110, 104, 88), 1
             else:
-                color, width = (58, 60, 66), 1
+                color, width = (80, 60, 42), 1
             width = max(1, int(round(width * min(1.4, z))))
             pts = _bezier(p0, p3) if abs(p0[0] - p3[0]) > 1 else [p0, p3]
             if width > 1:
@@ -441,7 +423,7 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
                 continue
             font = r.small if z >= 1.0 else r.tiny
             label = _wrap(font, tech.TIER_NAMES[tier], int(gutter) - 18)[:2]
-            cost = f"{tech.TIER_COST[tier]} pts" if tech.TIER_COST[tier] else "au depart"
+            cost = f"{tech.TIER_COST[tier]} pts" if tech.TIER_COST[tier] else "au départ"
             lh = font.get_height()
             ty = int(ry + (TREE_ROW * z - lh * (len(label) + 1)) / 2)
             for part in label:
@@ -469,7 +451,7 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
             pygame.draw.rect(glow, style["edge"] + (alpha,), (0, 0, w + 2 * pad, h + 2 * pad), border_radius=10)
             screen.blit(glow, (x - pad, y - pad))
         screen.blit(_gradient_card(w, h, style["top"], style["bot"], 6), (x, y))
-        edge = (250, 244, 226) if tid == pick else style["edge"]
+        edge = (239, 228, 204) if tid == pick else style["edge"]
         pygame.draw.rect(screen, edge, (x, y, w, h), 2 if (tid == pick or hover) else 1, border_radius=6)
         rad = max(8, min(22, int(17 * z)))
         med = medallion(tech.era_of(t), t.branch, st, rad)
@@ -487,7 +469,7 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
         if z >= 1.05:
             first = tech.summary(t)
             if first:
-                lines.append((_fit(r.tiny, first, text_w), r.tiny, (184, 222, 168) if st != "verrouille" else (110, 120, 110)))
+                lines.append((_fit(r.tiny, first, text_w), r.tiny, (178, 205, 140) if st != "verrouille" else (130, 113, 96)))
         total = sum(f.get_height() for _t, f, _c in lines)
         ty = y + max(2, (h - total) // 2 - 2)
         for text, font, color in lines:
@@ -498,8 +480,8 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
         done = tribe.progress.get(tid, 0.0) / t.cost if t.cost else 0.0
         if st != "connu" and done > 0:
             bar = (tx, y + h - max(5, int(7 * z)), w - (tx - x) - 10, max(2, int(3 * z)))
-            pygame.draw.rect(screen, (16, 18, 22), bar)
-            pygame.draw.rect(screen, STYLE["en_cours"]["edge"] if st == "en_cours" else (120, 130, 140), (bar[0], bar[1], int(bar[2] * min(1.0, done)), bar[3]))
+            pygame.draw.rect(screen, (23, 18, 14), bar)
+            pygame.draw.rect(screen, STYLE["en_cours"]["edge"] if st == "en_cours" else (143, 130, 115), (bar[0], bar[1], int(bar[2] * min(1.0, done)), bar[3]))
         if st == "connu":
             _check(screen, x + w - 9, y + 9, GOLD, r=max(4, int(6 * min(1.2, z))))
         elif st == "verrouille":
@@ -511,7 +493,7 @@ def draw(r, state, lay: dict, pick: str | None) -> None:
     _controls(r, lay, mx, my)
     sx0, sy0, _sw, sh0 = lay["strip"]
     zoom = f"zoom {int(round(100 * z))} %"
-    hint = r.tiny.render(f"Glisser (n'importe quel bouton) : se deplacer  ·  molette : zoomer  ·  fleches, + et -  ·  {zoom}", True, NOTE)
+    hint = r.tiny.render(f"Glisser (n'importe quel bouton) : se déplacer  ·  molette : zoomer  ·  flèches, + et -  ·  {zoom}", True, NOTE)
     screen.blit(hint, (sx0 + 4, sy0 + (sh0 - hint.get_height()) // 2))
     _detail(r, state, tribe, lay, pick, states, head_font)
     if hovered is not None and hovered != pick:
@@ -525,7 +507,7 @@ def _minimap(r, lay, states) -> None:
     world = lay["world"]
     ww, wh = world["size"]
     k = mw / ww
-    screen.blit(_gradient_card(mw, mh, (26, 28, 34), (16, 18, 22), 4), (mx0, my0))
+    screen.blit(_gradient_card(mw, mh, (37, 28, 22), (23, 18, 14), 4), (mx0, my0))
     pygame.draw.rect(screen, GOLD_DIM, lay["minimap"], 1, border_radius=4)
     for sec in world["sections"]:
         if sec["era"]:
@@ -536,7 +518,7 @@ def _minimap(r, lay, states) -> None:
     cx, cy, z = lay["cam"]
     vw, vh = lay["view"][2] / z, lay["view"][3] / z
     frame = (mx0 + int(cx * k), my0 + int(cy * k), max(4, int(vw * k)), max(4, int(vh * k)))
-    pygame.draw.rect(screen, (250, 244, 226), frame, 1)
+    pygame.draw.rect(screen, (239, 228, 204), frame, 1)
 
 
 def _controls(r, lay, mx, my) -> None:
@@ -552,7 +534,7 @@ def _header(r, state, tribe, lay, states, title_font, head_font) -> None:
     screen.blit(title_font.render("Savoirs", True, GOLD), (bx + 20, by + 10))
     rate = tech.learn_rate(state, state.viewer)
     pop = tech._learning_pop(state, state.viewer)
-    pace = f"Recherche : {rate:.1f} pts par semaine  ·  {pop} personnes a l'ecoute des anciens".replace(".", ",", 1)
+    pace = f"Recherche : {rate:.1f} pts par semaine  ·  {pop} personnes à l'écoute des anciens".replace(".", ",", 1)
     screen.blit(r.tiny.render(pace, True, NOTE), (bx + 22, by + 42))
     # Legende.
     lx = bx + 140
@@ -565,7 +547,7 @@ def _header(r, state, tribe, lay, states, title_font, head_font) -> None:
         lx += 26 + label.get_width()
     # Recherche en cours.
     cx, cy, cw, ch = lay["current"]
-    card = _gradient_card(cw, ch, (34, 44, 58), (22, 28, 38), 6)
+    card = _gradient_card(cw, ch, (58, 44, 33), (37, 28, 22), 6)
     screen.blit(card, (cx, cy))
     pygame.draw.rect(screen, GOLD_DIM, lay["current"], 1, border_radius=6)
     if tribe.learning:
@@ -579,7 +561,7 @@ def _header(r, state, tribe, lay, states, title_font, head_font) -> None:
         surf = r.tiny.render(info, True, STYLE["en_cours"]["edge"])
         screen.blit(surf, (cx + cw - surf.get_width() - 10, cy + 8))
         bar = (cx + 48, cy + ch - 14, cw - 58, 6)
-        pygame.draw.rect(screen, (12, 14, 18), bar, border_radius=3)
+        pygame.draw.rect(screen, (18, 14, 11), bar, border_radius=3)
         pygame.draw.rect(screen, STYLE["en_cours"]["edge"], (bar[0], bar[1], int(bar[2] * min(1.0, done)), 6), border_radius=3)
     else:
         screen.blit(head_font.render("Aucun savoir en cours", True, (226, 196, 128)), (cx + 14, cy + 4))
@@ -590,7 +572,7 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
     screen = r.screen
     dx, dy, dw, dh = lay["detail"]
     shown = pick or tribe.learning or next(iter(tech.available(state, state.viewer)), None)
-    card = _gradient_card(dw, dh, (30, 32, 38), (18, 20, 24), 8)
+    card = _gradient_card(dw, dh, (42, 32, 25), (26, 20, 15), 8)
     screen.blit(card, (dx, dy))
     pygame.draw.rect(screen, GOLD_DEEP, (dx, dy, dw, dh), 1, border_radius=8)
     if shown is None:
@@ -632,7 +614,7 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
                 need.append((text.strip(), style_key))
     _column(r, left, "CE QU'IL FAIT", what)
     if st == "connu":
-        _column(r, right, "SAVOIR ACQUIS", [("Votre peuple sait deja faire cela.", "ok")])
+        _column(r, right, "SAVOIR ACQUIS", [("Votre peuple sait déjà faire cela.", "ok")])
     else:
         _column(r, right, "CE QU'IL DEMANDE", need)
     if st != "connu":
@@ -656,13 +638,13 @@ def _column(r, rect, title: str, rows: list) -> None:
             screen.blit(r.tiny.render(text.rstrip(" :"), True, GOLD_DIM), (x, yy))
             yy += 16
             continue
-        color = {"texte": SOFT, "effet": (184, 222, 168), "ok": GOOD, "manque": BAD}.get(kind, SOFT)
+        color = {"texte": SOFT, "effet": (178, 205, 140), "ok": GOOD, "manque": BAD}.get(kind, SOFT)
         indent = 18 if kind in ("effet", "ok", "manque") else 0
         for k, part in enumerate(_wrap(r.tiny, text.strip(), w - indent - 4)):
             if yy + 15 > y + h:
                 return
             if k == 0 and kind == "effet":
-                pygame.draw.polygon(screen, (184, 222, 168), [(x + 4, yy + 3), (x + 10, yy + 7), (x + 4, yy + 11)])
+                pygame.draw.polygon(screen, (178, 205, 140), [(x + 4, yy + 3), (x + 10, yy + 7), (x + 4, yy + 11)])
             elif k == 0 and kind == "ok":
                 _tick(screen, x + 7, yy + 7)
             elif k == 0 and kind == "manque":
@@ -675,7 +657,7 @@ def _column(r, rect, title: str, rows: list) -> None:
 def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
     t = tech.TECHS[tid]
     lines = [(t.name, INK), (STATE_LABEL[st], STYLE[st]["edge"])]
-    lines += [("+ " + line, (184, 222, 168)) for line in tech.effect_lines(t)[:3]]
+    lines += [("+ " + line, (178, 205, 140)) for line in tech.effect_lines(t)[:3]]
     if st in ("attente", "verrouille"):
         lines.append(("Cliquez pour voir ce qu'il demande", NOTE))
     w = max(r.tiny.size(text)[0] for text, _c in lines) + 20
@@ -683,7 +665,7 @@ def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
     sw, sh = r.screen.get_size()
     x = min(mx + 16, sw - w - 8)
     y = min(my + 18, sh - h - 8)
-    card = _gradient_card(w, h, (38, 40, 48), (24, 26, 30), 6)
+    card = _gradient_card(w, h, (53, 41, 31), (34, 25, 20), 6)
     r.screen.blit(card, (x, y))
     pygame.draw.rect(r.screen, GOLD_DIM, (x, y, w, h), 1, border_radius=6)
     yy = y + 6

@@ -66,14 +66,14 @@ TRAITS: dict[str, Trait] = {
         Trait("guerrier", "Guerrier", 1.0, {"combat": 1.10}),
         Trait("sage", "Sage", 0.8, {"learn": 1.10}),
         Trait("rassembleur", "Rassembleur", 0.7, {"loyalty_all": 10, "loyalty_own": 5}),
-        Trait("genereux", "Genereux", 0.8, {"loyalty_own": 5, "gifts": 1.25, "relations": 3}),
+        Trait("genereux", "Généreux", 0.8, {"loyalty_own": 5, "gifts": 1.25, "relations": 3}),
         Trait("prudent", "Prudent", 0.9, {"famine": 0.85}),
         Trait("ambitieux", "Ambitieux", 0.8, {"loyalty_own": -15, "winter_prestige": 1}),
         Trait("querelleur", "Querelleur", 0.5, {"loyalty_all": -5, "relations": -5}),
         Trait("robuste", "Robuste", 0.8, {"death": 0.5}),
-        Trait("fragile", "De sante fragile", 0.5, {"death": 2.0}),
+        Trait("fragile", "De santé fragile", 0.5, {"death": 2.0}),
         Trait("conteur", "Conteur", 0.6, {"winter_prestige": 1, "loyalty_all": 3}),
-        Trait("fidele", "Fidele", 0.8, {"loyalty_own": 15}),
+        Trait("fidele", "Fidèle", 0.8, {"loyalty_own": 15}),
         Trait("tueur_loups", "Tueur de loups", 0.0, {"loyalty_own": 5}),
     )
 }
@@ -92,7 +92,7 @@ def trait_lines(trait: Trait) -> list[str]:
         v = e["loyalty_own"]
         out.append(f"Son clan : {'+' if v >= 0 else ''}{v} d'attachement")
     if "death" in e:
-        out.append("Vit plus longtemps" if e["death"] < 1 else "Risque de mourir plus tot")
+        out.append("Vit plus longtemps" if e["death"] < 1 else "Risque de mourir plus tôt")
     if "learn" in e:
         out.append(f"Chef de la tribu : {tech._pct(e['learn'])} d'apprentissage")
     if "loyalty_all" in e:
@@ -104,7 +104,7 @@ def trait_lines(trait: Trait) -> list[str]:
         v = e["relations"]
         out.append(f"Chef de la tribu : {'+' if v >= 0 else ''}{v} de relation avec tous les peuples")
     if "winter_prestige" in e:
-        out.append(f"Chef de la tribu : +{e['winter_prestige']} prestige a la fin de l'hiver")
+        out.append(f"Chef de la tribu : +{e['winter_prestige']} prestige à la fin de l'hiver")
     return out
 
 
@@ -226,7 +226,7 @@ def mood(state, band) -> str:
         return "distant"
     if band.loyalty >= LEAVE:
         return "indocile"
-    return "au depart"
+    return "au départ"
 
 
 # --- effets des traits ------------------------------------------------------------
@@ -281,7 +281,7 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
             parts.append(("Plus nombreux que le clan du chef", -10.0))
     world = state.world
     if influence.in_core(world, band.position, band.tribe_id):
-        parts.append(("Au coeur de vos terres", 15.0))
+        parts.append(("Au cœur de vos terres", 15.0))
     elif influence.in_zone(world, band.position, band.tribe_id):
         parts.append(("Dans vos terres", 10.0))
     other = influence.foreign_zone(world, band.position, band.tribe_id)
@@ -297,7 +297,7 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
         names = ", ".join(TRAITS[t].name.lower() for t in band.leader.traits if t in TRAITS)
         parts.append((f"Chef de bande {names}", float(own)))
     if state.tick_count - band.famine_tick <= 8:
-        parts.append(("Famine recente", -10.0))
+        parts.append(("Famine récente", -10.0))
     if state.sites:
         from src.kora import villages
 
@@ -305,14 +305,14 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
         if tribe.settled_at >= 0 and not band.village and band.kind != "armee":
             near = villages.nearest_village(state, band, villages.NEAR)
             if near is not None:
-                parts.append((f"Pres de {villages.name(near)}", NEAR_VILLAGE))
+                parts.append((f"Près de {villages.name(near)}", NEAR_VILLAGE))
     for notable in band.notables:
         if "ambitieux" in notable.traits:
             parts.append((f"Un ancien ambitieux ({notable.name})", AMBITIOUS_NOTABLE))
             break
     count = sum(1 for b in state.bands.values() if b.tribe_id == band.tribe_id and b.population > 0 and b.kind != "armee")
     if count > 4:
-        parts.append(("Tribu tres etendue", -2.0 * (count - 4)))
+        parts.append(("Tribu très étendue", -2.0 * (count - 4)))
     if bonus.loyalty:
         parts.append(("Savoirs (rites, chefferie...)", float(bonus.loyalty)))
     if band.village and state.sites:
@@ -322,9 +322,9 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
         if site is not None:
             s = (villages.stability(state, site, band) - villages.STABILITY_BASE) * 0.3
             if abs(s) >= 1:
-                parts.append(("Stabilite du village", s))
+                parts.append(("Stabilité du village", s))
     if band.leader is not None and tribe.heir == band.leader.pid:
-        parts.append(("Heritier designe", 10.0))
+        parts.append(("Héritier désigné", 10.0))
     if sites.camp_at(state, band) is not None:
         parts.append(("Au campement", 5.0))
     return [(label, round(v, 1)) for label, v in parts if abs(v) >= 0.5]
@@ -409,10 +409,10 @@ def _autonomy(state, band) -> tuple[float, list]:
         parts.append((f"Hors de l'emprise du chef ({reach} cases)", f"+{AUTONOMY_REACH:.1f}"))
     if band.loyalty < OBEY:
         rate += AUTONOMY_INDOCILE
-        parts.append(("Indocile : il n'obeit plus", f"+{AUTONOMY_INDOCILE:.1f}"))
+        parts.append(("Indocile : il n'obéit plus", f"+{AUTONOMY_INDOCILE:.1f}"))
     if villages.nearest_village(state, band, villages.NEAR) is not None:
         rate *= AUTONOMY_NEAR
-        parts.append(("Pres d'un de vos villages", f"x{AUTONOMY_NEAR:.1f}"))
+        parts.append(("Près d'un de vos villages", f"x{AUTONOMY_NEAR:.1f}"))
     count = len(sites.of_tribe(state, band.tribe_id, "village"))
     if count > 1:
         pull = 1.0 + AUTONOMY_VILLAGE_PULL * (count - 1)
@@ -444,7 +444,7 @@ def _grow_autonomy(state, tribe) -> None:
             _note(
                 state,
                 LogKind.POLITIQUE,
-                f"Le clan de {_name(band)} n'ecoute plus guere le village : il parle de partir fonder le sien.",
+                f"Le clan de {_name(band)} n'écoute plus guère le village : il parle de partir fonder le sien.",
                 band.position,
                 to=tribe.id,
             )
@@ -500,7 +500,7 @@ def can_honor(state, band_id: int) -> str:
         return f"Il faut {HONOR_COST} de prestige"
     wait = HONOR_EVERY - (state.tick_count - band.honored)
     if wait > 0:
-        return f"Deja honore (encore {wait} sem.)"
+        return f"Déjà honoré (encore {wait} sem.)"
     return ""
 
 
@@ -517,7 +517,7 @@ def honor(state, band_id: int) -> bool:
         band.leader.renown += 3
     if tribe.is_player:
         who = band.leader.name if band.leader else "ce clan"
-        _note(state, LogKind.POLITIQUE, f"Le clan de {who} est honore (+{HONOR_GAIN:.0f} attachement).", band.position, to=tribe.id)
+        _note(state, LogKind.POLITIQUE, f"Le clan de {who} est honoré (+{HONOR_GAIN:.0f} attachement).", band.position, to=tribe.id)
     return True
 
 
@@ -527,9 +527,9 @@ def can_move_chief(state, band_id: int) -> str:
         return "Pas de bande"
     heart = chief_band(state, band.tribe_id)
     if heart is None or heart.id == band.id:
-        return "Le chef est deja ici"
+        return "Le chef est déjà ici"
     if state.world.distance(heart.position, band.position) > 1:
-        return "La bande du chef doit etre sur la meme case"
+        return "La bande du chef doit être sur la même case"
     return ""
 
 
@@ -551,7 +551,7 @@ def can_promote(state, band_id: int, pid: int) -> str:
     if band is None:
         return "Pas de bande"
     if is_chief_band(state, band):
-        return "Le chef de la tribu mene ce clan"
+        return "Le chef de la tribu mène ce clan"
     if not any(p.pid == pid for p in band.notables):
         return "Pas un ancien de ce clan"
     return ""
@@ -567,7 +567,7 @@ def promote(state, band_id: int, pid: int) -> bool:
     add_notable(band, band.leader)
     band.leader = new
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.POLITIQUE, f"{new.name} mene desormais son clan.", band.position, to=band.tribe_id)
+        _note(state, LogKind.POLITIQUE, f"{new.name} mène désormais son clan.", band.position, to=band.tribe_id)
     return True
 
 
@@ -583,7 +583,7 @@ def set_heir(state, band_id: int) -> bool:
             if "ambitieux" in other.leader.traits:
                 other.loyalty = max(0.0, other.loyalty - 5.0)
     if tribe.is_player:
-        _note(state, LogKind.POLITIQUE, f"{band.leader.name} est designe heritier.", band.position, to=tribe.id)
+        _note(state, LogKind.POLITIQUE, f"{band.leader.name} est désigné héritier.", band.position, to=tribe.id)
     return True
 
 
@@ -666,7 +666,7 @@ def secede(state, band_id: int, hostile: bool = False, independence: bool = Fals
         joined = tid
         if parent.settled_at >= 0:
             text = (
-                f"Le clan de {_name(band)} ({band.population} personnes) prend son independance : "
+                f"Le clan de {_name(band)} ({band.population} personnes) prend son indépendance : "
                 f"les {name}, de votre civilisation, fonderont leurs propres villages sous leur propre chef."
             )
         else:
@@ -740,7 +740,7 @@ def leader_dies(state, band, cause: str) -> None:
         _note(
             state,
             LogKind.POLITIQUE,
-            f"{dead.name}, chef de clan, est mort {cause}. {band.leader.name} mene le clan.",
+            f"{dead.name}, chef de clan, est mort {cause}. {band.leader.name} mène le clan.",
             band.position,
             to=tribe.id,
         )
@@ -776,7 +776,7 @@ def _succession(state, tid: int, dead: Person | None, cause: str = "") -> None:
         crown(state, tid, ranked[0].id, quiet=True)
         if events.hook(state, "succession", tribe_id=tid, band_id=ranked[0].id, dead=dead.name, cause=cause):
             return
-        _note(state, LogKind.POLITIQUE, f"{dead.name}, votre chef, est mort {cause}. {ranked[0].leader.name} lui succede.", to=tid)
+        _note(state, LogKind.POLITIQUE, f"{dead.name}, votre chef, est mort {cause}. {ranked[0].leader.name} lui succède.", to=tid)
         return
     crown(state, tid, ranked[0].id, quiet=True)
     if dead is not None:
@@ -803,7 +803,7 @@ def crown(state, tid: int, band_id: int, quiet: bool = False) -> None:
         if "ambitieux" in other.leader.traits and other.leader.renown >= band.leader.renown - 5:
             other.loyalty = max(0.0, other.loyalty - 15.0)
     if not quiet and tribe.is_player:
-        _note(state, LogKind.POLITIQUE, f"{band.leader.name} mene desormais la tribu.", band.position, to=tribe.id)
+        _note(state, LogKind.POLITIQUE, f"{band.leader.name} mène désormais la tribu.", band.position, to=tribe.id)
 
 
 def _players_knowing(state, tid: int) -> list[int]:
@@ -912,7 +912,7 @@ def marriage_note(state, a: int, b: int) -> None:
     for x, y in ((a, b), (b, a)):
         if state.tribes[x].is_player:
             other = state.tribes[y]
-            _note(state, LogKind.POLITIQUE, f"Des enfants de {ca.name if x == a else cb.name} epousent ceux de {cb.name if x == a else ca.name}, chef des {other.name}.", to=x)
+            _note(state, LogKind.POLITIQUE, f"Des enfants de {ca.name if x == a else cb.name} épousent ceux de {cb.name if x == a else ca.name}, chef des {other.name}.", to=x)
 
 
 def battle_death(state, band) -> bool:
@@ -937,7 +937,7 @@ def band_lines_extra(state, band) -> list[str]:
     out = [f"Clan de {lead}", f"Attachement : {band.loyalty:.0f} ({mood(state, band)})"]
     if gains_autonomy(state, band):
         months = autonomy_months(state, band)
-        out[1] += f"  ·  independance {band.autonomy:.0f} % (~{months} mois)"
+        out[1] += f"  ·  indépendance {band.autonomy:.0f} % (~{months} mois)"
     if band.notables:
         out[1] += "  ·  anciens : " + ", ".join(p.name for p in band.notables)
     return out

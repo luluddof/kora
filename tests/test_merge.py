@@ -52,7 +52,7 @@ def test_a_merged_group_is_not_welded_at_once():
     st = _state()
     merge_bands(st, 1)
     band = st.bands[1]
-    assert "reuni" in orders.band_actions(st, 1)["split"]
+    assert "réuni" in orders.band_actions(st, 1)["split"]
     morale, parts = battle.start_morale(st, band, True, band.position)
     assert any(label == "Pas encore soudes" for label, _v in parts)
     st.tick_count = band.welded_until

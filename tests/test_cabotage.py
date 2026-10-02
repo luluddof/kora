@@ -147,7 +147,7 @@ def test_detail_lists_the_three_conditions_with_progress():
     lines = [text for text, _style in tech.detail_lines(st, 1, "pirogue")]
     assert any("Rivage en vue" in line for line in lines)
     assert any(f"Peuple {tech.PIROGUE_POP}" in line for line in lines)
-    assert any("sem. en cote" in line for line in lines)
+    assert any("sem. en côte" in line for line in lines)
     assert any("longer l'eau" in line for line in lines)
 
 

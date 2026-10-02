@@ -35,7 +35,7 @@ def test_a_raid_sours_the_relation_and_says_why():
     assert diplo.relation(st, 1, 2) <= -20
     mine = [label for label, _v in diplo.reasons(st, 1, 2)]
     theirs = [label for label, _v in diplo.reasons(st, 2, 1)]
-    assert "Vous les avez attaques" in mine and "Ils vous ont attaques" in theirs
+    assert "Vous les avez attaqués" in mine and "Ils vous ont attaqués" in theirs
     for _ in range(40):
         diplo.monthly(st)
     assert diplo.relation(st, 1, 2) > -10

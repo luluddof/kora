@@ -171,6 +171,6 @@ def zone_lines(state, h) -> list[str]:
 
     if len(here) == 1:
         v, t = here[0]
-        strength = "coeur" if v >= CORE_MIN else "zone"
+        strength = "cœur" if v >= CORE_MIN else "zone"
         return [f"Influence : {name(t)} ({strength})"]
-    return ["Influence partagee : " + ", ".join(name(t) for _v, t in here[:3])]
+    return ["Influence partagée : " + ", ".join(name(t) for _v, t in here[:3])]

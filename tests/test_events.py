@@ -78,7 +78,7 @@ def test_the_player_gets_a_card_and_chooses():
     assert events.fire(st, inst)
     assert len(events.pending(st)) == 1
     opts = events.options_for(st, inst)
-    assert opts[0]["summary"].startswith("+4 a 7 personnes")
+    assert opts[0]["summary"].startswith("+4 à 7 personnes")
     events.choose(st, inst.uid, 0)
     assert not events.pending(st)
     assert band.population > 40
@@ -91,7 +91,7 @@ def test_an_unanswered_card_is_decided_by_default_at_the_deadline():
     st.tick_count = inst.deadline
     events.weekly(st)
     assert not events.pending(st)
-    assert any("Decide d'office" in e.text for e in st.log.entries)
+    assert any("Décidé d'office" in e.text for e in st.log.entries)
 
 
 def test_the_ai_decides_at_once():

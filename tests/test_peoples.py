@@ -11,7 +11,7 @@ from src.kora.world import make_filled_world, offset_to_axial
 
 def test_old_tribes_keep_their_culture_and_color():
     assert culture_of(Tribe(2, "Steppe", 20, False)).id == "steppe"
-    assert culture_of(Tribe(4, "Cote", 20, False)).id == "cote"
+    assert culture_of(Tribe(4, "Côte", 20, False)).id == "cote"
     assert color_of(Tribe(1, "Joueur", 20, True)) == (220, 70, 70)
     assert culture_of(Tribe(9, "x", 20, False, culture="nord")).label == "peuple du grand froid"
 

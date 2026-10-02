@@ -211,6 +211,21 @@ lente, bandes dessinees petites a taille fixe.
     identique sur deux "machines". En route : la sauvegarde oubliait la
     pression de cueillette (recharger changeait la suite) : corrige.
 
+2026-10-02 ("un plus gros effort")
+  - "Une REFONTE GRAPHIQUE des interfaces et de l'UI, avec une CHARTE
+    GRAPHIQUE que tu definiras : faire plus JEU VIDEO, donner une IDENTITE
+    PROPRE au jeu plutot qu'une interface qui fait franchement IA."
+                                                                EN COURS
+  - "Une nouvelle REFLEXION sur la profondeur des deux epoques, pour
+    refleter les problematiques liees a ces epoques ; dont un tout nouveau
+    systeme, sur tout le jeu, de SITUATIONS : des problematiques inspirees
+    des conjonctures et catastrophes d'EU5 et des crises de Stellaris.
+    Elles apparaissent selon des contextes specifiques, posent des
+    problemes a resoudre REALISTES pour l'epoque ; une CRISE resolue remet
+    a l'etat du debut ; une CONJONCTURE resolue peut offrir un BONUS AU
+    GAGNANT si elle implique plusieurs tribus / villes / pays."
+                                                                EN COURS
+
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------

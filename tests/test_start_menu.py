@@ -67,7 +67,7 @@ def test_bonuses_fade_after_five_years():
     assert me.start_bonuses == [] and me.start_bonus_until == -1
     assert tech.bonuses(me).vision == base_vision
     assert tech.bonuses(me).combat == 1.0
-    assert any("bonus de depart s'eteignent" in e.text.lower() for e in st.log.entries)
+    assert any("bonus de départ s'éteignent" in e.text.lower() for e in st.log.entries)
 
 
 def test_monthly_tick_ends_the_bonuses():
@@ -200,7 +200,7 @@ def test_screens_draw_without_error():
     setup = render_menu.new_setup(random.Random(1))
     setup["bonuses"] = ["bonus:froid", "bonus:conteurs"]
     render_menu.draw_setup(r, setup, 1.0, info)
-    render_menu.draw_setup(r, setup, 1.0, None, "Choisissez encore 1 bonus de depart.")
+    render_menu.draw_setup(r, setup, 1.0, None, "Choisissez encore 1 bonus de départ.")
     assert r.title_hits and r.setup_hits
     # La planete du menu ne touche pas celle de la partie (son brouillard).
     assert r._planet is None or r._planet is not r._title_planet

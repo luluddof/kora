@@ -81,8 +81,8 @@ def test_a_crushed_troop_in_the_open_is_annihilated():
     rep = st.fights[0].report
     assert rep["wiped"] and rep["outcome"] == "aneanti"
     assert st.tribes[1].prestige == before + 10
-    assert "aneanti" in rep["headline"]
-    assert any("aneantis" in e.text for e in st.log.entries)
+    assert "anéanti" in rep["headline"]
+    assert any("anéantis" in e.text for e in st.log.entries)
 
 
 def test_woods_and_hills_help_the_beaten_to_escape():
@@ -117,14 +117,14 @@ def test_hunger_and_a_troop_change_morale():
     clan.famine_in_period = True
     hungry, parts = battle.start_morale(st, clan, True, clan.position)
     assert hungry == base + battle.HUNGER_MORALE
-    assert any(label == "Affames" for label, _v in parts)
+    assert any(label == "Affamés" for label, _v in parts)
     fierce, _ = battle.start_morale(st, troop, True, troop.position)
     assert fierce == base + battle.ARMY_MORALE
 
 
 def test_a_band_fights_only_one_battle_a_week():
     st = _state()
-    st.tribes[3] = Tribe(3, "Foret", 20, False, knowledge=set(tech.START_KNOWLEDGE))
+    st.tribes[3] = Tribe(3, "Forêt", 20, False, knowledge=set(tech.START_KNOWLEDGE))
     strong = _band(st, 1, 1, 80)
     _band(st, 2, 2, 20)
     _band(st, 3, 3, 20)

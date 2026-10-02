@@ -106,13 +106,13 @@ def test_a_player_decides_the_offer_of_another_player():
     st = _mp()
     diplo.make_contact(st, 1, 2)
     msg = diplo.perform(st, 1, 2, "treve")
-    assert "decider" in msg, msg
+    assert "décider" in msg, msg
     cards = [c for c in events.pending(st, 2) if c.event_id == "offre_treve"]
     assert len(cards) == 1 and cards[0].other == 1
     assert not diplo.at_peace(st, 1, 2)
     events.choose(st, cards[0].uid, 0)
     assert diplo.has_pact(st, 1, 2, "treve")
-    assert any("ont repondu" in e.text for e in st.log.entries)
+    assert any("ont répondu" in e.text for e in st.log.entries)
     assert diplo.on_cooldown(st, 1, 2, "treve")
 
 

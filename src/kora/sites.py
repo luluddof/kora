@@ -131,7 +131,7 @@ def camp_block(state, band_id: int) -> str:
         return "Pas de bande"
     allowed = _bonus(state, band.tribe_id).camps
     if allowed <= 0:
-        return "Il faut connaitre Huttes et campements"
+        return "Il faut connaître Huttes et campements"
     if band.retreating:
         return "La bande est en repli"
     if not _land(state, band.position):
@@ -142,9 +142,9 @@ def camp_block(state, band_id: int) -> str:
     for s in state.sites.values():
         d = state.world.distance(s.hex, band.position)
         if s.tribe_id == band.tribe_id and s.kind in ("camp", "village") and d < CAMP_SPACING:
-            return "Un de vos campements est tout pres"
+            return "Un de vos campements est tout près"
         if s.tribe_id != band.tribe_id and s.kind in ("camp", "village") and d < FOREIGN_SPACING:
-            return "Le campement d'un autre peuple est tout pres"
+            return "Le campement d'un autre peuple est tout près"
     return ""
 
 
@@ -161,14 +161,14 @@ def make_camp(state, band_id: int) -> Site | None:
         del state.sites[here.id]
     state.sites[sid] = site
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.SURVIE, "Campement etabli.", band.position, to=band.tribe_id)
+        _note(state, LogKind.SURVIE, "Campement établi.", band.position, to=band.tribe_id)
     return site
 
 
 def abandon(state, site_id: int) -> None:
     site = state.sites.pop(site_id, None)
     if site is not None and state.tribes.get(site.tribe_id) and state.tribes[site.tribe_id].is_player:
-        what = "Campement abandonne." if site.kind == "camp" else "Cache abandonnee."
+        what = "Campement abandonné." if site.kind == "camp" else "Cache abandonnée."
         _note(state, LogKind.SURVIE, what, site.hex, to=site.tribe_id)
 
 
@@ -185,11 +185,11 @@ def deposit_block(state, band_id: int) -> str:
     here = own_site_at(state, band)
     if here is not None:
         if here.store >= capacity(state, here) - 1:
-            return "La reserve est pleine"
+            return "La réserve est pleine"
         return ""
     b = _bonus(state, band.tribe_id)
     if b.caches <= 0:
-        return "Il faut connaitre Fumage et sechage"
+        return "Il faut connaître Fumage et séchage"
     if not _land(state, band.position):
         return "Pas de cache sur l'eau"
     if len(of_tribe(state, band.tribe_id, "cache")) >= b.caches:
@@ -228,7 +228,7 @@ def withdraw_block(state, band_id: int) -> str:
         return "Pas de bande"
     here = own_site_at(state, band)
     if here is None or here.store < 1:
-        return "Pas de reserve ici"
+        return "Pas de réserve ici"
     if band.stock >= stock_max(band, state) - 1:
         return "Le stock de la bande est plein"
     return ""
@@ -295,7 +295,7 @@ def update(state) -> None:
         elif site.kind == "camp" and state.tick_count - site.visited > CAMP_FORGOTTEN:
             del state.sites[site.id]
             if state.tribes[site.tribe_id].is_player:
-                _note(state, LogKind.SURVIE, "Un campement oublie est tombe en ruine.", site.hex, to=site.tribe_id)
+                _note(state, LogKind.SURVIE, "Un campement oublié est tombé en ruine.", site.hex, to=site.tribe_id)
 
 
 def _strike_camp(state, site: Site) -> None:
@@ -305,7 +305,7 @@ def _strike_camp(state, site: Site) -> None:
         site.kind = "cache"
         site.founded = state.tick_count
         if player:
-            _note(state, LogKind.SURVIE, f"Campement leve : sa reserve reste en cache ({site.store:.0f} vivres).", site.hex, to=site.tribe_id)
+            _note(state, LogKind.SURVIE, f"Campement leve : sa réserve reste en cache ({site.store:.0f} vivres).", site.hex, to=site.tribe_id)
     else:
         lost = site.store
         del state.sites[site.id]
@@ -342,11 +342,11 @@ def _maybe_found(state, site: Site, foes: list) -> None:
         diplo.add_mod(state, foe.tribe_id, site.tribe_id, "pillage", -10, actor=foe.tribe_id)
         owner = state.tribes[site.tribe_id]
         if owner.is_player:
-            what = "Votre cache" if site.kind == "cache" else "La reserve de votre campement"
+            what = "Votre cache" if site.kind == "cache" else "La réserve de votre campement"
             _note(
                 state,
                 LogKind.COMBAT,
-                f"{what} a ete pillee par les {foe_tribe.name} ({take:.0f} vivres).",
+                f"{what} a été pillée par les {foe_tribe.name} ({take:.0f} vivres).",
                 site.hex,
                 to=owner.id,
             )
@@ -394,8 +394,8 @@ def site_lines(state, site: Site) -> list[str]:
         return [f"Cache de vivres ({who})", f"Vivres : {site.store:.0f} / {capacity(state, site):.0f}"]
     if site.kind == "camp":
         years = (state.tick_count - site.founded) // 52
-        lines = [f"Campement ({who})", f"Reserve : {site.store:.0f} / {capacity(state, site):.0f}"]
-        lines.append(f"Tenu depuis {years} an{'s' if years > 1 else ''}" if years else "Etabli cette annee")
+        lines = [f"Campement ({who})", f"Réserve : {site.store:.0f} / {capacity(state, site):.0f}"]
+        lines.append(f"Tenu depuis {years} an{'s' if years > 1 else ''}" if years else "Établi cette année")
         return lines
     from src.kora import villages
 

@@ -54,7 +54,7 @@ def test_an_indocile_clan_no_longer_obeys_but_can_be_honored():
     assert acts["honor"] == ""
     assert chiefs.honor(st, far.id)
     assert far.loyalty == 50.0 and st.tribes[1].prestige == 25
-    assert "Deja honore" in chiefs.can_honor(st, far.id)
+    assert "Déjà honoré" in chiefs.can_honor(st, far.id)
 
 
 def test_a_clan_that_leaves_founds_a_people_of_the_same_stock():
@@ -66,7 +66,7 @@ def test_a_clan_that_leaves_founds_a_people_of_the_same_stock():
     assert child.origin == 1 and child.knowledge == st.tribes[1].knowledge
     assert chiefs.chief_band(st, new_tid) is far
     assert diplo.in_contact(st, 1, new_tid)
-    assert any("Meme souche" in label for label, _v in diplo.reasons(st, 1, new_tid))
+    assert any("Même souche" in label for label, _v in diplo.reasons(st, 1, new_tid))
 
 
 def test_a_clan_living_among_a_prestigious_people_may_join_them():

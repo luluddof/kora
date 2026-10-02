@@ -103,8 +103,8 @@ def test_learn_honor_heir():
 def test_diplo_and_event_answers_belong_to_their_player():
     st = _mp()
     diplo.make_contact(st, 1, 2)
-    assert "decider" in apply(st, make(1, "diplo", 2, "treve"))["msg"]
-    assert "recemment" in apply(st, make(1, "diplo", 2, "treve"))["msg"]
+    assert "décider" in apply(st, make(1, "diplo", 2, "treve"))["msg"]
+    assert "récemment" in apply(st, make(1, "diplo", 2, "treve"))["msg"]
     card = next(c for c in events.pending(st, 2) if c.event_id == "offre_treve")
     assert apply(st, make(1, "event", card.uid, 0))["msg"] == NOT_YOURS
     apply(st, make(2, "event", card.uid, 0))

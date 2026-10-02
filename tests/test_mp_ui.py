@@ -112,7 +112,7 @@ def test_friend_screen_plays_along(tmp_path, monkeypatch):
     boot = app._start_view(client.state, app._first_player_band(client.state), 1280, 720)
     outcome, _msg = app.play(r, clock, boot, client)
     assert outcome == "quit"
-    assert host.state.clock.paused, "la pause demandee par l'ami arrete le temps de l'hote"
+    assert host.state.clock.paused, "la pause demandee par l'ami arrête le temps de l'hôte"
     for _ in range(50):
         host.pump(0.05)
         client.pump(0.05)
@@ -120,7 +120,7 @@ def test_friend_screen_plays_along(tmp_path, monkeypatch):
     cs, hs = client.state, host.state
     assert cs.tick_count == hs.tick_count > 0
     assert session.sync_digest(cs) == session.sync_digest(hs)
-    assert sum(1 for b in hs.bands.values() if b.tribe_id == 2) == before + 1, "la scission de l'ami est arrivee chez l'hote"
+    assert sum(1 for b in hs.bands.values() if b.tribe_id == 2) == before + 1, "la scission de l'ami est arrivée chez l'hôte"
     assert any(c["text"] == "salut !" and c["from"] == "Tahu" for c in host.chat)
     assert not (tmp_path / "multi.json").exists(), "l'ami ne sauvegarde pas"
     host.close()
@@ -153,8 +153,8 @@ def test_host_screen_runs_the_game(tmp_path, monkeypatch):
     assert client.state.tick_count == host.state.tick_count > 0
     assert session.sync_digest(client.state) == session.sync_digest(host.state)
     assert sum(1 for b in client.state.bands.values() if b.tribe_id == 1) == before + 1
-    assert (tmp_path / "multi.json").exists(), "l'hote sauvegarde la partie a plusieurs en partant"
-    assert client.ended, "l'ami apprend que l'hote est parti"
+    assert (tmp_path / "multi.json").exists(), "l'hôte sauvegarde la partie à plusieurs en partant"
+    assert client.ended, "l'ami apprend que l'hôte est parti"
 
 
 def test_lobby_screen_hosts_and_launches(monkeypatch):
@@ -217,4 +217,4 @@ def test_joining_a_closed_address_comes_back_with_a_message(monkeypatch):
 
     clock = Script(None, {})
     out = app._multiplayer(r, clock, Worlds(), ("join", dict(FRIEND) | {"address": f"127.0.0.1:{port}"}))
-    assert out[0] == "back" and "Pas de reponse" in out[1]
+    assert out[0] == "back" and "Pas de réponse" in out[1]

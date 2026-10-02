@@ -34,12 +34,12 @@ DIGEST_EVERY = 26
 # Au plus tant de semaines par image chez un joueur en retard (il rattrape
 # sans figer son ecran).
 CATCH_UP = 4
-SLOTS = {1: "La vallee", 2: "La steppe", 3: "La foret", 4: "La cote"}
+SLOTS = {1: "La vallée", 2: "La steppe", 3: "La forêt", 4: "La côte"}
 SLOT_NOTE = {
-    1: "Plaines et vallees fertiles, l'hote y commence.",
-    2: "Grands espaces : on y connait deja le troupeau.",
+    1: "Plaines et vallées fertiles, l'hôte y commence.",
+    2: "Grands espaces : on y connaît déjà le troupeau.",
     3: "Bois profonds, gibier et cueillette.",
-    4: "Le bord de la mer : on y connait deja le cabotage.",
+    4: "Le bord de la mer : on y connaît déjà le cabotage.",
 }
 MAX_CHAT = 40
 
@@ -171,7 +171,7 @@ class HostSession(_Base):
         self.acc = 0.0
         self.started = False
         self._want_share = False
-        self.seats[1] = Seat(1, setup.get("name", "Hote"), tuple(setup.get("color", (220, 70, 70))), list(setup.get("bonuses", [])), True, True, True)
+        self.seats[1] = Seat(1, setup.get("name", "Hôte"), tuple(setup.get("color", (220, 70, 70))), list(setup.get("bonuses", [])), True, True, True)
         if resume is not None:
             # Reprendre une partie : les places sont celles des peuples joueurs.
             for tid, tribe in sorted(resume.tribes.items()):
@@ -202,7 +202,7 @@ class HostSession(_Base):
         from src.kora import tech
 
         if msg.get("proto") != PROTO or msg.get("version") != self.version:
-            conn.send({"t": "refuse", "why": f"Versions differentes : l'hote a Kora {self.version}, vous {msg.get('version', '?')}. Prenez la meme version."})
+            conn.send({"t": "refuse", "why": f"Versions différentes : l'hôte a Kora {self.version}, vous {msg.get('version', '?')}. Prenez la même version."})
             conn.close("version")
             return
         name = str(msg.get("name", "")).strip()[:24] or "Ami"
@@ -219,7 +219,7 @@ class HostSession(_Base):
         else:
             tid = self._free_slot(msg.get("slot"))
             if tid is None:
-                conn.send({"t": "refuse", "why": "La partie est complete (4 joueurs)."})
+                conn.send({"t": "refuse", "why": "La partie est complète (4 joueurs)."})
                 conn.close("complet")
                 return
             bonuses = [b for b in msg.get("bonuses", []) if b in tech.START_BONUSES][: tech.START_BONUS_PICKS]
@@ -327,7 +327,7 @@ class HostSession(_Base):
             return "Attendez qu'un ami vous rejoigne."
         late = [s.name for s in others if not s.ready]
         if late:
-            return "Pas encore prets : " + ", ".join(late)
+            return "Pas encore prêts : " + ", ".join(late)
         return ""
 
     def start(self, world) -> object:
@@ -468,10 +468,10 @@ class HostSession(_Base):
         if digest and mine and digest != mine:
             # Cette machine s'est ecartee : elle repart de la partie de l'hote.
             self.resyncs += 1
-            self.notes.append(f"La partie de {self.name_of(tid)} s'etait ecartee : elle est recopiee.")
+            self.notes.append(f"La partie de {self.name_of(tid)} s'était écartée : elle est recopiée.")
             self._want_share = True
 
-    def close(self, why: str = "L'hote a quitte la partie.") -> None:
+    def close(self, why: str = "L'hôte a quitte la partie.") -> None:
         self.broadcast({"t": "bye", "why": why})
         for conn in list(self.conns):
             conn.close("fin")
@@ -528,7 +528,7 @@ class ClientSession(_Base):
             self.seats = {int(s["tid"]): Seat.from_json(s) for s in msg.get("seats", [])}
             self.resume = bool(msg.get("resume"))
         elif kind == "refuse":
-            self.refused = str(msg.get("why", "Refuse par l'hote"))
+            self.refused = str(msg.get("why", "Refuse par l'hôte"))
             self.ended = self.refused
         elif kind == "chat":
             self._chat(str(msg.get("from", "?")), str(msg.get("text", "")))
@@ -556,7 +556,7 @@ class ClientSession(_Base):
 
         loaded = loads_game(unpack(self.snap["snap"]), world)
         if loaded is None:
-            self.ended = "La partie recue ne se lit pas (versions differentes ?)."
+            self.ended = "La partie reçue ne se lit pas (versions différentes ?)."
             return None
         state, _view = loaded
         state.viewer = self.me

@@ -71,7 +71,7 @@ def test_an_enemy_band_goes_for_a_cache_it_finds_and_takes_it():
     # Elle emporte ce qu'elle peut porter.
     assert thief.stock > before
     assert cache.id not in st.sites or st.sites[cache.id].store < held * 0.1
-    assert any("pillee" in e.text for e in st.log.entries)
+    assert any("pillée" in e.text for e in st.log.entries)
 
 
 def test_the_world_is_big_little_seen_slowly_crossed():

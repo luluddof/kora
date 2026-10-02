@@ -149,7 +149,7 @@ def test_an_ai_village_raises_a_troop_when_threatened():
         clock=Clock(),
         tribes={
             1: Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE)),
-            2: Tribe(2, "Vallee", 30, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"}, culture="vallee"),
+            2: Tribe(2, "Vallée", 30, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"}, culture="vallee"),
             3: Tribe(3, "Steppe", 30, False, knowledge=set(tech.START_KNOWLEDGE), culture="steppe"),
         },
         bands={

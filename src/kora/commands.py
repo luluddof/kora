@@ -22,7 +22,7 @@ KINDS = (
     "teams", "diplo", "invite", "build", "raise", "reequip", "dissolve",
     "honor", "promote", "heir", "learn", "event",
 )
-NOT_YOURS = "Ce n'est pas a vous"
+NOT_YOURS = "Ce n'est pas à vous"
 
 
 def make(tid: int, kind: str, *args) -> list:
@@ -59,7 +59,7 @@ def apply(state, cmd) -> dict:
     except (TypeError, ValueError, IndexError):
         return _out("Ordre illisible")
     if tid not in state.tribes or not state.tribes[tid].is_player and tid != 1:
-        return _out("Ce peuple n'est pas mene par un joueur")
+        return _out("Ce peuple n'est pas mené par un joueur")
     handler = _HANDLERS.get(kind)
     if handler is None:
         return _out("Ordre inconnu")
@@ -152,7 +152,7 @@ def _route_close(state, tid, key):
         return _out("Cette route n'existe plus")
     text = goods.route_text(state, tid, route).lower()
     if goods.close_route(state, tid, route):
-        return _out(f"Route fermee : {text}.")
+        return _out(f"Route fermée : {text}.")
     return _out()
 
 
@@ -204,7 +204,7 @@ def _diplo(state, tid, target, action, amount=0.0):
     if action not in diplo.ACTIONS:
         return _out("?")
     if action != "rompre" and action != "cadeau" and diplo.on_cooldown(state, tid, target, action):
-        return _out("Vous avez deja propose cela recemment.")
+        return _out("Vous avez déjà proposé cela récemment.")
     return _out(diplo.perform(state, tid, target, action, float(amount)))
 
 

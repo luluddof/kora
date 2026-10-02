@@ -191,7 +191,7 @@ def _new_boot(worlds, setup: dict | None, sw: int, sh: int):
     moved = set_aside_save(default_save_path())
     state = new_game(worlds.fresh(), setup=setup)
     if moved is not None:
-        note(state, LogKind.DECOUVERTE, f"Ancienne partie mise de cote : {moved.name}")
+        note(state, LogKind.DECOUVERTE, f"Ancienne partie mise de côté : {moved.name}")
     return _start_view(state, _first_player_band(state), sw, sh)
 
 
@@ -262,7 +262,7 @@ def run() -> None:
     screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
     clock = pygame.time.Clock()
     renderer = Renderer(screen)
-    _loading(renderer, "Kora : la carte du monde se prepare...")
+    _loading(renderer, "Kora : la carte du monde se prépare...")
     worlds = _Worlds()
     message = ""
     while True:
@@ -282,11 +282,11 @@ def run() -> None:
             mp, state = out[1], out[2]
             boot = _start_view(state, _first_player_band(state), sw, sh)
         else:
-            _loading(renderer, "La partie se prepare...")
+            _loading(renderer, "La partie se prépare...")
             if choice[0] == "continue":
                 boot = _continue_boot(worlds, sw, sh)
                 if boot is None:
-                    message = "La sauvegarde ne se lit pas (autre version ?) : elle est mise de cote."
+                    message = "La sauvegarde ne se lit pas (autre version ?) : elle est mise de côté."
                     continue
             else:
                 boot = _new_boot(worlds, choice[1], sw, sh)
@@ -440,16 +440,16 @@ def _multiplayer(renderer, clock, worlds, choice):
         if choice[0] == "host":
             mp = session.HostSession(choice[1], port=net.PORT)
         elif choice[0] == "resume_mp":
-            _loading(renderer, "La partie a plusieurs se prepare...")
+            _loading(renderer, "La partie à plusieurs se prépare...")
             loaded = load_game(multi_save_path(), worlds.fresh())
             if loaded is None:
-                return ("back", "La partie a plusieurs ne se lit pas (autre version ?).")
+                return ("back", "La partie à plusieurs ne se lit pas (autre version ?).")
             saved, _view = loaded
             me = saved.tribes[1]
             mp = session.HostSession({"name": me.name, "color": me.color, "bonuses": me.start_bonuses}, port=net.PORT, resume=saved)
         else:
             host, port = net.parse_address(choice[1].get("address", ""))
-            status = f"Connexion a {host}..."
+            status = f"Connexion à {host}..."
             box: dict = {}
 
             def work():
@@ -461,7 +461,7 @@ def _multiplayer(renderer, clock, worlds, choice):
             connecting = (threading.Thread(target=work, daemon=True), box, choice[1])
             connecting[0].start()
     except OSError as exc:
-        return ("back", f"Impossible d'ouvrir le salon (port {net.PORT} deja pris ?) : {exc}")
+        return ("back", f"Impossible d'ouvrir le salon (port {net.PORT} déjà pris ?) : {exc}")
     chat_text = None
     hint = ""
     t = 0.0
@@ -470,7 +470,7 @@ def _multiplayer(renderer, clock, worlds, choice):
         if connecting is not None:
             _thread, box, setup = connecting
             if "err" in box:
-                return ("back", f"Pas de reponse de l'hote ({box['err']}). Verifiez l'adresse, et que son salon est ouvert.")
+                return ("back", f"Pas de réponse de l'hôte ({box['err']}). Vérifiez l'adresse, et que son salon est ouvert.")
             if "conn" in box:
                 mp = session.ClientSession(box["conn"], setup)
                 connecting = None
@@ -484,7 +484,7 @@ def _multiplayer(renderer, clock, worlds, choice):
                     mp.close()
                     return ("back", mp.ended)
                 if mp.snap is not None:
-                    _loading(renderer, "La partie arrive de l'hote...")
+                    _loading(renderer, "La partie arrive de l'hôte...")
                     state = mp.begin(worlds.fresh())
                     if state is None:
                         mp.close()
@@ -534,7 +534,7 @@ def _multiplayer(renderer, clock, worlds, choice):
                     if why:
                         hint = why
                     else:
-                        _loading(renderer, "La partie se prepare...")
+                        _loading(renderer, "La partie se prépare...")
                         world = mp.resume.world if mp.resume is not None else worlds.fresh()
                         state = mp.start(world)
                         return ("play", mp, state)
@@ -748,7 +748,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         if choice.startswith("tpropose:"):
             tid = int(choice.split(":")[1])
             if diplo.on_cooldown(state, state.viewer, tid, "commerce"):
-                toast("Vous avez deja propose cela recemment.")
+                toast("Vous avez déjà proposé cela récemment.")
             else:
                 issue(commands.make(me(), "diplo", tid, "commerce"))
             return
@@ -766,7 +766,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         if choice == "vleave":
             if now > ui["leave_confirm"]:
                 ui["leave_confirm"] = now + CONFIRM_SECONDS
-                toast("Abandonner le village ? Cliquez encore pour confirmer (champs et batiments perdus).", True)
+                toast("Abandonner le village ? Cliquez encore pour confirmer (champs et bâtiments perdus).", True)
                 return
             ui["leave_confirm"] = 0.0
 
@@ -839,7 +839,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
 
             role = choice[6:]
             if units.best(state.tribes[home.tribe_id], role) is None:
-                toast("Aucune unite de ce role pour l'instant (voir les savoirs).")
+                toast("Aucune unité de ce rôle pour l'instant (voir les savoirs).")
             else:
                 ui["levy_role"] = role
             return
@@ -887,7 +887,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         if kind == "arole":
             sid, role = rest.split(":")
             if units.best(state.tribes[state.viewer], role) is None:
-                toast("Aucune unite de ce role pour l'instant (voir les savoirs).")
+                toast("Aucune unité de ce rôle pour l'instant (voir les savoirs).")
             else:
                 ui.setdefault("army_role", {})[int(sid)] = role
             return
@@ -1154,7 +1154,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             action = choice.split(":")[1]
             if tid is not None:
                 if diplo.on_cooldown(state, state.viewer, tid, action) and action not in ("rompre",):
-                    toast("Vous avez deja propose cela recemment.")
+                    toast("Vous avez déjà proposé cela récemment.")
                 else:
                     issue(commands.make(me(), "diplo", tid, action))
             return True
@@ -1224,10 +1224,10 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     toggle_pause()
                 elif event.key == pygame.K_F5:
                     if mp is not None and mp.role != "host":
-                        toast("C'est l'hote qui sauvegarde la partie.")
+                        toast("C'est l'hôte qui sauvegarde la partie.")
                     else:
                         persist()
-                        toast("Partie sauvegardee.")
+                        toast("Partie sauvegardée.")
                 elif event.key in ACTION_KEYS:
                     band_action(ACTION_KEYS[event.key])
                 elif event.key in PANEL_KEYS:
@@ -1235,7 +1235,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     from src.kora.render_panels import army_ready
 
                     if key == "armee" and not army_ready(state):
-                        toast("L'armee vient avec le premier village.")
+                        toast("L'armée vient avec le premier village.")
                         continue
                     side_panel = None if side_panel == key else key
                     ui["village_open"] = None
@@ -1276,10 +1276,10 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         menu_open = False
                     elif choice == "sauvegarder":
                         if mp is not None and mp.role != "host":
-                            toast("C'est l'hote qui sauvegarde la partie.")
+                            toast("C'est l'hôte qui sauvegarde la partie.")
                         else:
                             persist()
-                            toast("Partie sauvegardee.")
+                            toast("Partie sauvegardée.")
                     elif choice == "principal":
                         leave()
                         return "menu", ""
@@ -1542,6 +1542,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         "seq": entry.seq,
                         "hex": entry.hex,
                         "combat": entry.kind is LogKind.COMBAT,
+                        "kind": entry.kind.value,
                     }
                 )
             last_log_seq = log_of(state, state.viewer).seq

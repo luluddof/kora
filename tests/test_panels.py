@@ -11,7 +11,7 @@ def test_four_side_tabs_stack_on_the_right():
     ys = [tabs[k][1] for k in tabs]
     assert ys == sorted(ys)
     for key, (x, y, w, h) in tabs.items():
-        assert x + w == 1280 and y >= HUD_HEIGHT and y + h <= 720
+        assert 1270 <= x + w <= 1280 and y >= HUD_HEIGHT and y + h <= 720
         assert side_hit(layout, x + 2, y + 2) == f"tab_{key}"
 
 

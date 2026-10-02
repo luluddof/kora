@@ -1,0 +1,4 @@
+Icones : game-icons.net, licence Creative Commons Attribution 3.0
+(https://creativecommons.org/licenses/by/3.0/). Auteurs : caro-asercion, delapouite, guard13007, lorc, skoll.
+Teintees et mises en medaillon par Kora (src/kora/theme.py).
+Fichiers d'origine : https://github.com/game-icons/icons

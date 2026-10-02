@@ -435,10 +435,10 @@ def band_lines(info: dict) -> list[str]:
         lines.append("Ici : " + "  ·  ".join(info["site"]))
     if info.get("retreating"):
         lines.append(
-            f"En repli : pas d'ordre avant l'arrivee (~{info['retreat_weeks']} sem.)."
+            f"En repli : pas d'ordre avant l'arrivée (~{info['retreat_weeks']} sem.)."
         )
     elif not info.get("obeys", True):
-        lines.append("Indocile : ce clan n'obeit plus. Rapprochez le chef ou honorez-le.")
+        lines.append("Indocile : ce clan n'obéit plus. Rapprochez le chef ou honorez-le.")
     elif info["forage"] < info["need"] and stock < 4:
         lines.append("La collecte ne suffit pas : bougez ou scindez.")
     return lines
@@ -452,7 +452,7 @@ def band_warn_from(info: dict) -> int:
 def inspect_lines(info: dict) -> list[str]:
     lines = [info["terrain_fr"], f"Saison : {info['season_fr']}"]
     if info.get("winter_weeks") is not None:
-        lines.append(f"Duree de l'hiver : {info['winter_weeks']} sem./an")
+        lines.append(f"Durée de l'hiver : {info['winter_weeks']} sem./an")
     if info.get("visible"):
         food = info.get("food")
         if food is not None:
@@ -482,7 +482,7 @@ def _note_spotted_enemies(state: GameState) -> None:
             seen.add(band.tribe_id)
             tribe = state.tribes.get(band.tribe_id)
             name = tribe.name if tribe else "ennemie"
-            note(state, LogKind.DECOUVERTE, f"Des {name} ont ete apercus.", to=me)
+            note(state, LogKind.DECOUVERTE, f"Des {name} ont été aperçus.", to=me)
 
 
 def _water_ok(state: GameState, tribe_id: int) -> bool:
@@ -665,12 +665,12 @@ def remove_dead_bands(state: GameState) -> None:
         band = state.bands[bid]
         what = "troupe" if band.kind == "armee" else "bande"
         if is_human(state, band.tribe_id):
-            note(state, LogKind.COMBAT, f"Votre {what} a ete detruite.", where=band.position, to=band.tribe_id)
+            note(state, LogKind.COMBAT, f"Votre {what} a été détruite.", where=band.position, to=band.tribe_id)
         tribe = state.tribes.get(band.tribe_id)
         name = tribe.name if tribe else "ennemie"
         for me in humans(state):
             if me != band.tribe_id and is_visible(state, band.position, me):
-                note(state, LogKind.COMBAT, f"Une {what} {name} a ete detruite.", where=band.position, to=me)
+                note(state, LogKind.COMBAT, f"Une {what} {name} a été détruite.", where=band.position, to=me)
         del state.bands[bid]
         if band.village:
             from src.kora import villages
@@ -982,11 +982,11 @@ def merge_bands(state: GameState, band_id: int) -> int:
 def merge_text(band: Band, names: list) -> str:
     lead = band.leader.name if band.leader is not None else "la bande"
     if band.kind == "armee":
-        return f"Troupes reunies sous {lead} : {band.population} guerriers."
+        return f"Troupes réunies sous {lead} : {band.population} guerriers."
     if not names:
-        return f"Bandes reunies : {band.population} personnes."
+        return f"Bandes réunies : {band.population} personnes."
     who = ", ".join(names)
-    return f"Bandes reunies sous {lead} : {band.population} personnes ; {who} rejoint les anciens du clan."
+    return f"Bandes réunies sous {lead} : {band.population} personnes ; {who} rejoint les anciens du clan."
 
 
 def resolve_joins(state: GameState) -> None:
@@ -1066,7 +1066,7 @@ def apply_movement(state: GameState) -> None:
                 note(
                     state,
                     LogKind.COMBAT,
-                    f"Repli termine : {band.population} personnes a l'abri.",
+                    f"Repli terminé : {band.population} personnes à l'abri.",
                     where=band.position,
                     to=band.tribe_id,
                 )
@@ -1351,7 +1351,7 @@ def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band, m
     hunted = attacker.order.kind is OrderKind.MARCH_TO_BAND
     player_won = winner.tribe_id == me
     if me not in (attacker.tribe_id, defender.tribe_id):
-        return f"Un raid a ete apercu : {name(attacker)} contre {name(defender)}."
+        return f"Un raid a été aperçu : {name(attacker)} contre {name(defender)}."
     if not hunted:
         other = defender if attacker.tribe_id == me else attacker
         result = "vous l'emportez" if player_won else "vous perdez"

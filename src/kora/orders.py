@@ -14,7 +14,7 @@ from src.kora import chiefs, sites
 from src.kora.sim import can_split, merge_bands, split_band
 
 ACTIONS = ("split", "merge", "next", "chief", "village", "camp", "deposit", "withdraw", "honor", "army")
-INDOCILE = "Ce clan n'obeit plus (attachement trop bas)"
+INDOCILE = "Ce clan n'obéit plus (attachement trop bas)"
 GRANARY = "Au village, les vivres sont au grenier"
 TROOP_CAMP = "Une troupe ne campe pas"
 
@@ -45,7 +45,7 @@ def _army_actions(state, band) -> dict[str, str]:
         "camp": TROOP_CAMP,
         "deposit": TROOP_CAMP,
         "withdraw": TROOP_CAMP,
-        "honor": "Une troupe obeit sans qu'on l'honore",
+        "honor": "Une troupe obéit sans qu'on l'honore",
         "army": villages.dissolve_block(state, band.id),
     }
     if band.homebound:
@@ -81,7 +81,7 @@ def band_actions(state, band_id: int) -> dict[str, str]:
         from src.kora.sim import SPLIT_MIN_POP, max_bands_of, tribe_band_count, welded_left
 
         if welded_left(state, band):
-            out["split"] = f"Le groupe vient d'etre reuni (encore {welded_left(state, band)} sem.)"
+            out["split"] = f"Le groupe vient d'être réuni (encore {welded_left(state, band)} sem.)"
         elif band.population < SPLIT_MIN_POP:
             out["split"] = f"Il faut {SPLIT_MIN_POP} personnes"
         else:
@@ -93,7 +93,7 @@ def band_actions(state, band_id: int) -> dict[str, str]:
                 f"Votre civilisation est au complet : {civ_band_count(state, civ)}/{civ_band_cap(state, civ)} "
                 "bandes et villages (tous ses peuples)"
             )
-    out["merge"] = INDOCILE if not listens else retreat or ("" if _mates(state, band) else "Aucune bande de votre peuple a 5 cases")
+    out["merge"] = INDOCILE if not listens else retreat or ("" if _mates(state, band) else "Aucune bande de votre peuple à 5 cases")
     out["next"] = "" if own > 1 else "Une seule bande"
     out["chief"] = chiefs.can_move_chief(state, band_id)
     from src.kora import villages
@@ -142,14 +142,14 @@ def labels(state, band_id: int) -> dict:
     out = {"camp": camp_label(state, band_id)}
     if band is not None and band.village:
         out["split"] = "Former bande"
-        out["village"] = "Gerer [V]"
+        out["village"] = "Gérer [V]"
         out["army"] = "Lever [L]"
     elif band is not None and band.kind == "armee":
         from src.kora import villages
 
-        out["split"] = "Detacher [S]"
+        out["split"] = "Détacher [S]"
         at_home = villages.disband_block(state, band_id) == "" and not _mates(state, band)
-        out["merge"] = "Rentrer [F]" if at_home else "Reunir [F]"
+        out["merge"] = "Rentrer [F]" if at_home else "Réunir [F]"
         out["army"] = "Dissoudre [L]"
     return out
 

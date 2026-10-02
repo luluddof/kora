@@ -13,37 +13,68 @@ from src.kora import chiefs, diplo, influence, sites, tech
 from src.kora.peoples import color_of, label_of
 from src.kora.sim import max_bands_of
 
-BG = (16, 18, 22)
-EDGE = (70, 74, 80)
-TEXT = (230, 228, 220)
-SOFT = (196, 196, 190)
-NOTE = (150, 156, 166)
-GOLD = (210, 180, 90)
-GOOD = (150, 205, 140)
-BAD = (225, 135, 115)
-WARN = (235, 165, 80)
+from src.kora import theme
+from src.kora.theme import C
+# L'icone d'un evenement : un mot de son nom, sinon son humeur.
+EVENT_WORDS = (
+    ("fievre", "epidemie"), ("mal", "epidemie"), ("loup", "loup"), ("ours", "danger"), ("hiver", "froid"),
+    ("neige", "froid"), ("froid", "froid"), ("feu", "feu"), ("incendie", "incendie"), ("crue", "inondation"),
+    ("seche", "secheresse"), ("chasse", "chasse"), ("gibier", "cerf"), ("troupeau", "troupeau"), ("bison", "bison"),
+    ("mammouth", "mammouth"), ("peche", "peche"), ("poisson", "peche"), ("baie", "baies"), ("champignon", "champignon"),
+    ("herbe", "herbes"), ("semence", "ble"), ("recolte", "ble"), ("grenier", "grenier"), ("village", "village"),
+    ("offre", "peuples"), ("tribut", "balance"), ("contact", "peuples"), ("etranger", "peuples"), ("mariage", "couronne"),
+    ("chef", "chef"), ("succession", "chef"), ("clan", "tribu"), ("cache", "cache"), ("camp", "camp"),
+    ("esprit", "totem"), ("reve", "totem"), ("ancetre", "dolmen"), ("pierre", "menhir"), ("colporteur", "commerce"),
+    ("marchand", "commerce"), ("porteur", "route"), ("route", "route"), ("raid", "combat"), ("guerre", "combat"),
+)
+MOOD_ICONS = {"chance": "collier", "danger": "danger", "esprit": "totem", "peuple": "peuples", "neutre": "feu"}
+MOOD_STATE = {"danger": "danger", "chance": "connu", "esprit": "actif"}
 
 
-def panel_box(width: int, height: int, panel: str, tab_w: int = 32) -> tuple:
-    top = 48 + 12
+def event_icon(ev) -> str:
+    name = ev.id.lower()
+    for word, key in EVENT_WORDS:
+        if word in name:
+            return key
+    return MOOD_ICONS.get(ev.mood, "evenement")
+
+# Les couleurs viennent de la charte (theme.C, docs/charte-graphique.txt).
+BG = C.charbon
+EDGE = C.bois
+TEXT = C.os
+SOFT = C.lin
+NOTE = C.cendre
+GOLD = C.ocre_jaune
+GOOD = C.bon
+BAD = C.mauvais
+WARN = C.alerte
+
+
+def panel_box(width: int, height: int, panel: str, tab_w: int = 66) -> tuple:
+    from src.kora.render import HUD_HEIGHT
+
+    top = HUD_HEIGHT + 12
     if panel == "tribu":
-        bw = max(520, min(660, width - tab_w - 24))
+        bw = max(540, min(680, width - tab_w - 24))
     else:
-        bw = max(600, min(860, width - tab_w - 24))
-    bh = max(420, min(640, height - top - 14))
+        bw = max(600, min(880, width - tab_w - 24))
+    bh = max(420, min(660, height - top - 14))
     return (width - tab_w - bw - 8, top, bw, bh)
 
 
 def _fonts(r):
-    if not hasattr(r, "title_font"):
-        r.title_font = pygame.font.SysFont("georgia", 22)
-        r.head_font = pygame.font.SysFont("georgia", 17)
-    return r.title_font, r.head_font
+    return theme.font("h1"), theme.font("h3")
 
 
-def _box(r, rect, fill=BG, edge=EDGE, radius=8, width=1):
-    pygame.draw.rect(r.screen, fill, rect, border_radius=radius)
-    pygame.draw.rect(r.screen, edge, rect, width, border_radius=radius)
+def _box(r, rect, fill=None, edge=None, radius=8, width=1):
+    """Une fenetre (peau) si on ne dit rien ; une carte sinon (un fond plus
+    sombre que le cuir : un creux)."""
+    if fill is None:
+        theme.panel(r.screen, rect, "peau")
+    elif sum(fill) < 60:
+        theme.panel(r.screen, rect, "creux")
+    else:
+        theme.panel(r.screen, rect, "carte_choisie" if edge in (GOLD, C.ocre) else "carte")
 
 
 def _text(r, font, text, color, x, y):
@@ -53,18 +84,11 @@ def _text(r, font, text, color, x, y):
 
 
 def _button(r, rect, label, on=True, active=False, font=None):
-    font = font or r.tiny
     mx, my = pygame.mouse.get_pos()
     hover = on and rect[0] <= mx <= rect[0] + rect[2] and rect[1] <= my <= rect[1] + rect[3]
-    if active:
-        fill = (196, 150, 60) if hover else (70, 90, 60)
-    else:
-        fill = (196, 150, 60) if hover else (44, 48, 56) if on else (28, 30, 34)
-    pygame.draw.rect(r.screen, fill, rect, border_radius=4)
-    pygame.draw.rect(r.screen, GOLD if on else (66, 70, 76), rect, 1, border_radius=4)
-    col = (20, 18, 14) if hover else TEXT if on else (110, 112, 116)
-    surf = font.render(r._fit(font, label, rect[2] - 8), True, col)
-    r.screen.blit(surf, (rect[0] + (rect[2] - surf.get_width()) // 2, rect[1] + (rect[3] - surf.get_height()) // 2))
+    role = "bouton_petit" if rect[3] < 30 else "bouton"
+    f = theme.font(role)
+    theme.button(r.screen, rect, theme.fit(f, label, rect[2] - 10), "second", on, hover, active=active, role=role)
     return hover
 
 
@@ -75,18 +99,8 @@ def _hover(rect) -> bool:
 
 def _tooltip(r, lines, x, y):
     """Petite fiche au survol : (texte, couleur)."""
-    if not lines:
-        return
-    w, h = r.screen.get_size()
-    tw = max(r.tiny.size(t)[0] for t, _c in lines) + 18
-    th = 10 + 16 * len(lines)
-    x = min(x, w - tw - 8)
-    y = min(y, h - th - 8)
-    _box(r, (x, y, tw, th), fill=(24, 26, 32), edge=GOLD, radius=6)
-    yy = y + 6
-    for text, color in lines:
-        _text(r, r.tiny, text, color, x + 9, yy)
-        yy += 16
+    if lines:
+        theme.tooltip(r.screen, lines, x, y)
 
 
 def _signed(v: float) -> str:
@@ -95,21 +109,16 @@ def _signed(v: float) -> str:
 
 
 def _loyalty_bar(r, x, y, w, value, tint):
-    pygame.draw.rect(r.screen, (34, 36, 42), (x, y, w, 8), border_radius=3)
-    fill = int(w * max(0.0, min(100.0, value)) / 100.0)
-    pygame.draw.rect(r.screen, tint, (x, y, fill, 8), border_radius=3)
-    for mark in (chiefs.LEAVE, chiefs.OBEY):
-        mx = x + int(w * mark / 100.0)
-        pygame.draw.line(r.screen, (120, 90, 70), (mx, y - 2), (mx, y + 9))
+    theme.bar(r.screen, (x, y, w, 9), max(0.0, min(100.0, value)) / 100.0, tint, marks=(chiefs.LEAVE / 100.0, chiefs.OBEY / 100.0))
 
 
 def _mood_color(value: float):
     if value < chiefs.LEAVE:
-        return (220, 80, 70)
+        return C.mauvais
     if value < chiefs.OBEY:
         return WARN
     if value < 60:
-        return (200, 190, 120)
+        return C.ocre_jaune
     return GOOD
 
 
@@ -162,7 +171,7 @@ def start_bonus_text(state, tribe) -> str:
     else:
         when = f"encore {max(1, left)} semaine{'s' if left > 1 else ''}"
     names = ", ".join(tech.START_BONUSES[b].name for b in tribe.start_bonuses if b in tech.START_BONUSES)
-    return f"Bonus de depart : {names} ({when})"
+    return f"Bonus de départ : {names} ({when})"
 
 
 def _start_bonus_chip(r, state, tribe, right: int, y: int, ui) -> None:
@@ -180,7 +189,7 @@ def _start_bonus_chip(r, state, tribe, right: int, y: int, ui) -> None:
                 continue
             lines.append((bonus.name, GOLD))
             lines.extend((f"  {line}", SOFT) for line in tech.start_bonus_lines(bonus))
-        lines.append((f"Choisis a la creation du peuple, ils durent {tech.START_BONUS_YEARS} ans.", NOTE))
+        lines.append((f"Choisis à la création du peuple, ils durent {tech.START_BONUS_YEARS} ans.", NOTE))
         ui.setdefault("_tips", []).append((lines, rect[0] - 120, y + 18))
 
 
@@ -219,7 +228,7 @@ def draw_tribe(r, state, layout, ui) -> None:
     # Le chef.
     y = by + 64
     heart = chiefs.chief_band(state, state.viewer)
-    _box(r, (bx + 12, y, bw - 24, 62), fill=(22, 24, 30), edge=(60, 56, 44), radius=6)
+    _box(r, (bx + 12, y, bw - 24, 62), fill=(32, 24, 19), edge=(60, 56, 44), radius=6)
     if heart is not None and heart.leader is not None:
         from src.kora.render import _draw_crown
 
@@ -245,7 +254,7 @@ def draw_tribe(r, state, layout, ui) -> None:
         if effects:
             _text(r, r.tiny, r._fit(r.tiny, "  ;  ".join(effects), bw - 80), SOFT, bx + 44, y + 44)
     heir_band = next((b for b in bands if b.leader is not None and b.leader.pid == tribe.heir), None)
-    heir = f"Heritier : {heir_band.leader.name} (clan de {heir_band.population})" if heir_band else "Heritier : aucun (le plus renomme succedera)"
+    heir = f"Héritier : {heir_band.leader.name} (clan de {heir_band.population})" if heir_band else "Héritier : aucun (le plus renommé succédera)"
     hw = r.tiny.size(heir)[0]
     _text(r, r.tiny, heir, NOTE, bx + bw - 24 - hw, y + 8)
     reach = know.chief_reach
@@ -253,8 +262,8 @@ def draw_tribe(r, state, layout, ui) -> None:
     _text(r, r.tiny, reach_line, NOTE, bx + bw - 24 - r.tiny.size(reach_line)[0], y + 24)
     if tribe.settled_at >= 0:
         years = max(0, state.tick_count - tribe.settled_at) // 52
-        since = f"depuis {years} an{'s' if years > 1 else ''}" if years else "depuis cette annee"
-        settled = f"Peuple fixe {since} : les nomades s'emancipent"
+        since = f"depuis {years} an{'s' if years > 1 else ''}" if years else "depuis cette année"
+        settled = f"Peuple fixé {since} : les nomades s'émancipent"
         _text(r, r.tiny, settled, WARN, bx + bw - 24 - r.tiny.size(settled)[0], by + 16)
     _start_bonus_chip(r, state, tribe, bx + bw - 24, by + (2 if tribe.settled_at >= 0 else 16), ui)
     # Les clans.
@@ -274,7 +283,7 @@ def draw_tribe(r, state, layout, ui) -> None:
         row = (bx + 12, y, bw - 24, row_h - 2)
         chosen = band.id == pick
         if chosen or _hover(row):
-            pygame.draw.rect(r.screen, (30, 34, 42) if not chosen else (40, 46, 58), row, border_radius=4)
+            pygame.draw.rect(r.screen, (45, 34, 26) if not chosen else (62, 47, 34), row, border_radius=4)
         items[f"tribe_row:{band.id}"] = row
         is_heart = chiefs.is_chief_band(state, band)
         pygame.draw.circle(r.screen, color, (cols["clan"] + 5, y + 12), 5)
@@ -292,7 +301,7 @@ def draw_tribe(r, state, layout, ui) -> None:
         _text(r, r.small, r._fit(r.small, label, 176), TEXT, cols["clan"] + 16, y + 4)
         _text(r, r.small, str(band.population), SOFT, cols["gens"], y + 4)
         if is_heart:
-            _text(r, r.tiny, "coeur de la tribu", GOLD, cols["att"], y + 6)
+            _text(r, r.tiny, "cœur de la tribu", GOLD, cols["att"], y + 6)
         else:
             tint = _mood_color(band.loyalty)
             _loyalty_bar(r, cols["att"], y + 9, 80, band.loyalty, tint)
@@ -316,11 +325,11 @@ def draw_tribe(r, state, layout, ui) -> None:
         heir_rect = (ax + 120, y + 2, 64, 20)
         can_heir = not is_heart and band.leader is not None and tribe.heir != band.leader.pid
         items[f"tribe_heir:{band.id}"] = heir_rect
-        _button(r, heir_rect, "Heritier", on=can_heir)
+        _button(r, heir_rect, "Héritier", on=can_heir)
         y += row_h
     # Pourquoi (clan choisi).
     dy = by + bh - 140
-    pygame.draw.line(r.screen, (50, 54, 60), (bx + 14, dy), (bx + bw - 14, dy))
+    pygame.draw.line(r.screen, (72, 53, 38), (bx + 14, dy), (bx + bw - 14, dy))
     band = state.bands.get(pick) if pick is not None else None
     if band is None or band.tribe_id != state.viewer or chiefs.is_chief_band(state, band):
         band = next((b for b in bands if not chiefs.is_chief_band(state, b)), None)
@@ -334,7 +343,7 @@ def draw_tribe(r, state, layout, ui) -> None:
     target = chiefs.loyalty_target(state, band)
     head = f"Clan de {who} : attachement {band.loyalty:.0f}, tend vers {target:.0f}"
     if chiefs.gains_autonomy(state, band):
-        head = f"Clan de {who} : independance {band.autonomy:.0f} % (depart dans ~{chiefs.autonomy_months(state, band)} mois)"
+        head = f"Clan de {who} : indépendance {band.autonomy:.0f} % (départ dans ~{chiefs.autonomy_months(state, band)} mois)"
     _text(r, r.small, r._fit(r.small, head, bw - 130), WARN if band.autonomy >= chiefs.AUTONOMY_WARN else TEXT, bx + 18, dy + 8)
     if band.leader is not None and band.leader.traits:
         tr = " · ".join(chiefs.TRAITS[t].name for t in band.leader.traits if t in chiefs.TRAITS)
@@ -349,7 +358,7 @@ def draw_tribe(r, state, layout, ui) -> None:
         # Pourquoi il s'eloigne : l'independance gagnee chaque mois.
         why = "  ;  ".join(f"{v} {label.lower()}" for label, v in chiefs.autonomy_parts(state, band))
         rate = f"{chiefs.autonomy_rate(state, band):.1f}".replace(".", ",")
-        _text(r, r.tiny, r._fit(r.tiny, f"Independance {rate}/mois : {why}", bw - 36), WARN, bx + 18, top)
+        _text(r, r.tiny, r._fit(r.tiny, f"Indépendance {rate}/mois : {why}", bw - 36), WARN, bx + 18, top)
         top += 18
         shown -= 2
     for i, (label, value) in enumerate(parts[:shown]):
@@ -371,12 +380,12 @@ def draw_tribe(r, state, layout, ui) -> None:
             if _hover(rect):
                 traits = ", ".join(chiefs.TRAITS[t].name for t in person.traits if t in chiefs.TRAITS) or "sans trait"
                 ui.setdefault("_tips", []).append(
-                    ([(f"Lui confier le clan ({traits}, renommee {person.renown})", SOFT)], rect[0], rect[1] + 24)
+                    ([(f"Lui confier le clan ({traits}, renommée {person.renown})", SOFT)], rect[0], rect[1] + 24)
                 )
             nx += bwid + 6
-    tip = "Obeit a 40 et plus, peut partir sous 20. Barre orange : independance (a 100, il part)."
+    tip = "Obéit à 40 et plus, peut partir sous 20. Barre orange : indépendance (à 100, il part)."
     if tribe.settled_at < 0:
-        tip = "Obeit a 40 et plus · indocile de 20 a 40 · sous 20, le clan peut partir. Le chef a 3 cases : +10 par mois."
+        tip = "Obéit à 40 et plus · indocile de 20 à 40 · sous 20, le clan peut partir. Le chef à 3 cases : +10 par mois."
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
     for lines, x, y2 in ui.pop("_tips", []):
         _tooltip(r, lines, x, y2)
@@ -388,7 +397,7 @@ def draw_tribe(r, state, layout, ui) -> None:
 def _chief_card(r, state, tribe, rect, head_font) -> None:
     """Le chef du peuple : nom, age, traits et leurs effets."""
     x, y, w, h = rect
-    _box(r, rect, fill=(22, 24, 30), edge=(60, 56, 44), radius=6)
+    _box(r, rect, fill=(32, 24, 19), edge=(60, 56, 44), radius=6)
     heart = chiefs.chief_band(state, tribe.id)
     if heart is None or heart.leader is None:
         _text(r, r.small, "Pas de chef.", SOFT, x + 14, y + 8)
@@ -450,7 +459,7 @@ def draw_villages(r, state, layout, ui) -> None:
     _chief_card(r, state, tribe, (bx + 12, y, bw - 24, 62), head_font)
     y += 72
     cols = {"nom": bx + 20, "gens": bx + 210, "stab": bx + 256, "grenier": bx + 424, "act": bx + bw - 12 - 110}
-    for key, label in (("nom", "Village"), ("gens", "Gens"), ("stab", "Stabilite"), ("grenier", "Grenier")):
+    for key, label in (("nom", "Village"), ("gens", "Gens"), ("stab", "Stabilité"), ("grenier", "Grenier")):
         _text(r, r.tiny, label, NOTE, cols[key], y)
     y += 18
     row_h = 40
@@ -461,7 +470,7 @@ def draw_villages(r, state, layout, ui) -> None:
             break
         row = (bx + 12, y, bw - 24, row_h - 4)
         if _hover(row):
-            pygame.draw.rect(r.screen, (30, 34, 42), row, border_radius=4)
+            pygame.draw.rect(r.screen, (45, 34, 26), row, border_radius=4)
         items[f"vil_row:{site.id}"] = row
         is_heart = chiefs.is_chief_band(state, band)
         r.draw_village_icon(site, cols["nom"] + 5, y + 12, color, 6)
@@ -480,7 +489,7 @@ def draw_villages(r, state, layout, ui) -> None:
         crafts = ", ".join(f"{goods.CRAFTS[c].name.lower()} {n}" for c, n in sorted(goods.teams(site).items()) if n)
         job = villages.works(site)
         work = f"chantier : {villages.BUILDINGS[job[0]].name.lower()} ({job[1]} sem.)" if job else "pas de chantier"
-        second = f"{villages.rank_name(band.population)}  ·  {crafts or 'aucun metier'}  ·  {work}"
+        second = f"{villages.rank_name(band.population)}  ·  {crafts or 'aucun métier'}  ·  {work}"
         _text(r, r.tiny, r._fit(r.tiny, second, cols["act"] - cols["nom"] - 24), NOTE, cols["nom"] + 16, y + 20)
         see = (cols["act"], y + 7, 44, 20)
         items[f"vil_see:{site.id}"] = see
@@ -491,8 +500,8 @@ def draw_villages(r, state, layout, ui) -> None:
         y += row_h
     # En bas : la reserve du peuple et les echanges.
     dy = by + bh - 140
-    pygame.draw.line(r.screen, (50, 54, 60), (bx + 14, dy), (bx + bw - 14, dy))
-    _text(r, r.small, "Reserve du peuple", TEXT, bx + 18, dy + 8)
+    pygame.draw.line(r.screen, (72, 53, 38), (bx + 14, dy), (bx + bw - 14, dy))
+    _text(r, r.small, "Réserve du peuple", TEXT, bx + 18, dy + 8)
     need = goods.need(state, state.viewer)
     col_w = (bw - 36) // 2
     for i, good in enumerate(goods.GOODS):
@@ -508,11 +517,11 @@ def draw_villages(r, state, layout, ui) -> None:
     ty = dy + 32 + 2 * 18 + 6
     if partners:
         names = ", ".join(state.tribes[o].name for o in partners[:4]) + ("..." if len(partners) > 4 else "")
-        text = f"Accords commerciaux : {names}. Detail dans l'ecran d'un village (Metiers et echanges)."
+        text = f"Accords commerciaux : {names}. Détail dans l'écran d'un village (Métiers et échanges)."
     else:
-        text = "Aucun accord commercial : proposez-en un dans Peuples (il faut Echanges lointains)."
+        text = "Aucun accord commercial : proposez-en un dans Peuples (il faut Échanges lointains)."
     _text(r, r.tiny, r._fit(r.tiny, text, bw - 36), SOFT, bx + 18, ty)
-    _text(r, r.tiny, r._fit(r.tiny, f"Besoin : {need:.1f} de chaque bien par semaine (tous vos villages). Metiers : ecran du village.".replace(".", ",", 1), bw - 36), NOTE, bx + 18, ty + 16)
+    _text(r, r.tiny, r._fit(r.tiny, f"Besoin : {need:.1f} de chaque bien par semaine (tous vos villages). Métiers : écran du village.".replace(".", ",", 1), bw - 36), NOTE, bx + 18, ty + 16)
     tip = "Plus de nomades : le peuple vit dans ses villages."
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
     for lines, x, y2 in ui.pop("_tips", []):
@@ -551,12 +560,12 @@ def _relation_meter(r, x, y, w, rel):
         c = _rel_color(v)
         c = tuple(int(ch * 0.55) for ch in c)
         pygame.draw.rect(r.screen, c, (x + int(w * i / steps), y, int(w / steps) + 1, 10))
-    pygame.draw.rect(r.screen, (80, 84, 92), (x, y, w, 10), 1)
+    pygame.draw.rect(r.screen, (108, 84, 62), (x, y, w, 10), 1)
     mid = x + w // 2
-    pygame.draw.line(r.screen, (120, 124, 132), (mid, y - 3), (mid, y + 12))
+    pygame.draw.line(r.screen, (139, 125, 110), (mid, y - 3), (mid, y + 12))
     px = x + int(w * (rel + 100) / 200)
-    pygame.draw.polygon(r.screen, (245, 240, 225), [(px, y - 2), (px - 6, y - 10), (px + 6, y - 10)])
-    pygame.draw.polygon(r.screen, (245, 240, 225), [(px, y + 12), (px - 6, y + 20), (px + 6, y + 20)])
+    pygame.draw.polygon(r.screen, (239, 228, 204), [(px, y - 2), (px - 6, y - 10), (px + 6, y - 10)])
+    pygame.draw.polygon(r.screen, (239, 228, 204), [(px, y + 12), (px - 6, y + 20), (px + 6, y + 20)])
 
 
 def _verdict_line(v: diplo.Verdict) -> tuple[str, tuple]:
@@ -576,7 +585,7 @@ def draw_peoples(r, state, layout, ui) -> None:
     peoples = known_peoples(state)
     if not peoples:
         _text(r, r.small, "Vous ne connaissez encore aucun autre peuple.", SOFT, bx + 18, by + 56)
-        _text(r, r.tiny, "Explorez : a 16 cases d'une de leurs bandes, vous les rencontrez.", NOTE, bx + 18, by + 78)
+        _text(r, r.tiny, "Explorez : à 16 cases d'une de leurs bandes, vous les rencontrez.", NOTE, bx + 18, by + 78)
         return
     pick = ui.get("people_pick")
     if pick not in peoples:
@@ -592,7 +601,7 @@ def draw_peoples(r, state, layout, ui) -> None:
         row = (lx, ly, lw, row_h - 4)
         items[f"people:{tid}"] = row
         chosen = tid == pick
-        fill = (40, 46, 58) if chosen else (30, 34, 42) if _hover(row) else (22, 24, 30)
+        fill = (62, 47, 34) if chosen else (45, 34, 26) if _hover(row) else (32, 24, 19)
         pygame.draw.rect(r.screen, fill, row, border_radius=6)
         if chosen:
             pygame.draw.rect(r.screen, GOLD, row, 1, border_radius=6)
@@ -618,13 +627,13 @@ def draw_peoples(r, state, layout, ui) -> None:
     t = state.tribes[pick]
     cy = by + 46
     color = color_of(t)
-    _box(r, (cx, cy, cw, 74), fill=(24, 26, 32), edge=(60, 64, 72), radius=8)
+    _box(r, (cx, cy, cw, 74), fill=(35, 26, 20), edge=(85, 64, 45), radius=8)
     pygame.draw.rect(r.screen, color, (cx, cy, 8, 74), border_top_left_radius=8, border_bottom_left_radius=8)
     _text(r, title_font, t.name, TEXT, cx + 20, cy + 6)
     nb = sum(1 for b in state.bands.values() if b.tribe_id == pick and b.population > 0)
     pop = diplo.pop_of(state, pick)
     approx = max(10, int(round(pop / 10.0)) * 10)
-    culture = label_of(t) + ("  ·  mene par un joueur" if t.is_player else "")
+    culture = label_of(t) + ("  ·  mené par un joueur" if t.is_player else "")
     origin = ""
     if t.origin and t.origin in state.tribes:
         origin = f"  ·  issus des {state.tribes[t.origin].name}" if t.origin != state.viewer else "  ·  issus de votre peuple"
@@ -664,7 +673,7 @@ def draw_peoples(r, state, layout, ui) -> None:
     cy += 16
     half = (cw - 8) // 2
     if not reasons:
-        _text(r, r.tiny, "Rien de particulier : vous vous connaissez a peine.", SOFT, cx + 12, cy)
+        _text(r, r.tiny, "Rien de particulier : vous vous connaissez à peine.", SOFT, cx + 12, cy)
         cy += 16
     for i, (label, value) in enumerate(reasons[:8]):
         x = cx + 8 + (i % 2) * half
@@ -693,11 +702,11 @@ def draw_peoples(r, state, layout, ui) -> None:
         if other == pick or not diplo.in_contact(state, pick, other):
             continue
         if diplo.allied(state, pick, other):
-            ties.append(f"allies des {state.tribes[other].name}")
+            ties.append(f"alliés des {state.tribes[other].name}")
         elif diplo.has_pact(state, pick, other, "commerce"):
             ties.append(f"commercent avec les {state.tribes[other].name}")
         elif diplo.has_pact(state, pick, other):
-            ties.append(f"en treve avec les {state.tribes[other].name}")
+            ties.append(f"en trêve avec les {state.tribes[other].name}")
         elif diplo.relation(state, pick, other) <= -50:
             ties.append(f"ennemis des {state.tribes[other].name}")
     if ties:
@@ -736,7 +745,7 @@ def draw_peoples(r, state, layout, ui) -> None:
     elif not sizes:
         note = "Votre bande la plus proche n'a pas assez de vivres"
     else:
-        note = "Toujours accepte"
+        note = "Toujours accepté"
     _text(r, r.tiny, r._fit(r.tiny, note, cx + cw - gx - 4), NOTE if verdict.blocked or not sizes else GOOD, gx + 4, cy + 5)
     cy += 34
     cols = 2
@@ -752,10 +761,10 @@ def draw_peoples(r, state, layout, ui) -> None:
         line, tint = _verdict_line(verdict)
         if t.is_player and not verdict.blocked and action in diplo.HUMAN_OFFERS:
             # Un autre joueur : pas de calcul, il recevra une carte et choisira.
-            line, tint = "Un joueur : il decidera lui-meme", GOLD
+            line, tint = "Un joueur : il décidera lui-même", GOLD
             verdict = diplo.Verdict(score=verdict.score)
         if wait and not verdict.blocked:
-            line, tint = f"Deja propose : attendez {wait} sem.", NOTE
+            line, tint = f"Déjà propose : attendez {wait} sem.", NOTE
         rect = (ax, ay, min(190, aw - 4), 22)
         items[f"diplo:{action}"] = rect
         on = not verdict.blocked and not wait
@@ -773,7 +782,7 @@ def draw_peoples(r, state, layout, ui) -> None:
             break
         who = band.leader.name if band.leader else f"bande {band.id}"
         chance = round(100 * diplo.invite_chance(state, state.viewer, band))
-        line = f"Clan de {who} ({band.population}) : attachement {band.loyalty:.0f}, il se detache de son chef"
+        line = f"Clan de {who} ({band.population}) : attachement {band.loyalty:.0f}, il se détache de son chef"
         _text(r, r.tiny, r._fit(r.tiny, line, cw - 200), WARN, cx + 4, iy + 5)
         rect = (cx + cw - 190, iy, 186, 22)
         items[f"invite:{band.id}"] = rect
@@ -788,47 +797,52 @@ def draw_peoples(r, state, layout, ui) -> None:
 
 
 def draw_event_cards(r, state, ui) -> None:
-    """Cartes "A decider" a gauche (voir events.py) ; rien s'il n'y en a pas."""
+    """Cartes "A decider" a gauche (voir events.py) ; rien s'il n'y en a pas.
+    Elles respirent : elles attendent une decision."""
     r.event_hits = {}
     from src.kora import events
+    from src.kora.render import HUD_HEIGHT
 
     # Multijoueur : une carte repondue attend que l'hote applique la reponse.
     answered = ui.get("answered", ()) if isinstance(ui, dict) else ()
     pending = [p for p in events.pending(state, state.viewer) if p.uid not in answered]
     if not pending:
         return
-    w, h = r.screen.get_size()
-    x, y = 10, 48 + 110
-    for inst in pending[:5]:
+    x, y = 10, HUD_HEIGHT + 110
+    t = pygame.time.get_ticks() / 1000.0
+    for k, inst in enumerate(pending[:5]):
         ev = events.EVENTS.get(inst.event_id)
         if ev is None:
             continue
         left = max(0, inst.deadline - state.tick_count)
-        rect = (x, y, 270, 40)
+        rect = (x, y, 286, 48)
         r.event_hits[inst.uid] = rect
-        glow = (state.tick_count + inst.uid) % 2 == 0
-        _box(r, rect, fill=(30, 26, 20) if _hover(rect) else (24, 22, 18), edge=GOLD if glow else (150, 120, 60), radius=6)
-        _text(r, r.small, r._fit(r.small, ev.title, 250), (240, 220, 170), x + 10, y + 4)
-        _text(r, r.tiny, f"A decider  ·  encore {left} sem.  ·  [E]", NOTE, x + 10, y + 22)
-        y += 46
+        theme.glow(r.screen, rect, C.mauvais if ev.mood == "danger" else C.braise, 0.25 + 0.5 * theme.pulse(t + k * 0.4))
+        theme.panel(r.screen, rect, "carte_survol" if _hover(rect) else "carte")
+        r.screen.blit(theme.medallion(event_icon(ev), 17, MOOD_STATE.get(ev.mood, "normal")), (x + 6, y + 5))
+        theme.text(r.screen, ev.title, "petit_gras", C.os, (x + 50, y + 6), 226)
+        theme.text(r.screen, f"À décider  ·  encore {left} sem.  ·  E", "mini", C.ocre_jaune if left > 4 else C.alerte, (x + 50, y + 26), 226)
+        y += 54
 
 
 def event_modal_layout(width: int, height: int, n_options: int, text_lines: int = 4) -> dict:
-    bw = min(660, width - 80)
-    bh = min(height - 70, 54 + 19 * text_lines + 44 + 60 * n_options + 12)
+    bw = min(760, width - 80)
+    body = max(2, text_lines)
+    bh = min(height - 70, max(140, 70 + 22 * body + 32) + 64 * n_options + 18)
     bx = (width - bw) // 2
-    by = max(52, (height - bh) // 2)
+    by = max(56, (height - bh) // 2)
     options = {}
-    oy = by + bh - 12 - 60 * n_options
+    oy = by + bh - 18 - 64 * n_options
     for i in range(n_options):
-        options[i] = (bx + 20, oy + i * 60, bw - 40, 54)
-    close = (bx + bw - 110, by + 12, 96, 24)
+        options[i] = (bx + 28, oy + i * 64, bw - 56, 56)
+    close = (bx + bw - 124, by + 18, 100, 26)
     return {"box": (bx, by, bw, bh), "options": options, "close": close}
 
 
 def draw_event_modal(r, state, ui) -> None:
+    """La dalle d'un evenement : son illustration dans un grand medaillon,
+    le recit en italique, les choix en larges cartes (detail au survol)."""
     from src.kora import events
-    from src.kora.render import wrap_text
 
     uid = ui.get("event_open")
     inst = events.find(state, uid)
@@ -837,50 +851,50 @@ def draw_event_modal(r, state, ui) -> None:
     ev = events.EVENTS.get(inst.event_id)
     if ev is None:
         return
-    title_font, head_font = _fonts(r)
     w, h = r.screen.get_size()
-    shade = pygame.Surface((w, h), pygame.SRCALPHA)
-    shade.fill((6, 8, 12, 150))
-    r.screen.blit(shade, (0, 0))
+    theme.veil(r.screen, 150)
     opts = events.options_for(state, inst)
     text = events.text_for(state, inst)
-    cols = max(40, (min(660, w - 80) - 40) // 8)
-    lines = [line for para in text.split("\n") for line in wrap_text(para, cols)]
+    bw = min(760, w - 80)
+    f = theme.font("recit")
+    lines = theme.wrap(f, text, bw - 170)
     lay = event_modal_layout(w, h, len(opts), len(lines))
     r.event_hits = {"modal": lay}
     bx, by, bw, bh = lay["box"]
-    _box(r, (bx, by, bw, bh), fill=(22, 20, 17), edge=GOLD, radius=10, width=2)
-    pygame.draw.rect(r.screen, events.MOOD_COLORS.get(ev.mood, GOLD), (bx + 2, by + 2, bw - 4, 6), border_radius=4)
-    _text(r, title_font, ev.title, (245, 228, 185), bx + 20, by + 16)
-    _button(r, lay["close"], "Plus tard")
-    yy = by + 54
+    theme.panel(r.screen, lay["box"], "pierre")
+    r.screen.blit(theme.medallion(event_icon(ev), 46, MOOD_STATE.get(ev.mood, "normal")), (bx + 22, by + 22))
+    theme.title(r.screen, ev.title, bx + 134, by + 20, "h1")
+    mx, my = pygame.mouse.get_pos()
+    theme.button(r.screen, lay["close"], "Plus tard", "discret", True, _hover(lay["close"]))
+    yy = by + 66
     for line in lines:
-        _text(r, r.small, line, (225, 218, 200), bx + 20, yy)
-        yy += 19
-    yy += 6
+        r.screen.blit(f.render(line, True, C.os), (bx + 134, yy))
+        yy += 22
+    yy += 8
     left = max(0, inst.deadline - state.tick_count)
-    _text(r, r.tiny, f"Sans reponse dans {left} semaines, le choix par defaut sera fait.", NOTE, bx + 20, yy + 2)
+    theme.text(r.screen, f"Sans réponse dans {left} semaines, le choix par défaut sera fait.", "mini", C.cendre, (bx + 134, yy))
     tips = []
     for i, opt in enumerate(opts):
         rect = lay["options"][i]
         on = not opt["blocked"]
         hover = on and _hover(rect)
-        fill = (60, 48, 30) if hover else (34, 32, 28) if on else (26, 26, 26)
-        pygame.draw.rect(r.screen, fill, rect, border_radius=6)
-        pygame.draw.rect(r.screen, GOLD if on else (70, 70, 70), rect, 1, border_radius=6)
-        _text(r, r.small, r._fit(r.small, opt["label"], rect[2] - 20), TEXT if on else (120, 120, 120), rect[0] + 12, rect[1] + 6)
+        if hover:
+            theme.glow(r.screen, rect, C.braise, 0.6)
+        theme.panel(r.screen, rect, "carte_survol" if hover else ("carte" if on else "creux"))
+        theme.text(r.screen, f"{i + 1}.", "h2", C.ocre if on else C.cendre, (rect[0] + 14, rect[1] + 12))
+        theme.text(r.screen, opt["label"], "texte_gras", C.os if on else C.cendre, (rect[0] + 46, rect[1] + 7), rect[2] - 60)
         summary = opt["blocked"] or opt["summary"]
-        _text(r, r.tiny, r._fit(r.tiny, summary, rect[2] - 20), NOTE if opt["blocked"] else (200, 196, 170), rect[0] + 12, rect[1] + 28)
+        theme.text(r.screen, summary, "petit", C.cendre if opt["blocked"] else C.ocre_jaune, (rect[0] + 46, rect[1] + 31), rect[2] - 60)
         if hover and opt["details"]:
-            rows = [(line, SOFT) for line in opt["details"]]
-            tw = max(r.tiny.size(t)[0] for t, _c in rows) + 18
+            rows = [(line, C.lin) for line in opt["details"]]
+            tw = 340
             if bx + bw + 8 + tw <= w:
                 # A droite de la fenetre : on ne cache ni le texte ni les options.
                 tips.append((rows, bx + bw + 8, rect[1]))
             elif bx - 8 - tw >= 0:
                 tips.append((rows, bx - 8 - tw, rect[1]))
             else:
-                tips.append((rows, rect[0] + 20, rect[1] - 12 - 16 * len(rows)))
+                tips.append((rows, rect[0] + 20, rect[1] - 12 - 18 * len(rows)))
     for rows, x, y in tips:
         _tooltip(r, rows, x, y)
 
@@ -926,7 +940,7 @@ def draw_army(r, state, layout, ui) -> None:
         return
     _box(r, (bx, by, bw, bh))
     pygame.draw.rect(r.screen, color_of(tribe), (bx, by + 10, 5, 44), border_radius=2)
-    _text(r, title_font, "Armee", TEXT, bx + 18, by + 10)
+    _text(r, title_font, "Armée", TEXT, bx + 18, by + 10)
     troops = sorted((b for b in state.bands.values() if b.tribe_id == state.viewer and b.kind == "armee"), key=lambda b: b.id)
     homes = sites.of_tribe(state, state.viewer, "village")
     men = sum(b.population for b in troops)
@@ -945,7 +959,7 @@ def draw_army(r, state, layout, ui) -> None:
         home = villages.band_of(state, site)
         if home is None:
             continue
-        _box(r, (bx + 12, y, bw - 24, block_h - 6), fill=(22, 24, 30), edge=(60, 56, 44), radius=6)
+        _box(r, (bx + 12, y, bw - 24, block_h - 6), fill=(32, 24, 19), edge=(60, 56, 44), radius=6)
         name_rect = (bx + 20, y + 5, 150, 20)
         items[f"avillage:{site.id}"] = name_rect
         _button(r, name_rect, villages.name(site))
@@ -956,14 +970,14 @@ def draw_army(r, state, layout, ui) -> None:
         for i, rl in enumerate(units.ROLES):
             rect = (bx + 20 + i * (cw + 6), y + 30, cw, 20)
             u = units.best(tribe, rl)
-            label = u.short if u else f"{units.ROLE_LABEL[rl]} : verrouille"
+            label = u.short if u else f"{units.ROLE_LABEL[rl]} : verrouillé"
             items[f"arole:{site.id}:{rl}"] = rect
             _button(r, rect, label, on=u is not None, active=rl == role and u is not None)
             if _hover(rect):
                 if u is None:
                     first = units.ages_of(rl)[0]
                     need = tech.TECHS[first.needs].name if first.needs else "?"
-                    tips.append(([(first.name, TEXT), (f"Il faut connaitre {need}", BAD)], rect[0], rect[1] + 24))
+                    tips.append(([(first.name, TEXT), (f"Il faut connaître {need}", BAD)], rect[0], rect[1] + 24))
                 else:
                     tips.append(([(u.name, TEXT), (u.text, SOFT)], rect[0], rect[1] + 24))
         key = sizes.get(site.id, "troupe")
@@ -976,7 +990,7 @@ def draw_army(r, state, layout, ui) -> None:
             sx += 96
         kind = units.best(tribe, role) or units.best(tribe, "melee")
         share = villages.LEVY_SHARE.get(key, villages.LEVY_SHARE["troupe"])
-        why = villages.army_block(state, home.id, share, kind.id) or ("" if chiefs.obeys(state, home) else "Ce clan n'obeit plus")
+        why = villages.army_block(state, home.id, share, kind.id) or ("" if chiefs.obeys(state, home) else "Ce clan n'obéit plus")
         raise_rect = (sx + 6, y + 52, 120, 24)
         items[f"araise:{site.id}"] = raise_rect
         _button(r, raise_rect, "Lever [L]", on=not why)
@@ -984,7 +998,7 @@ def draw_army(r, state, layout, ui) -> None:
             _text(r, r.tiny, r._fit(r.tiny, why, bx + bw - 24 - (raise_rect[0] + 128)), WARN, raise_rect[0] + 128, y + 57)
         y += block_h
     if len(homes) > max_blocks:
-        _text(r, r.tiny, f"... et {len(homes) - max_blocks} autres villages (ecran du village)", NOTE, bx + 20, y)
+        _text(r, r.tiny, f"... et {len(homes) - max_blocks} autres villages (écran du village)", NOTE, bx + 20, y)
         y += 18
     y += 6
     _text(r, r.tiny, "VOS TROUPES", GOLD, bx + 18, y)
@@ -1001,7 +1015,7 @@ def draw_army(r, state, layout, ui) -> None:
         home = villages.home_of(state, army)
         where = villages.name(home) if home is not None else "sans village"
         d = state.world.distance(home.hex, army.position) if home is not None else 0
-        status = "rentre" if army.homebound else ("au village" if home is not None and d <= villages.ARMY_HOME else f"a {d} cases de {where}")
+        status = "rentre" if army.homebound else ("au village" if home is not None and d <= villages.ARMY_HOME else f"à {d} cases de {where}")
         _text(r, r.small, r._fit(r.small, f"{lead} · {army.population} guerriers · {status}", bw - 200), TEXT, bx + 20, y)
         comp = " · ".join(f"{m} {units.UNITS[t].short if t in units.UNITS else t}" for t, m, _h in units.normalize(army))
         _text(r, r.tiny, r._fit(r.tiny, comp, bw - 200), SOFT, bx + 20, y + 20)
@@ -1013,9 +1027,9 @@ def draw_army(r, state, layout, ui) -> None:
         on = not villages.dissolve_block(state, army.id)
         _button(r, dis, "Dissoudre", on=on)
         if _hover(dis):
-            tips.append(([("Chaque compagnie rentre a pied a son village", SOFT)], dis[0] - 120, dis[1] + 24))
+            tips.append(([("Chaque compagnie rentre à pied à son village", SOFT)], dis[0] - 120, dis[1] + 24))
         y += 44
-    tip = "Dissoute, une compagnie rentre a pied a son village. Les savoirs apportent de nouveaux types d'unites."
+    tip = "Dissoute, une compagnie rentre à pied à son village. Les savoirs apportent de nouveaux types d'unités."
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
     for lines, x, y2 in tips:
         _tooltip(r, lines, x, y2)

@@ -39,26 +39,26 @@ class UnitType:
 
 
 ROLES = ("melee", "tir", "garde", "eclaireurs")
-ROLE_LABEL = {"melee": "Melee", "tir": "Tir", "garde": "Garde", "eclaireurs": "Eclaireurs"}
+ROLE_LABEL = {"melee": "Mêlée", "tir": "Tir", "garde": "Garde", "eclaireurs": "Éclaireurs"}
 UNITS: dict[str, UnitType] = {
     u.id: u
     for u in (
-        UnitType("guerriers", "Guerriers", "melee", 0, "", short="Guerriers", text="Massues et epieux de chasse : le gros de la troupe."),
+        UnitType("guerriers", "Guerriers", "melee", 0, "", short="Guerriers", text="Massues et épieux de chasse : le gros de la troupe."),
         UnitType(
-            "epieux", "Guerriers a l'epieu", "melee", 0, "epieu", attack=1.15, defense=1.05, short="Epieux",
+            "epieux", "Guerriers à l'épieu", "melee", 0, "epieu", attack=1.15, defense=1.05, short="Épieux",
             text="Des pieux durcis au feu, et l'habitude de chasser ensemble.",
         ),
         UnitType(
-            "haches", "Guerriers a la hache polie", "melee", 1, "haches", attack=1.4, defense=1.1, short="Haches",
+            "haches", "Guerriers à la hache polie", "melee", 1, "haches", attack=1.4, defense=1.1, short="Haches",
             text="La pierre polie fend les boucliers d'osier.",
         ),
         UnitType(
             "frondeurs", "Frondeurs", "tir", 0, "", attack=0.6, defense=0.8, ranged=0.8, exposure=0.6, short="Frondeurs",
-            text="Des pierres lancees de loin, avant le choc.",
+            text="Des pierres lancées de loin, avant le choc.",
         ),
         UnitType(
             "archers", "Archers", "tir", 0, "arc", attack=0.7, defense=0.8, ranged=1.3, forest=1.2, exposure=0.6, short="Archers",
-            text="Une volee de fleches brise l'elan de l'ennemi.",
+            text="Une volee de flèches brise l'élan de l'ennemi.",
         ),
         UnitType(
             "boucliers", "Porteurs de boucliers", "garde", 1, "palissade", attack=0.8, defense=1.6, pursuit=0.5, morale=10.0, short="Boucliers",
@@ -66,7 +66,7 @@ UNITS: dict[str, UnitType] = {
         ),
         UnitType(
             "pisteurs", "Pisteurs", "eclaireurs", 0, "reperes", attack=0.8, defense=0.8, pursuit=2.2, forest=1.3, exposure=0.8, short="Pisteurs",
-            text="Ils connaissent chaque piste : personne ne leur echappe.",
+            text="Ils connaissent chaque piste : personne ne leur échappe.",
         ),
     )
 }

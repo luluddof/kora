@@ -24,11 +24,11 @@ import base64
 import zlib
 
 RESOURCES = (
-    ("cereales", "cereales sauvages", "plante"),
+    ("cereales", "céréales sauvages", "plante"),
     ("racines", "racines et tubercules", "plante"),
     ("aurochs", "aurochs", "gibier"),
     ("chevaux", "chevaux sauvages", "gibier"),
-    ("chevres", "chevres sauvages", "gibier"),
+    ("chevres", "chèvres sauvages", "gibier"),
     ("rennes", "rennes", "gibier"),
     ("poisson", "poisson", "eau"),
     ("silex", "silex", "matiere"),

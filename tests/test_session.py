@@ -66,7 +66,7 @@ def test_lobby_seats_and_ready():
     try:
         assert client.me == 2
         assert host.seats[2].name == "Tahu" and host.seats[2].bonuses == ["bonus:guerriers", "bonus:fertiles"]
-        assert "prets" in host.can_start()
+        assert "prêts" in host.can_start()
         assert _until(lambda: 2 in client.seats and 1 in client.seats, client.pump_lobby)
         client.want_slot(4)
         assert _until(lambda: client.me == 4 and 4 in host.seats and 2 not in host.seats, host.pump_lobby, client.pump_lobby)
@@ -83,7 +83,7 @@ def test_version_mismatch_is_refused():
     conn.send({"t": "hello", "proto": session.PROTO, "version": "0.0.0", "name": "X"})
     got = []
     assert _until(lambda: any(m.get("t") == "refuse" for m in got), host.pump_lobby, lambda: got.extend(conn.poll()))
-    assert "Versions differentes" in next(m for m in got if m.get("t") == "refuse")["why"]
+    assert "Versions différentes" in next(m for m in got if m.get("t") == "refuse")["why"]
     host.close()
 
 
@@ -113,7 +113,7 @@ def test_both_machines_compute_the_same_game():
                 then(res)
         assert [a["msg"] for a in answers] == ["", NOT_YOURS]
         assert start2 != goal2
-        assert cs.bands[cb.id].position == goal2 or cs.bands[cb.id].path, "l'ordre de l'ami a ete suivi"
+        assert cs.bands[cb.id].position == goal2 or cs.bands[cb.id].path, "l'ordre de l'ami a été suivi"
         assert hs.bands[cb.id].position == cs.bands[cb.id].position
         assert session.sync_digest(hs) == session.sync_digest(cs)
         assert client.state is cs and client.resyncs == 0
@@ -131,7 +131,7 @@ def test_a_machine_that_drifts_is_copied_back():
         host.toggle_pause()
         assert _until(lambda: client.state.tick_count == host.state.tick_count, lambda: host.pump(0.05), lambda: client.pump(0.05))
         assert session.sync_digest(host.state) == session.sync_digest(client.state)
-        assert host.resyncs >= 1 and any("ecartee" in n for n in host.take_notes())
+        assert host.resyncs >= 1 and any("écartée" in n for n in host.take_notes())
         # Apres la recopie, plus d'ecart : l'hote a relu la meme partie
         # (sinon "300" chez lui et "300.0" chez l'ami differeraient a jamais).
         before = host.resyncs

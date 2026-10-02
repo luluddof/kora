@@ -54,7 +54,7 @@ def test_troops_merge_into_one_stack_and_detach_again():
     total = a.population + b.population
     merge_bands(st, a.id)
     assert b.id not in st.bands and a.population == total and len(a.units) == 2
-    assert orders.labels(st, a.id)["split"] == "Detacher [S]"
+    assert orders.labels(st, a.id)["split"] == "Détacher [S]"
     sel, msg = orders.perform(st, a.id, "split")
     part = st.bands[sel]
     assert msg == "" and part is not a and part.units[0][0] == "archers"

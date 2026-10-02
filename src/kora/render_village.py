@@ -40,24 +40,22 @@ from src.kora.render_tech import (
     _wrap,
 )
 from src.kora.types import Hex
+from src.kora import theme
+from src.kora.theme import C
 
-WARN = (236, 170, 90)
+WARN = C.alerte
 CARD = {
-    "bati": ((86, 70, 38), (54, 43, 24), (226, 190, 106), (246, 236, 208)),
-    "chantier": ((36, 62, 90), (22, 38, 60), (124, 186, 240), (232, 240, 248)),
-    "possible": ((36, 66, 42), (22, 42, 27), (132, 208, 120), (234, 244, 228)),
-    "attente": ((40, 42, 48), (28, 30, 35), (96, 100, 108), (184, 186, 192)),
-    "verrouille": ((27, 28, 32), (20, 21, 24), (58, 60, 66), (116, 118, 124)),
+    "bati": ((86, 70, 38), (54, 43, 24), (217, 164, 65), (239, 228, 204)),
+    "chantier": ((86, 50, 26), (58, 32, 18), (242, 160, 61), (239, 228, 204)),
+    "possible": ((30, 58, 54), (20, 40, 37), (157, 191, 110), (239, 228, 204)),
+    "attente": ((55, 42, 31), (39, 30, 23), (120, 101, 81), (208, 191, 161)),
+    "verrouille": ((37, 28, 21), (27, 21, 16), (80, 60, 42), (134, 119, 103)),
 }
-STATUS_LABEL = {"bati": "Bati", "chantier": "En chantier", "possible": "Possible", "attente": "Pas encore", "verrouille": "Verrouille"}
+STATUS_LABEL = {"bati": "Bâti", "chantier": "En chantier", "possible": "Possible", "attente": "Pas encore", "verrouille": "Verrouillé"}
 
 
 def _fonts(r):
-    if not hasattr(r, "tech_title"):
-        from src.kora.render_tech import _fonts as tf
-
-        tf(r)
-    return r.tech_title, r.tech_head
+    return theme.font("titre"), theme.font("h3")
 
 
 def _hover(rect, mx, my) -> bool:
@@ -66,32 +64,24 @@ def _hover(rect, mx, my) -> bool:
 
 
 def _dim(r) -> None:
-    w, h = r.screen.get_size()
-    veil = pygame.Surface((w, h), pygame.SRCALPHA)
-    veil.fill((6, 8, 12, 150))
-    r.screen.blit(veil, (0, 0))
+    theme.veil(r.screen, 150)
 
 
 def _frame(r, rect) -> None:
-    x, y, w, h = rect
-    r.screen.blit(_gradient_card(w, h, (28, 32, 42), (13, 15, 20), 8), (x, y))
-    _ornate_frame(r.screen, rect)
+    """Les fenetres solennelles (village, fondation, bataille) : la pierre."""
+    theme.panel(r.screen, rect, "pierre")
 
 
 def _plain_button(r, rect, label: str, hover: bool, font=None) -> None:
-    """Bouton discret (annuler, fermer) : sombre, filet dore au survol."""
-    font = font or r.small
-    x, y, w, h = rect
-    r.screen.blit(_gradient_card(w, h, (58, 60, 68) if hover else (44, 46, 52), (34, 36, 40), 6), (x, y))
-    pygame.draw.rect(r.screen, GOLD if hover else (96, 98, 106), rect, 1, border_radius=6)
-    surf = font.render(_fit(font, label, w - 10), True, INK)
-    r.screen.blit(surf, (x + (w - surf.get_width()) // 2, y + (h - surf.get_height()) // 2))
+    """Bouton second de la charte (annuler, fermer)."""
+    theme.button(r.screen, rect, label, "second", True, hover, role="bouton" if rect[3] >= 30 else "bouton_petit")
 
 
 def _section(r, x, y, w, title) -> int:
-    r.screen.blit(r.tiny.render(title, True, GOLD), (x, y))
-    pygame.draw.line(r.screen, GOLD_DEEP, (x, y + 16), (x + w, y + 16))
-    return y + 22
+    """Un titre de section en petites capitales, des points d'ocre dessous."""
+    theme.text(r.screen, title, "etiquette", C.ocre_jaune, (x, y - 1))
+    theme.dotted(r.screen, (x, y + 18), (x + w, y + 18), C.ocre_sombre, 5)
+    return y + 24
 
 
 # --- dessins : batiments et serments ---------------------------------------------------
@@ -259,7 +249,7 @@ def draw_found(r, state, ui) -> None:
     screen = r.screen
     mx, my = pygame.mouse.get_pos()
     screen.blit(title_font.render("Fonder un village", True, GOLD), (bx + 24, by + 16))
-    screen.blit(r.small.render("Un tournant : votre peuple cesse d'errer. On ne revient pas en arriere sans tout perdre.", True, SOFT), (bx + 26, by + 50))
+    screen.blit(r.small.render("Un tournant : votre peuple cesse d'errer. On ne revient pas en arrière sans tout perdre.", True, SOFT), (bx + 26, by + 50))
     name_s = head_font.render(f"{info['name']}", True, INK)
     screen.blit(r.tiny.render("NOM DU VILLAGE", True, GOLD_DIM), (bx + 26, by + 76))
     screen.blit(name_s, (bx + 140, by + 72))
@@ -270,8 +260,8 @@ def draw_found(r, state, ui) -> None:
     x, y, lw, lh = lay["left"]
     y = _section(r, x, y, lw, "LE LIEU")
     rows = [
-        (f"Champs : {info['fields']} sur les {info['fields_max']} voulus  ·  fertilite {100 * info['fertility']:.0f} %", SOFT),
-        (f"Premiere recolte : ~{info['harvest']:.0f} vivres (semences {100 * info['seed_ratio']:.0f} %)", SOFT),
+        (f"Champs : {info['fields']} sur les {info['fields_max']} voulus  ·  fertilité {100 * info['fertility']:.0f} %", SOFT),
+        (f"Première récolte : ~{info['harvest']:.0f} vivres (semences {100 * info['seed_ratio']:.0f} %)", SOFT),
     ]
     if info["resources"]:
         rows.append(("Autour : " + ", ".join(info["resources"]), SOFT))
@@ -289,21 +279,21 @@ def draw_found(r, state, ui) -> None:
     y = _section(r, x, y, lw, "CE QUI CHANGE")
     gains = [
         "Des champs sur les meilleures terres alentour, semes au printemps",
-        f"Un grenier : {villages.STORE_WEEKS} semaines de reserve de plus",
-        "La population croit plus vite (x1,4)",
-        "Des batiments a construire au village",
-        "Des guerriers a lever : les premieres armees",
+        f"Un grenier : {villages.STORE_WEEKS} semaines de réserve de plus",
+        "La population croît plus vite (x1,4)",
+        "Des bâtiments à construire au village",
+        "Des guerriers a lever : les premières armées",
     ]
     costs = [
-        "Le village ne marche plus : il se defend sur place",
+        "Le village ne marche plus : il se défend sur place",
         "Le grain attire les pillards",
-        "Les fievres guettent les gros villages",
+        "Les fièvres guettent les gros villages",
     ]
     for text in gains:
         for k, part in enumerate(_wrap(r.tiny, text, lw - 16)):
             if k == 0:
                 _tick(screen, x + 6, y + 7)
-            screen.blit(r.tiny.render(part, True, (184, 222, 168)), (x + 16, y))
+            screen.blit(r.tiny.render(part, True, (178, 205, 140)), (x + 16, y))
             y += 15
     for text in costs:
         for k, part in enumerate(_wrap(r.tiny, text, lw - 16)):
@@ -326,7 +316,7 @@ def draw_found(r, state, ui) -> None:
             pygame.draw.rect(glow, edge + (70,), (0, 0, cw + 12, ch + 12), border_radius=10)
             screen.blit(glow, (cx - 6, cy - 6))
         screen.blit(_gradient_card(cw, ch, top, bot, 6), (cx, cy))
-        pygame.draw.rect(screen, (250, 244, 226) if on else edge, rect, 2 if on or hover else 1, border_radius=6)
+        pygame.draw.rect(screen, (239, 228, 204) if on else edge, rect, 2 if on or hover else 1, border_radius=6)
         screen.blit(medal(oid, edge, top, 15), (cx + 8, cy + 8))
         screen.blit(r.small.render(_fit(r.small, oath.name, cw - 56), True, text_c), (cx + 46, cy + 14))
         yy = cy + 40
@@ -337,8 +327,8 @@ def draw_found(r, state, ui) -> None:
         for eff in oath.lines:
             for k, part in enumerate(_wrap(r.tiny, eff, cw - 32)[:2]):
                 if k == 0:
-                    pygame.draw.polygon(screen, (184, 222, 168), [(cx + 12, yy + 3), (cx + 18, yy + 7), (cx + 12, yy + 11)])
-                screen.blit(r.tiny.render(part, True, (184, 222, 168)), (cx + 22, yy))
+                    pygame.draw.polygon(screen, (178, 205, 140), [(cx + 12, yy + 3), (cx + 18, yy + 7), (cx + 12, yy + 11)])
+                screen.blit(r.tiny.render(part, True, (178, 205, 140)), (cx + 22, yy))
                 yy += 14
         if on:
             _check(screen, cx + cw - 10, cy + 10, GOLD)
@@ -348,7 +338,7 @@ def draw_found(r, state, ui) -> None:
         band_rect = (rx, by2, rw, 50)
         screen.blit(_gradient_card(rw, 50, (70, 52, 26), (40, 30, 16), 6), (rx, by2))
         pygame.draw.rect(screen, GOLD, band_rect, 1, border_radius=6)
-        screen.blit(r.small.render("PREMIER VILLAGE : l'age des villages commence", True, GOLD), (rx + 12, by2 + 6))
+        screen.blit(r.small.render("PREMIER VILLAGE : l'âge des villages commence", True, GOLD), (rx + 12, by2 + 6))
         screen.blit(r.tiny.render(f"+{villages.FIRST_VILLAGE_PRESTIGE} prestige  ·  vos villages pourront lever des troupes", True, INK), (rx + 12, by2 + 28))
     # Boutons.
     ok_on = pick in villages.OATHS
@@ -362,7 +352,7 @@ def draw_found(r, state, ui) -> None:
 # --- l'ecran du village -----------------------------------------------------------------
 
 
-PAGES = (("village", "Le village"), ("metiers", "Metiers et echanges"))
+PAGES = (("village", "Le village"), ("metiers", "Métiers et échanges"))
 
 
 def village_layout(width: int, height: int, n_armies: int = 0, page: str = "village") -> dict:
@@ -526,7 +516,7 @@ def village_hit(lay: dict, mx: int, my: int, armies: list | None = None):
 
 def _tile(r, rect, label, value, sub, color=INK) -> None:
     x, y, w, h = rect
-    r.screen.blit(_gradient_card(w, h, (38, 42, 52), (24, 26, 32), 6), (x, y))
+    r.screen.blit(_gradient_card(w, h, (56, 43, 32), (35, 26, 20), 6), (x, y))
     pygame.draw.rect(r.screen, GOLD_DEEP, rect, 1, border_radius=6)
     r.screen.blit(r.tiny.render(label, True, GOLD_DIM), (x + 10, y + 5))
     r.screen.blit(r.font.render(_fit(r.font, value, w - 18), True, color), (x + 10, y + 19))
@@ -559,7 +549,7 @@ def draw_village(r, state, ui) -> None:
     sub = f"{villages.rank_name(band.population)} des {tribe.name}  ·  fonde en l'an {site.founded or '?'}"
     sub += f"  ·  serment : {oath.name}" if oath else "  ·  sans serment"
     screen.blit(r.tiny.render(sub, True, NOTE), (bx + 38, by + 42))
-    _button(screen, r.small, lay["close"], "Fermer [Echap]", True, _hover(lay["close"], mx, my))
+    _button(screen, r.small, lay["close"], "Fermer [Échap]", True, _hover(lay["close"], mx, my))
     confirm = ui.get("leave_confirm")
     leave_label = "Confirmer ?" if confirm else "Abandonner"
     lx, ly, lw_, lh_ = lay["leave"]
@@ -584,22 +574,22 @@ def draw_village(r, state, ui) -> None:
     warriors = sum(a.population for a in armies)
     defense = villages.defense_mult(state, band)
     tiles = (
-        ("HABITANTS", f"{band.population}", f"places a batir {villages.used_slots(site)}/{villages.slots(state, site)}", INK),
+        ("HABITANTS", f"{band.population}", f"places à bâtir {villages.used_slots(site)}/{villages.slots(state, site)}", INK),
         ("GRENIER", f"{band.stock:.0f} / {cap:.0f}", f"{weeks:.0f} semaines de vivres", GOOD if weeks >= 8 else WARN),
         ("SEMENCES", f"{site.data.get('seed', 0.0):.0f}", f"{step} (~{left} sem.)", INK),
-        ("RECOLTE ATTENDUE", f"~{crop:.0f}" if site.data.get("fields") else "-", f"{len(site.data.get('fields', []))} champs · sol {100 * villages.soil_avg(site):.0f} %", INK),
-        ("DEFENSE", f"x{defense:.2f}".replace(".", ","), f"force {band_force(state, band):.0f} · {len(villages.defense_parts(state, band))} abri(s)", INK),
+        ("RÉCOLTE ATTENDUE", f"~{crop:.0f}" if site.data.get("fields") else "-", f"{len(site.data.get('fields', []))} champs · sol {100 * villages.soil_avg(site):.0f} %", INK),
+        ("DÉFENSE", f"x{defense:.2f}".replace(".", ","), f"force {band_force(state, band):.0f} · {len(villages.defense_parts(state, band))} abri(s)", INK),
         ("GUERRIERS", f"{warriors}", f"compagnies {villages.companies_of(state, site)}/{villages.army_cap(state, site)}", INK),
     )
     stab = villages.stability(state, site, band)
     tiles = tiles + (
-        ("STABILITE", f"{stab:.0f}", villages.stability_word(stab), GOOD if stab >= 50 else WARN if stab >= villages.UNREST else BAD),
+        ("STABILITÉ", f"{stab:.0f}", villages.stability_word(stab), GOOD if stab >= 50 else WARN if stab >= villages.UNREST else BAD),
     )
     for rect, (label, value, sub_t, col) in zip(lay["tiles"], tiles):
         _tile(r, rect, label, value, sub_t, col)
     stab_rect = lay["tiles"][-1]
     if _hover(stab_rect, mx, my):
-        rows = [(f"Stabilite {stab:.0f} : {villages.stability_word(stab)}", INK)]
+        rows = [(f"Stabilité {stab:.0f} : {villages.stability_word(stab)}", INK)]
         for label, v in villages.stability_parts(state, site, band):
             if label != "Base":
                 rows.append((f"{'+' if v >= 0 else ''}{v:.0f}  {label}", GOOD if v >= 0 else BAD))
@@ -620,8 +610,8 @@ def draw_village(r, state, ui) -> None:
 
 def _page_tab(r, rect, label: str, active: bool, hover: bool) -> None:
     x, y, w, h = rect
-    top = (74, 62, 36) if active else (46, 48, 56) if hover else (34, 36, 42)
-    r.screen.blit(_gradient_card(w, h, top, (24, 24, 28), 6), (x, y))
+    top = (74, 62, 36) if active else (65, 49, 35) if hover else (47, 36, 28)
+    r.screen.blit(_gradient_card(w, h, top, (32, 24, 19), 6), (x, y))
     pygame.draw.rect(r.screen, GOLD if active else GOLD_DEEP, rect, 1, border_radius=6)
     if active:
         pygame.draw.line(r.screen, GOLD, (x + 8, y + h - 2), (x + w - 8, y + h - 2), 2)
@@ -630,10 +620,10 @@ def _page_tab(r, rect, label: str, active: bool, hover: bool) -> None:
 
 
 CRAFT_CARD = {
-    "actif": ((70, 60, 34), (44, 38, 24), (226, 190, 106), (246, 236, 208)),
-    "possible": ((36, 66, 42), (22, 42, 27), (132, 208, 120), (234, 244, 228)),
-    "absent": ((40, 42, 48), (28, 30, 35), (96, 100, 108), (184, 186, 192)),
-    "verrouille": ((27, 28, 32), (20, 21, 24), (58, 60, 66), (116, 118, 124)),
+    "actif": ((70, 60, 34), (44, 38, 24), (217, 164, 65), (239, 228, 204)),
+    "possible": ((30, 58, 54), (20, 40, 37), (157, 191, 110), (239, 228, 204)),
+    "absent": ((55, 42, 31), (39, 30, 23), (120, 101, 81), (208, 191, 161)),
+    "verrouille": ((37, 28, 21), (27, 21, 16), (80, 60, 42), (134, 119, 103)),
 }
 
 
@@ -645,7 +635,7 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     x0, cw = first[0], first[2]
     y0 = lay["stores"][1]
     busy = goods.workers(site, band)
-    _section(r, x0, y0, cw, f"METIERS  ·  equipes {goods.total_teams(site)}/{goods.team_cap(band)} (une par {goods.TEAM_POP} habitants, {goods.TEAM} gens chacune)")
+    _section(r, x0, y0, cw, f"MÉTIERS  ·  équipes {goods.total_teams(site)}/{goods.team_cap(band)} (une par {goods.TEAM_POP} habitants, {goods.TEAM} gens chacune)")
     for cid in goods.CRAFT_ORDER:
         craft = goods.CRAFTS[cid]
         rects = lay["crafts"][cid]
@@ -659,7 +649,7 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         screen.blit(head_font.render(_fit(head_font, craft.name, right - cx - 52), True, text_c), (cx + 50, cy + (6 if ch >= 74 else 2)))
         count, best = goods.deposits(state, site, cid)
         if st == "verrouille":
-            info, tint = f"Il faut connaitre {tech.TECHS[craft.needs].name}", BAD
+            info, tint = f"Il faut connaître {tech.TECHS[craft.needs].name}", BAD
         elif st == "absent":
             info, tint = f"Pas de {goods.res_label(cid)} dans les terres du village", NOTE
         else:
@@ -669,7 +659,7 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
             tint = SOFT
         screen.blit(r.tiny.render(_fit(r.tiny, info, right - cx - 52), True, tint), (cx + 50, cy + (28 if ch >= 74 else 20)))
         eff = " · ".join(craft.lines)
-        green = (184, 222, 168) if st != "verrouille" else (110, 120, 110)
+        green = (178, 205, 140) if st != "verrouille" else (130, 113, 96)
         if ch >= 74:
             screen.blit(r.tiny.render(_fit(r.tiny, craft.text, cw_ - 62), True, NOTE), (cx + 50, cy + 44))
             screen.blit(r.tiny.render(_fit(r.tiny, eff, cw_ - 62), True, green), (cx + 50, cy + min(ch - 16, 60)))
@@ -693,7 +683,7 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
             ui.setdefault("_vtips", []).append(([(why, WARN)], mx, my))
     # A droite : la reserve du peuple, les bras, les echanges.
     sx, sy, sw, sh = lay["stores"]
-    yy = _section(r, sx, sy, sw, "RESERVE DU PEUPLE (tous ses villages)")
+    yy = _section(r, sx, sy, sw, "RÉSERVE DU PEUPLE (tous ses villages)")
     tid = band.tribe_id
     need = goods.need(state, tid)
     for good in goods.GOODS:
@@ -704,7 +694,7 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         ts = r.tiny.render(f"{have:.0f} / {goods.CAP:.0f}", True, SOFT)
         screen.blit(ts, (sx + sw - ts.get_width(), yy + 3))
         bar = (sx + 110, yy + 7, max(20, sw - 110 - ts.get_width() - 12), 6)
-        pygame.draw.rect(screen, (14, 16, 20), bar, border_radius=3)
+        pygame.draw.rect(screen, (20, 16, 12), bar, border_radius=3)
         pygame.draw.rect(screen, GOLD if ok else (90, 80, 60), (bar[0], bar[1], int(bar[2] * min(1.0, have / goods.CAP)), bar[3]), border_radius=3)
         text = f"fait {_num(made)} · mange {_num(need)} par semaine · " + ("pourvu : l'effet joue" if ok else "en manque")
         screen.blit(r.tiny.render(_fit(r.tiny, text, sw), True, GOOD if ok else NOTE), (sx, yy + 20))
@@ -712,14 +702,14 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     yy = _section(r, sx, yy + 4, sw, "BRAS")
     hands = villages.field_hands_mult(site, band)
     rows = [
-        (f"{busy} aux metiers, {band.population - busy} aux champs et a la chasse", SOFT),
-        (f"Recolte rentree : x{hands:.2f}".replace(".", ",") + ("" if hands >= 1 else " (il manque des bras)"), SOFT if hands >= 1 else WARN),
-        (f"Collecte du village : x{goods.forage_mult(site, band):.2f} (les gens de metier chassent moins)".replace(".", ","), SOFT),
+        (f"{busy} aux métiers, {band.population - busy} aux champs et à la chasse", SOFT),
+        (f"Récolte rentrée : x{hands:.2f}".replace(".", ",") + ("" if hands >= 1 else " (il manque des bras)"), SOFT if hands >= 1 else WARN),
+        (f"Collecte du village : x{goods.forage_mult(site, band):.2f} (les gens de métier chassent moins)".replace(".", ","), SOFT),
     ]
     for text, color in rows:
         screen.blit(r.tiny.render(_fit(r.tiny, text, sw), True, color), (sx, yy))
         yy += 15
-    yy = _section(r, sx, yy + 8, sw, "ECHANGES")
+    yy = _section(r, sx, yy + 8, sw, "ÉCHANGES")
     _button(screen, r.small, lay["trade_btn"], "Routes commerciales [M]", True, _hover(lay["trade_btn"], mx, my))
     partners = [o for o in sorted(state.tribes) if o != tid and diplo.has_pact(state, tid, o, "commerce")]
     if not partners:
@@ -728,7 +718,7 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
             "leurs biens viendront chez vous, le solde se paie en vivres."
         )
         if not tech.bonuses(state.tribes[tid]).commerce:
-            hint = "Il faut connaitre Echanges lointains pour conclure des accords commerciaux (Peuples [P])."
+            hint = "Il faut connaître Échanges lointains pour conclure des accords commerciaux (Peuples [P])."
         for part in _wrap(r.tiny, hint, sw)[:4]:
             screen.blit(r.tiny.render(part, True, NOTE), (sx, yy))
             yy += 14
@@ -751,7 +741,7 @@ def _draw_lands(r, state, site, band, lay) -> None:
     x, y, w, _h = lay["left"]
     _section(r, x, y, w, "TERRES")
     mx_, my_, mw, mh = lay["mini"]
-    screen.blit(_gradient_card(mw, mh, (20, 24, 28), (14, 16, 20), 6), (mx_, my_))
+    screen.blit(_gradient_card(mw, mh, (30, 23, 18), (20, 16, 12), 6), (mx_, my_))
     world = state.world
     radius = villages.FIELD_RADIUS
     size = min((mw - 16) / (math.sqrt(3) * (2 * radius + 1)), (mh - 16) / (1.5 * (2 * radius) + 2))
@@ -767,7 +757,7 @@ def _draw_lands(r, state, site, band, lay) -> None:
             px = cx0 + size * math.sqrt(3) * (dq + dr / 2)
             py = cy0 + size * 1.5 * dr
             corners = [(px + size * 0.95 * math.cos(math.radians(60 * k - 30)), py + size * 0.95 * math.sin(math.radians(60 * k - 30))) for k in range(6)]
-            base = BIOME_COLORS.get(world.terrain(h), (90, 90, 90))
+            base = BIOME_COLORS.get(world.terrain(h), (112, 89, 68))
             idx = world._index(h)
             fert = villages.fertility(state, site.tribe_id, h)
             fill = _lerp(base, (0, 0, 0), 0.35)
@@ -786,23 +776,23 @@ def _draw_lands(r, state, site, band, lay) -> None:
                 pygame.draw.circle(screen, dot, (int(px), int(py)), max(2, int(size * 0.18 * s + 1)))
             if dq == 0 and dr == 0:
                 r.draw_village_icon(site, int(px), int(py) - 2, color_of(state.tribes.get(site.tribe_id)), max(5, int(size * 0.35)))
-    legend = "Champs : dores au sol neuf, bruns au sol epuise. Points : bonnes terres."
+    legend = "Champs : dorés au sol neuf, bruns au sol épuisé. Points : bonnes terres."
     for k, part in enumerate(_wrap(r.tiny, legend, mw)[:2]):
         screen.blit(r.tiny.render(part, True, NOTE), (mx_, my_ + mh + 4 + 13 * k))
     # Recoltes : barres des dernieres annees.
     gx, gy, gw, gh = lay["graph"]
-    screen.blit(r.tiny.render("RECOLTES DES DERNIERES ANNEES", True, GOLD), (gx, gy - 18))
-    screen.blit(_gradient_card(gw, gh, (20, 24, 28), (14, 16, 20), 6), (gx, gy))
+    screen.blit(r.tiny.render("RÉCOLTES DES DERNIÈRES ANNÉES", True, GOLD), (gx, gy - 18))
+    screen.blit(_gradient_card(gw, gh, (30, 23, 18), (20, 16, 12), 6), (gx, gy))
     history = site.data.get("history", [])
     need = band.population * 52
     top = max([c for _y, c in history] + [need * 0.6, 100])
     base_y = gy + gh - 18
     for k in range(1, 4):
         yy = int(base_y - (gh - 30) * k / 3)
-        pygame.draw.line(screen, (34, 38, 46), (gx + 30, yy), (gx + gw - 8, yy))
-        screen.blit(r.tiny.render(f"{top * k / 3:.0f}", True, (100, 104, 112)), (gx + 2, yy - 7))
+        pygame.draw.line(screen, (50, 38, 29), (gx + 30, yy), (gx + gw - 8, yy))
+        screen.blit(r.tiny.render(f"{top * k / 3:.0f}", True, (124, 105, 86)), (gx + 2, yy - 7))
     if not history:
-        screen.blit(r.tiny.render("Pas encore de recolte.", True, NOTE), (gx + 36, gy + gh // 2 - 7))
+        screen.blit(r.tiny.render("Pas encore de récolte.", True, NOTE), (gx + 36, gy + gh // 2 - 7))
         return
     n = len(history)
     slot = (gw - 44) / villages.HISTORY
@@ -811,7 +801,7 @@ def _draw_lands(r, state, site, band, lay) -> None:
         x0 = int(gx + 34 + (villages.HISTORY - n + i) * slot)
         bar = (x0 + 3, base_y - bh_, int(slot) - 6, bh_)
         last = i == n - 1
-        pygame.draw.rect(screen, (214, 180, 104) if last else (150, 126, 72), bar, border_radius=2)
+        pygame.draw.rect(screen, (217, 164, 65) if last else (150, 126, 72), bar, border_radius=2)
         lab = r.tiny.render(f"{year}", True, NOTE)
         screen.blit(lab, (x0 + (int(slot) - lab.get_width()) // 2, base_y + 3))
     # Ce que mange le village en un an : la recolte n'y suffit pas (encore).
@@ -824,7 +814,7 @@ def _draw_lands(r, state, site, band, lay) -> None:
 def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     screen = r.screen
     x, y, w, _h = lay["mid"]
-    _section(r, x, y, w, f"BATIMENTS  ·  places {villages.used_slots(site)}/{villages.slots(state, site)} (une de plus par {villages.SLOT_POP} habitants)")
+    _section(r, x, y, w, f"BÂTIMENTS  ·  places {villages.used_slots(site)}/{villages.slots(state, site)} (une de plus par {villages.SLOT_POP} habitants)")
     pick = ui.get("village_pick") or next((b for b in villages.BUILD_ORDER if villages.building_status(state, site, b) == "possible"), villages.BUILD_ORDER[0])
     job = villages.works(site)
     for bid, rect in lay["cards"].items():
@@ -834,7 +824,7 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         cx, cy, cw, ch = rect
         hover = _hover(rect, mx, my)
         screen.blit(_gradient_card(cw, ch, top, bot, 6), (cx, cy))
-        pygame.draw.rect(screen, (250, 244, 226) if bid == pick else edge, rect, 2 if bid == pick or hover else 1, border_radius=6)
+        pygame.draw.rect(screen, (239, 228, 204) if bid == pick else edge, rect, 2 if bid == pick or hover else 1, border_radius=6)
         screen.blit(medal(bid, edge, top, 14), (cx + 6, cy + ch // 2 - 15))
         parts = _wrap(r.tiny, b.name, cw - 48)[:2]
         ty = cy + 10
@@ -844,7 +834,7 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         if st == "chantier" and job:
             done = 1.0 - job[1] / max(1, villages.build_weeks(site, bid))
             bar = (cx + 40, cy + ch - 14, cw - 50, 5)
-            pygame.draw.rect(screen, (12, 14, 18), bar, border_radius=2)
+            pygame.draw.rect(screen, (18, 14, 11), bar, border_radius=2)
             pygame.draw.rect(screen, edge, (bar[0], bar[1], int(bar[2] * done), 5), border_radius=2)
             screen.blit(r.tiny.render(f"{job[1]} sem.", True, edge), (cx + 40, cy + ch - 30))
         else:
@@ -855,7 +845,7 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
             _lock(screen, cx + cw - 11, cy + 11, edge)
     # Fiche du batiment choisi.
     dx, dy, dw, dh = lay["detail"]
-    screen.blit(_gradient_card(dw, dh, (30, 32, 38), (18, 20, 24), 8), (dx, dy))
+    screen.blit(_gradient_card(dw, dh, (42, 32, 25), (26, 20, 15), 8), (dx, dy))
     pygame.draw.rect(screen, GOLD_DEEP, lay["detail"], 1, border_radius=8)
     b = villages.BUILDINGS[pick]
     st = villages.building_status(state, site, pick)
@@ -886,12 +876,12 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     for eff in b.lines:
         for k, part in enumerate(_wrap(r.tiny, eff, half - 40)[:2]):
             if k == 0:
-                pygame.draw.polygon(screen, (184, 222, 168), [(dx + 16, yy + 3), (dx + 22, yy + 7), (dx + 16, yy + 11)])
-            screen.blit(r.tiny.render(part, True, (184, 222, 168)), (dx + 28, yy))
+                pygame.draw.polygon(screen, (178, 205, 140), [(dx + 16, yy + 3), (dx + 22, yy + 7), (dx + 16, yy + 11)])
+            screen.blit(r.tiny.render(part, True, (178, 205, 140)), (dx + 28, yy))
             yy += 15
     why = villages.build_block_site(state, site, pick)
     on = not why
-    label = {"bati": "Bati", "chantier": "En chantier"}.get(st, "Construire")
+    label = {"bati": "Bâti", "chantier": "En chantier"}.get(st, "Construire")
     _button(screen, r.small, lay["build"], label, on, on and _hover(lay["build"], mx, my))
     if why and st != "bati":
         by_ = lay["build"][1]
@@ -915,12 +905,12 @@ def _today(r, state, site, band, rect) -> None:
     parts = villages.defense_parts(state, band)
     stab = villages.stability(state, site, band)
     rows = [
-        (f"Stabilite : {stab:.0f} ({villages.stability_word(stab)}), croissance x{villages.stability_growth(state, band):.2f}".replace(".", ","), GOOD if stab >= 50 else WARN),
-        (f"Grenier : {know.stock_weeks + villages.store_weeks(state, band):.0f} semaines de reserve", SOFT),
-        (f"Grain gate : {100 * villages.GRAIN_ROT * villages.rot_mult(state, site):.2f} % par semaine".replace(".", ","), SOFT),
+        (f"Stabilité : {stab:.0f} ({villages.stability_word(stab)}), croissance x{villages.stability_growth(state, band):.2f}".replace(".", ","), GOOD if stab >= 50 else WARN),
+        (f"Grenier : {know.stock_weeks + villages.store_weeks(state, band):.0f} semaines de réserve", SOFT),
+        (f"Grain gâte : {100 * villages.GRAIN_ROT * villages.rot_mult(state, site):.2f} % par semaine".replace(".", ","), SOFT),
         (f"Croissance : ~{growth:.0f} % par an sans famine", SOFT),
-        (f"Recolte : x{villages.yield_mult(state, site):.2f}".replace(".", ",") + f"  ·  vivres x{villages.food_mult(state, band):.2f}".replace(".", ","), SOFT),
-        ("Defense : " + (", ".join(f"{lab} x{m:.2f}".replace(".", ",") for lab, m in parts) if parts else "aucune"), SOFT),
+        (f"Récolte : x{villages.yield_mult(state, site):.2f}".replace(".", ",") + f"  ·  vivres x{villages.food_mult(state, band):.2f}".replace(".", ","), SOFT),
+        ("Défense : " + (", ".join(f"{lab} x{m:.2f}".replace(".", ",") for lab, m in parts) if parts else "aucune"), SOFT),
         (f"Troupes : {villages.army_cap(state, site)} au plus", SOFT),
     ]
     oath = villages.OATHS.get(villages.oath_of(site))
@@ -953,17 +943,17 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
         u = units.best(tribe, rl)
         if u is None:
             first = units.ages_of(rl)[0]
-            label = f"{units.ROLE_LABEL[rl]} : verrouille"
+            label = f"{units.ROLE_LABEL[rl]} : verrouillé"
             _chip_off(r, rect, label)
             if _hover(rect, mx, my):
                 from src.kora import tech
 
                 need = tech.TECHS[first.needs].name if first.needs else "?"
-                ui.setdefault("_vtips", []).append(([(first.name, INK), (f"Il faut connaitre {need}", BAD)], mx, my))
+                ui.setdefault("_vtips", []).append(([(first.name, INK), (f"Il faut connaître {need}", BAD)], mx, my))
             continue
         r._draw_chip(rect, _fit(r.tiny, u.short or u.name, rect[2] - 6), rl == role)
         if _hover(rect, mx, my):
-            tip = [(u.name, INK), (u.text, SOFT), (_stats(u), (184, 222, 168))]
+            tip = [(u.name, INK), (u.text, SOFT), (_stats(u), (178, 205, 140))]
             later = [v.name for v in units.ages_of(rl) if v.era > u.era]
             if later:
                 tip.append(("Plus tard : " + ", ".join(later), NOTE))
@@ -979,7 +969,7 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
     ly = lay["chips"][key][1] + 30
     info = [
         (f"{n} {kind.name.lower()}", INK),
-        (f"{min(band.stock, villages.ARMY_SUPPLY_WEEKS * n):.0f} vivres emportes · {band.population - n} restent", NOTE),
+        (f"{min(band.stock, villages.ARMY_SUPPLY_WEEKS * n):.0f} vivres emportés · {band.population - n} restent", NOTE),
     ]
     for t, c in info:
         screen.blit(r.tiny.render(_fit(r.tiny, t, w), True, c), (x, ly))
@@ -994,14 +984,14 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
     screen.blit(r.tiny.render("TROUPES DU VILLAGE", True, GOLD), (x, top - 6))
     pygame.draw.line(screen, GOLD_DEEP, (x, top + 9), (x + w, top + 9))
     if not armies:
-        screen.blit(r.tiny.render("Aucune troupe levee.", True, NOTE), (x, top + 14))
+        screen.blit(r.tiny.render("Aucune troupe levée.", True, NOTE), (x, top + 14))
     for army, row in zip(armies, lay["armies"]):
         rx, ry, rw, rh = row["row"]
         screen.blit(_gradient_card(rw, rh, (40, 34, 30), (26, 22, 20), 6), (rx, ry))
         pygame.draw.rect(screen, GOLD_DEEP, row["row"], 1, border_radius=6)
         lead = army.leader.name if army.leader else "?"
         d = state.world.distance(site.hex, army.position)
-        where = "au village" if d <= villages.ARMY_HOME else f"a {d} cases"
+        where = "au village" if d <= villages.ARMY_HOME else f"à {d} cases"
         if army.homebound:
             where = f"rentre ({d} c.)"
         head = f"{army.population} guerriers · {lead} · {where}"
@@ -1010,12 +1000,12 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
         screen.blit(r.tiny.render(_fit(r.tiny, comp, rw - 14), True, SOFT), (rx + 8, ry + 20))
         _button(screen, r.tiny, row["see"], "Voir", True, _hover(row["see"], mx, my))
         re_on = not villages.reequip_block(state, army.id)
-        _button(screen, r.tiny, row["reequip"], "Reequiper", re_on, re_on and _hover(row["reequip"], mx, my))
+        _button(screen, r.tiny, row["reequip"], "Rééquiper", re_on, re_on and _hover(row["reequip"], mx, my))
         if _hover(row["reequip"], mx, my):
-            why_re = villages.reequip_block(state, army.id) or f"{units.REEQUIP_COST:.0f} vivres par homme : les armes de l'age"
+            why_re = villages.reequip_block(state, army.id) or f"{units.REEQUIP_COST:.0f} vivres par homme : les armes de l'âge"
             ui.setdefault("_vtips", []).append(([(why_re, WARN if not re_on else SOFT)], mx, my))
         home = d <= villages.ARMY_HOME and not army.homebound
-        label = "Liberer" if home else "Dissoudre"
+        label = "Libérer" if home else "Dissoudre"
         on_d = not villages.dissolve_block(state, army.id)
         _button(screen, r.tiny, row["recall"], label, on_d, on_d and _hover(row["recall"], mx, my))
     for tip, tx, ty in ui.pop("_vtips", []):
@@ -1031,7 +1021,7 @@ def _stats(u) -> str:
     if u.morale:
         parts.append(f"moral +{u.morale:.0f}")
     if u.forest != 1.0:
-        parts.append(f"foret x{_num(u.forest)}")
+        parts.append(f"forêt x{_num(u.forest)}")
     return " · ".join(parts)
 
 
@@ -1041,9 +1031,9 @@ def _num(v: float) -> str:
 
 def _chip_off(r, rect, label: str) -> None:
     x, y, w, h = rect
-    pygame.draw.rect(r.screen, (26, 28, 32), rect, border_radius=3)
-    pygame.draw.rect(r.screen, (58, 60, 66), rect, 1, border_radius=3)
-    surf = r.tiny.render(_fit(r.tiny, label, w - 6), True, (110, 112, 118))
+    pygame.draw.rect(r.screen, (36, 27, 21), rect, border_radius=3)
+    pygame.draw.rect(r.screen, (80, 60, 42), rect, 1, border_radius=3)
+    surf = r.tiny.render(_fit(r.tiny, label, w - 6), True, (130, 113, 96))
     r.screen.blit(surf, (x + (w - surf.get_width()) // 2, y + (h - surf.get_height()) // 2))
 
 
@@ -1057,7 +1047,7 @@ def _tip(r, lines, mx, my) -> None:
     sw, sh = r.screen.get_size()
     x = min(mx + 16, sw - width - 8)
     y = min(my + 18, sh - h - 8)
-    r.screen.blit(_gradient_card(width, h, (38, 40, 48), (24, 26, 30), 6), (x, y))
+    r.screen.blit(_gradient_card(width, h, (53, 41, 31), (34, 25, 20), 6), (x, y))
     pygame.draw.rect(r.screen, GOLD_DIM, (x, y, width, h), 1, border_radius=6)
     yy = y + 5
     for text, color in rows:
@@ -1085,12 +1075,12 @@ def _side(r, state, rect, side: dict, won: bool, attacker: bool) -> None:
     screen = r.screen
     x, y, w, h = rect
     tribe = state.tribes.get(side["tribe"])
-    color = color_of(tribe) if tribe is not None else (150, 150, 150)
-    screen.blit(_gradient_card(w, h, (32, 34, 40), (20, 22, 26), 6), (x, y))
+    color = color_of(tribe) if tribe is not None else (167, 152, 130)
+    screen.blit(_gradient_card(w, h, (45, 34, 26), (28, 22, 17), 6), (x, y))
     pygame.draw.rect(screen, _lerp(color, (0, 0, 0), 0.3), rect, 1, border_radius=6)
     pygame.draw.rect(screen, color, (x, y, w, 6), border_top_left_radius=6, border_top_right_radius=6)
     who = "Vous" if side["tribe"] == state.viewer else side["name"]
-    role = "ATTAQUANT" if attacker else "DEFENSEUR"
+    role = "ATTAQUANT" if attacker else "DÉFENSEUR"
     screen.blit(r.tiny.render(role, True, GOLD_DIM), (x + 10, y + 12))
     tag = r.tiny.render("VAINQUEUR" if won else "VAINCU", True, GOOD if won else BAD)
     screen.blit(tag, (x + w - 10 - tag.get_width(), y + 12))
@@ -1115,7 +1105,7 @@ def _side(r, state, rect, side: dict, won: bool, attacker: bool) -> None:
     for text, sign in side.get("mods", [])[:8]:
         if yy + 14 > y + h - 4:
             break
-        c = (184, 222, 168) if sign == "+" else (226, 160, 140)
+        c = (178, 205, 140) if sign == "+" else (226, 160, 140)
         screen.blit(r.tiny.render(_fit(r.tiny, text, w - 20), True, c), (x + 10, yy))
         yy += 14
 
@@ -1143,11 +1133,11 @@ def draw_battle(r, state, mark) -> None:
     # Bandeau de l'issue.
     bar = (bx + 24, by + 64, bw - 48, 30)
     if rep.get("wiped"):
-        top, bot = ((40, 70, 40), (24, 44, 26)) if mine_won else ((110, 36, 30), (70, 22, 18))
+        top, bot = ((40, 70, 40), (40, 30, 23)) if mine_won else ((110, 36, 30), (70, 22, 18))
     elif not mine_in:
         top, bot = (52, 48, 40), (34, 30, 26)
     else:
-        top, bot = ((36, 66, 42), (22, 42, 27)) if mine_won else ((90, 40, 32), (56, 26, 20))
+        top, bot = ((30, 58, 54), (20, 40, 37)) if mine_won else ((90, 40, 32), (56, 26, 20))
     screen.blit(_gradient_card(bar[2], bar[3], top, bot, 6), (bar[0], bar[1]))
     pygame.draw.rect(screen, GOLD_DIM, bar, 1, border_radius=6)
     head = rep.get("headline", "")
@@ -1160,9 +1150,9 @@ def draw_battle(r, state, mark) -> None:
     _graph(r, state, lay["graph"], rep)
     foot = [f"Butin : {rep.get('loot', 0)} vivres"]
     if rep.get("encircled"):
-        foot.append("encercles, sans chemin de repli")
+        foot.append("encerclés, sans chemin de repli")
     if rep.get("building"):
-        foot.append(f"batiment perdu : {rep['building']}")
+        foot.append(f"bâtiment perdu : {rep['building']}")
     fs = r.tiny.render("  ·  ".join(foot), True, SOFT)
     screen.blit(fs, (bx + (bw - fs.get_width()) // 2, by + bh - 34))
 
@@ -1172,7 +1162,7 @@ def _graph(r, state, rect, rep) -> None:
     screen = r.screen
     x, y, w, h = rect
     screen.blit(r.tiny.render("MORAL AU FIL DES PASSES", True, GOLD), (x, y - 16))
-    screen.blit(_gradient_card(w, h, (20, 24, 28), (14, 16, 20), 6), (x, y))
+    screen.blit(_gradient_card(w, h, (30, 23, 18), (20, 16, 12), 6), (x, y))
     att, dfd = rep["attacker"], rep["defender"]
     ma, md = att["morale"], dfd["morale"]
     n = max(len(ma), len(md))
@@ -1188,10 +1178,10 @@ def _graph(r, state, rect, rep) -> None:
     for level in (0, 25, 50, 75, 100):
         if bottom <= level <= top:
             yy = int(py(level))
-            col = (120, 60, 50) if level == battle.ROUT else (34, 38, 46)
+            col = (120, 60, 50) if level == battle.ROUT else (50, 38, 29)
             pygame.draw.line(screen, col, (ix, yy), (ix + iw, yy))
-            screen.blit(r.tiny.render(str(level), True, (100, 104, 112)), (x + 3, yy - 7))
-    rout = r.tiny.render("deroute", True, (160, 80, 66))
+            screen.blit(r.tiny.render(str(level), True, (124, 105, 86)), (x + 3, yy - 7))
+    rout = r.tiny.render("déroute", True, (160, 80, 66))
     screen.blit(rout, (ix + iw - rout.get_width(), int(py(battle.ROUT)) + 1))
     step = iw / max(1, n - 1)
     # Pertes par passe (barres), sous les courbes.
@@ -1203,12 +1193,12 @@ def _graph(r, state, rect, rep) -> None:
             if i - 1 >= len(hits):
                 continue
             tribe = state.tribes.get(side["tribe"])
-            col = _lerp(color_of(tribe) if tribe else (150, 150, 150), (0, 0, 0), 0.45)
+            col = _lerp(color_of(tribe) if tribe else (167, 152, 130), (0, 0, 0), 0.45)
             bh_ = int(28 * hits[i - 1] / most)
             pygame.draw.rect(screen, col, (int(cx - 9 + k * 9), iy + ih - bh_, 8, bh_))
     for side, vals in ((att, ma), (dfd, md)):
         tribe = state.tribes.get(side["tribe"])
-        col = color_of(tribe) if tribe else (200, 200, 200)
+        col = color_of(tribe) if tribe else (219, 204, 176)
         pts = [(ix + step * i, py(v)) for i, v in enumerate(vals)]
         if len(pts) == 1:
             pts.append((ix + step, pts[0][1]))
@@ -1217,5 +1207,5 @@ def _graph(r, state, rect, rep) -> None:
         for p in pts[: len(vals)]:
             _aacircle(screen, int(p[0]), int(p[1]), 3, col, fill=col)
     for i in range(n):
-        lab = r.tiny.render("depart" if i == 0 else str(i), True, NOTE)
+        lab = r.tiny.render("départ" if i == 0 else str(i), True, NOTE)
         screen.blit(lab, (int(ix + step * i - lab.get_width() / 2), iy + ih + 6))

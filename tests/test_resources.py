@@ -87,4 +87,4 @@ def test_living_near_a_resource_counts_for_knowledge():
         tech.update_practice(st)
     assert tribe.practice["res:cereales"] == 3
     label = tech.cond_progress(st, tribe, tech.TECHS["semis"].conds[2])[2]
-    assert "cereales" in label
+    assert "céréales" in label

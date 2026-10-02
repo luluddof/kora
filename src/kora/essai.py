@@ -147,12 +147,12 @@ def compare(host: dict, friend: dict) -> tuple[bool, str]:
     common = sorted(set(host["digests"]) & set(friend["digests"]), key=int)
     bad = [n for n in common if host["digests"][n] != friend["digests"][n]]
     lines = [
-        f"hote : semaine {host['tick']} en {host['seconds']} s, {host['bands']} bandes et {host['villages']} villages aux deux joueurs",
+        f"hôte : semaine {host['tick']} en {host['seconds']} s, {host['bands']} bandes et {host['villages']} villages aux deux joueurs",
         f"ami  : semaine {friend['tick']}",
-        f"empreintes comparees : {len(common)} ; differentes : {len(bad)} ; resynchronisations : hote {host['resyncs']}, ami {friend['resyncs']}",
+        f"empreintes comparées : {len(common)} ; différentes : {len(bad)} ; resynchronisations : hôte {host['resyncs']}, ami {friend['resyncs']}",
     ]
     ok = not bad and host["resyncs"] == 0 and friend["resyncs"] == 0 and host["tick"] == friend["tick"]
-    lines.append("IDENTIQUES" if ok else "DIFFERENTES")
+    lines.append("IDENTIQUES" if ok else "DIFFÉRENTES")
     return ok, "\n".join(lines)
 
 

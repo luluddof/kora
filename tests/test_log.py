@@ -76,7 +76,7 @@ def test_season_change_logs_once():
     tick(st)
     seasons = [e for e in st.log.entries if e.kind is LogKind.SAISON]
     assert len(seasons) == 1
-    assert "Ete" in seasons[0].text
+    assert "Été" in seasons[0].text
 
 
 def test_player_new_knowledge_logs_ai_does_not():

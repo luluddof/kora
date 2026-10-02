@@ -34,7 +34,7 @@ def _to_season(st, season):
 
 def test_a_village_needs_sowing_knowledge_and_a_camp():
     st, band = _state(known=("huttes",))
-    assert "Premieres semailles" in villages.found_block(st, 1)
+    assert "Premières semailles" in villages.found_block(st, 1)
     st.tribes[1].knowledge.add("semis")
     assert "campements" in villages.found_block(st, 1)
     sites.make_camp(st, 1)

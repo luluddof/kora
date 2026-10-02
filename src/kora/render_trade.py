@@ -167,9 +167,9 @@ def _chip(r, rect, label, active, on=True, mx=0, my=0) -> None:
     if active:
         top, bot, edge, text = (150, 118, 58), (96, 72, 34), GOLD, INK
     elif on:
-        top, bot, edge, text = ((58, 60, 68) if hover else (42, 44, 52)), (30, 32, 38), GOLD_DEEP if hover else (84, 86, 94), SOFT
+        top, bot, edge, text = ((81, 61, 43) if hover else (59, 45, 33)), (42, 32, 25), GOLD_DEEP if hover else (110, 87, 65), SOFT
     else:
-        top, bot, edge, text = (30, 31, 36), (24, 25, 28), (58, 60, 66), (110, 112, 118)
+        top, bot, edge, text = (41, 31, 24), (32, 24, 19), (80, 60, 42), (130, 113, 96)
     r.screen.blit(_gradient_card(w, h, top, bot, 5), (x, y))
     pygame.draw.rect(r.screen, edge, rect, 1, border_radius=5)
     surf = r.tiny.render(_fit(r.tiny, label, w - 8), True, text)
@@ -203,9 +203,9 @@ def draw_trade(r, state, ui) -> None:
     pygame.draw.rect(screen, color_of(tribe), (bx + 22, by + 18, 6, 34), border_radius=2)
     screen.blit(title_font.render(f"Commerce des {tribe.name}", True, GOLD), (bx + 36, by + 12))
     used, cap = goods.convoys_used(state, state.viewer), goods.convoys(state, state.viewer)
-    sub = f"Accords commerciaux : {len(partners)}  ·  convois de porteurs {used}/{cap} (1, +1 par village, +2 par Place d'echange)"
+    sub = f"Accords commerciaux : {len(partners)}  ·  convois de porteurs {used}/{cap} (1, +1 par village, +2 par Place d'échange)"
     screen.blit(r.tiny.render(_fit(r.tiny, sub, bw - 240), True, NOTE), (bx + 38, by + 42))
-    _button(screen, r.small, lay["close"], "Fermer [Echap]", True, _hover(lay["close"], mx, my))
+    _button(screen, r.small, lay["close"], "Fermer [Échap]", True, _hover(lay["close"], mx, my))
     tips: list = []
     # Tuiles.
     month = goods.last_month(state, state.viewer)
@@ -214,7 +214,7 @@ def draw_trade(r, state, ui) -> None:
     tiles = (
         ("BIENS POURVUS", f"{ok}/{len(goods.GOODS)}", "leurs effets jouent", GOOD if ok else INK),
         ("CONVOIS", f"{used}/{cap}", f"{len(routes)} route{'s' if len(routes) > 1 else ''}", INK),
-        ("VENTES DU MOIS", f"+{month['sold']:.0f}", "vivres recus", GOOD if month["sold"] else INK),
+        ("VENTES DU MOIS", f"+{month['sold']:.0f}", "vivres reçus", GOOD if month["sold"] else INK),
         ("ACHATS DU MOIS", f"-{month['bought']:.0f}", "vivres payes", WARN if month["bought"] else INK),
         ("BALANCE", f"{'+' if balance >= 0 else ''}{balance:.0f}", "vivres, dernier mois", GOOD if balance > 0 else BAD if balance < 0 else INK),
         ("PARTENAIRES", f"{len(partners)}", "accords commerciaux", INK),
@@ -231,7 +231,7 @@ def draw_trade(r, state, ui) -> None:
 def _draw_market(r, state, lay, tips, mx, my) -> None:
     screen = r.screen
     x, y, w, _h = lay["left"]
-    _section(r, x, y, w, "MARCHE DU PEUPLE  ·  reserve, prix chez vous")
+    _section(r, x, y, w, "MARCHÉ DU PEUPLE  ·  réserve, prix chez vous")
     need = goods.need(state, state.viewer)
     for g, rect in lay["goods"].items():
         gx, gy, gw, gh = rect
@@ -243,28 +243,28 @@ def _draw_market(r, state, lay, tips, mx, my) -> None:
         p = goods.price(state, state.viewer, g)
         word = goods.price_word(state, state.viewer, g)
         ptxt = f"{p:.1f} vivres · {word}".replace(".", ",", 1)
-        ps = r.tiny.render(ptxt, True, WARN if word in ("cher", "tres cher") else GOOD if word == "bon marche" else SOFT)
+        ps = r.tiny.render(ptxt, True, WARN if word in ("cher", "très cher") else GOOD if word == "bon marché" else SOFT)
         screen.blit(ps, (gx + gw - ps.get_width(), gy + 3))
         bar = (gx + 16, gy + 22, gw - 16 - 70, 5)
-        pygame.draw.rect(screen, (14, 16, 20), bar, border_radius=2)
+        pygame.draw.rect(screen, (20, 16, 12), bar, border_radius=2)
         pygame.draw.rect(screen, GOLD if ok else (90, 80, 60), (bar[0], bar[1], int(bar[2] * min(1.0, have / goods.CAP)), bar[3]), border_radius=2)
-        ts = r.tiny.render(f"{have:.0f} en reserve", True, SOFT)
+        ts = r.tiny.render(f"{have:.0f} en réserve", True, SOFT)
         screen.blit(ts, (gx + gw - ts.get_width(), gy + 18))
         line = f"fait {made:.1f} · mange {need:.1f} / sem. · ".replace(".", ",") + ("pourvu" if ok else "en manque")
         screen.blit(r.tiny.render(_fit(r.tiny, line, gw - 16), True, GOOD if ok else NOTE), (gx + 16, gy + 28))
         if _hover(rect, mx, my):
             craft = goods.CRAFTS[goods.GOOD_CRAFT[g]]
-            rows = [(goods.GOOD_NAMES[g], INK), ("Pourvu : " + " · ".join(craft.lines), (184, 222, 168)),
+            rows = [(goods.GOOD_NAMES[g], INK), ("Pourvu : " + " · ".join(craft.lines), (178, 205, 140)),
                     (f"Valeur {goods.value(g):.0f} vivres la charge ; ici x{p / goods.value(g):.2f} (plus cher quand on en manque).".replace(".", ",", 1), SOFT),
-                    (f"Metier : {craft.name.lower()} ({goods.res_label(craft.id)}, savoir {tech.TECHS[craft.needs].name}).", NOTE)]
+                    (f"Métier : {craft.name.lower()} ({goods.res_label(craft.id)}, savoir {tech.TECHS[craft.needs].name}).", NOTE)]
             tips.append((rows, mx, my))
     # Graphe : ventes (haut) et achats (bas) des derniers mois.
     gx, gy, gw, gh = lay["graph"]
     screen.blit(r.tiny.render("VENTES ET ACHATS DES DERNIERS MOIS (vivres)", True, GOLD), (gx, gy - 18))
-    screen.blit(_gradient_card(gw, gh, (20, 24, 28), (14, 16, 20), 6), (gx, gy))
+    screen.blit(_gradient_card(gw, gh, (30, 23, 18), (20, 16, 12), 6), (gx, gy))
     hist = goods.history(state, state.viewer)
     mid_y = gy + gh // 2
-    pygame.draw.line(screen, (60, 64, 72), (gx + 6, mid_y), (gx + gw - 6, mid_y))
+    pygame.draw.line(screen, (85, 64, 45), (gx + 6, mid_y), (gx + gw - 6, mid_y))
     if not hist:
         t = r.tiny.render("Pas encore de commerce.", True, NOTE)
         screen.blit(t, (gx + (gw - t.get_width()) // 2, mid_y - 20))
@@ -277,10 +277,10 @@ def _draw_market(r, state, lay, tips, mx, my) -> None:
         hs = int((gh / 2 - 8) * sold / top)
         hb = int((gh / 2 - 8) * bought / top)
         if hs:
-            pygame.draw.rect(screen, (120, 190, 110), (x0 + 1, mid_y - hs, max(2, int(slot) - 2), hs))
+            pygame.draw.rect(screen, (157, 191, 110), (x0 + 1, mid_y - hs, max(2, int(slot) - 2), hs))
         if hb:
             pygame.draw.rect(screen, (210, 110, 90), (x0 + 1, mid_y + 1, max(2, int(slot) - 2), hb))
-    screen.blit(r.tiny.render(f"ventes (max {top:.0f})", True, (120, 190, 110)), (gx + 8, gy + 4))
+    screen.blit(r.tiny.render(f"ventes (max {top:.0f})", True, (157, 191, 110)), (gx + 8, gy + 4))
     screen.blit(r.tiny.render("achats", True, (210, 110, 90)), (gx + 8, gy + gh - 17))
 
 
@@ -292,8 +292,8 @@ def _draw_routes(r, state, lay, routes, ui, tips, mx, my) -> None:
     if not routes:
         text = (
             "Aucune route. Une route porte chaque mois un bien de chez vous vers un partenaire (vendre) "
-            "ou de chez lui vers vous (acheter) ; l'acheteur paie en vivres, au prix moyen des deux marches. "
-            "Ouvrez-en une a droite."
+            "ou de chez lui vers vous (acheter) ; l'acheteur paie en vivres, au prix moyen des deux marchés. "
+            "Ouvrez-en une à droite."
         )
         yy = y + 30
         for part in _wrap(r.tiny, text, w)[:6]:
@@ -306,7 +306,7 @@ def _draw_routes(r, state, lay, routes, ui, tips, mx, my) -> None:
         other = route.importer if selling else route.exporter
         o = state.tribes.get(other)
         top = (40, 52, 38) if selling else (52, 40, 34)
-        screen.blit(_gradient_card(cw, ch, top, (24, 26, 28), 6), (cx, cy))
+        screen.blit(_gradient_card(cw, ch, top, (33, 25, 19), 6), (cx, cy))
         pygame.draw.rect(screen, GOLD_DEEP, row["card"], 1, border_radius=6)
         pygame.draw.circle(screen, goods.GOOD_COLORS[route.good], (cx + 12, cy + 12), 6)
         if o is not None:
@@ -315,7 +315,7 @@ def _draw_routes(r, state, lay, routes, ui, tips, mx, my) -> None:
         screen.blit(r.small.render(_fit(r.small, head, cw - 50), True, INK), (cx + 36, cy + 3))
         mine = route.by == state.viewer
         if route.units > 0:
-            verb = "vendu" if selling else "achete"
+            verb = "vendu" if selling else "acheté"
             last = f"{verb} {route.units:.1f} · {'+' if selling else '-'}{route.paid:.0f} vivres".replace(".", ",", 1)
             color = GOOD if selling else WARN
         else:
@@ -342,9 +342,9 @@ def _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my) -> No
     x, y, w, h = lay["right"]
     _section(r, x, y, w, "OUVRIR UNE ROUTE")
     if not partners:
-        hint = "Il faut un accord commercial (Peuples [P], il faut Echanges lointains) avec un peuple qui a un village."
+        hint = "Il faut un accord commercial (Peuples [P], il faut Échanges lointains) avec un peuple qui a un village."
         if not tech.bonuses(state.tribes[state.viewer]).commerce:
-            hint = "Il faut connaitre Echanges lointains pour conclure des accords commerciaux."
+            hint = "Il faut connaître Échanges lointains pour conclure des accords commerciaux."
         yy = y + 26
         for part in _wrap(r.tiny, hint, w)[:3]:
             screen.blit(r.tiny.render(part, True, NOTE), (x, yy))
@@ -419,7 +419,7 @@ def _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my) -> No
     # A qui proposer un accord.
     cy0 = lay["cand_top"]
     if cands and cy0 + 30 < y + h:
-        screen.blit(r.tiny.render("PROPOSER DES ECHANGES", True, GOLD), (x, cy0))
+        screen.blit(r.tiny.render("PROPOSER DES ÉCHANGES", True, GOLD), (x, cy0))
         pygame.draw.line(screen, GOLD_DEEP, (x, cy0 + 15), (x + w, cy0 + 15))
         for tid, row in zip(cands, lay["candidates"]):
             rx, ry, rw_, rh = row["row"]
@@ -438,7 +438,7 @@ def _draw_new(r, state, lay, ui, partners, cands, head_font, tips, mx, my) -> No
                 if v.blocked:
                     rows = [(v.blocked, WARN)]
                 elif wait:
-                    rows = [(f"Deja propose : attendez {wait} sem.", NOTE)]
+                    rows = [(f"Déjà propose : attendez {wait} sem.", NOTE)]
                 else:
                     rows = [(f"{'+' if val >= 0 else ''}{val}  {label}", GOOD if val > 0 else BAD if val < 0 else SOFT) for label, val in v.reasons]
                     rows.append((("Ils accepteraient" if v.accepted else "Ils refuseraient") + f" ({v.score:+d})", GOOD if v.accepted else BAD))

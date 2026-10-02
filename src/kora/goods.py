@@ -107,38 +107,38 @@ CRAFTS = {
         Craft(
             "potiers", "Potiers", "poteries", "Poteries", ("argile",), "poterie",
             "On cuit l'argile des berges : jarres, pots, lampes.",
-            ("Grain gate x0,6", "+4 semaines de grenier"),
+            ("Grain gâte x0,6", "+4 semaines de grenier"),
             value=6.0,
         ),
         Craft(
             "sauniers", "Sauniers", "sel", "Sel", ("sel",), "salaison",
-            "On fait bouillir l'eau salee, on gratte les croutes : le sel garde tout.",
-            ("Famines d'hiver x0,8", "+3 semaines de grenier", "Stabilite +3"),
+            "On fait bouillir l'eau salée, on gratte les croûtes : le sel garde tout.",
+            ("Famines d'hiver x0,8", "+3 semaines de grenier", "Stabilité +3"),
             value=12.0,
         ),
         Craft(
-            "tisserands", "Tisserands", "etoffes", "Etoffes", ("chevres",), "tissage",
-            "La laine filee, tissee, teinte : des habits chauds et des parures.",
-            ("Stabilite +6", "Famines d'hiver x0,85", "+1 prestige a chaque fin d'hiver"),
+            "tisserands", "Tisserands", "etoffes", "Étoffes", ("chevres",), "tissage",
+            "La laine filée, tissée, teinte : des habits chauds et des parures.",
+            ("Stabilité +6", "Famines d'hiver x0,85", "+1 prestige à chaque fin d'hiver"),
             herd="chevres",
             value=12.0,
         ),
         Craft(
             "pelletiers", "Pelletiers", "cuirs", "Cuirs et fourrures", ("aurochs", "chevaux", "chevres", "rennes"), "peaux",
-            "Peaux tannees, fourrures cousues : on les porte, on les troque.",
-            ("Famines d'hiver x0,9", "Stabilite +2"),
+            "Peaux tannées, fourrures cousues : on les porte, on les troque.",
+            ("Famines d'hiver x0,9", "Stabilité +2"),
             value=8.0,
         ),
         Craft(
             "tailleurs", "Tailleurs de haches", "haches", "Haches polies", ("silex",), "haches",
             "Le silex des minieres, taille puis poli des jours durant.",
-            ("Recolte +10 %", "Troupes : force x1,1", "Chantiers 25 % moins chers"),
+            ("Récolte +10 %", "Troupes : force x1,1", "Chantiers 25 % moins chers"),
             value=12.0,
         ),
         Craft(
-            "pecheurs", "Pecheurs", "", "Poisson seche", ("poisson",), "peche",
-            "Nasses, harpons, claies de sechage : le poisson nourrit le village.",
-            ("12 vivres par equipe et par semaine", "Filets et nasses : x1,5"),
+            "pecheurs", "Pêcheurs", "", "Poisson séché", ("poisson",), "peche",
+            "Nasses, harpons, claies de séchage : le poisson nourrit le village.",
+            ("12 vivres par équipe et par semaine", "Filets et nasses : x1,5"),
             food=12.0,
         ),
     )
@@ -158,7 +158,7 @@ GOOD_COLORS = {
 
 
 # "du sel", "des poteries" : pour les phrases du journal.
-GOOD_SOME = {"poteries": "des poteries", "sel": "du sel", "etoffes": "des etoffes", "cuirs": "des cuirs et fourrures", "haches": "des haches polies"}
+GOOD_SOME = {"poteries": "des poteries", "sel": "du sel", "etoffes": "des étoffes", "cuirs": "des cuirs et fourrures", "haches": "des haches polies"}
 
 
 def value(good: str) -> float:
@@ -280,14 +280,14 @@ def add_block(state, site, cid: str) -> str:
     if band is None:
         return "Le village est vide"
     if craft.needs not in state.tribes[site.tribe_id].knowledge:
-        return f"Il faut connaitre {tech.TECHS[craft.needs].name}"
+        return f"Il faut connaître {tech.TECHS[craft.needs].name}"
     top = max_teams(state, site, cid)
     if top <= 0:
         return f"Pas de {res_label(cid)} dans les terres du village"
     if teams_of(site, cid) >= top:
         return f"Tous les gisements sont pris ({top})"
     if total_teams(site) >= team_cap(band):
-        return f"Plus de bras (une equipe par {TEAM_POP} habitants)"
+        return f"Plus de bras (une équipe par {TEAM_POP} habitants)"
     return ""
 
 
@@ -451,7 +451,7 @@ def stability_parts(state, tribe_id: int) -> list[tuple[str, float]]:
     if supplied(state, tribe_id, "sel"):
         out.append(("Sel", 3.0))
     if supplied(state, tribe_id, "etoffes"):
-        out.append(("Etoffes", 6.0))
+        out.append(("Étoffes", 6.0))
     if supplied(state, tribe_id, "cuirs"):
         out.append(("Cuirs et fourrures", 2.0))
     return out
@@ -534,11 +534,11 @@ def price(state, tribe_id: int, good: str) -> float:
 def price_word(state, tribe_id: int, good: str) -> str:
     r = price(state, tribe_id, good) / value(good)
     if r >= 1.4:
-        return "tres cher"
+        return "très cher"
     if r >= 1.1:
         return "cher"
     if r <= 0.75:
-        return "bon marche"
+        return "bon marché"
     return "prix moyen"
 
 
@@ -653,10 +653,10 @@ def open_block(state, tribe_id: int, partner: int, good: str, sell: bool, level:
         return f"Trop loin : {dist} cases entre vos villages ({reach} au plus)"
     exporter, importer = (tribe_id, partner) if sell else (partner, tribe_id)
     if find_route(state, exporter, importer, good) is not None:
-        return "Cette route existe deja"
+        return "Cette route existe déjà"
     free = convoys(state, tribe_id) - convoys_used(state, tribe_id)
     if free < level:
-        return f"Plus de convois ({convoys_used(state, tribe_id)}/{convoys(state, tribe_id)} : un par village, deux par Place d'echange)"
+        return f"Plus de convois ({convoys_used(state, tribe_id)}/{convoys(state, tribe_id)} : un par village, deux par Place d'échange)"
     return ""
 
 
@@ -677,7 +677,7 @@ def level_block(state, tribe_id: int, route, level: int) -> str:
     if route.by != tribe_id:
         return "Cette route est la leur : ils choisissent ses convois"
     if level < 1 or level > MAX_LEVEL:
-        return f"De 1 a {MAX_LEVEL} convois"
+        return f"De 1 à {MAX_LEVEL} convois"
     extra = level - route.level
     if extra > 0 and convoys(state, tribe_id) - convoys_used(state, tribe_id) < extra:
         return f"Plus de convois ({convoys_used(state, tribe_id)}/{convoys(state, tribe_id)})"
@@ -718,7 +718,7 @@ def _flow(state, route) -> tuple[float, str]:
     """Ce que la route peut porter ce mois (avant paiement) et pourquoi pas."""
     exp, imp = route.exporter, route.importer
     if not has_village(state, exp) or not has_village(state, imp):
-        return 0.0, "plus de village d'un cote"
+        return 0.0, "plus de village d'un côté"
     if trade_distance(state, exp, imp) > trade_range(state, exp, imp):
         return 0.0, "villages trop loin"
     keep = (SELL_KEEP_WEEKS if route.by == exp else RESERVE_WEEKS) * need(state, exp)
@@ -950,7 +950,7 @@ def summary(state, me: int, other: int) -> str:
             parts.append(f"vendu {r.units:.0f} {name}")
             gain += r.paid
         else:
-            parts.append(f"achete {r.units:.0f} {name}")
+            parts.append(f"acheté {r.units:.0f} {name}")
             gain -= r.paid
     if not parts:
         return ""
@@ -983,7 +983,7 @@ def _note_opened(state, route) -> None:
     if route.by == route.exporter:
         text = f"Les {by.name} ouvrent une route : leurs porteurs vous vendront {some} chaque mois (Commerce [M] : vous pouvez la fermer)."
     else:
-        text = f"Les {by.name} ouvrent une route : ils vous achetent {some} chaque mois (Commerce [M] : vous pouvez la fermer)."
+        text = f"Les {by.name} ouvrent une route : ils vous achètent {some} chaque mois (Commerce [M] : vous pouvez la fermer)."
     note(state, LogKind.POLITIQUE, text, to=other)
 
 
@@ -1065,5 +1065,5 @@ def lines(state, site, band) -> list[str]:
         n = teams_of(site, cid)
         if n:
             craft = CRAFTS[cid]
-            out.append(f"{craft.name} : {n} equipe{'s' if n > 1 else ''}")
+            out.append(f"{craft.name} : {n} équipe{'s' if n > 1 else ''}")
     return out

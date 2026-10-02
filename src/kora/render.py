@@ -32,6 +32,36 @@ from src.kora import tech
 from src.kora.types import Hex, Season
 from src.kora.vision import enemy_band_visible
 from src.kora.world import axial_to_offset, offset_to_axial
+from src.kora import theme
+from src.kora.theme import C
+
+# Le rail des onglets (a droite) : une pastille par onglet, icone et nom.
+TAB_W = 62
+TAB_H = 66
+TAB_ICONS = {"savoirs": "savoir", "tribu": "tribu", "peuples": "peuples", "journal": "journal", "armee": "armee", "commerce": "commerce"}
+SEASON_ICONS = {Season.PRINTEMPS: "printemps", Season.ETE: "ete", Season.AUTOMNE: "automne", Season.HIVER: "hiver"}
+KIND_ICONS = {"combat": "combat", "survie": "survie", "saison": "printemps", "decouverte": "decouverte", "politique": "politique"}
+BAND_ICONS = {
+    "split": "scinder",
+    "merge": "reunir",
+    "next": "pas",
+    "chief": "chef",
+    "village": "hutte",
+    "camp": "camp",
+    "deposit": "deposer",
+    "withdraw": "reprendre",
+    "honor": "honorer",
+    "army": "armee",
+}
+MAP_MODE_ICONS = {"relief": "relief", "zones": "zones", "ressources": "ressources", "commerce": "commerce"}
+
+
+def split_hint(label: str) -> tuple:
+    """ "Scinder [S]" -> ("Scinder", "S")."""
+    if label.endswith("]") and "[" in label:
+        head, _sep, key = label[:-1].rpartition("[")
+        return head.strip(), key.strip()
+    return label, ""
 
 HEX_SIZE = 8
 MIN_ZOOM = 0.10
@@ -41,12 +71,12 @@ OVERVIEW_HEX_PX = 3.2
 
 SEASON_FR = {
     Season.PRINTEMPS: "Printemps",
-    Season.ETE: "Ete",
+    Season.ETE: "Été",
     Season.AUTOMNE: "Automne",
     Season.HIVER: "Hiver",
 }
 
-HUD_HEIGHT = 48
+HUD_HEIGHT = 52
 # Au-dela de ce recul de camera, les chiffres des bandes deviennent du bruit.
 LABEL_DIST = 1.9
 JOURNAL_COLS = 38
@@ -70,16 +100,17 @@ _GAP = 5
 
 
 def hud_layout(width: int) -> dict:
-    bar_y = 0
-    cy = 13
-    pause_x = max(280, width // 2 - 90)
-    pause = (pause_x, cy, _SQUARE, _SQUARE)
+    """Le bandeau du haut : la saison a gauche, le temps au centre, le peuple
+    a droite. Rectangles cliquables : pause, vitesses, bandeau."""
+    cy = (HUD_HEIGHT - 34) // 2
+    pause_x = max(300, width // 2 - 110)
+    pause = (pause_x, cy, 34, 34)
     speeds = {}
-    x = pause_x + _SQUARE + 10
+    x = pause_x + 34 + 10
     for n in range(1, 6):
-        speeds[n] = (x, cy, _SQUARE, _SQUARE)
-        x += _SQUARE + _GAP
-    return {"pause": pause, "speeds": speeds, "bar": (0, bar_y, width, HUD_HEIGHT)}
+        speeds[n] = (x, cy + 4, 26, 26)
+        x += 26 + 4
+    return {"pause": pause, "speeds": speeds, "bar": (0, 0, width, HUD_HEIGHT)}
 
 
 def _contains(rect: tuple[int, int, int, int], mx: int, my: int) -> bool:
@@ -108,14 +139,14 @@ MENU_ITEMS = (
 
 def menu_layout(width: int, height: int) -> dict:
     n = len(MENU_ITEMS)
-    box_w, box_h = 300, 72 + n * 44
+    box_w, box_h = 320, 104 + n * 48
     bx = (width - box_w) // 2
     by = (height - box_h) // 2
     items = {}
-    y = by + 56
+    y = by + 84
     for key, _label in MENU_ITEMS:
-        items[key] = (bx + 24, y, box_w - 48, 36)
-        y += 44
+        items[key] = (bx + 30, y, box_w - 60, 38)
+        y += 48
     return {"box": (bx, by, box_w, box_h), "items": items}
 
 
@@ -127,10 +158,10 @@ def menu_hit(layout: dict, mx: int, my: int):
 
 
 def fight_panel_layout(width: int, height: int, n_lines: int) -> dict:
-    bw = 268
-    bh = 16 + 18 * max(1, n_lines) + 10
+    bw = 290
+    bh = 22 + 24 + 18 * max(0, n_lines - 1) + 12
     bx, by = 12, HUD_HEIGHT + 12
-    close = (bx + bw - 72, by + 6, 60, 22)
+    close = (bx + bw - 80, by + 8, 66, 22)
     return {"box": (bx, by, bw, bh), "close": close}
 
 
@@ -147,35 +178,35 @@ def fight_panel_hit(layout: dict, mx: int, my: int):
 BAND_CARD_W = 530
 BAND_BUTTONS = (
     ("split", "Scinder [S]"),
-    ("merge", "Reunir [F]"),
+    ("merge", "Réunir [F]"),
     ("next", "Suivante"),
     ("chief", "Chef ici"),
     ("village", "Village [V]"),
     ("camp", "Camper [C]"),
-    ("deposit", "Deposer [K]"),
+    ("deposit", "Déposer [K]"),
     ("withdraw", "Reprendre"),
     ("honor", "Honorer [H]"),
     ("army", "Troupe [L]"),
 )
 BAND_ROW = 5
-BAND_HINT = "Clic : aller · ennemi : raid · Maj+clic allie : rejoindre"
+BAND_HINT = "Clic : aller · ennemi : raid · Maj+clic allié : rejoindre"
 
 
 def band_card_layout(width: int, height: int, n_lines: int) -> dict:
     bw = BAND_CARD_W
     rows = -(-len(BAND_BUTTONS) // BAND_ROW)
-    bh = 12 + 18 + 16 * max(0, n_lines - 1) + 10 + rows * 32 + 4 + 16 + 8
+    bh = 14 + 22 + 18 * max(0, n_lines - 1) + 12 + rows * 36 + 4 + 18 + 10
     bx = max(276, (width - bw) // 2)
-    if bx + bw > width - 40:
-        bx = max(8, width - 40 - bw)
+    if bx + bw > width - TAB_W - 8:
+        bx = max(8, width - TAB_W - 8 - bw)
     by = height - bh - 12
     buttons = {}
     gap = 6
-    bwidth = (bw - 24 - gap * (BAND_ROW - 1)) // BAND_ROW
-    top = by + bh - 8 - 16 - 4 - rows * 32
+    bwidth = (bw - 28 - gap * (BAND_ROW - 1)) // BAND_ROW
+    top = by + bh - 10 - 18 - 4 - rows * 36
     for i, (key, _label) in enumerate(BAND_BUTTONS):
         col, row = i % BAND_ROW, i // BAND_ROW
-        buttons[key] = (bx + 12 + col * (bwidth + gap), top + row * 32, bwidth, 26)
+        buttons[key] = (bx + 14 + col * (bwidth + gap), top + row * 36, bwidth, 30)
     return {"box": (bx, by, bw, bh), "buttons": buttons}
 
 
@@ -191,11 +222,12 @@ def map_mode_layout(width: int, height: int) -> dict:
     """Pastilles du mode de carte, en haut a droite sous la barre (a gauche
     des onglets) : rien d'autre ne s'y trouve quand les panneaux sont fermes."""
     out = {}
-    x = width - 40
+    x = width - TAB_W - 14
     for key, label in reversed(MAP_MODES):
-        cw = 16 + 8 * len(label)
+        head, hint = split_hint(label)
+        cw = 40 + 8 * len(head) + (16 if hint else 0)
         x -= cw
-        out[key] = (x, HUD_HEIGHT + 8, cw, 22)
+        out[key] = (x, HUD_HEIGHT + 8, cw, 28)
         x -= 6
     return out
 
@@ -230,11 +262,11 @@ FILTER_CHIPS = (
     ("filter_combat", "Combats", 70),
     ("filter_survie", "Survie", 58),
     ("filter_saison", "Saisons", 66),
-    ("filter_decouverte", "Decouverte", 86),
+    ("filter_decouverte", "Découverte", 86),
     ("filter_politique", "Peuples", 64),
 )
 SORT_CHIPS = (
-    ("sort_recent", "Plus recent", 100),
+    ("sort_recent", "Plus récent", 100),
     ("sort_ancien", "Plus ancien", 100),
 )
 FILTER_BY_HIT = {
@@ -357,7 +389,7 @@ def _clip(a, b):
     return (int(x0), int(y0), int(x1 - x0), int(y1 - y0))
 
 
-def tech_panel_layout(width: int, height: int, tab_w: int = 32, era: int = 0, cam=None) -> dict:
+def tech_panel_layout(width: int, height: int, tab_w: int = 66, era: int = 0, cam=None) -> dict:
     """Ecran des savoirs (a la Victoria 3) : en tete la recherche en cours,
     au milieu la VUE sur la toile de l'arbre (camera `cam` : glisser pour se
     deplacer, molette pour zoomer ; mini-carte et boutons dans un coin), en
@@ -429,7 +461,7 @@ SIDE_TABS = (
 
 # L'onglet Armee n'apparait qu'avec le premier village (render_panels.draw_army),
 # l'onglet Commerce aussi (il ouvre l'ecran du commerce, render_trade.py).
-ARMY_TAB = ("armee", "Armee")
+ARMY_TAB = ("armee", "Armée")
 COMMERCE_TAB = ("commerce", "Commerce")
 
 
@@ -438,12 +470,12 @@ def side_tabs(army: bool = False, commerce: bool = False) -> tuple:
 
 
 def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None) -> dict:
-    tab_w, gap = 32, 6
-    tab_x = width - tab_w
-    top = HUD_HEIGHT + 40
+    tab_w, gap = TAB_W, 6
+    tab_x = width - tab_w - 4
+    top = HUD_HEIGHT + 44
     shown = side_tabs(army, commerce)
     n = len(shown)
-    tab_h = max(60, min(104, (height - top - 8 - gap * (n - 1)) // n))
+    tab_h = max(54, min(TAB_H, (height - top - 8 - gap * (n - 1)) // n))
     tabs = {key: (tab_x, top + i * (tab_h + gap), tab_w, tab_h) for i, (key, _l) in enumerate(shown)}
     tab_d = tabs["savoirs"]
     tab_j = tabs["journal"]
@@ -451,8 +483,9 @@ def side_layout(width: int, height: int, panel: str | None = None, era: int = 0,
     box = (0, 0, 0, 0)
     tech_panel = None
     priority: tuple = ()
+    rail = tab_w + 4
     if panel == "savoirs":
-        tech_panel = tech_panel_layout(width, height, tab_w, era, tech_cam)
+        tech_panel = tech_panel_layout(width, height, rail, era, tech_cam)
         box = tech_panel["box"]
         # Seuls les savoirs dans la vue se cliquent (la toile deborde).
         for tid, rect in tech_panel["visible"].items():
@@ -467,28 +500,28 @@ def side_layout(width: int, height: int, panel: str | None = None, era: int = 0,
     elif panel in ("tribu", "peuples", "armee"):
         from src.kora.render_panels import panel_box
 
-        box = panel_box(width, height, "tribu" if panel == "armee" else panel, tab_w)
+        box = panel_box(width, height, "tribu" if panel == "armee" else panel, rail)
     elif panel == "journal":
-        box_w = 288
-        box_h = min(420, max(280, height - HUD_HEIGHT - 28))
-        bx = width - tab_w - box_w
+        box_w = 340
+        box_h = min(560, max(300, height - HUD_HEIGHT - 28))
+        bx = width - rail - box_w - 8
         by = HUD_HEIGHT + 14
         if by + box_h > height - 12:
             box_h = max(240, height - by - 12)
         box = (bx, by, box_w, box_h)
-        x = bx + 12
-        y = by + 42
-        row_right = bx + box_w - 12
+        x = bx + 16
+        y = by + 54
+        row_right = bx + box_w - 16
         for key, _label, cw in FILTER_CHIPS:
             if x + cw > row_right:
-                x = bx + 12
-                y += 26
-            items[key] = (x, y, cw, 22)
+                x = bx + 16
+                y += 30
+            items[key] = (x, y, cw, 24)
             x += cw + 6
         y += 32
-        x = bx + 12
+        x = bx + 16
         for key, _label, cw in SORT_CHIPS:
-            items[key] = (x, y, cw, 22)
+            items[key] = (x, y, cw, 24)
             x += cw + 8
     return {
         "box": box,
@@ -669,7 +702,7 @@ def _draw_troop(surf: pygame.Surface, cx: int, cy: int, color, size: int) -> Non
 
 def _draw_sword(surf: pygame.Surface, cx: int, cy: int, lit: bool) -> None:
     blade = (235, 230, 220) if lit else (210, 205, 195)
-    guard = (196, 150, 60) if lit else (160, 120, 50)
+    guard = (200, 102, 47) if lit else (160, 120, 50)
     pygame.draw.line(surf, blade, (cx, cy - 11), (cx, cy + 7), 3)
     pygame.draw.line(surf, guard, (cx - 7, cy + 1), (cx + 7, cy + 1), 3)
     pygame.draw.circle(surf, guard, (cx, cy + 10), 3)
@@ -739,11 +772,12 @@ def _hex_corners(cx: float, cy: float, zoom: float) -> list[tuple[float, float]]
 class Renderer:
     def __init__(self, screen: pygame.Surface) -> None:
         self.screen = screen
-        self.font = pygame.font.SysFont("consolas", 16)
-        self.small = pygame.font.SysFont("consolas", 14)
-        self.tiny = pygame.font.SysFont("consolas", 12)
-        self.atlas_font = pygame.font.SysFont("georgia", 22)
-        self.atlas_small = pygame.font.SysFont("georgia", 16)
+        # Les lettres de la charte (theme.py : Alegreya, embarquees).
+        self.font = theme.font("texte")
+        self.small = theme.font("petit")
+        self.tiny = theme.font("mini")
+        self.atlas_font = theme.font_file("sc-bold", 22)
+        self.atlas_small = theme.font_file("sans-italic", 17)
         self.hud_hits = hud_layout(screen.get_width())
         self.menu_hits = menu_layout(screen.get_width(), screen.get_height())
         self.side_hits = side_layout(screen.get_width(), screen.get_height())
@@ -836,7 +870,7 @@ class Renderer:
         self, target, state, planet, yaw, pitch, cx, cy, focal, dist, samples
     ) -> None:
         sw, sh = target.get_size()
-        target.fill((6, 8, 14))
+        target.fill((14, 11, 9))
         limb = focal / math.sqrt(max(1e-4, dist * dist - 1.0))
         # Sous les cases : le noir du brouillard. L'eau exploree est dessinee
         # case par case, sinon l'ocean trahirait la forme des terres inconnues.
@@ -893,7 +927,7 @@ class Renderer:
         open_fight=None,
         ui: dict | None = None,
     ) -> None:
-        self.screen.fill((6, 8, 14))
+        self.screen.fill((14, 11, 9))
         w, h = self.screen.get_size()
         self._draw_sphere(state, globe_yaw, globe_pitch, zoom)
         gcx, gcy, focal, dist = view_params(zoom, w, h, HUD_HEIGHT)
@@ -1001,22 +1035,19 @@ class Renderer:
         layout = band_card_layout(w, h, len(lines))
         self.band_hits = layout
         bx, by, bw, bh = layout["box"]
-        pygame.draw.rect(self.screen, (18, 20, 24), (bx, by, bw, bh), border_radius=5)
-        pygame.draw.rect(
-            self.screen, color_of(state.tribes.get(band.tribe_id)), (bx, by, bw, bh), 1, border_radius=5
-        )
+        theme.panel(self.screen, layout["box"], "peau")
+        color = color_of(state.tribes.get(band.tribe_id))
+        pygame.draw.polygon(self.screen, color, theme.chamfer((bx + 10, by + 14, 5, 26), 1))
         warn_from = band_warn_from(info)
-        yy = by + 10
+        yy = by + 12
         for i, line in enumerate(lines):
-            font = self.small if i == 0 else self.tiny
-            if i >= warn_from:
-                color = (230, 170, 90)
-            elif i >= 3:
-                color = (190, 205, 225)
-            else:
-                color = (230, 228, 220) if i == 0 else (200, 198, 190)
-            self.screen.blit(font.render(self._fit(font, line, bw - 24), True, color), (bx + 12, yy))
-            yy += 18 if i == 0 else 16
+            if i == 0:
+                theme.text(self.screen, line, "h3", C.os, (bx + 24, yy), bw - 40)
+                yy += 24
+                continue
+            col = C.alerte if i >= warn_from else (C.lin if i < 3 else C.ocre_jaune)
+            theme.text(self.screen, line, "petit", col, (bx + 24, yy), bw - 40)
+            yy += 18
         actions = orders.band_actions(state, band.id)
         mx, my = pygame.mouse.get_pos()
         labels = dict(BAND_BUTTONS)
@@ -1027,27 +1058,10 @@ class Renderer:
             if _contains(rect, mx, my) and actions.get(key):
                 hint = actions[key]
             hover = on and _contains(rect, mx, my)
-            fill = (196, 150, 60) if hover else (42, 46, 52) if on else (28, 30, 34)
-            pygame.draw.rect(self.screen, fill, rect, border_radius=3)
-            pygame.draw.rect(
-                self.screen,
-                (210, 180, 90) if on else (70, 74, 80),
-                rect,
-                1,
-                border_radius=3,
-            )
-            col = (20, 18, 14) if hover else (230, 228, 220) if on else (110, 112, 116)
-            surf = self.tiny.render(labels[key], True, col)
-            self.screen.blit(
-                surf,
-                (
-                    rect[0] + (rect[2] - surf.get_width()) // 2,
-                    rect[1] + (rect[3] - surf.get_height()) // 2,
-                ),
-            )
+            head, key_hint = split_hint(labels[key])
+            theme.button(self.screen, rect, head, "second", on, hover, icon_key=BAND_ICONS.get(key), key_hint=key_hint, role="bouton_petit")
         warn = hint != BAND_HINT
-        hint_s = self.tiny.render(self._fit(self.tiny, hint, bw - 24), True, (220, 170, 120) if warn else (140, 142, 146))
-        self.screen.blit(hint_s, (bx + 12, by + bh - 8 - 16))
+        theme.text(self.screen, hint, "mini", C.alerte if warn else C.cendre, (bx + 16, by + bh - 10 - 18), bw - 32)
 
     def draw_trade_marks(self, state: GameState, yaw, pitch, gcx, gcy, focal, dist) -> None:
         """Mode Commerce : sur chaque village connu, les biens que son peuple
@@ -1078,7 +1092,7 @@ class Renderer:
             if x < -30 or y < HUD_HEIGHT or x > w + 30 or y > h + 30:
                 continue
             if site.tribe_id in partners:
-                pygame.draw.circle(self.screen, (226, 190, 106), (x, y), 12, 2)
+                pygame.draw.circle(self.screen, (217, 164, 65), (x, y), 12, 2)
             held = [g for g in goods.GOODS if goods.stock(state, site.tribe_id, g) >= 1.0]
             ox = x - (len(held) * 7) // 2 + 3
             for g in held:
@@ -1089,7 +1103,7 @@ class Renderer:
                 ox += 7
             if not own and heart_hex is not None and world.distance(site.hex, heart_hex) <= reach and site.tribe_id not in partners:
                 # A portee de vos porteurs : un petit repere.
-                pygame.draw.circle(self.screen, (150, 190, 220), (x, y), 10, 1)
+                pygame.draw.circle(self.screen, (95, 176, 166), (x, y), 10, 1)
         if heart_hex is not None:
             self._draw_reach(heart_hex, reach, yaw, pitch, gcx, gcy, focal, dist)
 
@@ -1115,7 +1129,7 @@ class Renderer:
             rx, ry, rz = rotate_xyz(px, py, pz, yaw, pitch)
             pos = project_xyz(rx, ry, rz, gcx, gcy, focal, dist)
             if pos is not None:
-                pygame.draw.circle(self.screen, (150, 190, 220), (int(pos[0]), int(pos[1])), 1)
+                pygame.draw.circle(self.screen, (95, 176, 166), (int(pos[0]), int(pos[1])), 1)
 
     def draw_polity_labels(self, state: GameState, yaw, pitch, gcx, gcy, focal, dist) -> None:
         """Les proto-pays : le nom de chaque peuple fixe, au-dessus de ses
@@ -1215,7 +1229,7 @@ class Renderer:
                     idx = min(len(pts) - 1, int(t * (len(pts) - 1)))
                     if pts[idx] is not None:
                         px, py = int(pts[idx][0]), int(pts[idx][1])
-                        pygame.draw.circle(self.screen, (250, 244, 226), (px, py), 3 if mine else 2)
+                        pygame.draw.circle(self.screen, (239, 228, 204), (px, py), 3 if mine else 2)
                         pygame.draw.circle(self.screen, (20, 20, 20), (px, py), 3 if mine else 2, 1)
             else:
                 # Rien porte le dernier mois : pointilles pales.
@@ -1291,25 +1305,26 @@ class Renderer:
         w, h = self.screen.get_size()
         layout = map_mode_layout(w, h)
         self.mode_hits = layout
+        mx, my = pygame.mouse.get_pos()
         for key, label in MAP_MODES:
-            self._draw_chip(layout[key], label, self.map_mode == key)
+            head, hint = split_hint(label)
+            rect = layout[key]
+            theme.button(self.screen, rect, head, "second", True, _contains(rect, mx, my), icon_key=MAP_MODE_ICONS.get(key), key_hint=hint, role="bouton_petit", active=self.map_mode == key)
         if self.map_mode == "commerce":
             self._draw_trade_legend(layout, w)
         if self.map_mode == "ressources":
             from src.kora.resources import COLORS, LABELS, NAMES
 
             x0 = layout["relief"][0]
-            y = layout["relief"][1] + 30
-            bw = w - 40 - x0
-            bh = 10 + 16 * ((len(NAMES) + 1) // 2)
-            pygame.draw.rect(self.screen, (18, 20, 24), (x0, y, bw, bh), border_radius=5)
-            pygame.draw.rect(self.screen, (70, 74, 80), (x0, y, bw, bh), 1, border_radius=5)
+            y = layout["relief"][1] + 36
+            bw = w - TAB_W - 14 - x0
+            bh = 14 + 18 * ((len(NAMES) + 1) // 2)
+            theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
             for i, name in enumerate(NAMES):
-                cx = x0 + 10 + (i % 2) * (bw // 2)
-                cy = y + 6 + (i // 2) * 16
-                pygame.draw.rect(self.screen, COLORS[name], (cx, cy + 2, 10, 10), border_radius=2)
-                label = self._fit(self.tiny, LABELS[name], bw // 2 - 22)
-                self.screen.blit(self.tiny.render(label, True, (210, 208, 200)), (cx + 14, cy))
+                cx = x0 + 12 + (i % 2) * (bw // 2)
+                cy = y + 8 + (i // 2) * 18
+                pygame.draw.polygon(self.screen, COLORS[name], theme.chamfer((cx, cy + 3, 11, 11), 2))
+                theme.text(self.screen, LABELS[name], "mini", C.lin, (cx + 16, cy), bw // 2 - 26)
 
     def _draw_trade_legend(self, layout, w) -> None:
         """Legende du mode Commerce : les biens, ce que disent les traits,
@@ -1318,16 +1333,16 @@ class Renderer:
 
         state = getattr(self, "_legend_state", None)
         x0 = layout["relief"][0]
-        y = layout["relief"][1] + 30
-        bw = w - 40 - x0
+        y = layout["relief"][1] + 36
+        bw = w - TAB_W - 14 - x0
         rows = [(goods.GOOD_COLORS[g], goods.GOOD_NAMES[g]) for g in goods.GOODS]
         notes = [
-            "Trait plein : la route a porte le mois dernier",
-            "Pointilles : rien porte",
+            "Trait plein : la route a porté le mois dernier",
+            "Pointillés : rien porté",
             "Points blancs : les porteurs (un par convoi)",
-            "Pastilles sur un village : biens en reserve",
-            "Anneau dore : vos partenaires ; bleu : a portee",
-            "Pointilles bleus : portee de vos porteurs",
+            "Pastilles sur un village : biens en réserve",
+            "Anneau doré : vos partenaires ; bleu : à portée",
+            "Pointillés bleus : portée de vos porteurs",
         ]
         extra = []
         if state is not None:
@@ -1336,24 +1351,23 @@ class Renderer:
             extra = [
                 f"Vos routes : {len(mine)}, dont {sum(1 for r in mine if r.units > 0)} actives",
                 f"Le mois dernier : +{month['sold']:.0f} / -{month['bought']:.0f} vivres",
-                "Ecran du commerce : [M]",
+                "Écran du commerce : [M]",
             ]
-        bh = 10 + 16 * ((len(rows) + 1) // 2) + 14 * (len(notes) + len(extra)) + 8
-        pygame.draw.rect(self.screen, (18, 20, 24), (x0, y, bw, bh), border_radius=5)
-        pygame.draw.rect(self.screen, (70, 74, 80), (x0, y, bw, bh), 1, border_radius=5)
+        bh = 14 + 18 * ((len(rows) + 1) // 2) + 16 * (len(notes) + len(extra)) + 12
+        theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
         for i, (color, label) in enumerate(rows):
-            cx = x0 + 10 + (i % 2) * (bw // 2)
-            cy = y + 6 + (i // 2) * 16
-            pygame.draw.circle(self.screen, color, (cx + 5, cy + 7), 5)
-            self.screen.blit(self.tiny.render(self._fit(self.tiny, label, bw // 2 - 22), True, (210, 208, 200)), (cx + 14, cy))
-        yy = y + 10 + 16 * ((len(rows) + 1) // 2)
-        for text in notes:
-            self.screen.blit(self.tiny.render(self._fit(self.tiny, text, bw - 20), True, (160, 162, 168)), (x0 + 10, yy))
-            yy += 14
+            cx = x0 + 12 + (i % 2) * (bw // 2)
+            cy = y + 8 + (i // 2) * 18
+            pygame.draw.circle(self.screen, color, (cx + 5, cy + 9), 5)
+            theme.text(self.screen, label, "mini", C.lin, (cx + 16, cy), bw // 2 - 26)
+        yy = y + 12 + 18 * ((len(rows) + 1) // 2)
+        for t in notes:
+            theme.text(self.screen, t, "mini", C.cendre, (x0 + 12, yy), bw - 24)
+            yy += 16
         yy += 4
-        for text in extra:
-            self.screen.blit(self.tiny.render(self._fit(self.tiny, text, bw - 20), True, (226, 190, 106)), (x0 + 10, yy))
-            yy += 14
+        for t in extra:
+            theme.text(self.screen, t, "mini", C.ocre_jaune, (x0 + 12, yy), bw - 24)
+            yy += 16
 
     def draw_fight_marks(
         self, state: GameState, globe_yaw, globe_pitch, zoom, open_fight
@@ -1393,26 +1407,18 @@ class Renderer:
         layout = fight_panel_layout(w, h, len(lines))
         self.fight_hits = layout
         bx, by, bw, bh = layout["box"]
-        pygame.draw.rect(self.screen, (18, 20, 24), (bx, by, bw, bh), border_radius=5)
-        pygame.draw.rect(
-            self.screen, (196, 80, 70), (bx, by, bw, bh), 1, border_radius=5
-        )
-        cx, cy, cw, ch = layout["close"]
-        pygame.draw.rect(self.screen, (42, 46, 52), (cx, cy, cw, ch), border_radius=3)
-        close_s = self.tiny.render("Fermer", True, (210, 208, 200))
-        self.screen.blit(
-            close_s,
-            (
-                cx + (cw - close_s.get_width()) // 2,
-                cy + (ch - close_s.get_height()) // 2,
-            ),
-        )
-        yy = by + 8
+        theme.panel(self.screen, layout["box"], "peau")
+        mx, my = pygame.mouse.get_pos()
+        theme.button(self.screen, layout["close"], "Fermer", "discret", True, _contains(layout["close"], mx, my))
+        yy = by + 10
         for i, line in enumerate(lines):
-            font = self.small if i == 0 else self.tiny
-            color = (230, 228, 220) if i == 0 else (200, 198, 190)
-            self.screen.blit(font.render(line, True, color), (bx + 10, yy))
-            yy += 18 if i == 0 else 16
+            if i == 0:
+                self.screen.blit(theme.icon("combat", 18, C.mauvais), (bx + 12, yy + 1))
+                theme.text(self.screen, line, "h3", C.os, (bx + 36, yy))
+                yy += 24
+            else:
+                theme.text(self.screen, line, "petit", C.lin, (bx + 14, yy), bw - 28)
+                yy += 18
 
     def draw_path(
         self,
@@ -1452,92 +1458,50 @@ class Renderer:
 
     def draw_menu(self) -> None:
         w, h = self.screen.get_size()
-        overlay = pygame.Surface((w, h), pygame.SRCALPHA)
-        overlay.fill((8, 10, 14, 160))
-        self.screen.blit(overlay, (0, 0))
+        theme.veil(self.screen, 160)
         layout = menu_layout(w, h)
         self.menu_hits = layout
         bx, by, bw, bh = layout["box"]
-        pygame.draw.rect(self.screen, (22, 24, 28), (bx, by, bw, bh), border_radius=6)
-        pygame.draw.rect(
-            self.screen, (196, 150, 60), (bx, by, bw, bh), 1, border_radius=6
-        )
+        theme.panel(self.screen, layout["box"], "pierre")
         from src.kora import __version__
 
-        title = self.font.render("Kora", True, (230, 228, 220))
-        self.screen.blit(title, (bx + (bw - title.get_width()) // 2, by + 18))
-        version = self.tiny.render(f"version {__version__}", True, (150, 150, 146))
-        self.screen.blit(version, (bx + bw - version.get_width() - 10, by + bh - version.get_height() - 6))
+        logo = theme.font_file("sc-black", 40)
+        img = logo.render("Kora", True, C.ocre)
+        self.screen.blit(logo.render("Kora", True, C.nuit), (bx + (bw - img.get_width()) // 2 + 2, by + 14))
+        self.screen.blit(img, (bx + (bw - img.get_width()) // 2, by + 12))
+        theme.stroke(self.screen, bx + bw // 2 - 70, by + 64, 140, C.ocre, 3)
+        theme.text(self.screen, f"version {__version__}", "mini", C.cendre, (bx + bw - 90, by + bh - 24))
         mx, my = pygame.mouse.get_pos()
         labels = dict(MENU_ITEMS)
         for key, rect in layout["items"].items():
-            x, y, rw, rh = rect
-            hover = _contains(rect, mx, my)
-            fill = (196, 150, 60) if hover else (42, 46, 52)
-            pygame.draw.rect(self.screen, fill, (x, y, rw, rh), border_radius=3)
-            pygame.draw.rect(
-                self.screen, (210, 180, 90), (x, y, rw, rh), 1, border_radius=3
-            )
-            text_col = (20, 18, 14) if hover else (230, 228, 220)
-            label = self.font.render(labels[key], True, text_col)
-            self.screen.blit(
-                label,
-                (
-                    x + (rw - label.get_width()) // 2,
-                    y + (rh - label.get_height()) // 2,
-                ),
-            )
+            rank = "principal" if key == "reprendre" else "second"
+            theme.button(self.screen, rect, labels[key], rank, True, _contains(rect, mx, my), role="bouton")
 
-    def _draw_tab(self, rect, label: str, opened: bool, ready: bool = False) -> None:
+    def _draw_tab(self, rect, label: str, opened: bool, ready: bool = False, icon_key: str | None = None) -> None:
+        """Une pastille du rail : l'icone, le nom en dessous. Ouverte : ocre ;
+        a voir (un savoir a choisir, un clan qui s'en va) : elle respire."""
         tx, ty, tw, th = rect
         mx, my = pygame.mouse.get_pos()
-        hover_tab = _contains(rect, mx, my)
+        hover = _contains(rect, mx, my)
+        if ready and not opened:
+            theme.glow(self.screen, rect, C.braise, 0.4 + 0.6 * theme.pulse(pygame.time.get_ticks() / 1000.0))
+        kind = "carte_choisie" if opened else ("carte_survol" if hover else "carte")
+        theme.panel(self.screen, rect, kind)
+        col = C.braise if (ready and not opened) else (C.ocre_jaune if opened else (C.os if hover else C.lin))
+        isz = 28
+        self.screen.blit(theme.icon(icon_key or "feu", isz, col), (tx + (tw - isz) // 2, ty + 8))
+        f = theme.font("mini_gras")
+        name = theme.fit(f, label, tw - 6)
+        img = f.render(name, True, col)
+        self.screen.blit(img, (tx + (tw - img.get_width()) // 2, ty + th - img.get_height() - 7))
         if opened:
-            fill = (196, 150, 60) if hover_tab else (48, 42, 32)
-        elif ready:
-            fill = (70, 90, 60) if hover_tab else (42, 46, 52)
-        else:
-            fill = (52, 56, 62) if hover_tab else (28, 30, 34)
-        pygame.draw.rect(self.screen, fill, (tx, ty, tw, th), border_radius=4)
-        pygame.draw.rect(
-            self.screen,
-            (210, 180, 90) if (opened or ready) else (90, 94, 100),
-            (tx, ty, tw, th),
-            1,
-            border_radius=4,
-        )
-        tab_txt = self.small.render(label, True, (230, 228, 220))
-        rotated = pygame.transform.rotate(tab_txt, 90)
-        self.screen.blit(
-            rotated,
-            (
-                tx + (tw - rotated.get_width()) // 2,
-                ty + (th - rotated.get_height()) // 2,
-            ),
-        )
+            # La pastille ouverte touche sa fenetre : un trait d'ocre a gauche.
+            pygame.draw.line(self.screen, C.ocre, (tx, ty + 6), (tx, ty + th - 7), 3)
 
     def _draw_chip(self, rect, label: str, active: bool) -> None:
-        x, y, rw, rh = rect
         mx, my = pygame.mouse.get_pos()
-        hover = _contains(rect, mx, my)
-        if active:
-            fill = (196, 150, 60) if hover else (70, 90, 60)
-            text_col = (20, 18, 14)
-        else:
-            fill = (52, 56, 62) if hover else (36, 40, 46)
-            text_col = (210, 208, 200)
-        pygame.draw.rect(self.screen, fill, (x, y, rw, rh), border_radius=3)
-        pygame.draw.rect(
-            self.screen, (210, 180, 90) if active else (70, 74, 80), (x, y, rw, rh), 1, border_radius=3
-        )
-        surf = self.tiny.render(label, True, text_col)
-        self.screen.blit(
-            surf,
-            (
-                x + (rw - surf.get_width()) // 2,
-                y + (rh - surf.get_height()) // 2,
-            ),
-        )
+        head, hint = split_hint(label)
+        theme.button(self.screen, rect, head, "second", True, _contains(rect, mx, my), key_hint=hint, role="bouton_petit", active=active)
 
     def draw_side(
         self,
@@ -1568,94 +1532,44 @@ class Renderer:
         self.side_hits = layout
         if panel == "savoirs":
             self.draw_savoirs(state, layout["tech"], tech_pick)
-        if panel in ("tribu", "peuples"):
-            from src.kora import render_panels
-
-            if panel == "tribu":
-                render_panels.draw_tribe(self, state, layout, ui)
-            else:
-                render_panels.draw_peoples(self, state, layout, ui)
+        if panel == "tribu":
+            render_panels.draw_tribe(self, state, layout, ui)
+        elif panel == "peuples":
+            render_panels.draw_peoples(self, state, layout, ui)
         if panel == "armee" and army:
             render_panels.draw_army(self, state, layout, ui)
         if panel == "journal":
-            bx, by, bw, bh = layout["box"]
-            pygame.draw.rect(self.screen, (18, 20, 24), (bx, by, bw, bh), border_radius=6)
-            pygame.draw.rect(
-                self.screen, (70, 74, 80), (bx, by, bw, bh), 1, border_radius=6
-            )
-            title = self.font.render("Journal", True, (230, 228, 220))
-            self.screen.blit(title, (bx + 16, by + 14))
-            labels = dict((k, lab) for k, lab, _w in FILTER_CHIPS)
-            labels.update((k, lab) for k, lab, _w in SORT_CHIPS)
-            for key, rect in layout["items"].items():
-                if key.startswith("filter_"):
-                    active = FILTER_BY_HIT[key] == log_filter
-                elif key == "sort_recent":
-                    active = log_newest
-                else:
-                    active = not log_newest
-                self._draw_chip(rect, labels[key], active)
-            log = log_of(state, state.viewer) if isinstance(state.log, GameLog) else GameLog()
-            rows = log.filtered(log_filter, newest_first=log_newest)
-            list_y = layout["items"]["sort_recent"][1] + 30
-            bottom = by + bh - 10
-            for entry in rows:
-                stamp = f"an {entry.year} s.{entry.week}"
-                parts = wrap_text(f"{stamp}  {entry.text}", JOURNAL_COLS)
-                if list_y + 16 * len(parts) > bottom:
-                    break
-                row_top = list_y
-                placed = entry.hex is not None
-                color = (240, 190, 150) if placed else (210, 208, 200)
-                for k, part in enumerate(parts):
-                    surf = self.tiny.render(
-                        part if k == 0 else "   " + part, True, color
-                    )
-                    self.screen.blit(surf, (bx + 14, list_y))
-                    list_y += 16
-                if placed:
-                    # Clic sur la ligne : la camera va sur place.
-                    layout["items"][f"log_{entry.seq}"] = (
-                        bx + 10,
-                        row_top,
-                        bw - 20,
-                        list_y - row_top,
-                    )
+            draw_journal(self, state, layout, log_filter, log_newest)
         player = state.tribes.get(state.viewer)
         idle = player is not None and not player.learning
         ready = idle and bool(tech.available(state, state.viewer))
-        self._draw_tab(layout["tab_savoirs"], "Savoirs", panel == "savoirs", ready)
-        if player is not None and player.learning:
-            # Avancement du savoir en cours, en bas de l'onglet.
-            tx, ty, tw, th = layout["tab_savoirs"]
-            done = player.progress.get(player.learning, 0.0) / tech.TECHS[player.learning].cost
-            pygame.draw.rect(self.screen, (40, 44, 50), (tx + 4, ty + th - 8, tw - 8, 4))
-            pygame.draw.rect(
-                self.screen, (110, 170, 220), (tx + 4, ty + th - 8, int((tw - 8) * min(1.0, done)), 4)
-            )
-        from src.kora import render_panels
-
         tabs = layout["tabs"]
-        self._draw_tab(tabs["tribu"], render_panels.tribe_tab_label(state), panel == "tribu", render_panels.tribe_alert(state))
-        self._draw_tab(tabs["peuples"], "Peuples", panel == "peuples", False)
+        self._draw_tab(tabs["savoirs"], "Savoirs", panel == "savoirs", ready, "savoir")
+        if player is not None and player.learning and player.learning in tech.TECHS:
+            # Avancement du savoir en cours, en bas de la pastille.
+            tx, ty, tw, th = tabs["savoirs"]
+            done = player.progress.get(player.learning, 0.0) / tech.TECHS[player.learning].cost
+            theme.bar(self.screen, (tx + 8, ty + th - 6, tw - 16, 4), min(1.0, done), C.savoir)
+        label = render_panels.tribe_tab_label(state)
+        self._draw_tab(tabs["tribu"], label, panel == "tribu", render_panels.tribe_alert(state), "tribu" if label == "Tribu" else "village")
+        self._draw_tab(tabs["peuples"], "Peuples", panel == "peuples", False, "peuples")
         if "armee" in tabs:
-            self._draw_tab(tabs["armee"], "Armee", panel == "armee", False)
+            self._draw_tab(tabs["armee"], "Armée", panel == "armee", False, "armee")
         if "commerce" in tabs:
-            self._draw_tab(tabs["commerce"], "Commerce", bool(ui.get("trade_open")), render_panels.commerce_alert(state))
-        unread = False
-        self._draw_tab(layout["tab_journal"], "Journal", panel == "journal", unread)
+            self._draw_tab(tabs["commerce"], "Commerce", bool(ui.get("trade_open")), render_panels.commerce_alert(state), "commerce")
+        self._draw_tab(tabs["journal"], "Journal", panel == "journal", False, "journal")
 
     _TECH_COLORS = {
-        "connu": ((58, 50, 30), (212, 176, 90), (236, 226, 200)),
-        "en_cours": ((30, 48, 66), (110, 170, 220), (226, 232, 240)),
-        "disponible": ((30, 44, 32), (120, 190, 110), (226, 234, 222)),
-        "attente": ((26, 28, 32), (84, 88, 96), (170, 172, 178)),
-        "verrouille": ((20, 21, 24), (52, 55, 60), (110, 112, 118)),
+        "connu": ((58, 50, 30), (217, 164, 65), (239, 228, 204)),
+        "en_cours": ((86, 50, 26), (242, 160, 61), (239, 228, 204)),
+        "disponible": ((30, 58, 54), (157, 191, 110), (239, 228, 204)),
+        "attente": ((36, 27, 21), (111, 88, 67), (194, 177, 148)),
+        "verrouille": ((27, 21, 16), (73, 54, 38), (130, 113, 96)),
     }
     # (fond des rangees, bande de l'age, couleur du marqueur et du nom)
     _ERA_COLORS = (
         ((21, 20, 18), (30, 28, 24), (214, 186, 120)),
-        ((16, 24, 19), (34, 50, 34), (150, 206, 120)),
+        ((24, 19, 14), (50, 38, 29), (150, 206, 120)),
     )
     _TECH_LEGEND = (
         ("connu", "connu"),
@@ -1694,12 +1608,12 @@ class Renderer:
         return lines or [""]
 
     _DETAIL_COLORS = {
-        "titre": (236, 226, 200),
+        "titre": (239, 228, 204),
         "texte": (196, 196, 190),
         "effet": (170, 214, 160),
         "ok": (150, 200, 140),
         "manque": (220, 150, 120),
-        "note": (150, 156, 166),
+        "note": (175, 159, 136),
     }
 
     def draw_savoirs(self, state: GameState, lay: dict, pick: str | None) -> None:
@@ -1709,50 +1623,53 @@ class Renderer:
         render_tech.draw(self, state, lay, pick)
 
     def _fit(self, font, text: str, width: int) -> str:
-        if font.size(text)[0] <= width:
-            return text
-        while text and font.size(text + ".")[0] > width:
-            text = text[:-1]
-        return text.rstrip() + "."
+        return theme.fit(font, text, width)
 
     def draw_toasts(self, toasts: list, top: int) -> None:
+        """Les nouvelles : de petites dalles qui glissent et s'eclairent, une
+        icone par genre ; un clic sur une nouvelle situee y emmene."""
         y = top
         self.toast_hits = []
+        f = theme.font("petit")
         for toast in toasts:
             age = float(toast.get("age", 0.0))
             fade = 1.0 if age < 3.0 else max(0.0, 1.0 - (age - 3.0) / 1.0)
             if fade <= 0:
                 continue
+            slide = int(max(0.0, 0.25 - age) / 0.25 * 30)
             text = str(toast.get("text", ""))
-            color = (240, 150, 120) if toast.get("combat") else (235, 222, 170)
-            if toast.get("hex") is not None:
-                text += "  [voir]"
-            surf = self.small.render(text, True, color)
-            surf.set_alpha(int(230 * fade))
-            # Fond sombre : sans lui, le texte se perd sur les plaines claires.
-            back = pygame.Surface((surf.get_width() + 12, 20), pygame.SRCALPHA)
-            back.fill((14, 16, 20, int(200 * fade)))
-            self.screen.blit(back, (10, y - 1))
-            self.screen.blit(surf, (16, y + 1))
-            if toast.get("hex") is not None:
-                self.toast_hits.append(((10, y - 1, surf.get_width() + 12, 20), toast))
-            y += 22
+            kind = toast.get("kind") or ("combat" if toast.get("combat") else "survie")
+            placed = toast.get("hex") is not None
+            tw = min(f.size(text)[0], 560)
+            w = tw + 46 + (22 if placed else 0)
+            x = 10 - slide
+            layer = pygame.Surface((w + 12, 34), pygame.SRCALPHA)
+            theme.panel(layer, (6, 3, w, 28), "toast")
+            col = C.mauvais if kind == "combat" else C.ocre_jaune
+            layer.blit(theme.icon(KIND_ICONS.get(kind, "feu"), 18, col), (16, 8))
+            layer.blit(f.render(theme.fit(f, text, 560), True, C.os), (40, 8))
+            if placed:
+                layer.blit(theme.icon("voir", 16, C.lin), (40 + tw + 8, 9))
+            layer.set_alpha(int(255 * fade))
+            self.screen.blit(layer, (x - 6, y - 3))
+            if placed:
+                self.toast_hits.append(((x, y, w, 28), toast))
+            y += 32
 
     def draw_inspect(self, hover_info: dict | None, pin_info: dict | None) -> None:
         w, h = self.screen.get_size()
         if pin_info:
             pin_lines = inspect_lines(pin_info)
-            ph = 16 + 18 + 16 * max(0, len(pin_lines) - 1)
-            self._draw_inspect_card(pin_info, 12, h - ph - 12, 252, ph, pinned=True)
-        if hover_info and (
-            pin_info is None or hover_info.get("hex") != pin_info.get("hex")
-        ):
+            ph = 18 + 24 + 18 * max(0, len(pin_lines) - 1)
+            self._draw_inspect_card(pin_info, 12, h - ph - 12, 270, ph, pinned=True)
+        if hover_info and (pin_info is None or hover_info.get("hex") != pin_info.get("hex")):
             mx, my = pygame.mouse.get_pos()
             lines = self._inspect_lines(hover_info)
-            tw = max(self.tiny.size(line)[0] for line in lines) + 16
-            th = 8 + 16 * len(lines)
-            tx = mx + 16
-            ty = max(HUD_HEIGHT + 8, my + 18)
+            f0, f1 = theme.font("h3"), theme.font("petit")
+            tw = max([f0.size(lines[0])[0]] + [f1.size(line)[0] for line in lines[1:]]) + 30
+            th = 18 + 24 + 18 * max(0, len(lines) - 1)
+            tx = mx + 18
+            ty = max(HUD_HEIGHT + 8, my + 20)
             if tx + tw > w - 8:
                 tx = max(8, mx - tw - 12)
             if ty + th > h - 8:
@@ -1762,87 +1679,115 @@ class Renderer:
     def _inspect_lines(self, info: dict) -> list[str]:
         return inspect_lines(info)
 
-    def _draw_inspect_card(
-        self, info: dict, x: int, y: int, bw: int, bh: int, pinned: bool
-    ) -> None:
-        pygame.draw.rect(self.screen, (18, 20, 24), (x, y, bw, bh), border_radius=5)
-        pygame.draw.rect(
-            self.screen,
-            (196, 150, 60) if pinned else (70, 74, 80),
-            (x, y, bw, bh),
-            1,
-            border_radius=5,
-        )
+    def _draw_inspect_card(self, info: dict, x: int, y: int, bw: int, bh: int, pinned: bool) -> None:
+        theme.panel(self.screen, (x, y, bw, bh), "peau" if pinned else "infobulle")
         lines = self._inspect_lines(info)
-        yy = y + 8
+        yy = y + 9
         for i, line in enumerate(lines):
-            font = self.small if i == 0 else self.tiny
-            color = (230, 228, 220) if i == 0 else (200, 198, 190)
-            surf = font.render(line, True, color)
-            self.screen.blit(surf, (x + 10, yy))
-            yy += 18 if i == 0 else 16
+            if i == 0:
+                theme.text(self.screen, line, "h3", C.os, (x + 14, yy), bw - 26)
+                yy += 24
+            else:
+                theme.text(self.screen, line, "petit", C.lin, (x + 14, yy), bw - 26)
+                yy += 18
 
     def draw_hud(self, state: GameState) -> None:
+        """Le bandeau : la saison et la date ; le temps ; le peuple en icones."""
         clock = state.clock
         width = self.screen.get_width()
         layout = hud_layout(width)
         self.hud_hits = layout
-        pygame.draw.rect(self.screen, (18, 20, 24), (0, 0, width, HUD_HEIGHT))
-        pygame.draw.line(
-            self.screen, (50, 54, 60), (0, HUD_HEIGHT - 1), (width, HUD_HEIGHT - 1)
-        )
-        season = SEASON_FR[clock.season()]
-        date = f"{season}  ·  an {clock.year}  ·  semaine {clock.week}"
-        date_surf = self.font.render(date, True, (230, 228, 220))
-        self.screen.blit(date_surf, (16, 15))
-
-        px, py, pw, ph = layout["pause"]
-        pause_on = clock.paused
-        pygame.draw.rect(
-            self.screen,
-            (196, 150, 60) if pause_on else (42, 46, 52),
-            (px, py, pw, ph),
-            border_radius=3,
-        )
-        pygame.draw.rect(self.screen, (210, 180, 90), (px, py, pw, ph), 1, border_radius=3)
-        if pause_on:
-            pygame.draw.rect(self.screen, (20, 18, 14), (px + 6, py + 5, 4, 12))
-            pygame.draw.rect(self.screen, (20, 18, 14), (px + 12, py + 5, 4, 12))
-        else:
-            pygame.draw.polygon(
-                self.screen,
-                (230, 220, 190),
-                [(px + 7, py + 5), (px + 7, py + 17), (px + 17, py + 11)],
-            )
-
-        for n, (sx, sy, sw, sh) in layout["speeds"].items():
+        theme.panel(self.screen, (0, 0, width, HUD_HEIGHT), "bandeau")
+        pygame.draw.line(self.screen, C.ocre_sombre, (0, HUD_HEIGHT - 2), (width, HUD_HEIGHT - 2))
+        pygame.draw.line(self.screen, C.nuit, (0, HUD_HEIGHT - 1), (width, HUD_HEIGHT - 1))
+        season = clock.season()
+        self.screen.blit(theme.medallion(SEASON_ICONS.get(season, "printemps"), 18, "normal", C.froid if season is Season.HIVER else None), (8, (HUD_HEIGHT - 40) // 2))
+        theme.text(self.screen, SEASON_FR[season], "h2", C.os, (56, 4), shadow=True)
+        theme.text(self.screen, f"an {clock.year}  ·  semaine {clock.week}", "petit", C.lin, (57, 28))
+        mx, my = pygame.mouse.get_pos()
+        pause = layout["pause"]
+        theme.icon_button(self.screen, pause, "jouer" if clock.paused else "pause", True, _contains(pause, mx, my), active=clock.paused)
+        for n, rect in layout["speeds"].items():
             lit = (not clock.paused) and n <= clock.speed
-            fill = (70, 120, 150) if lit else (36, 40, 46)
-            pygame.draw.rect(self.screen, fill, (sx, sy, sw, sh), border_radius=3)
-            pygame.draw.rect(
-                self.screen, (90, 130, 160) if lit else (70, 74, 80), (sx, sy, sw, sh), 1, border_radius=3
-            )
-            num = self.small.render(str(n), True, (235, 235, 230) if lit else (140, 144, 150))
-            self.screen.blit(
-                num, (sx + (sw - num.get_width()) // 2, sy + (sh - num.get_height()) // 2)
-            )
-
-        pop = sum(
-            b.population for b in state.bands.values() if b.tribe_id == state.viewer
-        )
-        stock = sum(
-            b.stock for b in state.bands.values() if b.tribe_id == state.viewer
-        )
-        prestige = state.tribes[state.viewer].prestige
-        stats = f"Prestige  {prestige}      Peuple  {pop}      Stocks  {stock:.0f}"
-        stats_surf = self.font.render(stats, True, (210, 208, 200))
-        self.screen.blit(stats_surf, (width - stats_surf.get_width() - 16, 15))
-
+            theme.button(self.screen, rect, str(n), "principal" if lit else "second", True, _contains(rect, mx, my), role="petit_gras")
+        tribe = state.tribes[state.viewer]
+        pop = sum(b.population for b in state.bands.values() if b.tribe_id == state.viewer)
+        stock = sum(b.stock for b in state.bands.values() if b.tribe_id == state.viewer)
+        x = width - 16
+        num = theme.font("chiffre")
+        for key, value, col in (("vivres", f"{stock:.0f}", C.lin), ("gens", str(pop), C.os), ("prestige", str(tribe.prestige), C.ocre_jaune)):
+            img = num.render(value, True, col)
+            x -= img.get_width()
+            self.screen.blit(num.render(value, True, C.nuit), (x + 1, (HUD_HEIGHT - img.get_height()) // 2 + 2))
+            self.screen.blit(img, (x, (HUD_HEIGHT - img.get_height()) // 2))
+            x -= 28
+            self.screen.blit(theme.icon(key, 24, col), (x, (HUD_HEIGHT - 24) // 2))
+            x -= 22
+        # Le savoir en cours : son nom et sa barre.
+        if tribe.learning and tribe.learning in tech.TECHS:
+            t = tech.TECHS[tribe.learning]
+            done = tribe.progress.get(tribe.learning, 0.0) / max(1.0, t.cost)
+            box_w = 190
+            x -= box_w
+            self.screen.blit(theme.icon("savoir", 22, C.savoir), (x, 8))
+            theme.text(self.screen, t.name, "mini_gras", C.os, (x + 28, 7), box_w - 32)
+            theme.bar(self.screen, (x + 28, 28, box_w - 34, 8), done, C.savoir)
+        elif tech.available(state, state.viewer):
+            x -= 190
+            self.screen.blit(theme.icon("savoir", 22, C.braise), (x, 14))
+            theme.text(self.screen, "Choisir un savoir [T]", "petit_gras", C.braise, (x + 28, 15))
         extra_y = HUD_HEIGHT + 8
         if human_dead(state, state.viewer):
-            dead = self.font.render("Votre peuple n'est plus", True, (220, 90, 80))
-            self.screen.blit(dead, (16, extra_y))
-            extra_y += 22
+            theme.text(self.screen, "Votre peuple n'est plus", "h2", C.mauvais, (16, extra_y), shadow=True)
+            extra_y += 26
         if state.last_error:
-            err = self.small.render(state.last_error, True, (220, 160, 80))
-            self.screen.blit(err, (16, extra_y))
+            theme.text(self.screen, state.last_error, "petit", C.alerte, (16, extra_y))
+
+
+def draw_journal(self, state, layout, log_filter, log_newest) -> None:
+    """Le journal : une icone par genre, la date en petit, le texte ;
+    une ligne situee (un oeil) emmene la camera."""
+    bx, by, bw, bh = layout["box"]
+    theme.panel(self.screen, layout["box"], "peau")
+    theme.title(self.screen, "Journal", bx + 18, by + 12, "h1")
+    labels = dict((k, lab) for k, lab, _w in FILTER_CHIPS)
+    labels.update((k, lab) for k, lab, _w in SORT_CHIPS)
+    for key, rect in list(layout["items"].items()):
+        if key.startswith("filter_"):
+            active = FILTER_BY_HIT[key] == log_filter
+        elif key == "sort_recent":
+            active = log_newest
+        else:
+            active = not log_newest
+        self._draw_chip(rect, labels[key], active)
+    log = log_of(state, state.viewer) if isinstance(state.log, GameLog) else GameLog()
+    rows = log.filtered(log_filter, newest_first=log_newest)
+    list_y = layout["items"]["sort_recent"][1] + 36
+    theme.dotted(self.screen, (bx + 16, list_y - 8), (bx + bw - 16, list_y - 8), C.ocre_sombre, 5)
+    bottom = by + bh - 12
+    f, fm = theme.font("petit"), theme.font("mini")
+    text_w = bw - 64
+    mx, my = pygame.mouse.get_pos()
+    for entry in rows:
+        parts = theme.wrap(f, entry.text, text_w)
+        row_h = 16 + 18 * len(parts) + 6
+        if list_y + row_h > bottom:
+            break
+        placed = entry.hex is not None
+        rect = (bx + 10, list_y - 2, bw - 20, row_h)
+        if placed and _contains(rect, mx, my):
+            pygame.draw.polygon(self.screen, C.cuir_clair, theme.chamfer(rect, 4))
+        kind = getattr(entry.kind, "value", str(entry.kind))
+        col = C.mauvais if kind == "combat" else C.ocre_jaune
+        self.screen.blit(theme.icon(KIND_ICONS.get(kind, "feu"), 18, col), (bx + 16, list_y + 2))
+        self.screen.blit(fm.render(f"an {entry.year}, semaine {entry.week}", True, C.cendre), (bx + 42, list_y))
+        if placed:
+            self.screen.blit(theme.icon("voir", 15, C.lin), (bx + bw - 34, list_y))
+        yy = list_y + 16
+        for part in parts:
+            self.screen.blit(f.render(part, True, C.os), (bx + 42, yy))
+            yy += 18
+        if placed:
+            # Clic sur la ligne : la camera va sur place.
+            layout["items"][f"log_{entry.seq}"] = rect
+        list_y += row_h

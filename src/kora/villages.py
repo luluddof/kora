@@ -98,26 +98,26 @@ OATHS = {
         Oath(
             "grenier",
             "Le grenier d'abord",
-            "Avant les maisons, on eleve le grenier : ici, on ne manquera jamais.",
-            ("Grenier du village +25 %", "Le grain se gate x0,7"),
+            "Avant les maisons, on élève le grenier : ici, on ne manquera jamais.",
+            ("Grenier du village +25 %", "Le grain se gâte x0,7"),
         ),
         Oath(
             "champs",
             "Les champs d'abord",
-            "Chaque bras va a la terre : les champs seront les plus beaux de la vallee.",
-            ("Recolte +10 %", "Croissance du village x1,1"),
+            "Chaque bras va à la terre : les champs seront les plus beaux de la vallée.",
+            ("Récolte +10 %", "Croissance du village x1,1"),
         ),
         Oath(
             "pieux",
             "Les pieux d'abord",
             "On plante les pieux avant de semer : nul ne prendra ce village.",
-            ("Palissade 2x plus vite, moitie prix", "Defense du village x1,15"),
+            ("Palissade 2x plus vite, moitié prix", "Défense du village x1,15"),
         ),
         Oath(
             "feu",
             "Le feu des anciens",
-            "Le feu du clan brule au centre du village : tous les clans y reviennent.",
-            (f"Attachement +8 des clans a {NEAR} cases ou moins", "+1 prestige a chaque fin d'hiver"),
+            "Le feu du clan brûle au centre du village : tous les clans y reviennent.",
+            (f"Attachement +8 des clans à {NEAR} cases ou moins", "+1 prestige à chaque fin d'hiver"),
         ),
     )
 }
@@ -144,46 +144,46 @@ BUILDINGS = {
         Building(
             "palissade", "Palissade", "Des pieux plantes en cercle autour des maisons.",
             "palissade", PALISADE_COST_WEEKS, PALISADE_WEEKS,
-            (f"Defense du village x{PALISADE_DEFENSE:.1f}".replace(".", ","),), 0,
+            (f"Défense du village x{PALISADE_DEFENSE:.1f}".replace(".", ","),), 0,
         ),
         Building(
-            "grenier", "Grenier sureleve", "Sur pilotis, a l'abri des rats et de l'eau.",
-            "", 3, 8, ("+8 semaines de reserve au grenier", "Le grain se gate x0,6"), 1,
+            "grenier", "Grenier surélevé", "Sur pilotis, à l'abri des rats et de l'eau.",
+            "", 3, 8, ("+8 semaines de réserve au grenier", "Le grain se gâte x0,6"), 1,
         ),
         Building(
             "puits", "Puits", "Une eau propre au milieu des maisons.",
-            "", 2, 6, ("Fievres du village x0,6",), 2,
+            "", 2, 6, ("Fièvres du village x0,6",), 2,
         ),
         Building(
             "maison_longue", "Maison longue", "Une grande maison de bois pour plusieurs familles.",
             "maisons", 4, 10, ("Croissance du village x1,2",), 3,
         ),
         Building(
-            "enclos", "Enclos", "Des haies d'epineux ou l'on garde les betes.",
+            "enclos", "Enclos", "Des haies d'épineux où l'on garde les bêtes.",
             "chevres", 3, 6, ("Vivres du village x1,1",), 4,
         ),
         Building(
-            "guerriers", "Maison des guerriers", "La ou les jeunes gens apprennent la guerre.",
+            "guerriers", "Maison des guerriers", "Là où les jeunes gens apprennent la guerre.",
             "palissade", 3, 8, ("Troupes : force x1,25, moral +10", "Une compagnie de plus sous les armes"), 5,
         ),
         Building(
-            "tour", "Tour de guet", "Une tour de rondins d'ou l'on voit venir.",
-            "guetteurs", 2, 6, ("Vue +3 autour du village", "Defense du village x1,15", "Alerte quand un ennemi approche"), 6,
+            "tour", "Tour de guet", "Une tour de rondins d'où l'on voit venir.",
+            "guetteurs", 2, 6, ("Vue +3 autour du village", "Défense du village x1,15", "Alerte quand un ennemi approche"), 6,
         ),
         Building(
-            "autel", "Autel des ancetres", "La pierre ou l'on parle aux morts du clan.",
-            "rites", 2, 6, (f"Attachement +6 des clans a {NEAR} cases ou moins", "+1 prestige a chaque fin d'hiver"), 7,
+            "autel", "Autel des ancêtres", "La pierre où l'on parle aux morts du clan.",
+            "rites", 2, 6, (f"Attachement +6 des clans à {NEAR} cases ou moins", "+1 prestige à chaque fin d'hiver"), 7,
         ),
         Building(
-            "pierre", "Pierre levee", "Une pierre dressee que l'on voit de loin.",
-            "megalithes", 6, 16, ("+2 prestige a chaque fin d'hiver", "Zone d'influence du village +1"), 8,
+            "pierre", "Pierre levée", "Une pierre dressée que l'on voit de loin.",
+            "megalithes", 6, 16, ("+2 prestige à chaque fin d'hiver", "Zone d'influence du village +1"), 8,
         ),
         Building(
-            "atelier", "Ateliers", "Des abris ou potiers, tisserands et tailleurs travaillent cote a cote.",
-            "poterie", 3, 8, ("Metiers du village : production x1,25",), 9,
+            "atelier", "Ateliers", "Des abris où potiers, tisserands et tailleurs travaillent côte à côte.",
+            "poterie", 3, 8, ("Métiers du village : production x1,25",), 9,
         ),
         Building(
-            "place", "Place d'echange", "Une place ou les porteurs des voisins etalent leurs biens.",
+            "place", "Place d'échange", "Une place où les porteurs des voisins étalent leurs biens.",
             "echanges", 3, 8, ("+2 convois de porteurs (routes commerciales)", "Vos ventes : prix +10 %"), 10,
         ),
     )
@@ -192,7 +192,7 @@ BUILD_ORDER = ("palissade", "grenier", "puits", "maison_longue", "enclos", "guer
 
 # Troupes : part des habitants levee, vivres emportes, duree avant les
 # desertions.
-LEVIES = (("poignee", 0.2, "Une poignee"), ("troupe", 1 / 3, "Une troupe"), ("masse", 0.5, "Levee en masse"))
+LEVIES = (("poignee", 0.2, "Une poignee"), ("troupe", 1 / 3, "Une troupe"), ("masse", 0.5, "Levée en masse"))
 LEVY_SHARE = {k: v for k, v, _l in LEVIES}
 ARMY_MIN_VILLAGE = 40
 ARMY_MIN = 8
@@ -332,14 +332,14 @@ def build_block_site(state, site, bid: str) -> str:
     if band is None:
         return "Le village est vide"
     if has(site, bid):
-        return f"{b.name} : deja bati"
+        return f"{b.name} : déjà bâti"
     job = works(site)
     if job:
         if job[0] == bid:
             return f"En construction (encore {job[1]} sem.)"
-        return f"Un chantier a la fois ({BUILDINGS[job[0]].name})"
+        return f"Un chantier à la fois ({BUILDINGS[job[0]].name})"
     if b.needs and b.needs not in state.tribes[site.tribe_id].knowledge:
-        return f"Il faut connaitre {tech.TECHS[b.needs].name}"
+        return f"Il faut connaître {tech.TECHS[b.needs].name}"
     if used_slots(site) >= slots(state, site):
         return f"Plus de place (il faut {SLOT_POP} habitants de plus)"
     cost = build_cost(state, site, bid)
@@ -352,7 +352,7 @@ def build_block(state, band_id: int, bid: str) -> str:
     band = state.bands.get(band_id)
     site = site_of(state, band)
     if site is None:
-        return "Seul un village peut batir"
+        return "Seul un village peut bâtir"
     return build_block_site(state, site, bid)
 
 
@@ -380,7 +380,7 @@ def _advance_works(state, site, band) -> None:
     site.data["build"] = None
     site.data.setdefault("buildings", []).append(bid)
     if state.tribes[band.tribe_id].is_player:
-        text = f"{name(site)} : la palissade est debout." if bid == "palissade" else f"{name(site)} : {BUILDINGS[bid].name.lower()} achevee."
+        text = f"{name(site)} : la palissade est debout." if bid == "palissade" else f"{name(site)} : {BUILDINGS[bid].name.lower()} achevée."
         _note(state, LogKind.SURVIE, text, site.hex, to=band.tribe_id)
 
 
@@ -569,7 +569,7 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
             continue
         v = (6.0 if has(site, "autel") else 0.0) + (8.0 if oath_of(site) == "feu" else 0.0)
         if v and state.world.distance(site.hex, band.position) <= NEAR:
-            out.append((f"Pres de {name(site)} (autel, feu)", v))
+            out.append((f"Près de {name(site)} (autel, feu)", v))
     return out[:2]
 
 
@@ -610,10 +610,10 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
     parts: list[tuple[str, float]] = [("Base", STABILITY_BASE)]
     know = _bonus(state, band.tribe_id).stability
     if know:
-        parts.append(("Savoirs du neolithique", float(know)))
+        parts.append(("Savoirs du néolithique", float(know)))
     for bid, v, label in (
-        ("autel", 8.0, "Autel des ancetres"),
-        ("pierre", 10.0, "Pierre levee"),
+        ("autel", 8.0, "Autel des ancêtres"),
+        ("pierre", 10.0, "Pierre levée"),
         ("puits", 4.0, "Puits"),
         ("grenier", 4.0, "Grenier"),
         ("maison_longue", 4.0, "Maison longue"),
@@ -637,9 +637,9 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
     if abs(p) >= 1:
         parts.append(("Prestige", round(p)))
     if state.tick_count - band.famine_tick <= 8:
-        parts.append(("Famine recente", -20.0))
+        parts.append(("Famine récente", -20.0))
     if site.data.get("burned"):
-        parts.append(("Champs brules", -10.0))
+        parts.append(("Champs brûlés", -10.0))
     crowd = band.population - CROWD_POP - (40 if has(site, "maison_longue") else 0)
     if crowd > 0:
         parts.append(("Trop de monde", -min(20.0, crowd / 10.0)))
@@ -703,9 +703,9 @@ def _unrest(state, site, band) -> None:
             where = name(site_of(state, target))
             for me in sorted({band.tribe_id, target.tribe_id}):
                 if state.tribes[me].is_player:
-                    _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes partent vivre a {where}.", site.hex, to=me)
+                    _note(state, LogKind.POLITIQUE, f"{name(site)} est agité : {moved} personnes partent vivre à {where}.", site.hex, to=me)
         elif state.tribes[band.tribe_id].is_player:
-            _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes s'en vont et se dispersent.", site.hex, to=band.tribe_id)
+            _note(state, LogKind.POLITIQUE, f"{name(site)} est agité : {moved} personnes s'en vont et se dispersent.", site.hex, to=band.tribe_id)
         return
     band.population -= moved
     band.stock -= stock
@@ -716,7 +716,7 @@ def _unrest(state, site, band) -> None:
     clan.loyalty = min(clan.loyalty, 50.0)
     _ai_caches_changed(state)
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.POLITIQUE, f"{name(site)} est agite : {moved} personnes s'en vont, lasses du desordre.", site.hex, to=band.tribe_id)
+        _note(state, LogKind.POLITIQUE, f"{name(site)} est agité : {moved} personnes s'en vont, lasses du désordre.", site.hex, to=band.tribe_id)
     # Elles ne deviennent pas une tribu errante : elles partent fonder leur
     # propre village, sous leur propre chef (un proto-pays de la meme
     # civilisation).
@@ -871,7 +871,7 @@ def sow(state, site, band, late: bool = False) -> None:
     site.data["burned"] = False
     if state.tribes[band.tribe_id].is_player:
         if sown <= 0:
-            _note(state, LogKind.SURVIE, f"{name(site)} : pas de semences, les champs restent vides cette annee.", site.hex, to=band.tribe_id)
+            _note(state, LogKind.SURVIE, f"{name(site)} : pas de semences, les champs restent vides cette année.", site.hex, to=band.tribe_id)
         else:
             extra = ""
             if from_granary >= 1:
@@ -913,7 +913,7 @@ def harvest(state, site, band) -> float:
     history.append([state.clock.year, round(crop)])
     del history[:-HISTORY]
     if state.tribes[band.tribe_id].is_player and crop > 0:
-        text = f"{name(site)} : recolte de {crop:.0f} vivres."
+        text = f"{name(site)} : récolte de {crop:.0f} vivres."
         if short < 1.0:
             text += " Il manquait des bras : une part est restee aux champs."
         _note(state, LogKind.SURVIE, text, site.hex, to=band.tribe_id)
@@ -939,20 +939,20 @@ def found_block(state, band_id: int) -> str:
         return "Une troupe ne fonde pas de village"
     know = _bonus(state, band.tribe_id)
     if know.villages <= 0:
-        return "Il faut connaitre Premieres semailles"
+        return "Il faut connaître Premières semailles"
     if not chiefs.obeys(state, band):
-        return "Ce clan n'obeit plus"
+        return "Ce clan n'obéit plus"
     if band.retreating:
         return "La bande est en repli"
     camp = sites.own_site_at(state, band)
     if camp is None or camp.kind != "camp":
-        return "Il faut etre sur un de vos campements"
+        return "Il faut être sur un de vos campements"
     if len(sites.of_tribe(state, band.tribe_id, "village")) >= know.villages:
         return f"Villages : {len(sites.of_tribe(state, band.tribe_id, 'village'))}/{know.villages}"
     if band.population < MIN_FOUND_POP:
         return f"Il faut {MIN_FOUND_POP} personnes"
     if not any(fertility(state, band.tribe_id, h) > 0.35 for h in state.world.hexes_in_radius(camp.hex, FIELD_RADIUS)):
-        return "Aucune terre a cultiver autour"
+        return "Aucune terre à cultiver autour"
     return ""
 
 
@@ -1037,7 +1037,7 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
             _note(
                 state,
                 LogKind.POLITIQUE,
-                f"L'age des villages commence (+{FIRST_VILLAGE_PRESTIGE} prestige) : vos villages levent des troupes, vos clans nomades s'emanciperont.",
+                f"L'âge des villages commence (+{FIRST_VILLAGE_PRESTIGE} prestige) : vos villages levent des troupes, vos clans nomades s'émanciperont.",
                 camp.hex,
                 to=tribe.id,
             )
@@ -1073,7 +1073,7 @@ def _chief_takes_the_village(state, tribe, band, quiet: bool = False) -> None:
     band.loyalty = 100.0
     heart.loyalty = min(heart.loyalty, 70.0)
     if tribe.is_player and chief is not None and not quiet:
-        _note(state, LogKind.POLITIQUE, f"{chief.name} s'installe au village et y gouverne ; ses anciens clans ne lui obeiront plus longtemps.", band.position, to=tribe.id)
+        _note(state, LogKind.POLITIQUE, f"{chief.name} s'installe au village et y gouverne ; ses anciens clans ne lui obéiront plus longtemps.", band.position, to=tribe.id)
 
 
 def ai_oath(state, tribe_id: int) -> str:
@@ -1114,9 +1114,9 @@ def found_preview(state, band_id: int) -> dict:
                 res[rname] = res.get(rname, 0) + 1
     risks = []
     if world.terrain(center) is _T.VALLEE:
-        risks.append("Vallee : les crues du printemps peuvent noyer les champs")
+        risks.append("Vallée : les crues du printemps peuvent noyer les champs")
     if forest and not _bonus(state, band.tribe_id).clearing:
-        risks.append(f"{forest} cases de foret a defricher (il faut Haches polies)")
+        risks.append(f"{forest} cases de forêt à défricher (il faut Haches polies)")
     foes = {
         b.tribe_id
         for b in state.bands.values()
@@ -1127,9 +1127,9 @@ def found_preview(state, band_id: int) -> dict:
     }
     if foes:
         names = ", ".join(sorted(state.tribes[t].name for t in foes if t in state.tribes))
-        risks.append(f"Voisins sans pacte a moins de 12 cases : {names}")
+        risks.append(f"Voisins sans pacte à moins de 12 cases : {names}")
     if band.population >= DISEASE_POP:
-        risks.append("Beaucoup de monde : les fievres guettent les gros villages")
+        risks.append("Beaucoup de monde : les fièvres guettent les gros villages")
     tribe = state.tribes[band.tribe_id]
     return {
         "name": propose_name(state, band_id),
@@ -1172,7 +1172,7 @@ def leave(state, band_id: int) -> bool:
     site.store = extra
     site.data = {}
     if state.tribes[band.tribe_id].is_player:
-        _note(state, LogKind.SURVIE, f"{name(site)} est abandonne.", site.hex, to=band.tribe_id)
+        _note(state, LogKind.SURVIE, f"{name(site)} est abandonné.", site.hex, to=band.tribe_id)
     return True
 
 
@@ -1194,7 +1194,7 @@ def palisade_block(state, band_id: int) -> str:
     if site is None:
         return "Seul un village peut se fortifier"
     if not _bonus(state, band.tribe_id).palisade:
-        return "Il faut connaitre Palissades"
+        return "Il faut connaître Palissades"
     if palisade_state(site) == "built":
         return "La palissade est debout"
     return build_block_site(state, site, "palissade")
@@ -1293,7 +1293,7 @@ def army_block(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     if site is None:
         return "Seul un village leve des guerriers"
     if type_id and type_id in units.UNITS and not units.known(state.tribes[band.tribe_id], units.UNITS[type_id]):
-        return f"Il faut connaitre {tech.TECHS[units.UNITS[type_id].needs].name}"
+        return f"Il faut connaître {tech.TECHS[units.UNITS[type_id].needs].name}"
     if band.population < ARMY_MIN_VILLAGE:
         return f"Il faut {ARMY_MIN_VILLAGE} habitants"
     n = levy_size(band, share)
@@ -1303,7 +1303,7 @@ def army_block(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
         return "Le village se viderait"
     count, cap = companies_of(state, site), army_cap(state, site)
     if count >= cap:
-        return f"Deja {count}/{cap} compagnies levees (Maison des guerriers : une de plus)"
+        return f"Déjà {count}/{cap} compagnies levées (Maison des guerriers : une de plus)"
     return ""
 
 
@@ -1349,7 +1349,7 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     state.bands[nid] = army
     _ai_caches_changed(state)
     if tribe.is_player:
-        _note(state, LogKind.COMBAT, f"{name(site)} leve une troupe : {n} {kind.name.lower()}, menes par {army.leader.name}.", site.hex, to=tribe.id)
+        _note(state, LogKind.COMBAT, f"{name(site)} leve une troupe : {n} {kind.name.lower()}, menés par {army.leader.name}.", site.hex, to=tribe.id)
     return army
 
 
@@ -1362,7 +1362,7 @@ def detach_block(state, band_id: int) -> str:
     if band.retreating:
         return "La troupe est en repli"
     if len(_companies(band)) < 2:
-        return "Une seule compagnie : rien a detacher"
+        return "Une seule compagnie : rien a détacher"
     return ""
 
 
@@ -1407,7 +1407,7 @@ def disband_block(state, band_id: int) -> str:
     if band.retreating:
         return "La troupe est en repli"
     if _village_near(state, band) is None:
-        return "Rentrez au village pour liberer les guerriers"
+        return "Rentrez au village pour libérer les guerriers"
     return ""
 
 
@@ -1418,7 +1418,7 @@ def dissolve_block(state, band_id: int) -> str:
     if band.retreating:
         return "La troupe est en repli"
     if band.homebound:
-        return "La troupe rentre deja au village"
+        return "La troupe rentre déjà au village"
     return ""
 
 
@@ -1448,7 +1448,7 @@ def _join_village(state, army, site) -> None:
     if not chiefs.is_chief_band(state, home):
         home.loyalty = keep
     if state.tribes[home.tribe_id].is_player:
-        _note(state, LogKind.COMBAT, f"La troupe rentre a {name(site)} : {n} guerriers retrouvent leurs champs.", site.hex, to=home.tribe_id)
+        _note(state, LogKind.COMBAT, f"La troupe rentre à {name(site)} : {n} guerriers retrouvent leurs champs.", site.hex, to=home.tribe_id)
 
 
 def _to_clan(state, band) -> None:
@@ -1506,7 +1506,7 @@ def dissolve(state, band_id: int) -> bool:
         army.home = site.id
         _send_home(state, army, site)
         if army.homebound and state.tribes[army.tribe_id].is_player:
-            _note(state, LogKind.COMBAT, f"La troupe est dissoute : ses hommes rentrent a {name(site)}.", army.position, to=army.tribe_id)
+            _note(state, LogKind.COMBAT, f"La troupe est dissoute : ses hommes rentrent à {name(site)}.", army.position, to=army.tribe_id)
     return True
 
 
@@ -1545,7 +1545,7 @@ def reequip_block(state, band_id: int) -> str:
     tribe = state.tribes[band.tribe_id]
     old = [u for u in _companies(band) if u[2] == site.id and units.outdated(tribe, u[0])]
     if not old:
-        return "Rien a reequiper"
+        return "Rien a rééquiper"
     cost = units.REEQUIP_COST * sum(u[1] for u in old)
     if band_of(state, site).stock < cost:
         return f"Il faut {cost:.0f} vivres au grenier"
@@ -1569,7 +1569,7 @@ def reequip(state, band_id: int) -> bool:
             village.stock -= units.REEQUIP_COST * u[1]
             u[0] = new.id
     if tribe.is_player:
-        _note(state, LogKind.COMBAT, f"{name(site)} reequipe ses compagnies.", site.hex, to=tribe.id)
+        _note(state, LogKind.COMBAT, f"{name(site)} rééquipe ses compagnies.", site.hex, to=tribe.id)
     return True
 
 
@@ -1599,7 +1599,7 @@ def _update_armies(state) -> None:
         band.population -= gone
         band_of(state, site).population += gone
         if state.tribes[band.tribe_id].is_player and state.tick_count % 12 == 0:
-            _note(state, LogKind.COMBAT, f"Trop longtemps loin de {name(site)} : des guerriers desertent et rentrent chez eux.", band.position, to=band.tribe_id)
+            _note(state, LogKind.COMBAT, f"Trop longtemps loin de {name(site)} : des guerriers désertent et rentrent chez eux.", band.position, to=band.tribe_id)
 
 
 def _alert(state, site, band) -> None:
@@ -1617,7 +1617,7 @@ def _alert(state, site, band) -> None:
             continue
         if state.world.distance(foe.position, site.hex) <= ALERT_RANGE:
             site.data["alert"] = state.tick_count
-            who = state.tribes[foe.tribe_id].name if foe.tribe_id in state.tribes else "etrangers"
+            who = state.tribes[foe.tribe_id].name if foe.tribe_id in state.tribes else "étrangers"
             what = "une troupe" if foe.kind == "armee" else f"{foe.population} personnes"
             _note(state, LogKind.COMBAT, f"Tour de guet de {name(site)} : des {who} approchent ({what}) !", foe.position, to=band.tribe_id)
             return
@@ -1743,9 +1743,9 @@ def next_step(state, site) -> tuple[str, int]:
     week = (state.clock.week - 1) % 13
     left = 13 - week
     if season is Season.PRINTEMPS:
-        return "Recolte a l'automne", left + 13
+        return "Récolte à l'automne", left + 13
     if season is Season.ETE:
-        return "Recolte a l'automne", left
+        return "Récolte à l'automne", left
     if season is Season.AUTOMNE:
         return "Semailles au printemps", left + 13
     return "Semailles au printemps", left
@@ -1758,21 +1758,21 @@ def lines(state, band) -> list[str]:
         return []
     fields = site.data.get("fields", [])
     seed = site.data.get("seed", 0.0)
-    out = [f"Village de {name(site)}  ·  champs {len(fields)}  ·  semences {seed:.0f}  ·  batiments {len(built(site))}"]
+    out = [f"Village de {name(site)}  ·  champs {len(fields)}  ·  semences {seed:.0f}  ·  bâtiments {len(built(site))}"]
     season = state.world.hex_season(site.hex)
     crop = expected_harvest(state, site, band)
     if fields:
-        out.append(f"Recolte attendue a l'automne : ~{crop:.0f}  ·  sol {100 * soil_avg(site):.0f} %")
+        out.append(f"Récolte attendue à l'automne : ~{crop:.0f}  ·  sol {100 * soil_avg(site):.0f} %")
     elif season in (Season.ETE, Season.AUTOMNE, Season.HIVER):
         last = site.data.get("last_harvest")
-        out.append(f"Derniere recolte : {last}  ·  semailles au printemps" if last is not None else "Semailles au printemps")
+        out.append(f"Dernière récolte : {last}  ·  semailles au printemps" if last is not None else "Semailles au printemps")
     job = works(site)
     if job:
-        out.append(f"Chantier : {BUILDINGS[job[0]].name} (encore {job[1]} sem.)  ·  [V] pour gerer le village")
+        out.append(f"Chantier : {BUILDINGS[job[0]].name} (encore {job[1]} sem.)  ·  [V] pour gérer le village")
     elif palisade_state(site) == "built":
-        out.append("Palissade : debout (defense x1,6)  ·  [V] pour gerer le village")
+        out.append("Palissade : debout (défense x1,6)  ·  [V] pour gérer le village")
     else:
-        out.append("[V] pour gerer le village : batiments, troupes")
+        out.append("[V] pour gérer le village : bâtiments, troupes")
     return out
 
 
@@ -1784,16 +1784,16 @@ def army_lines(state, band) -> list[str]:
 
     site = home_of(state, band)
     home = name(site) if site is not None else "sans village"
-    out = [f"Troupe de {home}  ·  {band.population} guerriers  ·  levee il y a {state.tick_count - band.raised} sem."]
+    out = [f"Troupe de {home}  ·  {band.population} guerriers  ·  levée il y a {state.tick_count - band.raised} sem."]
     out += units.lines(state, band)
     if band.homebound:
-        out.append(f"Dissoute : elle rentre a {home}, on ne la commande plus")
+        out.append(f"Dissoute : elle rentre à {home}, on ne la commande plus")
     elif site is not None:
         d = state.world.distance(site.hex, band.position)
         if d > 2 and state.tick_count - band.raised > ARMY_TERM:
-            out.append("Trop longtemps loin du village : des guerriers desertent")
+            out.append("Trop longtemps loin du village : des guerriers désertent")
         elif d <= ARMY_HOME:
-            out.append("Au village : [F] Rentrer libere les guerriers")
+            out.append("Au village : [F] Rentrer libère les guerriers")
     return out
 
 

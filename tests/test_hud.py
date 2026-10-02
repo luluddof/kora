@@ -34,10 +34,11 @@ def test_hit_pause_and_speed():
 def test_side_tabs_are_on_the_right_when_closed():
     layout = side_layout(1280, 720, panel=None)
     tx, ty, tw, th = layout["tab_savoirs"]
-    assert tx + tw == 1280
+    # Le rail des pastilles, colle au bord droit (une marge de 4 px).
+    assert 1270 <= tx + tw <= 1280
     assert ty >= HUD_HEIGHT
     jx, jy, jw, jh = layout["tab_journal"]
-    assert jx + jw == 1280
+    assert 1270 <= jx + jw <= 1280
     assert jy >= ty + th
     assert not any(k.startswith("tech:") for k in layout["items"])
     assert side_hit(layout, tx + 2, ty + 2) == "tab_savoirs"

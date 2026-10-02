@@ -71,7 +71,7 @@ CULTURES: dict[str, Culture] = {
             _SYL_STEPPE,
         ),
         Culture(
-            "foret", "peuple des forets", frozenset({_T.FORET}), 32.0,
+            "foret", "peuple des forêts", frozenset({_T.FORET}), 32.0,
             None, None, 3, 40, True,
             ("cueillette",),
             ("fumage", "semis", "arc", "cueillette", "poterie", "conte"),
@@ -85,7 +85,7 @@ CULTURES: dict[str, Culture] = {
             _SYL_COTE,
         ),
         Culture(
-            "vallee", "peuple des vallees", frozenset({_T.VALLEE, _T.PLAINE}), 34.0,
+            "vallee", "peuple des vallées", frozenset({_T.VALLEE, _T.PLAINE}), 34.0,
             frozenset({_T.VALLEE, _T.PLAINE}), None, 3, 45, True,
             ("cueillette",),
             ("fumage", "semis", "poterie", "conte", "huttes", "cueillette"),
@@ -99,7 +99,7 @@ CULTURES: dict[str, Culture] = {
             _SYL_COLLINES,
         ),
         Culture(
-            "desert", "nomades du desert", frozenset({_T.DESERT, _T.STEPPE}), 16.0,
+            "desert", "nomades du désert", frozenset({_T.DESERT, _T.STEPPE}), 16.0,
             None, frozenset({_T.STEPPE, _T.DESERT, _T.PLAINE}), 4, 30, False,
             ("epieu",),
             ("troupeau", "arc", "fumage", "peaux", "conte"),

@@ -77,8 +77,8 @@ def test_effect_text_is_drawn_from_the_numbers():
     assert any("Force au combat : +10 %" in line for line in lines)
     assert any("Plaine et steppe : +10 % de nourriture" in line for line in lines)
     portage = " ".join(tech.effect_lines(tech.TECHS["portage"]))
-    assert "foret : 4 cases/semaine (au lieu de 3)" in portage
-    assert "Deja pris en compte" in tech.effect_lines(tech.TECHS["feu"])[0]
+    assert "forêt : 4 cases/semaine (au lieu de 3)" in portage
+    assert "Déjà pris en compte" in tech.effect_lines(tech.TECHS["feu"])[0]
 
 
 # --- disponible, apprentissage -------------------------------------------------

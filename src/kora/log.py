@@ -64,7 +64,7 @@ def season_fr(season) -> str:
 
     names = {
         Season.PRINTEMPS: "Printemps",
-        Season.ETE: "Ete",
+        Season.ETE: "Été",
         Season.AUTOMNE: "Automne",
         Season.HIVER: "Hiver",
     }
@@ -76,14 +76,14 @@ def terrain_fr(terrain) -> str:
 
     names = {
         Terrain.PLAINE: "Plaine",
-        Terrain.VALLEE: "Vallee",
+        Terrain.VALLEE: "Vallée",
         Terrain.STEPPE: "Steppe",
-        Terrain.FORET: "Foret",
+        Terrain.FORET: "Forêt",
         Terrain.COLLINE: "Colline",
         Terrain.MONTAGNE: "Montagne",
         Terrain.SOMMET: "Sommet",
         Terrain.EAU: "Eau",
-        Terrain.COTE: "Cote",
-        Terrain.DESERT: "Desert",
+        Terrain.COTE: "Côte",
+        Terrain.DESERT: "Désert",
     }
     return names.get(terrain, terrain.value)

@@ -28,7 +28,7 @@ def test_no_camp_nor_cache_without_the_knowledge():
 def test_a_camp_is_made_counted_and_spaced():
     st, band = _state(known=("huttes",))
     assert sites.make_camp(st, 1) is not None
-    assert "tout pres" in sites.camp_block(st, 1)
+    assert "tout près" in sites.camp_block(st, 1)
     band.position = offset_to_axial(30, 10)
     assert sites.make_camp(st, 1) is not None
     band.position = offset_to_axial(5, 10)
@@ -70,7 +70,7 @@ def test_a_foreign_band_can_loot_an_unguarded_cache():
     for _ in range(30):
         sites.update(st)
     assert st.bands[2].stock > 0
-    assert any("pillee" in e.text for e in st.log.entries)
+    assert any("pillée" in e.text for e in st.log.entries)
 
 
 def test_huts_cut_winter_famine_at_camp():
