@@ -681,9 +681,16 @@ def _draw_cache(surf: pygame.Surface, cx: int, cy: int, color, size: int) -> Non
 
 
 def _ring(surf: pygame.Surface, color, cx: int, cy: int, r: int, square: bool) -> None:
-    """Anneau de selection ou d'alerte : carre autour d'un village."""
+    """Anneau de selection ou d'alerte (carre autour d'un village) ; la
+    selection (blanc) devient une lueur de braise."""
+    if tuple(color[:3]) == (255, 255, 255):
+        color = C.braise
+        g = pygame.Surface((r * 2 + 16, r * 2 + 16), pygame.SRCALPHA)
+        for i in range(4, 0, -1):
+            pygame.draw.circle(g, (*C.braise, 26 * (5 - i)), (r + 8, r + 8), r + i * 2, 2)
+        surf.blit(g, (cx - r - 8, cy - r - 8))
     if square:
-        pygame.draw.rect(surf, color, (cx - r, cy - r, 2 * r, 2 * r), 2)
+        pygame.draw.polygon(surf, color, theme.chamfer((cx - r, cy - r, 2 * r, 2 * r), 3), 2)
     else:
         pygame.draw.circle(surf, color, (cx, cy), r, 2)
 
@@ -955,8 +962,7 @@ class Renderer:
                 # Une troupe : un bouclier a la couleur du peuple, deux lances.
                 _draw_troop(self.screen, ix, iy, colr, max(6, radius))
             else:
-                pygame.draw.circle(self.screen, colr, (ix, iy), radius)
-                pygame.draw.circle(self.screen, _darken(colr, 0.45), (ix, iy), radius, 1)
+                _draw_token(self.screen, ix, iy, colr, radius)
             if band.tribe_id == state.viewer and not chiefs.is_chief_band(state, band):
                 # Clan qui se detache : anneau orange (indocile), rouge (pret a partir).
                 if band.loyalty < chiefs.LEAVE:
@@ -1430,6 +1436,8 @@ class Renderer:
         globe_yaw: float = 0.0,
         globe_pitch: float = 0.0,
     ) -> None:
+        """Le chemin d'une bande : une piste de points d'os, un repere au bout,
+        la duree de la marche."""
         if not band.path:
             return
         world = state.world
@@ -1437,24 +1445,20 @@ class Renderer:
         gcx, gcy, focal, dist = view_params(zoom, sw, sh, HUD_HEIGHT)
         pts = []
         for hx in [band.position, *band.path]:
-            pos = hex_to_globe_screen(
-                hx, world, globe_yaw, globe_pitch, gcx, gcy, focal, dist
-            )
+            pos = hex_to_globe_screen(hx, world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
             if pos is not None:
                 pts.append(pos)
-        if len(pts) >= 2:
-            pygame.draw.lines(self.screen, (255, 255, 240), False, pts, 2)
+        for a, b in zip(pts, pts[1:]):
+            theme.dotted(self.screen, a, b, C.nuit, 7, 3)
+            theme.dotted(self.screen, a, b, C.os, 7, 2)
         if pts:
+            ex, ey = int(pts[-1][0]), int(pts[-1][1])
+            pygame.draw.circle(self.screen, C.nuit, (ex, ey), 7)
+            pygame.draw.circle(self.screen, C.braise, (ex, ey), 6, 2)
             tribe = state.tribes.get(band.tribe_id)
-            weeks = travel_weeks(
-                state.world,
-                band.position,
-                band.path,
-                water_ok=bool(tribe and tribe.cabotage),
-            )
+            weeks = travel_weeks(state.world, band.position, band.path, water_ok=bool(tribe and tribe.cabotage))
             unit = "semaine" if weeks <= 1 else "semaines"
-            label = self.small.render(f"{weeks} {unit}", True, (255, 255, 230))
-            self.screen.blit(label, (pts[-1][0] + 8, pts[-1][1] - 12))
+            self._outlined_text(theme.font("petit_gras"), f"{weeks} {unit}", C.os, ex + 10 + theme.font("petit_gras").size(f"{weeks} {unit}")[0] / 2, ey - 12)
 
     def draw_menu(self) -> None:
         w, h = self.screen.get_size()
@@ -1791,3 +1795,14 @@ def draw_journal(self, state, layout, log_filter, log_newest) -> None:
             # Clic sur la ligne : la camera va sur place.
             layout["items"][f"log_{entry.seq}"] = rect
         list_y += row_h
+
+
+def _draw_token(surf: pygame.Surface, cx: int, cy: int, color, radius: int) -> None:
+    """Une bande : un jeton peint, ombre portee, reflet en haut, bord sombre."""
+    pygame.draw.circle(surf, (0, 0, 0), (cx + 1, cy + 2), radius + 1)
+    pygame.draw.circle(surf, _darken(color, 0.55), (cx, cy), radius + 1)
+    pygame.draw.circle(surf, color, (cx, cy), radius)
+    if radius >= 4:
+        hi = tuple(min(255, int(c + (255 - c) * 0.45)) for c in color)
+        pygame.draw.circle(surf, hi, (cx - radius // 3, cy - radius // 3), max(1, radius // 3))
+    pygame.draw.circle(surf, C.nuit, (cx, cy), radius + 1, 1)

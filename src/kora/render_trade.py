@@ -29,7 +29,7 @@ MAX_CANDIDATES = 4
 def trade_layout(width: int, height: int, n_routes: int = 0, n_partners: int = 0, n_candidates: int = 0) -> dict:
     bx = 12
     by = HUD_HEIGHT + 6
-    bw = max(760, width - 32 - 24)
+    bw = max(760, width - 66 - 24)
     bh = max(480, height - HUD_HEIGHT - 14)
     close = (bx + bw - 24 - 136, by + 16, 136, 28)
     tiles_y = by + 62

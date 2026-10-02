@@ -55,7 +55,7 @@ STATUS_LABEL = {"bati": "Bâti", "chantier": "En chantier", "possible": "Possibl
 
 
 def _fonts(r):
-    return theme.font("titre"), theme.font("h3")
+    return theme.font("h1"), theme.font("h3")
 
 
 def _hover(rect, mx, my) -> bool:
@@ -360,7 +360,7 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
 
     bx = 12
     by = HUD_HEIGHT + 6
-    bw = max(760, width - 32 - 24)
+    bw = max(760, width - 66 - 24)
     bh = max(480, height - HUD_HEIGHT - 14)
     close = (bx + bw - 24 - 136, by + 16, 136, 28)
     leave = (close[0] - 10 - 150, by + 16, 150, 28)

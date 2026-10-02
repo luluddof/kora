@@ -221,7 +221,7 @@ def mood(state, band) -> str:
     if is_chief_band(state, band):
         return "bande du chef"
     if band.loyalty >= 60:
-        return "fidele"
+        return "fidèle"
     if band.loyalty >= OBEY:
         return "distant"
     if band.loyalty >= LEAVE:

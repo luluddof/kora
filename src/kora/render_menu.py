@@ -19,6 +19,8 @@ import pygame
 from src.kora import tech
 from src.kora.render_tech import GOLD, GOLD_DEEP, GOLD_DIM, INK, NOTE, SOFT, _button, _fit, _gradient_card, _wrap, medallion
 from src.kora.render_village import _frame, _hover, _plain_button
+from src.kora import theme
+from src.kora.theme import C
 
 # Couleurs proposees au joueur (le bleu et le vert sont ceux des grands peuples IA).
 PALETTE = (
@@ -37,6 +39,12 @@ NAME_MAX = 20
 # Recul de la camera sur la planete du menu, et son decalage vers la droite.
 TITLE_ZOOM = 0.34
 TITLE_SHIFT = 0.17
+# L'icone de chaque bonus de depart (theme.ICON_FILES).
+BONUS_ICONS = {
+    "bonus:aurochs": "bison", "bonus:bois": "baies", "bonus:rivages": "peche", "bonus:froid": "froid",
+    "bonus:prevoyants": "cache", "bonus:fertiles": "gens", "bonus:guerriers": "hache", "bonus:eclaireurs": "voir",
+    "bonus:conteurs": "feu", "bonus:rassembleur": "chef", "bonus:diplomates": "peuples", "bonus:campeurs": "camp",
+}
 TITLE_ITEMS = (
     ("continuer", "Continuer"),
     ("nouvelle", "Nouvelle partie"),
@@ -46,10 +54,8 @@ TITLE_ITEMS = (
 
 
 def _big_font(r, size: int):
-    key = f"menu_font_{size}"
-    if not hasattr(r, key):
-        setattr(r, key, pygame.font.SysFont("georgia", size, bold=True))
-    return getattr(r, key)
+    """Les petites capitales de la charte (titres du menu)."""
+    return theme.font_file("sc-bold", size)
 
 
 # --- menu de demarrage -----------------------------------------------------------
@@ -97,38 +103,37 @@ def draw_title(r, scene, save_info: dict | None, t: float, message: str = "") ->
     r._layer_key = None
     shift = int(w * TITLE_SHIFT)
     screen.scroll(shift, 0)
-    screen.fill((14, 11, 9), (0, 0, shift, h))
-    # Un voile a gauche, sous le menu.
-    veil = pygame.Surface((w, h), pygame.SRCALPHA)
-    for x in range(0, min(w, 760), 4):
-        a = int(210 * max(0.0, 1.0 - x / 760.0) ** 1.2)
-        pygame.draw.rect(veil, (6, 8, 12, a), (x, 0, 4, h))
+    screen.fill(C.nuit, (0, 0, shift, h))
+    # La nuit a gauche, sous le menu ; une chaleur de feu en bas.
+    key = ("title_veil", w, h)
+    veil = theme._PANELS.get(key)
+    if veil is None:
+        veil = pygame.Surface((w, h), pygame.SRCALPHA)
+        for x in range(0, min(w, 780), 4):
+            a = int(225 * max(0.0, 1.0 - x / 780.0) ** 1.1)
+            pygame.draw.rect(veil, (*C.nuit, a), (x, 0, 4, h))
+        for y in range(h - 260, h, 4):
+            a = int(60 * (y - (h - 260)) / 260)
+            pygame.draw.rect(veil, (*C.ocre_sombre, a), (0, y, min(w, 700), 4))
+        theme._PANELS[key] = veil
     screen.blit(veil, (0, 0))
     lay = title_layout(w, h)
     r.title_hits = lay
     tx, ty = lay["title"]
-    big = _big_font(r, 78)
-    shadow = big.render("KORA", True, (20, 16, 10))
-    screen.blit(shadow, (tx + 3, ty + 3))
-    screen.blit(big.render("KORA", True, GOLD), (tx, ty))
-    sub = _big_font(r, 20).render("Du feu aux premiers villages", True, (226, 214, 186))
-    screen.blit(sub, (tx + 4, ty + big.get_height() + 2))
-    pygame.draw.line(screen, GOLD_DEEP, (tx, ty + big.get_height() + 34), (tx + 360, ty + big.get_height() + 34))
+    lh = _logo(screen, tx, ty - 8, t)
+    theme.text(screen, "Du feu aux premiers villages", "recit", C.lin, (tx + 6, ty + lh - 6))
+    theme.stroke(screen, tx + 2, ty + lh + 26, 340, C.ocre, 3)
     mx, my = pygame.mouse.get_pos()
-    for key, label in TITLE_ITEMS:
-        rect = lay["buttons"][key]
-        on = key != "continuer" or save_info is not None
+    for key_, label in TITLE_ITEMS:
+        rect = lay["buttons"][key_]
+        on = key_ != "continuer" or save_info is not None
         hover = on and _hover(rect, mx, my)
-        if key == "quitter":
-            _plain_button(r, rect, label, hover, r.tech_head if hasattr(r, "tech_head") else r.font)
-        elif key == "continuer":
-            _button(screen, _big_font(r, 20), rect, "", on, hover)
-            x, y, bw, bh = rect
-            lab = _big_font(r, 20).render(label, True, (28, 20, 8) if hover else INK if on else (143, 130, 114))
-            screen.blit(lab, (x + (bw - lab.get_width()) // 2, y + 7))
-        else:
-            _button(screen, _big_font(r, 20), rect, label, on, hover)
-        if key == "continuer":
+        x, y, bw, bh = rect
+        if key_ == "continuer":
+            theme.button(screen, rect, "", "principal", on, hover)
+            lab = theme.font_file("sc-bold", 22)
+            img = lab.render(label, True, C.nuit if on else C.cendre)
+            screen.blit(img, (x + (bw - img.get_width()) // 2, y + 6))
             if save_info is not None:
                 info = f"{save_info['name']}  ·  an {save_info['year']}  ·  {save_info['population']} personnes"
                 if save_info.get("villages"):
@@ -137,14 +142,16 @@ def draw_title(r, scene, save_info: dict | None, t: float, message: str = "") ->
                     info += "  ·  peuple disparu"
             else:
                 info = "Aucune partie sauvegardée"
-            s = r.tiny.render(_fit(r.tiny, info, bw - 16), True, (40, 30, 14) if hover else NOTE)
-            screen.blit(s, (x + (bw - s.get_width()) // 2, y + bh - 17))
+            theme.text(screen, theme.fit(theme.font("mini_gras"), info, bw - 20), "mini_gras", (58, 26, 10) if on else C.cendre, (x + (bw - theme.font("mini_gras").size(theme.fit(theme.font("mini_gras"), info, bw - 20))[0]) // 2, y + bh - 21))
+        elif key_ == "quitter":
+            theme.button(screen, rect, label, "discret", True, hover, role="h3")
+        else:
+            theme.button(screen, rect, label, "second", on, hover, role="h3")
     if message:
-        m = r.small.render(message, True, (236, 170, 90))
         x, y, bw, bh = lay["buttons"]["quitter"]
-        screen.blit(m, (x, y + bh + 16))
-    ver = r.tiny.render(f"version {__version__}", True, (150, 150, 146))
-    screen.blit(ver, (12, h - ver.get_height() - 8))
+        theme.text(screen, message, "petit_gras", C.alerte, (x, y + bh + 16), 560)
+    theme.text(screen, f"version {__version__}", "mini", C.cendre, (14, h - 24))
+    theme.text(screen, "Icônes : game-icons.net (CC BY 3.0) · Polices : Alegreya (OFL)", "mini", (92, 80, 68), (w - 420, h - 24))
 
 
 # --- creation de la tribu -----------------------------------------------------------
@@ -155,14 +162,14 @@ def setup_layout(width: int, height: int) -> dict:
     bh = min(720, height - 30)
     bx = (width - bw) // 2
     by = (height - bh) // 2
-    name = (bx + 30, by + 96, 320, 36)
+    name = (bx + 30, by + 112, 320, 36)
     randomize = (name[0] + name[2] + 10, name[1] + 3, 120, 30)
     colors = []
     cx = randomize[0] + randomize[2] + 40
     for i in range(len(PALETTE)):
         colors.append((cx + i * 38, name[1] + 2, 30, 30))
     cols, rows = 4, 3
-    top = by + 190
+    top = by + 204
     gap = 12
     card_w = (bw - 60 - (cols - 1) * gap) // cols
     card_h = max(88, min(128, (by + bh - 90 - top - (rows - 1) * gap) // rows))
@@ -211,13 +218,10 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
     screen.blit(veil, (0, 0))
     _frame(r, lay["box"])
     bx, by, bw, bh = lay["box"]
-    screen.blit(title_font.render("Votre peuple", True, GOLD), (bx + 30, by + 22))
-    screen.blit(
-        r.tiny.render("On vient de maîtriser le feu. Nommez votre peuple, donnez-lui sa couleur et ses forces de départ.", True, NOTE),
-        (bx + 32, by + 56),
-    )
+    theme.title(screen, "Votre peuple", bx + 30, by + 18, "titre")
+    theme.text(screen, "On vient de maîtriser le feu. Nommez votre peuple, donnez-lui sa couleur et ses forces de départ.", "recit_petit", C.lin, (bx + 32, by + 62))
     # Le nom.
-    screen.blit(r.tiny.render("NOM DU PEUPLE", True, GOLD_DIM), (lay["name"][0], lay["name"][1] - 17))
+    theme.text(screen, "Nom du peuple", "etiquette", C.ocre_jaune, (lay["name"][0], lay["name"][1] - 20))
     nx, ny, nw, nh = lay["name"]
     mode = setup.get("mode", "solo")
     typing = setup.get("typing") is True
@@ -228,7 +232,7 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
     screen.blit(head_font.render(text + caret, True, INK), (nx + 10, ny + (nh - head_font.get_height()) // 2))
     _button(screen, r.small, lay["random"], "Au hasard", True, _hover(lay["random"], mx, my))
     # La couleur.
-    screen.blit(r.tiny.render("COULEUR", True, GOLD_DIM), (lay["colors"][0][0], lay["name"][1] - 17))
+    theme.text(screen, "Couleur", "etiquette", C.ocre_jaune, (lay["colors"][0][0], lay["name"][1] - 20))
     for i, rect in enumerate(lay["colors"]):
         color = PALETTE[i]
         chosen = tuple(setup.get("color", ())) == color
@@ -249,9 +253,8 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
         top, bot = ((86, 70, 38), (54, 43, 24)) if chosen else (((67, 50, 36), (39, 30, 23)) if hover else ((52, 40, 30), (34, 25, 20)))
         screen.blit(_gradient_card(cw, ch, top, bot, 7), (x, y))
         pygame.draw.rect(screen, GOLD if chosen else (GOLD_DEEP if hover else (95, 72, 51)), rect, 2 if chosen else 1, border_radius=7)
-        state = "connu" if chosen else "disponible"
-        med = medallion(0, bonus.icon, state, 15)
-        screen.blit(med, (x + 8, y + 8))
+        med = theme.medallion(BONUS_ICONS.get(bid, "feu"), 16, "connu" if chosen else "normal")
+        screen.blit(med, (x + 6, y + 6))
         screen.blit(r.small.render(_fit(r.small, bonus.name, cw - 52), True, INK), (x + 46, y + 9))
         yy = y + 30
         for part in _wrap(r.tiny, bonus.about, cw - 54)[:2]:
@@ -688,3 +691,27 @@ def draw_mp_overlay(r, mp, state, chat_text) -> None:
     elif not lines:
         hint = r.tiny.render("Entrée : écrire aux autres joueurs", True, (138, 123, 108))
         screen.blit(hint, (bx, h - 20))
+
+
+def _logo(screen, x: int, y: int, t: float) -> int:
+    """Le logo : KORA grave dans l'ocre, une lueur de feu qui respire."""
+    f = theme.font("logo")
+    img = f.render("KORA", True, C.ocre)
+    glow = pygame.Surface((img.get_width() + 80, img.get_height() + 60), pygame.SRCALPHA)
+    k = 0.6 + 0.4 * theme.pulse(t, 3.0)
+    for i in range(10, 0, -1):
+        pygame.draw.ellipse(glow, (*C.braise, int(7 * k * (11 - i))), (40 - i * 4, 30 - i * 3, img.get_width() + i * 8, img.get_height() + i * 6))
+    screen.blit(glow, (x - 40, y - 30))
+    screen.blit(f.render("KORA", True, C.nuit), (x + 3, y + 4))
+    screen.blit(img, (x, y))
+    # Le haut des lettres, eclaire par le feu.
+    hi = f.render("KORA", True, C.braise)
+    top = pygame.Surface(hi.get_size(), pygame.SRCALPHA)
+    top.blit(hi, (0, 0))
+    mask = pygame.Surface(hi.get_size(), pygame.SRCALPHA)
+    for yy in range(hi.get_height()):
+        a = int(160 * max(0.0, 1.0 - yy / (hi.get_height() * 0.55)))
+        pygame.draw.line(mask, (255, 255, 255, a), (0, yy), (hi.get_width(), yy))
+    top.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    screen.blit(top, (x, y))
+    return img.get_height()

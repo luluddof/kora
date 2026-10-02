@@ -657,7 +657,7 @@ def stability_word(value: float) -> str:
         return "stable"
     if value >= UNREST:
         return "fragile"
-    return "agite"
+    return "agité"
 
 
 def stability_growth(state, band) -> float:

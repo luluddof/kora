@@ -269,6 +269,15 @@ def _log_to_json(log: GameLog) -> dict:
     }
 
 
+def _accents(text: str) -> str:
+    """Les journaux d'avant les accents (version 0.2) : on les leur rend."""
+    if text.isascii():
+        from src.kora.francais import convert
+
+        return convert(text)
+    return text
+
+
 def _log_from_json(data) -> GameLog:
     log = GameLog()
     if not isinstance(data, dict):
@@ -281,7 +290,7 @@ def _log_from_json(data) -> GameLog:
                     year=int(raw["year"]),
                     week=int(raw["week"]),
                     kind=LogKind(raw["kind"]),
-                    text=str(raw["text"]),
+                    text=_accents(str(raw["text"])),
                     seq=int(raw.get("seq", 0)),
                     hex=None if raw.get("hex") is None else _hex_from_list(raw["hex"]),
                 )
