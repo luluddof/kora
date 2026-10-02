@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-09-26.
+Derniere mise a jour : 2026-10-02.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -21,8 +21,10 @@ et les outils de pierre) jusqu'aux civilisations (vision longue :
 et lisible. Le joueur deplace des groupes de gens, lit les saisons,
 decide de rester, migrer, raider, s'installer, commercer.
 
-Interfaces : inspiration VICTORIA 3 (graphes, cartes, cadres dores,
-tuiles, belles fenetres). Tout en francais.
+Interfaces : inspiration VICTORIA 3 pour la forme (graphes, cartes,
+tuiles, belles fenetres) ; depuis le 2026-10-02, une identite PROPRE, la
+charte « Feu et ocre » (docs/charte-graphique.txt). Tout en francais
+accentue.
 
 Le monde doit paraitre GRAND : peu de vue (brouillard epais), marche
 lente, bandes dessinees petites a taille fixe.
@@ -117,7 +119,7 @@ lente, bandes dessinees petites a taille fixe.
     echange de ressources avec les pays ayant un accord commercial.
     Fait dans le code (metiers, accord commercial, lignee) MAIS livre
     au minimum : l'exe du joueur n'etait pas a jour, le commerce restait
-    un calcul automatique peu visible.                          A REPRENDRE
+    un calcul automatique peu visible.     REPRIS le jour meme (13 h, ci-dessous)
 2026-09-25 (13 h) - MECONTENT
   "J'ai l'impression que tu fais le minimum voire moins. J'ai fait 4
   villages, ce qui devrait accelerer l'eloignement avec les clans, mais
@@ -154,7 +156,8 @@ lente, bandes dessinees petites a taille fixe.
     FAIT (spec 2026-09-25-carte-commerce-arbre-savoirs-design.txt) : bug
     corrige (verifie sur sa partie : nomades des civilisations fixees 55
     -> 13 en 4 ans), mode de carte Commerce [X], arbre des savoirs en
-    toile (glisser, molette, mini-carte, Recentrer). Profondeur : des
+    toile (glisser, molette, Recentrer ; la mini-carte retiree le 2026-10-02
+    a sa demande). Profondeur : des
     PROPOSITIONS a choisir (2026-09-25-profondeur-deux-ages-propositions.txt).
   - Mettre le tout sur GitHub pour passer en mode cloud ("plus tard, pas
     tout de suite" : le depot d'abord, le passage au cloud plus tard).
@@ -370,13 +373,11 @@ lente, bandes dessinees petites a taille fixe.
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes
   les pistes reunies et detaillees dans
-  2026-10-02-profondeur-propositions-detaillees.txt (il a demande de
-  "redetailler") ; ma recommandation : 1. le pouvoir dans le peuple (voix
-  et coutumes + chefferie), 2. betail et guerre avec des buts, 3. memoire,
-  4. age tribal vivant, 5. civilisation vivante.
-  En attente de SON choix : les propositions de profondeur des deux ages,
-  deuxieme reflexion (docs/superpowers/specs/2026-09-26-profondeur-deuxieme-reflexion.txt ;
-  ma recommandation : F1 Les Voix du peuple et les Coutumes d'abord).
+  2026-10-02-profondeur-propositions-detaillees.txt (elle remplace les
+  propositions du 2026-09-25 et du 2026-09-26). Fait : la chefferie (1B).
+  Mis de cote : les voix et coutumes (1A). Restent : betail et guerre avec
+  des buts (2), memoire (3), age tribal vivant (4), civilisation vivante
+  (5), et le systeme de LOIS qu'il annonce.
   Autres pistes qui suivent la vision (a proposer, rien n'est decide) :
   - Commerce : caravanes attaquables par un tiers en guerre, evenements de
     route (marchand, porteurs perdus), biens de prestige (parures, ambre),
