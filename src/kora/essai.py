@@ -33,6 +33,14 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
         ready = sorted((tid for tid in tech.TECHS if tech.status(state, me, tid) == "disponible"), key=lambda t: (tech.TECHS[t].cost, t))
         if ready:
             issue(make(me, "learn", ready[0]))
+    # Les situations : une action permise, de temps en temps (ordre "situation").
+    from src.kora import situations
+
+    for inst in situations.of_tribe(state, me):
+        if rng.random() < 0.25:
+            ok = [a.id for a in situations.SPECS[inst.sid].actions if not situations.action_block(state, inst, me, a.id)]
+            if ok:
+                issue(make(me, "situation", inst.uid, rng.choice(ok)))
     band = rng.choice(mine)
     if band.village:
         site = villages.site_of(state, band)
@@ -101,6 +109,9 @@ def host_run(port: int, years: int) -> dict:
         "seconds": round(time.time() - t0, 1),
         "bands": sum(1 for b in st.bands.values() if b.tribe_id in (1, 2)),
         "villages": sum(1 for s in st.sites.values() if s.kind == "village" and s.tribe_id in (1, 2)),
+        # Situations nees, et actions des deux joueurs dans les leurs.
+        "situations": st.next_situation_uid - 1,
+        "acts": sum(len(p["acted"]) for inst in st.situations for t, p in inst.participants.items() if t in (1, 2)),
     }
     host.close()
     return out
@@ -149,6 +160,7 @@ def compare(host: dict, friend: dict) -> tuple[bool, str]:
     lines = [
         f"hôte : semaine {host['tick']} en {host['seconds']} s, {host['bands']} bandes et {host['villages']} villages aux deux joueurs",
         f"ami  : semaine {friend['tick']}",
+        f"situations nées : {host.get('situations', 0)} ; actions des joueurs encore visibles : {host.get('acts', 0)}",
         f"empreintes comparées : {len(common)} ; différentes : {len(bad)} ; resynchronisations : hôte {host['resyncs']}, ami {friend['resyncs']}",
     ]
     ok = not bad and host["resyncs"] == 0 and friend["resyncs"] == 0 and host["tick"] == friend["tick"]

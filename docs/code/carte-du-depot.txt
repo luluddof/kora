@@ -51,6 +51,10 @@ ni la nourriture ni les raids.
   tests/                  tests sans fenetre (pytest)
   data/kora_map.json      carte cuite (768 x 384, wrap est-ouest)
                           + noms de l'atlas precalcules
+  data/fonts/             polices Alegreya / Alegreya Sans (OFL, OFL.txt)
+  data/icons/             87 icones game-icons.net (CC BY 3.0, CREDITS.txt)
+  docs/charte-graphique.txt  la charte « Feu et ocre » (a lire avant tout
+                          dessin) ; docs/charte/planche.png sa planche
   tools/empreinte.py      preuve qu'un refactoring ne change pas le jeu
   tools/arbre_savoirs.py  ecrit l'arbre des savoirs dans sa spec
   tools/essai_reseau.py   multijoueur : deux PROCESSUS (hote, ami), la vraie
@@ -58,6 +62,10 @@ ni la nourriture ni les raids.
                           empreintes doivent etre identiques (avant de publier)
   tools/essai_graines.py  une sauvegarde (COPIE) continuee dans deux
                           processus aux graines de hachage differentes
+  tools/accents.py        accentue les textes AFFICHES des sources (pas les
+                          docstrings ni les noms) ; --dry --montrer : revoir
+  tools/recuperer_assets.py  telecharge polices et icones dans data/
+  tools/planche_charte.py dessine docs/charte/planche.png
   Kora.spec               empaquetage PyInstaller
   dist/Kora/Kora.exe      livrable Windows
   saves/kora.json         sauvegarde unique en dev
@@ -67,8 +75,8 @@ Regle dure :
   sim.py, world.py, path.py, clock.py, ai.py, ai_war.py, tech.py,
   vision.py, persist.py, peoples.py, influence.py, sites.py, chiefs.py,
   diplo.py, events.py, events_data.py, resources.py, villages.py,
-  orders.py, battle.py, units.py, goods.py n'importent JAMAIS pygame ni
-  render.py.
+  orders.py, battle.py, units.py, goods.py, situations.py, commands.py,
+  francais.py n'importent JAMAIS pygame ni render.py.
   numpy : seulement dans globe_draw.py (rendu), mapgen.py et
   resources.generate_layers (cuisson de la carte, hors jeu).
   La simulation reste en python pur (petits calculs par bande).
@@ -90,15 +98,16 @@ Ici c'est plus petit, mais le meme decoupage :
                     ai_war.py, peoples.py, influence.py, sites.py,
                     chiefs.py, diplo.py, events.py (+ events_data.py),
                     resources.py, villages.py, orders.py, battle.py, units.py,
-                    goods.py
+                    goods.py, situations.py
                     "une semaine avance"
 
   Persistance       persist.py, data/kora_map.json
                     "on charge / on ecrit un JSON"
 
   Presentation      look.py, atlas.py, globe.py, globe_draw.py,
-                    render.py, render_panels.py, render_tech.py,
-                    render_village.py, app.py
+                    theme.py (la charte), render.py, render_panels.py,
+                    render_tech.py, render_village.py, render_trade.py,
+                    render_menu.py, render_situations.py, app.py
                     "on dessine et on recoit la souris"
 
 Dependances autorisees (fleche = "importe") :
@@ -402,6 +411,43 @@ src/kora/render_menu.py
   de l'hote), menu du multijoueur, SALON (4 places, prets, discussion) ;
   en partie : draw_mp_overlay (bandeau des joueurs, discussion).
 
+src/kora/theme.py
+  LA CHARTE EN CODE (docs/charte-graphique.txt) : couleurs (classe C : nuit,
+  cuir, pierre, os, ocre, braise, savoir...), theme.font(role) (ROLES :
+  titre, h1..h3, texte, petit, mini, recit, chiffre, etiquette...),
+  icon / medallion (SVG de data/icons, teintes), panel (peau, pierre,
+  carte, creux, bandeau, infobulle, toast : pierre taillee a grain),
+  button (principal / second / discret), bar, chip, tooltip, veil, glow,
+  pulse, dotted, title, wrap, fit. data_dir() trouve data/ dans l'exe.
+  theme.reset() entre deux tests (conftest). Jamais de couleur ni de
+  police en dur dans un render*.py : tout passe par ici.
+
+src/kora/francais.py  (pas de pygame)
+  convert(texte) : accentue un texte ecrit sans accents (dictionnaire MOTS,
+  PHRASES, regles du « a » / « à », exceptions APRES). Sert a
+  tools/accents.py et a persist (les vieux journaux s'accentuent au
+  chargement).
+
+src/kora/situations.py  (pas de pygame)
+  Crises et conjonctures (spec 2026-10-02-profondeur-epoques-situations).
+  Situation (uid, sid, lieu centre/rayon, etape, jauge, participants avec
+  score et actions faites, issue), Action, Spec (candidates = le
+  contexte, chance, month, act, end, start, goal, fail) ; les 12 dans
+  SPECS ; EXTRA_EFFECTS (actions, prix, sequelles). monthly (appele par
+  sim.tick apres events.monthly) : naissances, mois, IA (_ai), fins
+  (_finish), effets (_sync_effects -> Tribe.situation_effects, lus par
+  tech.bonuses comme des savoirs : tech.situation_effect). act /
+  action_block (ordre "situation" de commands.py). Hasard : _rand (tire de
+  la semaine et de cles, jamais story_rng). to_json / from_json (persist),
+  copy_all (sim.snapshot).
+
+src/kora/render_situations.py
+  draw_banner (dalles sous la barre du haut, jauge en anneau ; uid ->
+  rect dans renderer.situation_hits), draw_window (la fenetre ;
+  window_layout / window_hit purs, renderer.situation_window), draw_on_map
+  (cercle de points et medaillon au lieu). app.py : ui["situation_open"],
+  open_situation (pause en solo) / close_situation / situation_click.
+
 src/kora/commands.py  (pas de pygame)
   Le canal des ordres : [peuple, genre, args...] -> apply() (verifie que
   le joueur commande ce qui est a lui). Tout ce que l'interface change a
@@ -636,8 +682,16 @@ Exe Windows                         Kora.spec puis
 Essai reseau de l'exe               tools/essai_reseau.py 3 --exe
                                     dist-unfichier/Kora.exe (KORA_ESSAI,
                                     src/kora/essai.py ; KORA_BIND=127.0.0.1)
-Carte incluse dans l'exe            Kora.spec datas=
-                                    ('data/kora_map.json', 'data')
+Carte, polices, icones dans l'exe   Kora.spec ET Kora-unfichier.spec datas=
+                                    data/kora_map.json, data/fonts,
+                                    data/icons
+Une couleur, une police, un bouton  theme.py (et docs/charte-graphique.txt)
+Un texte affiche                    en francais accentue ; verifier :
+                                    python tools/accents.py --dry
+Une crise ou une conjoncture        situations.py : une classe Spec,
+                                    l'ajouter a SPECS ; ses effets dans
+                                    stages / EXTRA_EFFECTS ; tests dans
+                                    tests/test_situations.py
 
 
 6. COORDONNEES (PIEGE FREQUENT)
@@ -772,6 +826,9 @@ test_chiefs.py             chefs, attachement, depart, succession
 test_diplo.py              contacts, raisons, pactes, cadeaux,
                            diffusion, clan invite
 test_events.py             evenements bien formes, cartes, suites
+test_situations.py         les 12 situations : declencheurs, effets, crise
+                           resolue = tout comme avant, prix a plusieurs,
+                           sauvegarde, hasard propre, IA
 test_resources.py          couches cuites, plusieurs par case
 test_villages.py           fonder, champs, recolte, semences,
                            pillage, palissade

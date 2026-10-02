@@ -127,6 +127,15 @@ Liste des icones : theme.ICONS (cle -> fichier).
     decouverte, politique, saison).
   Evenements et situations : dalle de pierre, illustration-icone dans un
     grand medaillon, recit en italique, choix en boutons larges.
+  Situations (render_situations.py) : sous la barre, une dalle par
+    situation : medaillon rouge de sang (crise) ou braise (conjoncture),
+    la jauge en ANNEAU autour (vert : resolution ; ocre jaune : votre
+    place), le temps qui reste ; une situation nouvelle respire (lueur).
+    Sa fenetre : etiquettes CRISE / CONJONCTURE et le temps en puces,
+    deux colonnes a pointilles (ce qui pese ou le prix ; la jauge ou le
+    classement), les actions en larges cartes (cout et effet en puces a
+    droite, la raison du refus en ambre). Sur la carte : un cercle de
+    points a la couleur du genre et le medaillon au-dessus du lieu.
   Menu de demarrage : la planete dans la nuit, le logo KORA grave dans
     l'ocre avec une lueur de feu.
 

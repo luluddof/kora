@@ -62,6 +62,12 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - Survolez une case pour voir ce qu'elle produit ; un clic l'épingle.
 - Le **journal** (à droite) raconte ce qui arrive ; un clic sur une ligne y emmène la caméra.
 - Les **cartes d'événements** apparaissent à gauche de l'écran : cliquez pour lire et choisir (ou **E**).
+- Les **situations** s'affichent sous la barre du haut : des **crises** (disette, épidémie, gibier épuisé, grand hiver,
+  rouille des blés, mal des bêtes, crue) et des **conjonctures** où plusieurs peuples se disputent la première place
+  (grand passage des troupeaux, rassemblement des clans, grands travaux, route du sel, essor des chefferies). Elles
+  naissent de ce qui se passe dans votre partie, et certaines sont rares. Un clic ouvre leur fenêtre : comment s'en
+  sortir, ce que coûte chaque action, le temps qui reste. Une crise surmontée : tout redevient comme avant. Une
+  conjoncture gagnée face à d'autres peuples : un bonus de quelques années.
 
 Conseils : l'hiver tue. Faites des réserves à l'automne, cherchez les vallées, et ne laissez pas vos clans s'éloigner
 trop du chef. Au bout de quelques années, les savoirs du néolithique permettent de **fonder un village** : c'est un
@@ -144,7 +150,15 @@ python -m PyInstaller Kora-unfichier.spec --distpath dist-unfichier   # l'exe en
 ```
 
 Publier une version : mettre à jour `__version__` dans `src/kora/__init__.py`, puis
-`git tag v0.1.1 && git push --tags` : GitHub construit l'exe et le met dans les Releases
+`git tag -a v0.3.0 -m "..." && git push origin v0.3.0` : GitHub construit l'exe et le met dans les Releases
 (`.github/workflows/release.yml`).
 
-La vision du jeu et les règles de travail : `docs/VISION-KORA.txt`, `CLAUDE.md`.
+La vision du jeu et les règles de travail : `docs/VISION-KORA.txt`, `CLAUDE.md`. L'identité visuelle (la charte
+« Feu et ocre ») : `docs/charte-graphique.txt` ; elle est codée dans `src/kora/theme.py`.
+
+## Crédits
+
+- Icônes : [game-icons.net](https://game-icons.net) (Lorc, Delapouite, Caro Asercion, Guard13007, Skoll), licence
+  [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) ; la liste est dans `data/icons/CREDITS.txt`.
+- Polices : Alegreya SC et Alegreya Sans (The Alegreya Project Authors, Huerta Tipográfica), licence
+  [SIL Open Font License](https://openfontlicense.org) ; `data/fonts/OFL.txt`.

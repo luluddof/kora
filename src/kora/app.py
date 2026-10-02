@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import chiefs, commands, diplo, events, orders
+from src.kora import chiefs, commands, diplo, events, orders, situations
 from src.kora.globe import (
     FOCUS_ZOOM,
     clamp_pitch,
@@ -228,6 +228,8 @@ def _fresh_ui() -> dict:
         "tribe_pick": None,
         "people_pick": None,
         "event_open": None,
+        # Situation (crise, conjoncture) dont la fenetre est ouverte (uid).
+        "situation_open": None,
         "found": None,
         "found_oath": None,
         "village_open": None,
@@ -582,6 +584,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
     ui: dict = _fresh_ui()
     resume_after_event = False
     resume_after_found = False
+    resume_after_situation = False
     confirm = {"band": None, "until": 0.0}
     now = 0.0
 
@@ -978,6 +981,40 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             state.clock.paused = False
         resume_after_event = False
 
+    def open_situation(uid) -> None:
+        nonlocal resume_after_situation
+        if situations.find(state, uid) is None:
+            return
+        if ui["situation_open"] is None and mp is None:
+            # Lire une crise met en pause (en solo) ; on reprend en fermant.
+            resume_after_situation = not state.clock.paused
+            state.clock.paused = True
+        ui["situation_open"] = uid
+
+    def close_situation() -> None:
+        nonlocal resume_after_situation
+        ui["situation_open"] = None
+        if resume_after_situation:
+            state.clock.paused = False
+        resume_after_situation = False
+
+    def situation_click(hit) -> None:
+        from src.kora.situations import SPECS
+
+        inst = situations.find(state, ui["situation_open"])
+        if inst is None or hit is None:
+            close_situation()
+            return
+        if hit == "close":
+            close_situation()
+        elif hit == "place" and inst.center is not None:
+            close_situation()
+            show_place(inst.center)
+        elif isinstance(hit, tuple) and hit[0] == "action":
+            actions = SPECS[inst.sid].actions
+            if hit[1] < len(actions):
+                issue(commands.make(me(), "situation", inst.uid, actions[hit[1]].id))
+
     def order_move(hx) -> bool:
         band = state.bands.get(selected) if selected is not None else None
         if band is None:
@@ -1188,6 +1225,8 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                 if event.key == pygame.K_ESCAPE:
                     if ui["event_open"] is not None:
                         close_event()
+                    elif ui["situation_open"] is not None:
+                        close_situation()
                     elif ui["found"] is not None:
                         close_found()
                     elif ui["village_open"] is not None:
@@ -1202,7 +1241,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         pinned_hex = None
                     else:
                         menu_open = not menu_open
-                elif menu_open or ui["event_open"] is not None or ui["found"] is not None:
+                elif menu_open or ui["event_open"] is not None or ui["found"] is not None or ui["situation_open"] is not None:
                     pass
                 elif side_panel == "savoirs" and event.key in (
                     pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN,
@@ -1315,6 +1354,13 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                                 close_event()
                             issue(commands.make(me(), "event", uid, i), chosen)
                             break
+            elif ui["situation_open"] is not None:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    from src.kora.render_situations import window_hit
+
+                    hit = window_hit(renderer.situation_window, event.pos[0], event.pos[1])
+                    if hit != "box":
+                        situation_click(hit)
             elif ui["found"] is not None:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     from src.kora.render_village import found_hit
@@ -1402,6 +1448,12 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     ) if isinstance(renderer.event_hits, dict) else None
                     if card_uid is not None:
                         open_event(card_uid)
+                        continue
+                    from src.kora.render_situations import banner_hit
+
+                    sit_uid = banner_hit(renderer.situation_hits, mx, my)
+                    if sit_uid is not None:
+                        open_situation(sit_uid)
                         continue
                     if open_fight is None:
                         hit_toast = toast_hit(renderer.toast_hits, mx, my)
@@ -1558,6 +1610,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             menu_open
             or ui["event_open"] is not None
             or ui["found"] is not None
+            or ui["situation_open"] is not None
             or (ui["village_open"] is not None and bool(renderer.village_hits) and _in_rect(renderer.village_hits["box"], mx, my))
             or (ui["trade_open"] and bool(renderer.trade_hits) and _in_rect(renderer.trade_hits["box"], mx, my))
             or my < HUD_HEIGHT
@@ -1570,6 +1623,8 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             )
             if hx is not None:
                 hover_info = hex_inspect(state, hx)
+        if ui["situation_open"] is not None and situations.find(state, ui["situation_open"]) is None:
+            close_situation()
         renderer.draw(
             state,
             camera_x,

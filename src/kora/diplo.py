@@ -49,15 +49,22 @@ MOD_TEXT = {
     "reputation": ("Votre réputation de traître", "Leur réputation de traîtres", 0.3),
     "mariage": ("Mariages entre vos chefs", "Mariages entre vos chefs", 0.3),
     "pillage": ("Vous avez pillé leurs vivres", "Ils ont pillé vos vivres", 1.0),
-    "tribut_refuse": ("Ils ont refuse votre tribut", "Vous avez refuse leur tribut", 0.8),
+    "tribut_refuse": ("Ils ont refusé votre tribut", "Vous avez refusé leur tribut", 0.8),
     "debauchage": ("Vous avez pris leurs gens", "Ils ont pris vos gens", 0.6),
     "rupture": ("Vous avez rompu un pacte", "Ils ont rompu un pacte", 0.6),
     "accueil": ("Vous les avez bien accueillis", "Ils vous ont bien accueillis", 0.8),
-    "chasses": ("Vous les avez chasses", "Ils vous ont chasses", 0.8),
+    "chasses": ("Vous les avez chassés", "Ils vous ont chassés", 0.8),
     "entraide": ("Entraide", "Entraide", 0.6),
     "echanges": ("Échanges réguliers", "Échanges réguliers", 0.3),
-    "route_fermee": ("Vous avez ferme une de leurs routes", "Ils ont ferme une de vos routes", 0.5),
+    "route_fermee": ("Vous avez fermé une de leurs routes", "Ils ont fermé une de vos routes", 0.5),
     "union_refusee": ("Union refusée", "Union refusée", 0.8),
+    # Les situations (situations.py).
+    "passage": ("Rivaux au grand passage", "Rivaux au grand passage", 0.5),
+    "chasse_partagee": ("Vous leur avez laissé la chasse", "Ils vous ont laissé la chasse", 0.5),
+    "rassemblement": ("Le rassemblement des clans", "Le rassemblement des clans", 0.3),
+    "carrefour": ("Ils passent par vous", "Vous passez par eux", 0.3),
+    "intimidation": ("Vous les avez menacés", "Ils vous ont menacés", 0.6),
+    "domination": ("Vous dominez la vallée", "Ils dominent la vallée", 0.2),
 }
 
 

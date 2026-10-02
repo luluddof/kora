@@ -210,3 +210,39 @@ def test_host_can_resume_a_saved_multiplayer_game():
     assert friend.state.tick_count == saved.tick_count
     assert session.sync_digest(friend.state) == session.sync_digest(again.state)
     _close(again, friend)
+
+
+def test_a_situation_is_lived_the_same_on_both_machines():
+    """Une crise touche les deux joueurs : chacun agit par un ordre, l'IA
+    agit, les mois passent ; les deux machines restent identiques."""
+    from src.kora import situations
+
+    host, client = _started()
+    try:
+        hs, cs = host.state, client.state
+        for st in (hs, cs):
+            st.story = True
+            centre = next(b.position for b in st.bands.values() if b.tribe_id == 1)
+            situations._start(st, situations.SPECS["mal"], centre, 40, [1, 2, 3], {})
+            st.tribes[2].prestige = 30
+        uid = hs.situations[0].uid
+        assert session.sync_digest(hs) == session.sync_digest(cs)
+        answers = []
+        client.issue(make(2, "situation", uid, "rites"), answers.append)
+        host.issue(make(1, "situation", uid, "isoler"))
+        client.issue(make(2, "situation", uid, "isoler"), answers.append)
+        host.set_speed(5)
+        assert _until(lambda: hs.tick_count >= 24, lambda: host.pump(0.05), lambda: client.pump(0.05), timeout=30)
+        host.toggle_pause()
+        assert _until(lambda: cs.tick_count == hs.tick_count, lambda: host.pump(0.05), lambda: client.pump(0.05))
+        for then, res in client.take_results():
+            if then:
+                then(res)
+        assert [a["msg"] for a in answers] == ["Rites de guérison : fait.", "Isoler les malades : fait."]
+        inst = situations.find(cs, uid)
+        assert set(inst.participants[2]["acted"]) == {"rites", "isoler"} and "isoler" in inst.participants[1]["acted"]
+        assert cs.tribes[2].prestige < 30
+        assert session.sync_digest(hs) == session.sync_digest(cs)
+        assert client.resyncs == 0
+    finally:
+        _close(host, client)

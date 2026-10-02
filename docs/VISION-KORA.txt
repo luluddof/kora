@@ -215,7 +215,16 @@ lente, bandes dessinees petites a taille fixe.
   - "Une REFONTE GRAPHIQUE des interfaces et de l'UI, avec une CHARTE
     GRAPHIQUE que tu definiras : faire plus JEU VIDEO, donner une IDENTITE
     PROPRE au jeu plutot qu'une interface qui fait franchement IA."
-                                                                EN COURS
+    FAIT (0.3.0, charte docs/charte-graphique.txt, planche docs/charte/
+    planche.png) : la charte « Feu et ocre » (les matieres de la tribu :
+    cuir, pierre, ocre, braise, os ; polices Alegreya embarquees ; 87
+    icones game-icons.net ; dalles de pierre taillee, medaillons, trois
+    rangs de boutons), toute dans src/kora/theme.py ; chaque ecran refait
+    (barre du haut, onglets a icones, carte de bande, nouvelles,
+    evenements, savoirs, tribu, peuples, journal, village, commerce,
+    bataille, fondation, menu, creation du peuple, salon) ; jetons et
+    pistes sur la carte ; le francais ACCENTUE partout (tools/accents.py,
+    francais.py ; les vieux journaux s'accentuent au chargement).
   - "Une nouvelle REFLEXION sur la profondeur des deux epoques, pour
     refleter les problematiques liees a ces epoques ; dont un tout nouveau
     systeme, sur tout le jeu, de SITUATIONS : des problematiques inspirees
@@ -224,7 +233,20 @@ lente, bandes dessinees petites a taille fixe.
     problemes a resoudre REALISTES pour l'epoque ; une CRISE resolue remet
     a l'etat du debut ; une CONJONCTURE resolue peut offrir un BONUS AU
     GAGNANT si elle implique plusieurs tribus / villes / pays."
-                                                                EN COURS
+    FAIT (0.3.0, spec 2026-10-02-profondeur-epoques-situations.txt) : la
+    reflexion (les vrais problemes de chaque age ; pistes T1-T4, N1-N4 qui
+    attendent SON choix) et le systeme des SITUATIONS : 12 (6 par age :
+    disette, mal qui court, gibier epuise, grand hiver, grand passage,
+    rassemblement des clans ; rouille des bles, mal des betes, crue, grands
+    travaux, route du sel, essor des chefferies). Chacune nait de son
+    contexte, a son lieu, ses etapes chiffrees, ses actions (couts, delais,
+    l'IA les prend), sa duree ; crise resolue = tout redevient comme avant,
+    ratee = des sequelles ; conjoncture : un classement, un prix au premier
+    seulement s'ils etaient plusieurs. Bandeau sous la barre, fenetre,
+    cercles sur la carte, journal ; sauvegarde ; multijoueur (ordres).
+  - (pendant le chantier) "Les crises sont la pour etendre le jeu, elles ne
+    doivent pas forcement toutes avoir lieu en 30 ans." FAIT : chacune
+    PEUT naitre (contexte mesure sur 50 ans), beaucoup restent rares.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -263,7 +285,18 @@ lente, bandes dessinees petites a taille fixe.
   passe par commands.py (un ordre) ; l'interface lit state.viewer, jamais
   PLAYER_TRIBE_ID ; un message du jeu va a note(..., to=peuple). Avant de
   publier : tools/essai_reseau.py (deux processus identiques).
+  Fait le 2026-10-02 : charte graphique et refonte de l'interface,
+  situations (0.3.0). REGLES NOUVELLES : tout dessin passe par theme.py
+  (couleurs C, theme.font(role), theme.panel/button/medallion ; jamais de
+  couleur ou de police en dur) ; tout texte affiche est en francais
+  ACCENTUE (tools/accents.py --dry pour verifier) ; une situation nouvelle
+  = une classe Spec dans situations.py (contexte, etapes, actions, goal,
+  fail, fin), son hasard par _rand (jamais story_rng), ses effets par
+  Tribe.situation_effects ; les actions passent par commands.py.
   En attente de SON choix : signer l'exe (SignPath, licence du depot).
+  En attente de SON choix : la suite de la profondeur des ages (spec
+  2026-10-02, section 4 ; ma recommandation : N2 la chefferie, puis T2
+  les matieres lointaines).
   En attente de SON choix : les propositions de profondeur des deux ages,
   deuxieme reflexion (docs/superpowers/specs/2026-09-26-profondeur-deuxieme-reflexion.txt ;
   ma recommandation : F1 Les Voix du peuple et les Coutumes d'abord).

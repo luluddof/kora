@@ -1,0 +1,238 @@
+Kora - Profondeur des deux époques, et le système des SITUATIONS
+================================================================
+Date : 2026-10-02. Statut : réflexion + système des situations EN PLACE
+(version 0.3.0, section 5) ; les autres pistes (section 4) attendent son
+choix.
+
+Demande : "une nouvelle réflexion sur comment ajouter de la profondeur aux
+deux époques pour refléter les problématiques liées à ces époques ; dont un
+tout nouveau système, sur tout le jeu, de situations : des problématiques
+inspirées des conjonctures et catastrophes d'EU5 et des crises de Stellaris.
+Elles apparaissent selon des contextes spécifiques, posent des problèmes à
+résoudre réalistes pour l'époque ; une crise résolue remet à l'état du
+début ; une conjoncture résolue peut offrir un bonus au gagnant si elle
+implique plusieurs tribus / villes / pays."
+
+
+1. LES PROBLÈMES RÉELS DE CHAQUE ÉPOQUE
+---------------------------------------
+L'âge tribal (chasseurs-cueilleurs, Paléolithique supérieur - Mésolithique)
+  - Vivre au rythme des SAISONS et des MIGRATIONS du gibier : la nourriture
+    se déplace, il faut la suivre ou la stocker (séchage, fumage, caches).
+  - La FAMINE de fin d'hiver, le froid ; un mauvais hiver peut tuer un clan.
+  - L'ÉPUISEMENT local : chasser et cueillir au même endroit vide la terre ;
+    il faut partir, laisser repousser.
+  - Les MALADIES quand on se regroupe (rassemblements, bandes trop grosses).
+  - La TRANSMISSION : les savoirs vivent dans les anciens ; un clan qui
+    meurt emporte ce qu'il sait. Les RASSEMBLEMENTS saisonniers (sites
+    d'agrégation) servent à échanger femmes, outils, savoirs, alliances.
+  - Les MATIÈRES rares : le silex de qualité, l'ocre, l'ambre, les
+    coquillages voyagent très loin ; qui tient le gisement a du poids.
+  - Les CATASTROPHES : hivers volcaniques, incendies de forêt, crues.
+
+L'âge des villages (Néolithique)
+  - La SÉDENTARITÉ : on ne peut plus partir ; une mauvaise récolte est une
+    catastrophe ; il faut des greniers, des semences gardées.
+  - Les MALADIES DES CULTURES (rouille, charbon), l'ÉPUISEMENT DES SOLS
+    (la jachère s'invente), les CRUES dans les vallées fertiles.
+  - Les MALADIES VENUES DES BÊTES (zoonoses) : vivre avec le bétail et en
+    nombre fait naître des épidémies, qui voyagent avec les échanges.
+  - La DÉMOGRAPHIE monte, les TERRES manquent : conflits pour les vallées,
+    premières palissades, raids, naissance des CHEFFERIES et des
+    inégalités.
+  - Les GRANDS TRAVAUX : dresser des pierres (menhirs, dolmens, cromlechs)
+    soude un peuple, montre sa force ; les peuples rivalisent.
+  - Les ÉCHANGES à longue distance (sel, haches polies, obsidienne) font
+    naître des carrefours, et des jalousies.
+
+
+2. LES SITUATIONS (le nouveau système, en place)
+------------------------------------------------
+Inspirations : les situations et catastrophes d'EU5 (un état du monde qui
+a sa jauge, ses étapes, ses leviers, et qui se résout), les crises de
+Stellaris (une menace qui touche tout le monde ; on s'en sort ensemble ou
+pas). Deux genres :
+
+  CRISE : un malheur qui frappe un peuple ou une région. Elle a une JAUGE
+    DE RÉSOLUTION (0 à 100 %) que chaque peuple touché fait monter par ses
+    choix (actions) et par sa façon de vivre (ce que mesure la crise). Ses
+    effets s'aggravent par ÉTAPES si on ne fait rien. Résolue : TOUT
+    REVIENT COMME AVANT (les effets s'éteignent, rien de plus). Ratée (le
+    temps passe, la jauge reste basse) : des pertes durables (morts,
+    prestige, savoir, stabilité).
+  CONJONCTURE : un moment du monde qui met plusieurs peuples EN
+    CONCURRENCE (ou en commun) : un grand passage de troupeaux, un
+    rassemblement, des grands travaux, une route marchande... Chaque peuple
+    impliqué a un SCORE qui monte selon ce qu'il fait. Quand elle se
+    termine, le premier gagne un BONUS (s'il y a eu au moins deux peuples
+    impliqués) ; les autres, parfois, un lot de consolation.
+
+Règles communes
+  - Une situation NAIT D'UN CONTEXTE (une saison, un terrain, une foule,
+    une ressource, des voisins), jamais au hasard pur ; une petite part de
+    hasard dit QUAND (le récit).
+  - Elle a un LIEU (un centre, un rayon) : les peuples présents y sont
+    impliqués ; un peuple qui en sort s'en libère (souvent : fuir est une
+    solution, à un prix).
+  - Elle a des ÉTAPES (montée, sommet, déclin) avec des effets chiffrés
+    (les mêmes leviers que les savoirs : nourriture, naissances, famine,
+    stabilité, récolte, maladie...).
+  - Elle a des ACTIONS (2 à 4) : un coût (prestige, vivres, gens, une
+    route fermée), un effet sur la jauge ou le score, un délai avant de
+    recommencer. L'IA les prend aussi.
+  - Elle a une DURÉE (au plus) : à la fin, résolution ou échec.
+  - Tout est dans la sauvegarde ; en multijoueur, les actions sont des
+    ordres (commands.py) : chaque machine calcule la même situation.
+
+Interface (charte « Feu et ocre »)
+  - Sous le bandeau du haut, une RANGÉE DE MÉDAILLONS : les situations qui
+    vous touchent (rouge : crise, ocre : conjoncture), avec leur jauge.
+  - Un clic : la FENÊTRE DE LA SITUATION (dalle de pierre) : récit, étape,
+    jauge, effets, peuples impliqués (et leur score), actions, temps.
+  - Sur la carte : le lieu, un anneau de points à la couleur du genre.
+  - Le journal raconte le début, chaque étape, la fin.
+
+
+3. LES DOUZE SITUATIONS
+-----------------------
+Âge tribal
+  1. LA DISETTE (crise) - un peuple dont les bandes manquent de vivres
+     en saison maigre. Effets : naissances -50 %, attachement qui baisse ;
+     puis morts. Jauge : vivres en réserve de toutes ses bandes. Actions :
+     Rationner (moins de naissances, +jauge), Grande battue (prestige ->
+     vivres), Partager entre clans (vivres mis en commun). Ratée : morts,
+     prestige.
+  2. LE MAL QUI COURT (crise, épidémie) - des bandes trop serrées en été
+     (bande nombreuse, plusieurs bandes proches). Se TRANSMET aux bandes
+     voisines, de tous les peuples. Effets : morts chaque mois,
+     apprentissage ralenti. Actions : Isoler les malades (+jauge, pas de
+     réunion), Rites de guérison (prestige), S'éloigner (les bandes hors
+     du lieu guérissent). S'éteint seul si on l'aide (immunité).
+  3. LE GIBIER S'ÉPUISE (crise) - la terre d'un peuple est épuisée.
+     Effets : nourriture -20 % dans son pays. Jauge : la terre se refait
+     (peu de bandes dans le lieu). Actions : Laisser la terre (on part,
+     +jauge), Rites du gibier (prestige).
+  4. LE GRAND HIVER (crise partagée, catastrophe) - rare : un ciel voilé
+     (éruption lointaine), un hiver qui dure. Touche une moitié du monde.
+     Effets : nourriture -25 %, famine d'hiver x1,5. Jauge : chaque peuple
+     la remplit en survivant (réserves, vallées, camps abrités) ; elle se
+     résout pour tous quand le ciel s'éclaircit. Le peuple qui a perdu le
+     moins de monde : prestige +5 (on raconte son hiver).
+  5. LE GRAND PASSAGE (conjoncture) - aux équinoxes, les troupeaux
+     traversent une plaine ou une steppe ; deux peuples ou plus sont
+     autour. Score : semaines de chasse dans le couloir du passage (qui
+     se DÉPLACE). Gagnant : « Maîtres de la chasse » (nourriture de plaine
+     et de steppe +10 %, 5 ans) et du prestige. Tensions : les relations
+     entre chasseurs baissent.
+  6. LE RASSEMBLEMENT DES CLANS (conjoncture) - fin d'été, trois peuples
+     ou plus en contact, en paix, dans une même région. Score : bandes
+     venues, cadeaux. Gagnant : « Hôtes du rassemblement » (+15 de relation
+     avec tous, mariages plus faciles, savoirs qui passent mieux) ; les
+     autres : +5 de relation.
+Âge des villages
+  7. LA ROUILLE DES BLÉS (crise) - des villages aux nombreux champs, sans
+     jachère, en été humide. Se TRANSMET aux villages proches. Effets :
+     récolte -50 %. Actions : Brûler les champs malades (récolte de l'année
+     perdue, +jauge), Changer de semences (vivres, +jauge), Prier les
+     ancêtres (prestige). Ratée : sol épuisé plus vite.
+  8. LE MAL DES BÊTES (crise, zoonose) - de gros villages qui vivent avec
+     leurs bêtes (Enclos). Se TRANSMET par les ROUTES COMMERCIALES.
+     Effets : morts, stabilité -10. Actions : Fermer les routes (+jauge,
+     plus de commerce), Abattre les bêtes malades (vivres du village -),
+     Rites. Ratée : la moitié des bêtes perdue (enclos inutile un temps).
+  9. LA CRUE (crise) - au printemps, les villages de vallée et de bord
+     d'eau. Effets : grenier -30 % une fois, champs noyés (récolte -40 %),
+     stabilité -. Actions : Relever les digues (vivres, +jauge),
+     Rebâtir sur les hauteurs (stabilité, +jauge). Résolue : tout revient.
+ 10. LES GRANDS TRAVAUX (conjoncture) - deux peuples à villages ou plus,
+     qui connaissent le Culte des ancêtres, assez proches. Score : pierres
+     dressées (action Dresser une pierre : vivres et bras ; un Autel ou
+     une Pierre levée en donnent chaque mois). Gagnant après 6 ans :
+     « Le grand monument » (prestige +20, stabilité +10, propositions +10
+     pendant 10 ans).
+ 11. LA ROUTE DU SEL (conjoncture) - trois peuples ou plus liés par des
+     accords commerciaux dans une région. Score : biens portés par leurs
+     routes. Gagnant : « Carrefour des échanges » (prix de vente +10 %,
+     +1 convoi, 5 ans).
+ 12. L'ESSOR DES CHEFFERIES (conjoncture) - plusieurs peuples à villages
+     dans une même grande vallée fertile. Score : batailles gagnées,
+     villages, prestige. Gagnant : « Chefferie dominante » (les autres
+     peuples du lieu : +10 de relation forcée ou tribut accepté plus
+     facilement ; prestige +15) : la porte de la domination (P3, "plus
+     tard, mais tout doit y préparer").
+
+
+4. LA PROFONDEUR AU-DELÀ DES SITUATIONS (pistes, à choisir)
+----------------------------------------------------------
+Âge tribal
+  T1 Les sites d'agrégation : un lieu sacré par région, où l'on revient ;
+     y passer l'été donne des mariages, des savoirs (relie à la situation 6).
+  T2 Les matières lointaines : ocre, ambre, coquillages, silex fin comme
+     ressources de prestige qui voyagent de peuple en peuple (échanges
+     avant le commerce).
+  T3 La mémoire des anciens : un savoir n'est sûr que quand plusieurs
+     clans le connaissent ; un clan qui meurt peut le faire perdre.
+  T4 Le gibier vivant : des troupeaux qui migrent vraiment sur la carte
+     (relié à la situation 5), qu'on suit ou qu'on attend.
+Âge des villages
+  N1 Les terres et les héritages : le sol s'épuise, la jachère, les
+     champs qui se transmettent ; une famille riche, une famille pauvre
+     (premières inégalités) qui pèsent sur la stabilité.
+  N2 La chefferie : un chef qui accapare (greniers communs), des
+     notables, des révoltes ; préparer la domination d'un village sur
+     d'autres.
+  N3 Le bétail : traite, laine, traction : chaque bête un choix, et des
+     maladies (relié à la situation 8).
+  N4 La guerre des vallées : des raids pour la terre, des palissades, des
+     prisonniers ; des buts de guerre.
+  Je recommande N2 (chefferie) puis T2 (matières lointaines) : ils
+  préparent la suite (cités, pays) et les situations les nourrissent.
+
+
+5. CE QUI EST EN PLACE (0.3.0)
+------------------------------
+Code : src/kora/situations.py (les 12, leurs contextes, étapes, actions,
+fins ; le cycle mensuel ; l'IA ; la sauvegarde), src/kora/render_situations.py
+(bandeau, fenêtre, carte), commands.py (ordre "situation"), tech.py (les
+effets comptent comme des savoirs : Tribe.situation_effects), persist.py.
+
+Sa règle de rareté (2026-10-02, pendant le chantier) : "les crises sont là
+pour étendre le jeu, elles ne doivent pas forcément toutes avoir lieu en 30
+ans". Donc : chaque situation doit POUVOIR naître de son contexte (vérifié),
+mais beaucoup sont rares. Une partie IA de 50 ans (scratchpad
+probe_contextes.py) : contexte réuni / situations nées
+  chefferies 38 mois / 3   crue 81 / 1         disette 149 / 28
+  gibier 9 / 2             grand_hiver 47 / 1  mal 80 / 6
+  mal_betes 376 / 5        passage 20 / 2      rassemblement 14 / 5
+  rouille 75 / 3           sel 34 / 3          travaux 37 / 2
+(la disette : 28 réparties sur une vingtaine de peuples, scissions
+comprises, et le joueur immobile de l'essai, qui a faim souvent).
+Un même peuple ne revit pas la même situation avant son délai (disette :
+6 ans ; grand hiver : 25 ans ; grand passage : 3 ans...).
+
+Ce que chaque fenêtre dit : le récit et l'étape ; COMMENT EN SORTIR (crise)
+ou COMMENT GAGNER (conjoncture) ; ce qui pèse (effets chiffrés) ou le prix
+du premier ; ce que coûte l'échec ; la jauge ou le classement (un peuple
+jamais rencontré : « un peuple inconnu ») ; les actions avec leur coût, leur
+effet, leur délai et pourquoi pas ; les peuples touchés ; voir sur la carte.
+Ouvrir la fenêtre met en pause en solo (comme un événement), pas à plusieurs.
+
+Corrigé en route : la disette lisait un drapeau de faim effacé chaque
+semaine (elle ne naissait jamais) : elle lit la date de la dernière faim
+(la moitié du peuple affamée ces deux derniers mois, moins d'une semaine de
+réserves). Le gibier : seuil 0,78 (le plus bas mesuré autour d'un cœur :
+0,74), et la terre « refaite » se mesure par rapport à son état de départ.
+Le mal qui court et le gibier ratés ont maintenant des suites (morts ;
+chasse -8 % 2 ans et prestige -5).
+
+Vérifié : tests/test_situations.py (15 : chaque déclencheur forcé, effets
+dans les bonus, crise résolue = tout comme avant, crise ratée = séquelles,
+prix seulement à plusieurs, sauvegarde et retour en arrière, hasard propre
+qui ne touche pas au récit, l'IA agit) ; test_session (une crise vécue à
+deux machines, ordres des deux joueurs : identiques) ; test_ui_pure
+(dessiner les fenêtres ne change rien) ; équilibrage 4 graines ; empreinte
+ré-enregistrée ; essai_graines sur SA partie (12 ans, 48 empreintes
+identiques) ; essai_reseau 10 ans identique ; la vraie boucle de jeu pilotée
+sur SA partie (clic bandeau -> pause -> action -> refus du délai -> Échap ->
+reprise).
+

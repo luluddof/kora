@@ -20,7 +20,7 @@ from src.kora.types import Hex
 KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
     "teams", "diplo", "invite", "build", "raise", "reequip", "dissolve",
-    "honor", "promote", "heir", "learn", "event",
+    "honor", "promote", "heir", "learn", "event", "situation",
 )
 NOT_YOURS = "Ce n'est pas à vous"
 
@@ -307,6 +307,12 @@ def _event(state, tid, uid, index):
     return _out(events.choose(state, inst.uid, int(index)))
 
 
+def _situation(state, tid, uid, action):
+    from src.kora import situations
+
+    return _out(situations.act(state, int(uid), tid, str(action)))
+
+
 _HANDLERS = {
     "goto": _goto,
     "march": _march,
@@ -327,5 +333,6 @@ _HANDLERS = {
     "heir": _heir,
     "learn": _learn,
     "event": _event,
+    "situation": _situation,
 }
 assert set(_HANDLERS) == set(KINDS)

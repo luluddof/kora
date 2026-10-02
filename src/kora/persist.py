@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from src.kora import chiefs, diplo, events, sites
+from src.kora import chiefs, diplo, events, sites, situations
 from src.kora.clock import Clock
 from src.kora.log import LOG_CAP, GameLog, LogEntry, LogKind
 from src.kora.sim import GameState
@@ -215,6 +215,7 @@ def _tribe_to_json(tribe: Tribe) -> dict:
         "trade": tribe.trade,
         "start_bonuses": list(tribe.start_bonuses),
         "start_bonus_until": tribe.start_bonus_until,
+        "situation_effects": [list(e) for e in tribe.situation_effects],
     }
 
 
@@ -249,6 +250,7 @@ def _tribe_from_json(data: dict) -> Tribe:
         trade=data.get("trade", {}) if isinstance(data.get("trade", {}), dict) else {},
         start_bonuses=[str(b) for b in data.get("start_bonuses", [])],
         start_bonus_until=int(data.get("start_bonus_until", -1)),
+        situation_effects=[[str(e[0]), int(e[1])] for e in data.get("situation_effects", [])],
     )
 
 
@@ -441,6 +443,9 @@ def game_to_json(state: GameState, view: dict | None = None) -> dict:
         # Multijoueur : journal, carte exploree, peuples apercus des autres
         # joueurs (le joueur solo : log, explored, seen_enemy_tribes).
         "povs": [[tid, _pov_to_json(pov)] for tid, pov in sorted(state.povs.items()) if tid in state.tribes],
+        "situations": [situations.to_json(s) for s in state.situations],
+        "next_situation_uid": state.next_situation_uid,
+        "situation_last": dict(state.situation_last),
     }
     return payload
 
@@ -515,6 +520,9 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         if isinstance(data.get("story_rng"), dict):
             state.story_rng = _rng_from_json(data["story_rng"])
         state.last_pressure = {Hex(int(q), int(r)): float(p) for q, r, p in data.get("pressure", [])}
+        state.situations = [s for s in (situations.from_json(raw) for raw in data.get("situations", [])) if s is not None]
+        state.next_situation_uid = int(data.get("next_situation_uid", 1))
+        state.situation_last = {str(k): int(v) for k, v in data.get("situation_last", {}).items()}
         from src.kora.peoples import LEGACY_COLOR, LEGACY_CULTURE, free_color
 
         for tribe in tribes.values():

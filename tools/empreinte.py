@@ -74,6 +74,11 @@ def digest(st) -> str:
         parts.append(str([(p.event_id, p.band_id, p.deadline) for p in book.pending]))
         parts.append(str(sorted(map(str, book.scheduled))))
     parts.append(str(len(st.world._influence)))
+    # Situations (crises, conjonctures) : leur cours et leurs effets.
+    from src.kora import situations
+
+    parts.append(str([sorted(situations.to_json(s).items(), key=str) for s in st.situations]))
+    parts.append(str([(tid, st.tribes[tid].situation_effects) for tid in sorted(st.tribes)]))
     return hashlib.sha1("\n".join(parts).encode()).hexdigest()
 
 

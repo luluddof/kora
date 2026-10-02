@@ -542,6 +542,21 @@ START_BONUSES: dict[str, StartBonus] = {
 }
 
 
+_SIT: dict = {}
+
+
+def situation_effect(eid: str):
+    """L'effet d'une situation (situations.effect_specs), comme un savoir."""
+    if not eid.startswith("sit:"):
+        return None
+    if not _SIT:
+        from src.kora.situations import effect_specs
+
+        for k, (name, effects) in effect_specs().items():
+            _SIT[k] = StartBonus(k, name, "", effects)
+    return _SIT.get(eid)
+
+
 def start_bonus_lines(bonus: StartBonus) -> list[str]:
     """Ce que fait un bonus de depart (les memes phrases que les savoirs)."""
 
@@ -672,7 +687,7 @@ def bonuses_of(known) -> Bonuses:
         if name not in ("food", "move")
     }
     for tid in sorted(key):
-        tech = TECHS.get(tid) or START_BONUSES.get(tid)
+        tech = TECHS.get(tid) or START_BONUSES.get(tid) or situation_effect(tid)
         if tech is None:
             continue
         for name, value in tech.effects.items():
@@ -725,6 +740,10 @@ def bonuses(tribe) -> Bonuses:
     if extra:
         # Les bonus de depart comptent comme des savoirs tant qu'ils durent.
         known = set(known or ()) | set(extra)
+    sit = getattr(tribe, "situation_effects", None)
+    if sit:
+        # Les situations (crises, prix des conjonctures) aussi.
+        known = set(known or ()) | {e[0] for e in sit}
     bonus = bonuses_of(known) if known else NO_BONUS
     if memo is not None:
         memo[id(tribe)] = (tribe, bonus)

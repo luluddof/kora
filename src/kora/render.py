@@ -803,6 +803,9 @@ class Renderer:
         self.mode_hits: dict = {}
         self.panel_hits: dict = {}
         self.event_hits: dict = {}
+        # Le bandeau des situations (uid -> dalle) et leur fenetre.
+        self.situation_hits: dict = {}
+        self.situation_window: dict = {}
         # Ecran du village, fenetre de fondation (render_village.py).
         self.village_hits: dict = {}
         self.village_armies: list = []
@@ -976,6 +979,9 @@ class Renderer:
             if dist <= LABEL_DIST:
                 tags.append((str(band.population), bx + radius + 4, by))
         self.draw_fight_marks(state, globe_yaw, globe_pitch, zoom, open_fight)
+        from src.kora import render_situations
+
+        render_situations.draw_on_map(self, state, globe_yaw, globe_pitch, zoom)
         self.draw_polity_labels(state, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
         if selected_id is not None and selected_id in state.bands:
             self.draw_path(
@@ -1005,8 +1011,10 @@ class Renderer:
         self.draw_fight_panel(open_fight, state)
         from src.kora import render_panels
 
-        # Les cartes d'evenement restent sous les panneaux ouverts.
+        # Les cartes d'evenement et le bandeau des situations restent sous
+        # les panneaux ouverts.
         render_panels.draw_event_cards(self, state, ui)
+        render_situations.draw_banner(self, state)
         self.draw_side(state, side_panel, log_filter, log_newest, tech_pick, ui)
         from src.kora import render_village
 
@@ -1024,6 +1032,10 @@ class Renderer:
             render_trade.draw_trade(self, state, ui)
         else:
             self.trade_hits = {}
+        if ui.get("situation_open") is not None:
+            render_situations.draw_window(self, state, ui)
+        else:
+            self.situation_window = {}
         if ui.get("event_open") is not None:
             render_panels.draw_event_modal(self, state, ui)
         if menu_open:

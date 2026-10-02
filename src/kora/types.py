@@ -151,6 +151,9 @@ class Tribe:
     # semaine start_bonus_until (-1 : aucun).
     start_bonuses: list = field(default_factory=list)
     start_bonus_until: int = -1
+    # Effets des situations (situations.py) : [id, jusqu'a la semaine] ; -1 :
+    # tant que la situation dure.
+    situation_effects: list = field(default_factory=list)
 
 
 @dataclass

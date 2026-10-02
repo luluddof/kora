@@ -86,6 +86,17 @@ def test_drawing_every_screen_leaves_the_game_untouched():
         ui["event_open"] = inst.uid
         r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, None, ui=ui)
     ui["event_open"] = None
+    from src.kora import situations
+
+    home = next(b for b in st.bands.values() if b.tribe_id == PLAYER_TRIBE_ID)
+    for sid, tids in (("mal", [PLAYER_TRIBE_ID, 2]), ("passage", [PLAYER_TRIBE_ID, 2, 3]), ("rouille", [PLAYER_TRIBE_ID])):
+        situations._start(st, situations.SPECS[sid], home.position, 8, tids, {"dq": 1, "dr": 0})
+    before = session.sync_digest(st)
+    rng, story = st.rng.getstate(), st.story_rng.getstate()
+    for inst in list(st.situations):
+        ui["situation_open"] = inst.uid
+        r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, None, ui=ui)
+    ui["situation_open"] = None
     for mark in st.fights[:3]:
         r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, None, open_fight=mark, ui=ui)
     r.draw(st, cx, cy, zoom, sel, True, yaw, pitch, None, ui=ui)

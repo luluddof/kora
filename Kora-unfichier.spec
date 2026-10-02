@@ -11,7 +11,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('data/kora_map.json', 'data')],
+    datas=[('data/kora_map.json', 'data'), ('data/fonts', 'data/fonts'), ('data/icons', 'data/icons')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

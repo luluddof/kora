@@ -94,6 +94,10 @@ def band_actions(state, band_id: int) -> dict[str, str]:
                 "bandes et villages (tous ses peuples)"
             )
     out["merge"] = INDOCILE if not listens else retreat or ("" if _mates(state, band) else "Aucune bande de votre peuple à 5 cases")
+    tribe = state.tribes.get(band.tribe_id)
+    if tribe is not None and tribe.flags.get("isoles", -1) > state.tick_count and not out["merge"]:
+        # Le mal qui court (situations.py) : les malades vivent a part.
+        out["merge"] = "Les malades sont isolés : pas de réunion pour l'instant"
     out["next"] = "" if own > 1 else "Une seule bande"
     out["chief"] = chiefs.can_move_chief(state, band_id)
     from src.kora import villages

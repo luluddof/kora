@@ -105,6 +105,11 @@ class GameState:
     # Le joueur de CET ecran : l'interface seulement, la simulation ne le lit
     # jamais (sinon deux machines calculeraient deux parties differentes).
     viewer: int = PLAYER_TRIBE_ID
+    # Crises et conjonctures (situations.py), leur numero, leurs dernieres
+    # fins ("sid:peuple" -> semaine) pour ne pas les repeter trop vite.
+    situations: list = field(default_factory=list)
+    next_situation_uid: int = 1
+    situation_last: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -1519,6 +1524,9 @@ class _Snap:
     next_person_id: int
     events: object
     povs: dict = field(default_factory=dict)
+    situations: list = field(default_factory=list)
+    next_situation_uid: int = 1
+    situation_last: dict = field(default_factory=dict)
 
 
 def _copy_tribe(tribe: Tribe) -> Tribe:
@@ -1530,6 +1538,7 @@ def _copy_tribe(tribe: Tribe) -> Tribe:
     out.goods = dict(tribe.goods)
     out.trade = copy.deepcopy(tribe.trade)
     out.start_bonuses = list(tribe.start_bonuses)
+    out.situation_effects = [list(e) for e in tribe.situation_effects]
     return out
 
 
@@ -1582,7 +1591,18 @@ def snapshot(state: GameState) -> _Snap:
             tid: Pov(GameLog(entries=list(p.log.entries), seq=p.log.seq), p.vision, set(p.seen))
             for tid, p in state.povs.items()
         },
+        situations=_copy_situations(state.situations),
+        next_situation_uid=state.next_situation_uid,
+        situation_last=dict(state.situation_last),
     )
+
+
+def _copy_situations(items) -> list:
+    if not items:
+        return []
+    from src.kora import situations
+
+    return situations.copy_all(items)
 
 
 def _restore(state: GameState, saved: _Snap) -> None:
@@ -1614,6 +1634,9 @@ def _restore(state: GameState, saved: _Snap) -> None:
     state.next_person_id = saved.next_person_id
     state.events = saved.events
     state.povs = saved.povs
+    state.situations = saved.situations
+    state.next_situation_uid = saved.next_situation_uid
+    state.situation_last = saved.situation_last
     from src.kora.vision import recompute_vision
 
     recompute_vision(state)
@@ -1824,6 +1847,9 @@ def tick(state: GameState) -> None:
             chiefs.monthly(state)
             diplo.ai_monthly(state)
             events.monthly(state)
+            from src.kora import situations
+
+            situations.monthly(state)
         events.weekly(state)
         tech.invalidate()
         update_prestige(state)
