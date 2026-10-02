@@ -471,6 +471,37 @@ EVENTS: dict[str, Event] = {
                 Option("Refuser", effects=(("casus",),), text="Vous refusez : les {other} viendront peut-être se servir.", ai=0.8),
             ),
         ),
+        Event(
+            "offre_protection",
+            "Une offre de protection",
+            "Les {other}, puissants et nombreux, proposent de vous prendre sous leur protection : vous leur "
+            "paierez chaque mois une part de vos réserves et vous les suivrez à la guerre. Personne n'osera "
+            "plus vous attaquer sans les trouver devant lui.",
+            trigger="offre_protection",
+            player_only=True,
+            conds=(("other_alive",),),
+            mood="peuple",
+            options=(
+                Option("Accepter leur protection", effects=(("pact", "protection"),), text="Vous voilà tributaires des {other}.", ai=0.8),
+                Option("Refuser", effects=(("relation", -5),), text="Vous gardez votre liberté face aux {other}.", ai=1.2),
+            ),
+        ),
+        # --- la conquete (battle.py, chiefdom.py) ------------------------------
+        Event(
+            "conquete",
+            "Le village est à vous",
+            "Les défenseurs des {other} ont été battus ; leurs familles attendent, serrées dans les maisons. "
+            "Vos guerriers attendent votre parole : faut-il les soumettre, ou tout prendre ?",
+            trigger="conquete",
+            player_only=True,
+            deadline=4,
+            conds=(("other_alive",),),
+            mood="danger",
+            options=(
+                Option("Les soumettre", effects=(("conquest", "soumettre"),), text="Les {other} deviennent vos tributaires.", ai=1.3),
+                Option("Piller le village", effects=(("conquest", "piller"),), text="Vos guerriers pillent le village des {other}.", ai=1.0),
+            ),
+        ),
         # --- la fievre --------------------------------------------------------
         Event(
             "fievre",

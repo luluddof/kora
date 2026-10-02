@@ -1,0 +1,137 @@
+Kora - La chefferie, la population en classes, les batailles qui durent
+======================================================================
+Date : 2026-10-02 (suite). Statut : FAIT (version 0.5.0).
+
+Demandes (ses mots, raccourcis) :
+  1. "1B, la chefferie, ça me va, si en plus on peut rendre les villages
+     tributaires en les envahissant."
+  2. "Sépare les pops en enfants, chasseurs, ..., invalides (vieux,
+     blessés) afin de séparer les tâches et de décider qui est levable :
+     ne pas faciliter le fait de lever en armée tout le pays. Et donc qu'on
+     puisse prendre un village et le vassaliser sans tuer tout le monde."
+     Puis : "pour l'instant seuls les hommes en travail actif, mais pas
+     tous ; plus tard, un système de lois."
+  3. "Détaille le 1A." -> 2026-10-02-voix-et-coutumes-detail.txt.
+  4. "Les combats durent plusieurs tics, un par jour : on tue, blesse ou
+     démoralise une partie des troupes adverses. La puissance : les
+     compétences des généraux, l'avantage du terrain selon les troupes et
+     qui est en défense, avec un jet qui introduit l'aléa sans influencer de
+     manière binaire : un mauvais jet avec tous les avantages, on gagne
+     quand même, avec plus de pertes." Puis, au choix : "le temps ralentit
+     en bataille".
+
+
+1. LA POPULATION EN CLASSES (population.py)
+------------------------------------------
+Chaque bande garde la part de chaque classe (Band.demo : enfants 32 %,
+hommes 27 %, femmes 29 %, anciens 12 % par défaut) et ses blessés
+(Band.wounded, des adultes valides devenus inaptes). Les baisses ordinaires
+gardent les parts ; ce qui touche une classe passe par le module :
+naissances (des enfants), levée et retour (des hommes), morts au combat
+(des hommes valides), blessures, famine (les faibles d'abord : anciens x1,8,
+enfants x1,4), fusion et scission. Chaque mois, la structure revient
+lentement vers l'ordinaire (les enfants grandissent) ; 30 % des blessés
+guérissent, 4 % meurent.
+  - COMBATTANTS : les hommes valides (sim.fighters) ; au mur d'un village,
+    une part des femmes aussi (30 %). Une troupe : ses guerriers valides.
+  - LEVABLES : 70 % des hommes valides seulement (population.LEVY_MAX ; la
+    coutume « qui part en guerre » du 1A le réglera). Une levée prend une
+    part des levables : poignée 35 %, troupe 70 %, tous les levables.
+    Un village de 90 personnes lève une troupe de 11 hommes (30 avant).
+  - BRAS : les adultes valides (champs, métiers ; labor_pop) : des hommes
+    partis à la guerre, ce sont des bras en moins aux champs.
+  Affichage : la carte de bande (enfants, hommes, femmes, anciens, blessés),
+  la page du chef (les levables).
+
+2. LES BATAILLES QUI DURENT (battle.py ; sim.tick)
+--------------------------------------------------
+Deux bandes ennemies sur une case COMMENCENT une bataille (state.battles),
+qui dure des jours. Chaque jour, chaque camp frappe l'autre :
+  puissance = combattants x valeur (prestige, savoirs, chef, troupe)
+              x armes sur ce terrain (units.attack_mult : arcs, forêt...)
+              x GÉNÉRAL (1 + 0,06 par point de compétence : 1 si chef,
+                +2 s'il est Guerrier, +1 ou 2 de renommée, + le chef de
+                guerre de la chefferie)
+              x pour le défenseur, l'abri (collines, forêt, montagne,
+                palissade, pays connu)
+  coups du jour = puissance x 7 % x FORTUNE (un jet entre 0,8 et 1,2) /
+                  (abri et tenue de l'autre)
+  35 % des coups tuent, les autres blessent ; pertes et rapport de force
+  usent le moral ; sous 25, déroute. Le hasard pèse sur les pertes du jour,
+  il ne décide jamais seul : le test montre qu'un camp fort avec la pire
+  fortune chaque jour gagne quand même, avec plus de pertes.
+  Fin : déroute (poursuite selon le terrain, la moitié des blessés perdus),
+  repli en ordre (demandé par le joueur, ou au bout de 8 jours le moins
+  solide ; 15 % des blessés perdus), village PRIS (on ne tue pas ses
+  familles). Les renforts d'un camp qui arrivent sur la case la rejoignent.
+LE TEMPS RALENTIT EN BATAILLE : quand une bataille touche un joueur, un pas
+de jeu est un JOUR (state.day) au lieu d'une semaine ; sept jours font la
+semaine du monde. Les batailles sans joueur font leurs jours dans la
+semaine. Le multijoueur se cale sur state.step (le nombre de pas) : tous
+passent en jours ensemble.
+Pendant la bataille : la bande ne marche pas, ses ordres sont bloqués
+(« En bataille : ordonnez le repli d'abord »), sauf « Se replier » (ordre
+"battle_retreat" ; un village ne se replie pas).
+Écran : une dalle au centre (les deux camps, combattants, morts, blessés,
+moral, général, le dernier jour et la fortune de chacun, « Se replier »,
+« Voir ») ; des épées qui battent sur la carte ; le bandeau dit « jour N » ;
+le rapport final raconte les jours (moral et pertes jour après jour, morts,
+blessés, général).
+Mesures (IA seule, 40 ans) : ~70 batailles, 2,2 jours en moyenne (les raids
+déséquilibrés finissent vite ; deux forces proches : 4 à 5 jours).
+
+3. LA CONQUÊTE ET LES TRIBUTAIRES (chiefdom.py ; diplo "vassal")
+----------------------------------------------------------------
+Un village dont les défenseurs sont battus est PRIS : ses familles restent.
+Un joueur vainqueur reçoit la carte « Le village est à vous » : LES
+SOUMETTRE (ils deviennent tributaires) ou PILLER LE VILLAGE (champs brûlés,
+grain pris, la moitié du grenier du chef, un bâtiment peut-être perdu).
+L'IA soumet si elle a des villages et que la haine n'est pas trop grande.
+Un tributaire (pacte "vassal") paie chaque mois 10 % de ce qui dépasse 6
+semaines de vivres de ses bandes (au grenier du suzerain), suit son
+suzerain à la guerre (sim.helpers_of), ne peut plus être attaqué par lui.
+On devient aussi tributaire par la PROTECTION (Peuples : « Prendre sous sa
+protection » ; deux fois et demie la force de l'autre, la relation, le
+prestige, les mariages (alliance), la proximité ; 3 tributaires au plus,
+plus avec le prestige) ; l'IA le propose au joueur (carte « Une offre de
+protection »). Un tributaire gronde (unrest : relation basse, sa force
+proche de celle du suzerain, plus de prestige que lui ; une troupe du
+suzerain près de ses villages le calme) : « Les tributaires grondent » (une
+crise, son risque annoncé) ; ratée, il se révolte et ne paie plus. Un
+joueur tributaire se libère par « Rompre le pacte ».
+
+4. LA CHEFFERIE (chiefdom.py ; page « Le chef et les familles »)
+---------------------------------------------------------------
+  - LE GRENIER DU CHEF : le prélèvement (0, 10, 20 ou 30 % de chaque
+    récolte) va au grenier commun (Tribe.granary). Il nourrit de lui-même
+    un village qui va manquer, paie les vivres des troupes levées et le
+    grand monument, et les fêtes. 20 % et plus : du prestige, des guerriers
+    mieux nourris (moral +5) ; la stabilité baisse (-0,4 par point) et les
+    familles grondent.
+  - LA FÊTE : deux semaines de vivres de tous les villageois ; stabilité
+    +8 un an, prestige +3, familles +15.
+  - LES FAMILLES : 2 à 4 (selon les villages), un trait chacune (Riches en
+    bétail, Maîtres potiers, Lignée de guerriers, Gardiens des rites,
+    Familles marchandes), une faveur. Une CHARGE par famille : Garde du
+    grenier (grenier qui ne se gâte pas, +10 % rentré, la stabilité souffre
+    deux fois moins du prélèvement), Chef de guerre (général +1, +2), Maître
+    des échanges (ventes +5 %, +10 %), Gardien des rites (stabilité +3, +6),
+    Maître des métiers (métiers +5 %, +12 %) ; doublé si la famille a le
+    trait qui va avec, x1,5 si elle est dévouée. Une famille sans charge et
+    un prélèvement lourd : elle gronde ; furieuse, elle peut partir avec les
+    siens.
+  - LA RÉVOLTE DES CULTIVATEURS (crise) : un prélèvement de 20 % et plus
+    avec des villages agités ou une famille furieuse. Son risque est annoncé.
+    Actions : baisser le prélèvement, distribuer le grenier, mater la
+    révolte. Ratée : le plus grand village qui n'est pas celui du chef fait
+    sécession (un peuple à part).
+  - L'IA règle son prélèvement selon son chef (ambitieux 20, généreux 0),
+    donne les charges aux familles qui ont le trait, fait des fêtes.
+
+Vérifié : 505 tests (test_war_chiefdom 19, test_session +1 bataille entre
+deux joueurs identique, test_ui_pure avec la dalle et la page du chef) ;
+équilibrage sur 4 graines (le test compte maintenant des années de jeu :
+les jours de bataille ne mangent plus des semaines) ; empreinte : identique
+tant qu'il n'y a ni bataille ni levée (la population en classes ne change
+rien d'autre), puis ré-enregistrée ; essais réseau et graines ; captures sur
+SA partie (copie, an 55, Litasen).

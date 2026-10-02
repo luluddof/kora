@@ -246,3 +246,29 @@ def test_a_situation_is_lived_the_same_on_both_machines():
         assert client.resyncs == 0
     finally:
         _close(host, client)
+
+
+def test_a_battle_between_two_players_is_fought_day_by_day_the_same():
+    """Le clan de l'ami attaque celui de l'hote : le temps passe en jours
+    pour tous ; les deux machines vivent la meme bataille."""
+    from src.kora import battle
+
+    host, client = _started()
+    try:
+        hs, cs = host.state, client.state
+        hb = next(b for b in hs.bands.values() if b.tribe_id == 1)
+        cb = next(b for b in cs.bands.values() if b.tribe_id == 2)
+        for st in (hs, cs):
+            st.bands[cb.id].position = st.bands[hb.id].position
+            st.bands[cb.id].population = 80
+        client.issue(make(2, "march", cb.id, hb.id))
+        host.set_speed(5)
+        assert _until(lambda: hs.fights, lambda: host.pump(0.05), lambda: client.pump(0.05), timeout=30)
+        host.toggle_pause()
+        assert _until(lambda: cs.step == hs.step, lambda: host.pump(0.05), lambda: client.pump(0.05))
+        assert cs.fights and cs.fights[0].report == hs.fights[0].report
+        assert hs.fights[0].report["days"] >= 1
+        assert session.sync_digest(hs) == session.sync_digest(cs)
+        assert client.resyncs == 0 and not battle.battles(hs)
+    finally:
+        _close(host, client)

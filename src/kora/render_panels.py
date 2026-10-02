@@ -752,7 +752,7 @@ def draw_peoples(r, state, layout, ui) -> None:
     cols = 2
     aw = (cw - 12) // cols
     ah = 46
-    for i, action in enumerate(["treve", "alliance", "commerce", "tribut", "union", "rompre"]):
+    for i, action in enumerate(["treve", "alliance", "commerce", "tribut", "proteger", "union", "rompre"]):
         ax = cx + (i % cols) * (aw + 12)
         ay = cy + (i // cols) * ah
         if ay + ah > by + bh - 6:
@@ -777,7 +777,7 @@ def draw_peoples(r, state, layout, ui) -> None:
                 rows.append((f"Total : {_signed(verdict.score)} (il faut plus de 0)", TEXT))
             tips.append((rows, rect[0] + rect[2] + 10, rect[1] - 4, rect))
     # Clans de ce peuple qui se detachent, pres de chez vous.
-    iy = cy + 3 * ah + 4
+    iy = cy + 4 * ah + 4
     for band in diplo.invitable(state, state.viewer, pick)[:2]:
         if iy + 26 > by + bh - 6:
             break

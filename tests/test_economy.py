@@ -7,7 +7,7 @@ from src.kora.sim import (
     collect_food,
     famine_loss,
     new_game,
-    resolve_raids,
+    fight_out,
     update_population,
     update_prestige,
 )
@@ -111,7 +111,7 @@ def _raid(att_pop, def_pop, ally_pop=0):
 
 def test_tie_goes_to_the_defender_even_with_the_higher_band_id():
     st, att, deff = _raid(20, 20)
-    resolve_raids(st)
+    fight_out(st)
     assert st.tribes[2].prestige > st.tribes[1].prestige
     assert deff.position == offset_to_axial(10, 10)
 
@@ -119,7 +119,7 @@ def test_tie_goes_to_the_defender_even_with_the_higher_band_id():
 def test_nearby_allies_reinforce_the_defender():
     st, att, deff = _raid(30, 20, ally_pop=15)
     ally = st.bands[3]
-    resolve_raids(st)
+    fight_out(st)
     assert st.tribes[2].prestige > st.tribes[1].prestige
     # Le renfort se bat (il prend sa part des coups) mais reste chez lui.
     assert 12 <= ally.population <= 15
@@ -130,7 +130,7 @@ def test_nearby_allies_reinforce_the_defender():
 
 def test_loser_walks_away_to_a_safe_fed_place_when_alone():
     st, att, deff = _raid(40, 10)
-    resolve_raids(st)
+    fight_out(st)
     assert deff.retreating
     goal = deff.path[-1]
     assert st.world.distance(goal, att.position) >= 4
@@ -142,7 +142,7 @@ def test_loser_walks_away_to_a_safe_fed_place_when_alone():
 
 def test_player_log_says_who_attacked():
     st, att, deff = _raid(40, 10)
-    resolve_raids(st)
+    fight_out(st)
     assert any(e.text == "Raid contre b : victoire." for e in st.log.entries)
 
 

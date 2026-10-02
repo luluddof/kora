@@ -3,7 +3,7 @@
 from src.kora import chiefs, diplo, tech
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import GameState, new_game, resolve_raids, set_march_to_band, side_force
+from src.kora.sim import GameState, new_game, fight_out, set_march_to_band, side_force
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
@@ -46,11 +46,11 @@ def test_a_truce_lets_bands_share_a_hex_but_an_attack_breaks_it():
     diplo.make_contact(st, 1, 2)
     diplo.add_pact(st, 1, 2, "treve", diplo.TRUCE_WEEKS)
     b.position = a.position
-    resolve_raids(st)
+    fight_out(st)
     assert a.population == 40 and b.population == 40
     set_march_to_band(st, 1, 2)
     prestige = st.tribes[1].prestige
-    resolve_raids(st)
+    fight_out(st)
     assert not diplo.has_pact(st, 1, 2)
     assert st.tribes[1].prestige < prestige + 5
     assert any("trahis" in label for label, _v in diplo.reasons(st, 1, 2))

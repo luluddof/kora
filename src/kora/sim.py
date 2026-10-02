@@ -9,7 +9,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.kora import chiefs, diplo, events, goods, influence, sites, tech
+from src.kora import chiefs, diplo, events, goods, influence, population, sites, tech
 from src.kora.clock import Clock
 from src.kora.diplo import Diplomacy
 from src.kora.log import GameLog, LogKind, season_fr, terrain_fr
@@ -113,6 +113,12 @@ class GameState:
     # Les crises qui menacent chaque joueur (situations._risks, chaque mois ;
     # calcule, pas sauvegarde).
     situation_risks: dict = field(default_factory=dict)
+    # Les batailles en cours (battle.py), le jour de la semaine (le temps
+    # passe en jours pendant une bataille d'un joueur) et le nombre de pas.
+    battles: list = field(default_factory=list)
+    next_battle_uid: int = 1
+    day: int = 0
+    step: int = 0
 
 
 @dataclass
@@ -386,7 +392,7 @@ def band_summary(state: GameState, band_id: int) -> dict | None:
         )
         if band.retreating
         else 0,
-        "extra": chiefs.band_lines_extra(state, band) + _village_lines(state, band) + _army_lines(state, band) + _raid_lines(state, band),
+        "extra": _people_lines(band) + chiefs.band_lines_extra(state, band) + _village_lines(state, band) + _army_lines(state, band) + _raid_lines(state, band),
         "army": band.kind == "armee",
         "force": band_force(state, band),
         "obeys": chiefs.obeys(state, band),
@@ -425,6 +431,17 @@ def _raid_lines(state: GameState, band: Band) -> list[str]:
     tribe = state.tribes.get(prey.tribe_id)
     who = tribe.name if tribe else "?"
     return [f"Raid sur les {who} : rapport de force {ratio:.1f} contre 1 ({word})".replace(".", ",", 1)]
+
+
+def _people_lines(band: Band) -> list[str]:
+    """Qui sont les gens de la bande (population.py)."""
+    c = population.counts(band)
+    if band.kind == "armee":
+        return [f"{c['blesses']} blessés parmi les guerriers"] if c["blesses"] else []
+    line = f"{c['enfants']} enfants · {c['hommes']} hommes · {c['femmes']} femmes · {c['anciens']} anciens"
+    if c["blesses"]:
+        line += f" · {c['blesses']} blessés"
+    return [line]
 
 
 def band_lines(info: dict) -> list[str]:
@@ -625,7 +642,7 @@ def collect_food(state: GameState) -> None:
             cut *= chiefs.band_famine(band)
             if cut != 1.0:
                 loss = max(1, round(loss * cut))
-            band.population = max(0, band.population - loss)
+            population.kill(band, loss, population.FAMINE_WEIGHTS)
             band.famine_in_period = True
             band.famine_tick = state.tick_count
             tribe = state.tribes.get(band.tribe_id)
@@ -876,6 +893,7 @@ def split_band(state: GameState, band_id: int) -> int | None:
         stock,
         famine_in_period=band.famine_in_period,
     )
+    population.split_wounded(band, state.bands[nid], moved, band.population)
     band.population -= moved
     band.stock -= stock
     chiefs.on_split(state, band, state.bands[nid])
@@ -920,6 +938,7 @@ def _absorb(state: GameState, keep: Band, gone: Band) -> None:
         # Reunies pour un meme raid : elles savent pourquoi, pas de temps mort.
         if not (keep.intent_prey and keep.intent_prey == gone.intent_prey):
             keep.welded_until = max(keep.welded_until, state.tick_count + WELD_WEEKS)
+    population.mix(keep, gone)
     keep.population += gone.population
     keep.stock = min(stock_max(keep, state), keep.stock + gone.stock)
     keep.famine_in_period = keep.famine_in_period or gone.famine_in_period
@@ -1038,8 +1057,12 @@ def resolve_joins(state: GameState) -> None:
 
 
 def apply_movement(state: GameState) -> None:
+    from src.kora import battle
+
+    # Une bande engagee dans une bataille ne marche pas (sauf le repli, a la fin).
+    fighting = {b for bt in battle.battles(state) if not bt.outcome for b in bt.attackers + bt.defenders}
     for band in state.bands.values():
-        if band.population <= 0:
+        if band.population <= 0 or band.id in fighting:
             continue
         water_ok = _water_ok(state, band.tribe_id)
         costs = costs_of(state, band.tribe_id)
@@ -1114,7 +1137,7 @@ def update_population(state: GameState) -> None:
         band.growth_acc += band.population * rate
         gain = math.floor(band.growth_acc)
         band.growth_acc -= gain
-        band.population += gain
+        population.grow(band, gain, "enfants")
         if band.stock > stock_max(band, state):
             band.stock = stock_max(band, state)
     remove_dead_bands(state)
@@ -1138,7 +1161,9 @@ def is_army(band: Band) -> bool:
 
 
 def fighters(band: Band) -> float:
-    return band.population * (1.0 if band.kind == "armee" else CLAN_SHARE)
+    """Ceux qui se battent : les hommes valides d'un clan (population.py),
+    toute une troupe sauf ses blesses."""
+    return population.men_force(band)
 
 
 def band_quality(state: GameState, band: Band) -> float:
@@ -1175,6 +1200,10 @@ def helpers_of(state: GameState, band: Band) -> list[Band]:
     for a, b in state.diplo.pacts:
         if tid in (a, b) and diplo.allied(state, a, b):
             friends.add(b if a == tid else a)
+    # Les tributaires suivent leur suzerain a la guerre.
+    from src.kora import chiefdom
+
+    friends.update(chiefdom.vassals_of(state, tid))
     world = state.world
     pool = bands_near(state, band.position, reach) if state.band_grid is not None else state.bands.values()
     for ally in pool:
@@ -1211,8 +1240,8 @@ def defense_force(state: GameState, band: Band) -> float:
 
     force = side_force(state, band)
     if band.village and band.kind != "armee":
-        # Tout le village tient les murs (battle.VILLAGE_SHARE).
-        force += band_force(state, band) * (battle.VILLAGE_SHARE / CLAN_SHARE - 1.0)
+        # Au mur : les hommes valides, et une part des femmes (battle.WALL_WOMEN).
+        force += battle.WALL_WOMEN * population.women_force(band) * band_quality(state, band)
     cover = 1.0
     for _label, mult in battle.cover_parts(state, band, band.position):
         cover *= mult
@@ -1362,14 +1391,16 @@ def _raid_sides(a: Band, b: Band) -> tuple[Band, Band]:
     return a, b
 
 
-def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band, me: int = PLAYER_TRIBE_ID) -> str:
-    """Le raid raconte au joueur `me`."""
+def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band, me: int = PLAYER_TRIBE_ID, hunted: bool | None = None) -> str:
+    """Le raid raconte au joueur `me` (hunted : l'attaquant etait venu
+    l'attaquer ; par defaut, son ordre de marche le dit)."""
 
     def name(band: Band) -> str:
         tribe = state.tribes.get(band.tribe_id)
         return tribe.name if tribe else "ennemi"
 
-    hunted = attacker.order.kind is OrderKind.MARCH_TO_BAND
+    if hunted is None:
+        hunted = attacker.order.kind is OrderKind.MARCH_TO_BAND
     player_won = winner.tribe_id == me
     if me not in (attacker.tribe_id, defender.tribe_id):
         return f"Un raid a été aperçu : {name(attacker)} contre {name(defender)}."
@@ -1385,19 +1416,35 @@ def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band, m
 
 
 def resolve_raids(state: GameState) -> None:
-    """Combats de la semaine : deux bandes ennemies sur la meme case se
-    battent (battle.py). Une bande ne livre qu'une bataille par semaine."""
+    """Combats de la semaine : deux bandes ennemies sur la meme case
+    COMMENCENT une bataille (battle.py), qui dure des jours. Les bandes d'un
+    camp (ou de ses allies) qui arrivent sur la case d'une bataille en cours
+    la rejoignent. Une bande ne livre qu'une bataille a la fois."""
     from collections import defaultdict
 
     from src.kora import battle
-    from src.kora.vision import is_visible
 
     by_hex: dict[Hex, list[Band]] = defaultdict(list)
     for band in state.bands.values():
         if band.population <= 0:
             continue
         by_hex[band.position].append(band)
-    fought: set[int] = set()
+    busy = {b for bt in battle.battles(state) if not bt.outcome for b in bt.attackers + bt.defenders}
+    # Les renforts.
+    for bt in sorted(battle.battles(state), key=lambda b: b.uid):
+        if bt.outcome:
+            continue
+        a_tribes = {state.bands[b].tribe_id for b in bt.attackers if b in state.bands}
+        d_tribes = {state.bands[b].tribe_id for b in bt.defenders if b in state.bands}
+        for band in sorted(by_hex.get(bt.hex, []), key=lambda b: b.id):
+            if band.id in busy or is_shielded(state, band) or band.retreating:
+                continue
+            if band.tribe_id in a_tribes or any(diplo.allied(state, band.tribe_id, t) for t in a_tribes):
+                battle.join(state, bt, band, True)
+                busy.add(band.id)
+            elif band.tribe_id in d_tribes or any(diplo.allied(state, band.tribe_id, t) for t in d_tribes):
+                battle.join(state, bt, band, False)
+                busy.add(band.id)
     for h, group in by_hex.items():
         while True:
             # Une bande en repli (ou dans son repit) ne se bat pas : c'est ce
@@ -1406,7 +1453,7 @@ def resolve_raids(state: GameState) -> None:
                 (
                     b
                     for b in group
-                    if b.position == h and b.population > 0 and not is_shielded(state, b) and b.id not in fought
+                    if b.position == h and b.population > 0 and not is_shielded(state, b) and b.id not in busy
                 ),
                 key=lambda b: b.id,
             )
@@ -1423,49 +1470,71 @@ def resolve_raids(state: GameState) -> None:
                 break
             a, foe = pair
             attacker, defender = _raid_sides(a, foe)
-            hunted = _hunts(attacker, defender)
-            # Les joueurs qui y sont, ou qui voient la case.
-            told = [t for t in humans(state) if t in (a.tribe_id, foe.tribe_id) or is_visible(state, h, t)]
-            res = battle.fight(state, attacker, defender, h)
-            fought.update(res.engaged)
-            winner, loser = res.winner, res.loser
-            for me in told:
-                note(state, LogKind.COMBAT, _raid_text(state, attacker, defender, winner, me) + battle.log_suffix(state, res, me), where=h, to=me)
-            wt = state.tribes[winner.tribe_id]
-            lt = state.tribes[loser.tribe_id]
-            gain_prestige(state, wt, 10 if res.wiped else 5)
-            lt.prestige = max(0, lt.prestige - (8 if res.wiped else 4))
-            winner.last_raid_tick = state.tick_count
-            loser.last_raid_tick = state.tick_count
-            diplo.on_fight(state, attacker.tribe_id, defender.tribe_id, winner is attacker, hunted)
-            if winner.leader is not None:
-                winner.leader.renown += 10 if res.wiped else 5
-            if winner.order.kind is OrderKind.MARCH_TO_BAND:
-                winner.order = stay_order()
-                winner.path = []
-            if told:
-                add_fight_mark(
-                    state,
-                    FightMark(
-                        hex=h,
-                        tick=state.tick_count,
-                        year=state.clock.year,
-                        week=state.clock.week,
-                        winner_tribe=winner.tribe_id,
-                        loser_tribe=loser.tribe_id,
-                        winner_name=wt.name,
-                        loser_name=lt.name,
-                        winner_before=res.winner_before,
-                        loser_before=res.loser_before,
-                        winner_loss=res.winner_loss,
-                        loser_loss=res.loser_loss,
-                        loot=res.loot,
-                        report=res.report,
-                    ),
-                )
-            if res.building and is_human(state, loser.tribe_id):
-                note(state, LogKind.COMBAT, f"Le village a perdu : {res.building}.", where=h, to=loser.tribe_id)
+            bt = battle.start(state, attacker, defender, h, _hunts(attacker, defender))
+            busy.update(bt.attackers)
+            busy.update(bt.defenders)
+            for me in humans(state):
+                if me in (attacker.tribe_id, defender.tribe_id):
+                    them = defender if attacker.tribe_id == me else attacker
+                    other = state.tribes.get(them.tribe_id)
+                    note(state, LogKind.COMBAT, f"Bataille contre les {other.name if other else 'ennemis'} : le temps passe en jours.", where=h, to=me)
+
+
+def fight_out(state: GameState) -> None:
+    """Les rencontres de la semaine, et chaque bataille jusqu'a sa fin
+    (essais ; une partie passe par tick)."""
+    from src.kora import battle
+
+    resolve_raids(state)
+    battle.advance(state, battle.MAX_DAYS + 1, humans=True)
     remove_dead_bands(state)
+
+
+def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, hunted: bool) -> None:
+    """La fin d'une bataille (battle._end) : le journal des joueurs, le
+    prestige, les relations, la marque sur la carte."""
+    from src.kora import battle
+    from src.kora.vision import is_visible
+
+    a_t, d_t = attacker.tribe_id, defender.tribe_id
+    told = [t for t in humans(state) if t in (a_t, d_t) or is_visible(state, h, t)]
+    winner, loser = res.winner, res.loser
+    for me in told:
+        note(state, LogKind.COMBAT, _raid_text(state, attacker, defender, winner, me, hunted) + battle.log_suffix(state, res, me), where=h, to=me)
+    wt = state.tribes[winner.tribe_id]
+    lt = state.tribes[loser.tribe_id]
+    gain_prestige(state, wt, 10 if res.wiped else 5)
+    lt.prestige = max(0, lt.prestige - (8 if res.wiped else 4))
+    winner.last_raid_tick = state.tick_count
+    loser.last_raid_tick = state.tick_count
+    diplo.on_fight(state, a_t, d_t, winner is attacker, hunted)
+    if winner.leader is not None:
+        winner.leader.renown += 10 if res.wiped else 5
+    if winner.order.kind is OrderKind.MARCH_TO_BAND:
+        winner.order = stay_order()
+        winner.path = []
+    if told:
+        add_fight_mark(
+            state,
+            FightMark(
+                hex=h,
+                tick=state.tick_count,
+                year=state.clock.year,
+                week=state.clock.week,
+                winner_tribe=winner.tribe_id,
+                loser_tribe=loser.tribe_id,
+                winner_name=wt.name,
+                loser_name=lt.name,
+                winner_before=res.winner_before,
+                loser_before=res.loser_before,
+                winner_loss=res.winner_loss,
+                loser_loss=res.loser_loss,
+                loot=res.loot,
+                report=res.report,
+            ),
+        )
+    if res.building and is_human(state, loser.tribe_id):
+        note(state, LogKind.COMBAT, f"Le village a perdu : {res.building}.", where=h, to=loser.tribe_id)
 
 
 def _hunts(a: Band, b: Band) -> bool:
@@ -1543,6 +1612,10 @@ class _Snap:
     situations: list = field(default_factory=list)
     next_situation_uid: int = 1
     situation_last: dict = field(default_factory=dict)
+    battles: list = field(default_factory=list)
+    next_battle_uid: int = 1
+    day: int = 0
+    step: int = 0
 
 
 def _copy_tribe(tribe: Tribe) -> Tribe:
@@ -1557,6 +1630,7 @@ def _copy_tribe(tribe: Tribe) -> Tribe:
     out.situation_effects = [list(e) for e in tribe.situation_effects]
     out.efficiency = dict(tribe.efficiency)
     out.glut = dict(tribe.glut)
+    out.families = [dict(f) for f in tribe.families]
     return out
 
 
@@ -1570,6 +1644,7 @@ def _copy_band(band: Band) -> Band:
     out.leader = chiefs.copy_person(band.leader)
     out.units = [list(u) for u in band.units]
     out.notables = [chiefs.copy_person(p) for p in band.notables]
+    out.demo = dict(band.demo)
     return out
 
 
@@ -1612,6 +1687,10 @@ def snapshot(state: GameState) -> _Snap:
         situations=_copy_situations(state.situations),
         next_situation_uid=state.next_situation_uid,
         situation_last=dict(state.situation_last),
+        battles=copy.deepcopy(state.battles),
+        next_battle_uid=state.next_battle_uid,
+        day=state.day,
+        step=state.step,
     )
 
 
@@ -1655,6 +1734,10 @@ def _restore(state: GameState, saved: _Snap) -> None:
     state.situations = saved.situations
     state.next_situation_uid = saved.next_situation_uid
     state.situation_last = saved.situation_last
+    state.battles = saved.battles
+    state.next_battle_uid = saved.next_battle_uid
+    state.day = saved.day
+    state.step = saved.step
     from src.kora.vision import recompute_vision
 
     recompute_vision(state)
@@ -1829,56 +1912,26 @@ def apply_season_spread(state: GameState) -> None:
 
 
 def tick(state: GameState) -> None:
-    from src.kora.ai import decide_ai
-    from src.kora.vision import recompute_vision
+    """Un pas de la partie : une SEMAINE ; ou un JOUR quand une bataille touche
+    un joueur (battle.slow : le temps ralentit en bataille). Sept jours font la
+    semaine. state.step compte les pas (le multijoueur s'y cale)."""
+    from src.kora import battle
 
     saved = snapshot(state)
     tech.begin_tick()
     try:
-        prev_season = state.clock.season()
-        state.clock.advance_week()
-        if state.clock.season() is not prev_season:
-            note_all(
-                state,
-                LogKind.SAISON,
-                f"{season_fr(state.clock.season())} commence.",
-            )
-        apply_season_spread(state)
-        apply_movement(state)
-        resolve_joins(state)
-        tech.update_practice(state)
-        prune_fight_marks(state)
-        resolve_raids(state)
-        update_exhaustion(state)
-        collect_food(state)
-        remove_dead_bands(state)
-        sites.update(state)
-        state.tick_count += 1
-        monthly = state.tick_count % 4 == 0
-        if monthly:
-            update_population(state)
-        update_influence(state)
-        if monthly:
-            tech.update_start_bonuses(state)
-            diplo.monthly(state)
-            goods.monthly(state)
-            from src.kora import production
-
-            production.monthly(state)
-            chiefs.monthly(state)
-            diplo.ai_monthly(state)
-            events.monthly(state)
-            from src.kora import situations
-
-            situations.monthly(state)
-        events.weekly(state)
-        tech.invalidate()
-        update_prestige(state)
-        tech.update_learning(state)
-        tech.invalidate()
-        recompute_vision(state)
-        _note_spotted_enemies(state)
-        decide_ai(state)
+        if battle.slow(state):
+            battle.advance(state, 1, humans=True)
+            remove_dead_bands(state)
+            state.day += 1
+            if state.day >= 7:
+                state.day = 0
+                _week(state, 0)
+        else:
+            days = 7 - state.day
+            state.day = 0
+            _week(state, days)
+        state.step += 1
         state.last_error = None
     except Exception as exc:
         _restore(state, saved)
@@ -1886,6 +1939,65 @@ def tick(state: GameState) -> None:
         state.last_error = str(exc)
     finally:
         tech.end_tick()
+
+
+def _week(state: GameState, battle_days: int) -> None:
+    """La semaine du monde. Les batailles sans joueur y font `battle_days`
+    jours."""
+    from src.kora import battle
+    from src.kora.ai import decide_ai
+    from src.kora.vision import recompute_vision
+
+    prev_season = state.clock.season()
+    state.clock.advance_week()
+    if state.clock.season() is not prev_season:
+        note_all(
+            state,
+            LogKind.SAISON,
+            f"{season_fr(state.clock.season())} commence.",
+        )
+    apply_season_spread(state)
+    apply_movement(state)
+    resolve_joins(state)
+    tech.update_practice(state)
+    prune_fight_marks(state)
+    resolve_raids(state)
+    if battle_days:
+        battle.advance(state, battle_days, humans=False)
+    update_exhaustion(state)
+    collect_food(state)
+    remove_dead_bands(state)
+    sites.update(state)
+    state.tick_count += 1
+    monthly = state.tick_count % 4 == 0
+    if monthly:
+        update_population(state)
+        population.monthly(state)
+    update_influence(state)
+    if monthly:
+        tech.update_start_bonuses(state)
+        diplo.monthly(state)
+        goods.monthly(state)
+        from src.kora import production
+
+        production.monthly(state)
+        from src.kora import chiefdom
+
+        chiefdom.monthly(state)
+        chiefs.monthly(state)
+        diplo.ai_monthly(state)
+        events.monthly(state)
+        from src.kora import situations
+
+        situations.monthly(state)
+    events.weekly(state)
+    tech.invalidate()
+    update_prestige(state)
+    tech.update_learning(state)
+    tech.invalidate()
+    recompute_vision(state)
+    _note_spotted_enemies(state)
+    decide_ai(state)
 
 
 def consume_ticks(

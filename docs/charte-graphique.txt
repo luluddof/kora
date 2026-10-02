@@ -141,6 +141,16 @@ Liste des icones : theme.ICONS (cle -> fichier).
     points a la couleur du genre et le medaillon au-dessus du lieu. Un
     RISQUE (une crise que l'on voit venir) : une dalle creuse cerclee
     d'ambre, « Risque : ... », le conseil au survol.
+  Bataille en cours (render_battle.py) : une dalle de pierre au centre,
+    lueur rouge qui respire, medaillon des haches ; les deux camps en
+    colonnes (trait de couleur du peuple, combattants en barre, morts et
+    blesses en ambre, moral avec le trait rouge de la deroute) ; la puce
+    « Ne jour de bataille · le temps passe en jours » ; sur la carte, des
+    epees qui battent. Le bandeau du haut ecrit le jour en braise.
+  Page « Le chef et les familles » : le prelevement en quatre boutons
+    (celui en vigueur au rang principal), le grenier en titre h3, les
+    familles en cartes avec leur faveur en barre et leurs charges en petits
+    boutons (un point vert : la charge qui va avec leur trait).
   Menu de demarrage : la planete dans la nuit, le logo KORA grave dans
     l'ocre avec une lueur de feu.
 

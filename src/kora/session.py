@@ -350,8 +350,8 @@ class HostSession(_Base):
         blob = pack(dumps_game(state))
         for conn, tid in self.conns.items():
             if tid is not None:
-                conn.send({"t": "start", "you": tid, "tick": state.tick_count, "snap": blob})
-                self.acks[tid] = state.tick_count
+                conn.send({"t": "start", "you": tid, "tick": state.step, "snap": blob})
+                self.acks[tid] = state.step
         self.broadcast(self.lobby_json())
         self.broadcast(self._clock_msg(""))
         return state
@@ -377,9 +377,9 @@ class HostSession(_Base):
         blob = pack(text)
         for conn, tid in self.conns.items():
             if tid is not None and conn.alive:
-                conn.send({"t": "start", "you": tid, "tick": self.state.tick_count, "snap": blob})
+                conn.send({"t": "start", "you": tid, "tick": self.state.step, "snap": blob})
                 conn.send(self._clock_msg(""))
-                self.acks[tid] = self.state.tick_count
+                self.acks[tid] = self.state.step
 
     # --- en partie -----------------------------------------------------------------
 
@@ -446,19 +446,19 @@ class HostSession(_Base):
         self.acc = min(2.0, self.acc + dt * state.clock.ticks_per_second())
         if self.acc < 1.0:
             return
-        late = [t for t, n in self.acks.items() if self.seats.get(t) and self.seats[t].present and state.tick_count - n >= LAG]
+        late = [t for t, n in self.acks.items() if self.seats.get(t) and self.seats[t].present and state.step - n >= LAG]
         if late:
             self.waiting_for = ", ".join(self.name_of(t) for t in late)
             self.acc = min(self.acc, 1.0)
             return
         self.waiting_for = ""
         self.acc -= 1.0
-        n = state.tick_count
+        n = state.step
         self.broadcast({"t": "tick", "n": n})
         run_step(state, [], 1, self.callbacks, self.results, True)
-        if state.tick_count % DIGEST_EVERY == 0:
-            self.digests[state.tick_count] = sync_digest(state)
-            for old in [k for k in self.digests if k < state.tick_count - 8 * DIGEST_EVERY]:
+        if state.step % DIGEST_EVERY == 0:
+            self.digests[state.step] = sync_digest(state)
+            for old in [k for k in self.digests if k < state.step - 8 * DIGEST_EVERY]:
                 del self.digests[old]
 
     def _check(self, conn, tid: int, msg: dict) -> None:
@@ -588,17 +588,17 @@ class ClientSession(_Base):
                 if ran >= CATCH_UP:
                     self.backlog = msgs[i:]
                     break
-                if int(msg.get("n", -1)) != state.tick_count:
+                if int(msg.get("n", -1)) != state.step:
                     # Une semaine sautee ou deja faite : on demande la partie
                     # de l'hote (une fois ; elle arrive dans l'ordre).
                     if not self._lost:
                         self._lost = True
-                        self.conn.send({"t": "lost", "n": state.tick_count})
+                        self.conn.send({"t": "lost", "n": state.step})
                     continue
                 run_step(state, [], self.me, self.callbacks, self.results, True)
                 ran += 1
-                ack = {"t": "ack", "n": state.tick_count}
-                if state.tick_count % DIGEST_EVERY == 0:
+                ack = {"t": "ack", "n": state.step}
+                if state.step % DIGEST_EVERY == 0:
                     ack["digest"] = sync_digest(state)
                 self.conn.send(ack)
             elif kind == "cmds":
@@ -619,7 +619,7 @@ class ClientSession(_Base):
                     self.state.clock.paused, self.state.clock.speed = paused, speed
                     self.resyncs += 1
                     self._lost = False
-                    self.conn.send({"t": "ack", "n": self.state.tick_count})
+                    self.conn.send({"t": "ack", "n": self.state.step})
             else:
                 self._common(msg)
 

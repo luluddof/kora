@@ -69,6 +69,12 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   sortir, ce que coûte chaque action, le temps qui reste. Une crise surmontée : tout redevient comme avant. Une
   conjoncture gagnée face à d'autres peuples : un bonus de quelques années. Une crise que l'on peut voir venir est
   annoncée (« Risque : … ») avec le moyen de l'éviter.
+- Une **bataille** dure des jours : chaque jour on tue, on blesse, on démoralise. Le général, le terrain, les armes et
+  la fortune du jour comptent ; quand une bataille vous touche, le temps passe en jours. Vous pouvez vous replier.
+- Vos gens sont des **enfants, des hommes, des femmes, des anciens, des blessés** : seule une part des hommes valides
+  part en guerre. Un village pris n'est pas massacré : vous le **soumettez** (il devient tributaire) ou le pillez.
+- Avec les villages vient la **chefferie** (écran du village, *Le chef et les familles*) : le grenier du chef (sa part
+  des récoltes), les fêtes, les familles qui comptent et leurs charges ; trop prendre mène à la révolte.
 - L'**influence** d'un peuple se projette autour de ses bandes et de ses villages, loin en plaine, à peine en
   montagne. Avec les villages, le **savoir-faire** (chasse, agriculture, pêche, chaque métier) grandit doucement
   quand il faut produire plus ; trop produire sans acheteurs mène à la **surproduction**, puis à l'effondrement du

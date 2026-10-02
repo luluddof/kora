@@ -1259,6 +1259,177 @@ class Effondrement(Spec):
             _note(state, t, LogKind.POLITIQUE, text)
 
 
+class Revolte(Spec):
+    id = "revolte"
+    name = "La révolte des cultivateurs"
+    kind = CRISE
+    era = 1
+    icon = "faucille"
+    about = "Le chef prend trop : les cultivateurs cachent le grain, les familles murmurent, on parle de partir."
+    goal = "Rendre au peuple ce qu'on lui prend : baisser le prélèvement, distribuer le grenier du chef, ou mater la révolte par la force. La jauge monte quand le prélèvement est léger et les villages calmes."
+    fail = "Ratée : un village fait sécession et devient un peuple à part."
+    stages = (
+        ("Le grain caché", "On cache des jarres sous les maisons ; la part du chef arrive moins pleine.", {"stability": -8, "field_yield": 0.9}),
+        ("La révolte ouverte", "Des villages refusent de payer ; les familles se rangent d'un côté ou de l'autre.", {"stability": -15, "field_yield": 0.8}),
+    )
+    actions = (
+        Action("baisser", "Baisser le prélèvement", "Le chef ne prend plus que 10 % au plus : la colère retombe.", progress=40, cooldown=6 * MONTH),
+        Action("distribuer", "Distribuer le grenier", "La moitié du grenier du chef revient aux villages.", progress=35, cooldown=6 * MONTH),
+        Action("mater", "Mater la révolte", "Les guerriers du chef font des exemples : la peur tient le peuple, pour un temps.", prestige=10, progress=30, cooldown=6 * MONTH),
+    )
+    months = 10
+    cooldown = 5 * YEAR
+
+    def _calm(self, state, tid) -> float:
+        from src.kora import villages
+
+        sites = _villages(state, tid)
+        vals = [villages.stability(state, s) for s in sites if _village_band(state, s) is not None]
+        return sum(vals) / len(vals) if vals else 50.0
+
+    def candidates(self, state):
+        out = []
+        for tid in sorted(state.tribes):
+            tribe = state.tribes[tid]
+            mine = _villages(state, tid)
+            if not mine or getattr(tribe, "levy_rate", 0) < 20:
+                continue
+            angry = any(f.get("favour", 50) < 25 for f in tribe.families or [])
+            if self._calm(state, tid) < 45 or angry:
+                out.append((mine[0].hex, 0, [tid], {}))
+        return out
+
+    def chance(self, state):
+        return 0.25
+
+    def risk(self, state, tid):
+        tribe = state.tribes.get(tid)
+        if tribe is None or getattr(tribe, "levy_rate", 0) < 20 or not _villages(state, tid):
+            return ""
+        if self._calm(state, tid) < 55 or any(f.get("favour", 50) < 30 for f in tribe.families or []):
+            return "Le prélèvement du chef pèse et les villages grondent. Baissez-le, donnez une fête, ou contentez les familles."
+        return ""
+
+    def month(self, state, inst):
+        tid = next(iter(inst.participants))
+        tribe = state.tribes[tid]
+        if tribe.levy_rate <= 10:
+            inst.progress += 25
+        if self._calm(state, tid) >= 50:
+            inst.progress += 10
+        months = (state.tick_count - inst.started) // MONTH
+        if inst.stage == 0 and months >= 3 and inst.progress < 30:
+            inst.stage = 1
+            _note(state, tid, LogKind.POLITIQUE, "La révolte éclate : des villages refusent de payer le chef.")
+
+    def act(self, state, inst, tid, action):
+        from src.kora import population
+
+        tribe = state.tribes[tid]
+        if action == "baisser":
+            tribe.levy_rate = min(tribe.levy_rate, 10)
+        elif action == "distribuer":
+            bands = [_village_band(state, s) for s in _villages(state, tid)]
+            bands = [b for b in bands if b is not None]
+            give = tribe.granary / 2.0
+            pop = sum(b.population for b in bands) or 1
+            for b in bands:
+                b.stock += give * b.population / pop
+            tribe.granary -= give
+        elif action == "mater":
+            for s in _villages(state, tid):
+                b = _village_band(state, s)
+                if b is not None:
+                    population.kill(b, max(1, round(b.population * 0.02)))
+            for fam in tribe.families or []:
+                fam["favour"] = max(0.0, fam["favour"] - 10.0)
+
+    def end(self, state, inst):
+        if inst.outcome != "ratee":
+            return
+        from src.kora import chiefdom
+
+        tid = next(iter(inst.participants), None)
+        if tid is not None:
+            chiefdom.village_secedes(state, tid)
+
+
+class RevolteTributaires(Spec):
+    id = "tributaires"
+    name = "Les tributaires grondent"
+    kind = CRISE
+    era = 1
+    icon = "balance"
+    about = "Un peuple qui vous paie le tribut se sent assez fort, ou assez maltraité, pour rejeter votre joug."
+    goal = "Le tenir : montrer vos guerriers près de ses villages, lui faire des présents, ou le menacer. Un tributaire tenu ne gronde plus."
+    fail = "Ratée : il se révolte et ne paie plus ; il faudra le soumettre à nouveau."
+    stages = (("Le tribut arrive en retard", "Les porteurs viennent les mains moins pleines ; les anciens du tributaire parlent haut.", {"diplo": -5}),)
+    actions = (
+        Action("presents", "Faire des présents", "Des vivres au chef tributaire : il se souvient de ce que vous valez.", vivres=150, progress=30, cooldown=4 * MONTH),
+        Action("menacer", "Menacer", "Vos envoyés rappellent ce qu'il en coûte de vous trahir.", prestige=6, progress=25, cooldown=4 * MONTH),
+    )
+    months = 8
+    cooldown = 3 * YEAR
+    natural = 5.0
+
+    def candidates(self, state):
+        from src.kora import chiefdom
+
+        out = []
+        for lord in sorted(state.tribes):
+            for vassal in chiefdom.vassals_of(state, lord):
+                if vassal in state.tribes and not state.tribes[vassal].is_player and chiefdom.unrest(state, vassal, lord) >= chiefdom.REVOLT_UNREST:
+                    mine = _villages(state, vassal)
+                    out.append((mine[0].hex if mine else None, 0, [lord], {"vassal": vassal}))
+        return out
+
+    def chance(self, state):
+        return 0.3
+
+    def risk(self, state, tid):
+        from src.kora import chiefdom
+
+        for vassal in chiefdom.vassals_of(state, tid):
+            if vassal in state.tribes and not state.tribes[vassal].is_player and chiefdom.unrest(state, vassal, tid) >= 25:
+                return f"Les {state.tribes[vassal].name}, vos tributaires, se sentent assez forts pour se révolter. Approchez une troupe de leurs villages, ou faites-leur des présents."
+        return ""
+
+    def stage_name(self, inst):
+        return super().stage_name(inst)
+
+    def month(self, state, inst):
+        from src.kora import chiefdom
+
+        lord = next(iter(inst.participants))
+        vassal = inst.data.get("vassal", 0)
+        if vassal not in state.tribes or chiefdom.overlord_of(state, vassal) != lord:
+            inst.progress = 100.0
+            return
+        if chiefdom.unrest(state, vassal, lord) < chiefdom.REVOLT_UNREST:
+            inst.progress += 15
+
+    def act(self, state, inst, tid, action):
+        from src.kora import diplo
+
+        vassal = inst.data.get("vassal", 0)
+        if vassal not in state.tribes:
+            return
+        if action == "presents":
+            diplo.add_mod(state, tid, vassal, "cadeau", 10, actor=tid)
+        elif action == "menacer":
+            diplo.add_mod(state, tid, vassal, "intimidation", -3, actor=tid)
+
+    def end(self, state, inst):
+        if inst.outcome != "ratee":
+            return
+        from src.kora import chiefdom
+
+        lord = next(iter(inst.participants), None)
+        vassal = inst.data.get("vassal", 0)
+        if lord is not None and vassal in state.tribes and chiefdom.overlord_of(state, vassal) == lord:
+            chiefdom._revolt(state, vassal, lord)
+
+
 def price_mult(state, tid: int, good: str) -> float:
     """Les prix que font les situations : un bien en surproduction ne vaut
     presque plus rien chez son peuple."""
@@ -1350,7 +1521,7 @@ MalDesBetes.risk = _risk_mal_betes
 Crue.risk = _risk_crue
 
 
-SPECS: dict[str, Spec] = {s.id: s for s in (Disette(), MalQuiCourt(), GibierEpuise(), GrandHiver(), GrandPassage(), Rassemblement(), Rouille(), MalDesBetes(), Crue(), GrandsTravaux(), RouteDuSel(), Chefferies(), Surproduction(), Effondrement())}
+SPECS: dict[str, Spec] = {s.id: s for s in (Disette(), MalQuiCourt(), GibierEpuise(), GrandHiver(), GrandPassage(), Rassemblement(), Rouille(), MalDesBetes(), Crue(), GrandsTravaux(), RouteDuSel(), Chefferies(), Surproduction(), Effondrement(), Revolte(), RevolteTributaires())}
 
 # Les effets qui ne sont pas des etapes : actions et prix (tech.SITUATION_EFFECTS).
 EXTRA_EFFECTS = {

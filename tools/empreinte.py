@@ -79,6 +79,13 @@ def digest(st) -> str:
 
     parts.append(str([sorted(situations.to_json(s).items(), key=str) for s in st.situations]))
     parts.append(str([(tid, st.tribes[tid].situation_effects) for tid in sorted(st.tribes)]))
+    # Population en classes, batailles, chefferie (0.5.0).
+    parts.append(str([(bid, sorted(st.bands[bid].demo.items()), st.bands[bid].wounded) for bid in sorted(st.bands)]))
+    from src.kora import battle
+
+    parts.append(str([sorted(battle.to_json(b).items(), key=str) for b in st.battles]))
+    parts.append(str([st.day, st.step]))
+    parts.append(str([(tid, st.tribes[tid].levy_rate, round(st.tribes[tid].granary, 6), st.tribes[tid].families) for tid in sorted(st.tribes)]))
     # Savoir-faire et surproduction (production.py).
     parts.append(str([(tid, sorted(st.tribes[tid].efficiency.items()), sorted(st.tribes[tid].glut.items())) for tid in sorted(st.tribes)]))
     return hashlib.sha1("\n".join(parts).encode()).hexdigest()

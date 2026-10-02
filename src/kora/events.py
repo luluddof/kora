@@ -456,6 +456,17 @@ def apply(state, inst, effect) -> None:
             elif what == "commerce":
                 diplo.add_pact(state, tribe.id, inst.other, "commerce")
                 diplo.add_mod(state, tribe.id, inst.other, "echanges", 5)
+            elif what == "protection":
+                from src.kora import chiefdom
+
+                chiefdom.make_vassal(state, inst.other, tribe.id, "protection")
+                diplo.add_mod(state, inst.other, tribe.id, "protection", 5)
+    elif kind == "conquest":
+        # Le village pris (battle.py) : le soumettre ou le piller.
+        from src.kora import chiefdom
+
+        if inst.other in state.tribes:
+            chiefdom.conquer(state, tribe.id, inst.other, inst.site_id, args[0])
     elif kind == "casus":
         if inst.other in state.tribes:
             state.diplo.casus[(inst.other, tribe.id)] = state.tick_count + 52
@@ -752,7 +763,8 @@ EFFECT_TEXT = {
     "learn_boost": lambda a: f"le savoir en cours avance de {round(a[0] * 100)} %",
     "reveal": lambda a: "une contree lointaine apparaît sur la carte",
     "provoke": lambda a: "ils pourraient venir se venger",
-    "pact": lambda a: {"treve": "trêve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : échanges chaque mois"}.get(a[0], a[0]),
+    "pact": lambda a: {"treve": "trêve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : échanges chaque mois", "protection": "vous devenez leurs tributaires (une part de vos réserves chaque mois ; vous les suivez à la guerre)"}.get(a[0], a[0]),
+    "conquest": lambda a: {"soumettre": "ils deviennent vos tributaires : une part de leurs réserves chaque mois, ils vous suivent à la guerre", "piller": "champs brûlés, grain pris, un bâtiment peut-être perdu"}.get(a[0], a[0]),
     "casus": lambda a: "ils pourront vous raider sans trahir",
     "stock_pct": lambda a: f"{round(a[0] * 100)} % du grenier" if a[0] < 0 else f"+{round(a[0] * 100)} % au grenier",
     "seed_pct": lambda a: f"{round(a[0] * 100)} % des semences",

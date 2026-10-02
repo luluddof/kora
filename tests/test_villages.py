@@ -3,7 +3,7 @@
 from src.kora import chiefs, orders, sites, tech, villages
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import GameState, merge_bands, new_game, resolve_raids, set_goto, set_march_to_band, split_band, stock_max
+from src.kora.sim import GameState, merge_bands, new_game, fight_out, set_goto, set_march_to_band, split_band, stock_max
 from src.kora.types import Band, Season, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
@@ -113,7 +113,7 @@ def test_a_village_does_not_flee_it_is_pillaged():
     st.bands[2] = Band(2, 2, band.position, 200, 0.0)
     chiefs.ensure(st)
     set_march_to_band(st, 2, 1)
-    resolve_raids(st)
+    fight_out(st)
     assert band.position == site.hex and band.village == site.id
     assert site.data["burned"] and not band.retreating
     assert st.bands[2].stock > 0

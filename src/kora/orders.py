@@ -65,6 +65,13 @@ def band_actions(state, band_id: int) -> dict[str, str]:
     band = state.bands.get(band_id)
     if band is None:
         return {k: "Pas de bande" for k in ACTIONS}
+    from src.kora import battle
+
+    if battle.in_battle(state, band):
+        # En bataille : rien d'autre que le repli (fenetre de la bataille).
+        out = {k: "En bataille : ordonnez le repli d'abord" for k in ACTIONS}
+        out["next"] = ""
+        return out
     if band.kind == "armee":
         return _army_actions(state, band)
     own = sum(1 for b in state.bands.values() if b.tribe_id == band.tribe_id and b.population > 0)

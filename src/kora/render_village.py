@@ -358,7 +358,8 @@ def draw_found(r, state, ui) -> None:
 # --- l'ecran du village -----------------------------------------------------------------
 
 
-PAGES = (("village", "Le village"), ("metiers", "Métiers et échanges"))
+PAGES = (("village", "Le village"), ("metiers", "Métiers et échanges"), ("chef", "Le chef et les familles"))
+CHARGE_ORDER = ("grenier", "guerre", "echanges", "rites", "metiers")
 
 
 def village_layout(width: int, height: int, n_armies: int = 0, page: str = "village") -> dict:
@@ -375,7 +376,7 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     pages = {}
     px = bx + 24
     for key, _label in PAGES:
-        pw = 150 if key == "village" else 200
+        pw = 150 if key == "village" else 210
         pages[key] = (px, by + 60, pw, 26)
         px += pw + 8
     tiles_y = by + 94
@@ -445,7 +446,27 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
         crafts[cid] = {"card": (rx, ry, craft_w, row_h), "minus": minus, "plus": plus}
     stores = (bx + 24 + craft_w + 16, body_y, inner - craft_w - 16, body_h)
     trade_btn = (stores[0], stores[1] + stores[3] - 30, stores[2], 28)
+    # Page du chef : le grenier et la levee a gauche, les familles a droite.
+    chef_left = (bx + 24, body_y, int(inner * 0.38), body_h)
+    chef_right = (chef_left[0] + chef_left[2] + 24, body_y, inner - chef_left[2] - 24, body_h)
+    rates = {}
+    for i, rate in enumerate((0, 10, 20, 30)):
+        rates[rate] = (chef_left[0] + i * 70, body_y + 52, 62, 26)
+    feast = (chef_left[0], body_y + 176, 240, 30)
+    fam_h = max(84, min(110, (body_h - 30) // 4 - 8))
+    fams = []
+    for i in range(4):
+        fy = body_y + 26 + i * (fam_h + 8)
+        card = (chef_right[0], fy, chef_right[2], fam_h)
+        cw = (chef_right[2] - 28 - 5 * 6) // 6
+        charges = {c: (chef_right[0] + 14 + k * (cw + 6), fy + fam_h - 32, cw, 24) for k, c in enumerate(("",) + CHARGE_ORDER)}
+        fams.append({"card": card, "charges": charges})
     return {
+        "chef_left": chef_left,
+        "chef_right": chef_right,
+        "rates": rates,
+        "feast": feast,
+        "fams": fams,
         "trade_btn": trade_btn,
         "page": page,
         "pages": pages,
@@ -484,6 +505,17 @@ def village_hit(lay: dict, mx: int, my: int, armies: list | None = None):
     for key, rect in lay.get("pages", {}).items():
         if _hover(rect, mx, my):
             return f"vpage:{key}"
+    if lay.get("page") == "chef":
+        for rate, rect in lay["rates"].items():
+            if _hover(rect, mx, my):
+                return f"crate:{rate}"
+        if _hover(lay["feast"], mx, my):
+            return "cfeast"
+        for i, fam in enumerate(lay["fams"]):
+            for charge, rect in fam["charges"].items():
+                if _hover(rect, mx, my):
+                    return f"ccharge:{i}:{charge}"
+        return "panel" if _hover(lay["box"], mx, my) else None
     if lay.get("page") == "metiers":
         if _hover(lay["trade_btn"], mx, my):
             return "vtrade"
@@ -609,9 +641,110 @@ def draw_village(r, state, ui) -> None:
         for tip, tx, ty in ui.pop("_vtips", []):
             _tip(r, tip, tx, ty)
         return
+    if page == "chef":
+        _draw_chef(r, state, site, band, lay, ui, mx, my)
+        for tip in ui.pop("_vtips", []):
+            _tip(r, *tip)
+        return
     _draw_lands(r, state, site, band, lay)
     _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my)
     _draw_warriors(r, state, site, band, armies, lay, ui, mx, my)
+
+
+RATE_TEXT = {
+    0: "Rien pour le chef : les familles sont contentes, le grenier reste vide.",
+    10: "La coutume : un peu pour les temps durs.",
+    20: "Le chef s'enrichit : prestige et guerriers mieux nourris ; la stabilité baisse, les familles grondent.",
+    30: "L'accaparement : beaucoup de prestige, mais la révolte guette.",
+}
+
+
+def _draw_chef(r, state, site, band, lay, ui, mx, my) -> None:
+    """La chefferie (chiefdom.py) : le prelevement et le grenier du chef, la
+    fete, les gens du village, les tributaires ; les familles et leurs
+    charges."""
+    from src.kora import chiefdom, population
+
+    tid = band.tribe_id
+    tribe = state.tribes[tid]
+    lx, ly, lw, lh = lay["chef_left"]
+    yy = _section(r, lx, ly, lw, "LE GRENIER DU CHEF")
+    theme.text(r.screen, "Ce que le chef prélève sur chaque récolte :", "mini", C.lin, (lx, yy), lw)
+    for rate, rect in lay["rates"].items():
+        on = tribe.levy_rate == rate
+        theme.button(r.screen, rect, f"{rate} %", "principal" if on else "second", True, _hover(rect, mx, my) and not on, active=on)
+        if _hover(rect, mx, my):
+            ui.setdefault("_vtips", []).append(([(f"Prélever {rate} %", INK), (RATE_TEXT[rate], SOFT)], mx, my, rect))
+    yy = lay["rates"][0][1] + 36
+    theme.text(r.screen, f"{tribe.granary:.0f} vivres au grenier du chef", "h3", C.os, (lx, yy), lw)
+    yy += 26
+    for line in ("Il nourrit les villages en disette, paie les vivres des troupes", "levées et le grand monument, et les fêtes."):
+        theme.text(r.screen, line, "mini", C.cendre, (lx, yy), lw)
+        yy += 16
+    why = chiefdom.feast_block(state, tid)
+    cost = chiefdom.feast_cost(state, tid)
+    theme.button(r.screen, lay["feast"], f"Donner une fête ({cost:.0f} vivres)", "principal", not why, not why and _hover(lay["feast"], mx, my), "feu")
+    if _hover(lay["feast"], mx, my):
+        rows = [("Une grande fête", INK), (f"Stabilité +{chiefdom.FEAST_STABILITY} pendant un an, prestige +{chiefdom.FEAST_PRESTIGE}, les familles +15.", GOOD)]
+        if why:
+            rows.append((why, WARN))
+        ui.setdefault("_vtips", []).append((rows, mx, my, lay["feast"]))
+    yy = lay["feast"][1] + 44
+    yy = _section(r, lx, yy, lw, "LES GENS DU VILLAGE")
+    for line in population.lines(band):
+        theme.text(r.screen, line, "petit", C.lin, (lx, yy), lw)
+        yy += 19
+    theme.text(r.screen, "Seule une part des hommes valides part en guerre.", "mini", C.cendre, (lx, yy), lw)
+    yy += 26
+    yy = _section(r, lx, yy, lw, "TRIBUTAIRES")
+    lord = chiefdom.overlord_of(state, tid)
+    vs = chiefdom.vassals_of(state, tid)
+    if lord:
+        theme.text(r.screen, f"Vous payez tribut aux {state.tribes[lord].name}.", "petit", C.alerte, (lx, yy), lw)
+        yy += 19
+    for v in vs:
+        if v not in state.tribes:
+            continue
+        u = chiefdom.unrest(state, v, tid)
+        word = "soumis" if u < 25 else "ils grondent" if u < chiefdom.REVOLT_UNREST else "prêts à se révolter"
+        theme.text(r.screen, f"Les {state.tribes[v].name} : {word}", "petit", C.lin if u < 25 else C.alerte, (lx, yy), lw - 90)
+        theme.bar(r.screen, (lx + lw - 80, yy + 6, 80, 7), u / 100.0, C.alerte if u >= 25 else C.bon)
+        yy += 19
+    if not lord and not vs:
+        hint = "Aucun. Prenez un village ennemi (il est à vous : soumettez-le) ou proposez votre protection à un voisin faible (Peuples)."
+        for part in _wrap(r.tiny, hint, lw)[:3]:
+            theme.text(r.screen, part, "mini", C.cendre, (lx, yy), lw)
+            yy += 16
+    rx, ry, rw, rh = lay["chef_right"]
+    _section(r, rx, ry, rw, "LES FAMILLES QUI COMPTENT")
+    fams = list(tribe.families or [])
+    if not fams:
+        theme.text(r.screen, "Les familles se font un nom au premier mois du village.", "petit", C.cendre, (rx, ry + 30), rw)
+    for i, fam in enumerate(fams[:4]):
+        rects = lay["fams"][i]
+        cx, cy, cw, ch = rects["card"]
+        theme.panel(r.screen, rects["card"], "carte")
+        theme.text(r.screen, f"La famille {fam['name']}", "h3", C.os, (cx + 14, cy + 6), cw // 2)
+        theme.text(r.screen, chiefdom.TRAITS.get(fam["trait"], fam["trait"]), "mini", C.ocre_jaune, (cx + 14, cy + 30), cw // 2)
+        word = chiefdom.favour_word(fam["favour"])
+        col = GOOD if fam["favour"] >= 45 else WARN if fam["favour"] >= 25 else BAD
+        theme.text(r.screen, f"Faveur : {fam['favour']:.0f} ({word})", "mini", col, (cx + cw // 2, cy + 8), cw // 2 - 14)
+        theme.bar(r.screen, (cx + cw // 2, cy + 28, cw // 2 - 20, 7), fam["favour"] / 100.0, col)
+        for charge, rect in rects["charges"].items():
+            on = fam.get("charge", "") == charge
+            label = "Aucune" if not charge else chiefdom.CHARGES[charge]
+            match = bool(charge) and chiefdom.CHARGE_TRAIT[charge] == fam["trait"]
+            theme.button(r.screen, rect, label, "principal" if on else "second", True, _hover(rect, mx, my) and not on, role="mini", active=on)
+            if match and not on:
+                pygame.draw.circle(r.screen, C.bon, (rect[0] + rect[2] - 6, rect[1] + 6), 3)
+            if _hover(rect, mx, my) and charge:
+                rows = [(chiefdom.CHARGES[charge], INK), (chiefdom.CHARGE_TEXT[charge], SOFT)]
+                if match:
+                    rows.append(("Leur trait va avec cette charge : effet doublé.", GOOD))
+                owner = chiefdom.holder(state, tid, charge)
+                if owner is not None and owner["id"] != fam["id"]:
+                    rows.append((f"La famille {owner['name']} la tient : elle la perdra (faveur -10).", WARN))
+                ui.setdefault("_vtips", []).append((rows, mx, my, rect))
 
 
 def _page_tab(r, rect, label: str, active: bool, hover: bool) -> None:
@@ -1103,10 +1236,13 @@ def _side(r, state, rect, side: dict, won: bool, attacker: bool) -> None:
     lead = f" · {side['leader']}" if side.get("leader") else ""
     screen.blit(r.tiny.render(_fit(r.tiny, kind + lead, w - 20), True, NOTE), (x + 10, y + 48))
     yy = y + 68
+    general = side.get("general") or ["", 0]
     rows = [
         (f"Combattants : {side['fighters']} -> {side['fighters_left']}", SOFT),
         (f"Gens : {side['pop']} -> {side['left']}", SOFT),
-        (f"Pertes : {side['lost']}" + (f" ({side['pursuit']} dans la fuite)" if side.get("pursuit") else ""), BAD if side["lost"] else SOFT),
+        (f"Morts : {side.get('killed', side['lost'])}  ·  blessés : {side.get('wounded', 0)}"
+         + (f"  ·  {side['pursuit']} perdus dans la fuite" if side.get("pursuit") else ""), BAD if side["lost"] else SOFT),
+        (f"Général : {general[0]} (compétence {general[1]})" if general[0] else "Sans général", SOFT),
         (f"Puissance : {side['power']:.0f}".replace(".", ","), SOFT),
     ]
     for text, color_ in rows:
@@ -1138,7 +1274,8 @@ def draw_battle(r, state, mark) -> None:
     bx, by, bw, bh = lay["box"]
     place = rep.get("place", "")
     screen.blit(title_font.render(f"Bataille {place}".strip(), True, GOLD), (bx + 24, by + 12))
-    screen.blit(r.tiny.render(f"An {mark.year}  ·  semaine {mark.week}  ·  {rep['rounds']} passe{'s' if rep['rounds'] > 1 else ''} d'armes", True, NOTE), (bx + 26, by + 44))
+    days = rep.get("days", rep.get("rounds", 0))
+    screen.blit(r.tiny.render(f"An {mark.year}  ·  semaine {mark.week}  ·  {days} jour{'s' if days > 1 else ''} de bataille", True, NOTE), (bx + 26, by + 44))
     _button(screen, r.small, lay["close"], "Fermer", True, _hover(lay["close"], mx, my))
     att, dfd = rep["attacker"], rep["defender"]
     att_won = rep["winner"] == "attacker"
@@ -1172,10 +1309,10 @@ def draw_battle(r, state, mark) -> None:
 
 
 def _graph(r, state, rect, rep) -> None:
-    """Le moral passe par passe (deux courbes), les pertes en barres."""
+    """Le moral jour apres jour (deux courbes), les pertes en barres."""
     screen = r.screen
     x, y, w, h = rect
-    screen.blit(r.tiny.render("MORAL AU FIL DES PASSES", True, GOLD), (x, y - 16))
+    screen.blit(r.tiny.render("MORAL ET PERTES, JOUR APRÈS JOUR", True, GOLD), (x, y - 16))
     screen.blit(_gradient_card(w, h, (30, 23, 18), (20, 16, 12), 6), (x, y))
     att, dfd = rep["attacker"], rep["defender"]
     ma, md = att["morale"], dfd["morale"]

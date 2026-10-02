@@ -52,7 +52,8 @@ def test_too_weak_alone_it_merges_with_a_sister_band_close_by():
     assert plan == ("merge", sister, prey)
     start_plan(st, ai, plan)
     assert ai.order.kind is OrderKind.MARCH_TO_BAND and ai.order.target_band_id == sister.id
-    for _ in range(4):
+    # La bataille contre le joueur dure des jours (le temps passe en jours).
+    for _ in range(16):
         tick(st)
     assert 12 not in st.bands  # fusionnee dans la soeur...
     assert st.bands[13].last_raid_tick >= 0  # ...qui a attaque ensuite

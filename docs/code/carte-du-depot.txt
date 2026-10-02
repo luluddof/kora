@@ -76,7 +76,8 @@ Regle dure :
   vision.py, persist.py, peoples.py, influence.py, sites.py, chiefs.py,
   diplo.py, events.py, events_data.py, resources.py, villages.py,
   orders.py, battle.py, units.py, goods.py, situations.py, commands.py,
-  francais.py, production.py n'importent JAMAIS pygame ni render.py.
+  francais.py, production.py, population.py, chiefdom.py n'importent
+  JAMAIS pygame ni render.py.
   numpy : seulement dans globe_draw.py (rendu), mapgen.py et
   resources.generate_layers (cuisson de la carte, hors jeu).
   La simulation reste en python pur (petits calculs par bande).
@@ -98,8 +99,9 @@ Ici c'est plus petit, mais le meme decoupage :
                     ai_war.py, peoples.py, influence.py, sites.py,
                     chiefs.py, diplo.py, events.py (+ events_data.py),
                     resources.py, villages.py, orders.py, battle.py, units.py,
-                    goods.py, situations.py, production.py
-                    "une semaine avance"
+                    goods.py, situations.py, production.py, population.py,
+                    chiefdom.py
+                    "une semaine avance (ou un jour, en bataille)"
 
   Persistance       persist.py, data/kora_map.json
                     "on charge / on ecrit un JSON"
@@ -441,6 +443,25 @@ src/kora/situations.py  (pas de pygame)
   la semaine et de cles, jamais story_rng). to_json / from_json (persist),
   copy_all (sim.snapshot).
 
+src/kora/population.py  (pas de pygame)
+  Qui sont les gens d'une bande : Band.demo (parts enfants / hommes /
+  femmes / anciens ; vide = STRUCTURE) et Band.wounded. counts, fit_men,
+  men_force (sans arrondi : les forces), workers, labor_pop (les bras, en
+  population equivalente), levable (LEVY_MAX des hommes valides) ; grow,
+  add, take_men, kill (poids : FAMINE_WEIGHTS), kill_fighters, wound,
+  lose_wounded, mix, split_wounded ; monthly (structure, guerison).
+
+src/kora/chiefdom.py  (pas de pygame)
+  La chefferie : Tribe.levy_rate / granary / families / feast_until.
+  take_from_harvest (appele par villages.harvest), granary_pay (troupes,
+  monument), feast, set_rate, set_charge, charge_power / _effect
+  (war_chief_bonus, trade_mult, craft_mult), stability_parts, army_morale ;
+  tributaires : pacte diplo "vassal" (payer = le tributaire), overlord_of,
+  vassals_of, make_vassal, village_taken (battle._end) -> carte
+  "conquete" (joueur) ou ai_choice, conquer (soumettre / piller), unrest,
+  _pay_vassal, _revolt, village_secedes ; monthly (familles, grenier,
+  tribut, IA).
+
 src/kora/production.py  (pas de pygame)
   Le savoir-faire des villages : Tribe.efficiency (genre -> 1,0..EFF_MAX ;
   collecte, agriculture, peche, et chaque metier), monte chaque mois
@@ -449,6 +470,11 @@ src/kora/production.py  (pas de pygame)
   lu par goods.output, villages.yield_mult, villages.food_mult. Les mois de
   surproduction par bien (Tribe.glut, glutted) : GLUT_RISK -> le risque,
   GLUT_CRISIS -> situations.Surproduction. lines() pour l'ecran.
+
+src/kora/render_battle.py
+  La bataille en cours du joueur : draw (la dalle : camps, morts, blesses,
+  moral, general, fortune, Se replier / Voir ; renderer.battle_hits),
+  hit, draw_on_map (epees qui battent).
 
 src/kora/render_situations.py
   draw_banner (dalles sous la barre du haut, jauge en anneau ; uid ->
@@ -697,6 +723,16 @@ Carte, polices, icones dans l'exe   Kora.spec ET Kora-unfichier.spec datas=
 Une couleur, une police, un bouton  theme.py (et docs/charte-graphique.txt)
 Un texte affiche                    en francais accentue ; verifier :
                                     python tools/accents.py --dry
+Bataille (jour apres jour)          battle.py : Battle, start, join, day,
+                                    advance, _end, ask_retreat, slow ;
+                                    sim.resolve_raids (commence), sim.tick
+                                    (jour ou semaine), sim.after_battle
+                                    (journal, prestige, marque) ; essais :
+                                    sim.fight_out (jusqu'au bout)
+Qui se bat, qui part en guerre      population.py (men_force, levable) ;
+                                    villages.levy_size, LEVIES
+Grenier du chef, familles, tribut   chiefdom.py ; page "chef" de
+                                    render_village (_draw_chef)
 Influence selon le sol              influence.PROJECTION / projection (cache
                                     world._proj_cache)
 Savoir-faire, surproduction         production.py ; crises Surproduction et
@@ -848,6 +884,9 @@ test_chiefs.py             chefs, attachement, depart, succession
 test_diplo.py              contacts, raisons, pactes, cadeaux,
                            diffusion, clan invite
 test_events.py             evenements bien formes, cartes, suites
+test_war_chiefdom.py       population en classes, batailles en jours,
+                           fortune non binaire, general, repli, conquete,
+                           tributaires, chefferie, revolte, sauvegarde
 test_production.py         savoir-faire, surproduction, effondrement en
                            cascade, grand monument, risques prevenus
 test_situations.py         les situations : declencheurs, effets, crise

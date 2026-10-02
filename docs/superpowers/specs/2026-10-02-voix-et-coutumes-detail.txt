@@ -1,0 +1,191 @@
+Kora - 1A. Les voix du peuple et les coutumes (détail, à valider)
+=================================================================
+Date : 2026-10-02. Statut : PROPOSITION DÉTAILLÉE, rien n'est codé.
+Demande : "détaille le 1A". Il a validé la chefferie (1B, faite en 0.5.0) et
+annoncé "plus tard, un système de lois" : les coutumes ci-dessous en sont
+la forme tribale ; les lois des cités prendront la suite.
+
+
+1. L'IDÉE
+---------
+Un peuple sans État n'obéit pas à un chef : il suit des COUTUMES, et le chef
+ne tient que s'il ménage ceux qui comptent. Aujourd'hui, Kora a déjà des
+morceaux de cette vie intérieure : l'attachement des clans, la stabilité
+des villages, les familles de la chefferie. Il manque ce qui les relie :
+QUI veut QUOI dans le peuple, et ce qui arrive quand on ne l'écoute pas.
+
+Les VOIX sont les grands groupes de gens qui pèsent (comme les groupes
+d'intérêt de Victoria 3, à l'échelle d'une tribu). Les COUTUMES sont les
+règles du peuple (comme ses lois). Changer une coutume plaît à certaines
+voix et en fâche d'autres. Une voix fâchée finit par AGIR.
+
+
+2. LES VOIX
+-----------
+2.1 Lesquelles
+  Âge tribal (dès le début)
+    Les CHASSEURS      ceux qui chassent et cueillent (les hommes et les
+                       femmes valides d'un clan nomade)
+    Les ANCIENS        les vieux, les gardiens des rites et des récits
+                       (les anciens de population.py, les notables des clans)
+    Les JEUNES GUERRIERS les hommes valides en âge de se battre, ceux qui
+                       reviennent des raids
+  Âge des villages (avec le premier village), en plus
+    Les CULTIVATEURS   les bras des champs (les adultes des villages qui ne
+                       sont pas aux métiers)
+    Les ARTISANS       les équipes de métier (goods.py)
+    Les ÉLEVEURS       les gardiens des bêtes (enclos, troupeaux ; puis le
+                       bétail de 2B)
+
+2.2 Le POIDS d'une voix (0 à 100 % du peuple, recalculé chaque mois)
+  poids = part des gens qui font son activité (population.py, goods.py,
+          villages.py le savent déjà)
+        x (1 + renommée de ses meneurs / 100)
+  Ses meneurs : les chefs de clan qui ont le trait qui va avec (Grand
+  chasseur -> chasseurs, Guerrier -> jeunes guerriers, Sage/Conteur ->
+  anciens) et, au néolithique, les FAMILLES de la chefferie (Riches en bétail
+  -> éleveurs, Maîtres potiers -> artisans, Gardiens des rites -> anciens,
+  Lignée de guerriers -> jeunes guerriers, Familles marchandes -> artisans).
+  Les familles deviennent ainsi la tête des voix.
+
+2.3 L'HUMEUR d'une voix (0 à 100, 50 au départ)
+  Elle monte quand on lui donne ce qu'elle veut, baisse sinon :
+    Chasseurs : la chasse est bonne (collecte >= besoin), on ne les met pas
+      aux champs trop vite, le partage du gibier leur va.
+    Anciens : les rites (autel, pierre levée, fêtes), les coutumes gardées,
+      la succession qui leur laisse le choix ; ils détestent qu'on change
+      tout vite.
+    Jeunes guerriers : des raids réussis, du butin, du prestige ; ils
+      s'ennuient en paix longue et détestent les tributs payés.
+    Cultivateurs : un grenier qui tient, un prélèvement du chef léger, la
+      paix (les champs brûlés les ruinent).
+    Artisans : leurs biens se vendent (savoir-faire, routes), pas de
+      surproduction.
+    Éleveurs : des pâturages, pas de razzias sur leurs bêtes.
+  Chaque coutume (section 3) ajoute ou retire un peu d'humeur à certaines
+  voix chaque mois.
+
+2.4 Ce que fait une voix
+  CONTENTE (humeur >= 70) : un petit bonus à son domaine (chasseurs :
+    collecte +5 % ; anciens : apprentissage +5 % et stabilité +3 ; jeunes
+    guerriers : moral des troupes +5 ; cultivateurs : récolte +5 % ;
+    artisans : métiers +5 % ; éleveurs : vivres des enclos +5 %).
+  MÉCONTENTE (humeur < 30) : son poids pèse sur l'attachement des clans
+    (jusqu'à -10) et la stabilité des villages (jusqu'à -10).
+  FURIEUSE (humeur < 15 pendant 3 mois) : elle AGIT, une fois, et le
+    journal le dit (la plupart sont des situations, avec leur risque
+    annoncé un mois avant) :
+    - les jeunes guerriers razzient un voisin sans ordre (un raid IA de
+      votre peuple : la diplomatie en paie le prix) ;
+    - les anciens bloquent une union ou une alliance pendant un an ;
+    - les chasseurs emmènent un clan (il fait sécession, chiefs.secede) ;
+    - les cultivateurs cachent le grain (la révolte des cultivateurs, déjà
+      faite en 0.5.0, devient l'action de cette voix) ;
+    - les artisans partent pour un village frère (une équipe de métier en
+      moins, des gens qui changent de village) ;
+    - les éleveurs gardent leurs bêtes (vivres des enclos -30 % un temps).
+
+
+3. LES COUTUMES
+---------------
+3.1 Les thèmes et leurs choix (un choix en vigueur par thème)
+  LE PARTAGE DU GIBIER
+    À tous         collecte partagée : la faim frappe moins les faibles ;
+                   chasseurs -, anciens +
+    Au chasseur    collecte +5 % ; les clans pauvres s'éloignent ;
+                   chasseurs +, cultivateurs -
+  LE MARIAGE
+    Dans le clan   attachement des clans +5 ; alliances plus dures ;
+                   anciens +
+    Hors du clan   alliances et mariages entre peuples plus faciles,
+                   savoirs qui passent mieux ; anciens -
+  LA SUCCESSION
+    Le plus renommé  les héritiers se battent parfois (succession
+                     contestée plus fréquente) ; jeunes guerriers +
+    L'aîné           succession calme, chefs parfois faibles ; anciens +
+    L'élu des anciens  le meilleur chef possible, mais les anciens
+                     décident (anciens ++, jeunes guerriers -)
+  QUI PART EN GUERRE (la levée, la première "loi" qu'il annonçait)
+    Les jeunes seuls     levables : 50 % des hommes valides
+    Les hommes valides   70 % (le réglage de 0.5.0)
+    Tous les valides     90 %, et les femmes valides à 30 % ; la récolte
+                         en souffre, cultivateurs --
+  LES TERRES (âge des villages)
+    Communes          stabilité +5, les familles pèsent moins
+    Par maisonnée     récolte +8 %, les familles riches pèsent plus,
+                      inégalités : les mécontents partent plus vite
+  LES MORTS
+    Enterrés au camp      les terres des ancêtres comptent (3A) ; on
+                          répugne à partir
+    Brûlés, cendres portées  on part sans regret ; anciens -
+  LA GUERRE
+    La vengeance est due  un mort appelle un raid (jeunes guerriers +) ;
+                          relations qui se gâtent vite
+    La compensation       une paix jurée possible contre des vivres ou des
+                          bêtes ; jeunes guerriers -
+  Chaque peuple naît avec des coutumes tirées de sa culture (les peuples
+  de la steppe : vengeance, au chasseur ; ceux des vallées : à tous,
+  compensation...).
+
+3.2 Changer une coutume : le DÉBAT
+  Le joueur propose (onglet « Le peuple », un clic). Un débat dure 3 mois.
+  Chaque voix pour ou contre pèse de son poids ; le joueur peut appuyer
+  (prestige, une fête, un cadeau aux familles) ou gagner une voix (une
+  charge à la famille qui la mène). À la fin : SOUTIEN >= 50 % la coutume
+  change ; sinon elle reste, et les voix qui ont gagné sont contentes.
+  Après un changement, pas d'autre débat sur ce thème pendant 3 ans. Un
+  changement imposé contre une majorité (prestige 25) passe, mais toutes
+  les voix contre perdent 20 d'humeur.
+
+
+4. LE TOURNANT NÉOLITHIQUE, ENFIN POLITIQUE
+-------------------------------------------
+Quand le premier village naît, les cultivateurs apparaissent et prennent du
+poids à chaque récolte ; les chasseurs en perdent. Si les chasseurs
+tombent sous 30 d'humeur, le risque s'annonce (« Les chasseurs se sentent
+de trop ») puis la situation « La querelle des voix » (une crise) : les
+chasseurs veulent garder la coutume « au chasseur », les cultivateurs
+veulent « à tous » et des terres. Actions : une fête commune, donner une
+charge à leur famille, laisser partir un clan (il fonde son peuple : ce qui
+arrive déjà, mais avec une RAISON). Ratée : un clan s'en va fâché (relation
+-30 avec vous).
+
+
+5. L'INTERFACE
+--------------
+Un onglet « Le peuple » (icône des voix), à la Victoria 3, dans la charte :
+  - en haut, le POIDS des voix en anneau (une couleur par voix) ;
+  - une fiche par voix : son poids, son humeur (jauge et mot), ses meneurs
+    (les familles, les chefs de clan), ce qu'elle veut, ce qu'elle fera si
+    on la fâche ;
+  - les COUTUMES par thème, en cartes : celle en vigueur, les autres, qui
+    est pour et qui est contre, le bouton « Proposer » ;
+  - un DÉBAT en cours : la jauge du soutien, les jours qui restent, les
+    moyens d'appuyer.
+Au bandeau : un débat en cours est une dalle (comme une conjoncture).
+
+
+6. L'IA, LE MULTIJOUEUR, LA SAUVEGARDE
+--------------------------------------
+  - Chaque peuple IA a ses voix et ses coutumes ; il propose un débat quand
+    une voix pesante est mécontente ; ses crises intérieures (sécessions,
+    raids sans ordre) font sa vie et se voient de loin (journal, peuples).
+  - Tout changement passe par commands.py (proposer, appuyer, imposer).
+  - Voix et coutumes vont dans la sauvegarde (Tribe.customs, Tribe.voices).
+
+
+7. CE QUE ÇA RELIE
+------------------
+  population.py (qui fait quoi), la chefferie 1B (les familles mènent les
+  voix ; le prélèvement fâche les cultivateurs), les situations (les actes
+  des voix furieuses en sont, avec leur risque), la levée (la coutume « qui
+  part en guerre » remplace le réglage fixe), la diplomatie (mariages,
+  vengeance, compensation), les troupes (moral des jeunes guerriers),
+  l'émancipation des clans (enfin une raison).
+
+
+8. COMBIEN
+----------
+  Grand chantier, en deux temps :
+    a. les voix, leur poids, leur humeur, leurs effets, l'onglet ;
+    b. les coutumes, les débats, les actes des voix furieuses, l'IA.

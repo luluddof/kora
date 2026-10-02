@@ -787,6 +787,18 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         if choice.startswith("vpage:"):
             ui["village_page"] = choice[6:]
             return
+        if choice.startswith("crate:"):
+            issue(commands.make(me(), "levy_rate", int(choice[6:])))
+            return
+        if choice == "cfeast":
+            issue(commands.make(me(), "feast"))
+            return
+        if choice.startswith("ccharge:"):
+            _k, idx, charge = choice.split(":", 2)
+            fams = state.tribes[home.tribe_id].families or []
+            if int(idx) < len(fams):
+                issue(commands.make(me(), "charge", fams[int(idx)]["id"], charge))
+            return
         if choice == "vtrade":
             ui["village_open"] = None
             ui["trade_open"] = True
@@ -1443,6 +1455,20 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     ) if isinstance(renderer.event_hits, dict) else None
                     if card_uid is not None:
                         open_event(card_uid)
+                        continue
+                    from src.kora import render_battle
+
+                    bhit = render_battle.hit(renderer.battle_hits, mx, my)
+                    if bhit is not None:
+                        from src.kora import battle as _battle
+
+                        bt = next((x for x in _battle.battles(state) if x.uid == renderer.battle_hits.get("uid")), None)
+                        if bt is not None and bhit == "retreat":
+                            mine_band = next((b for b in bt.attackers + bt.defenders if b in state.bands and state.bands[b].tribe_id == me()), None)
+                            if mine_band is not None:
+                                issue(commands.make(me(), "battle_retreat", mine_band))
+                        elif bt is not None and bhit == "see":
+                            show_place(bt.hex)
                         continue
                     from src.kora.render_situations import banner_hit
 

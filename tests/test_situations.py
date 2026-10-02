@@ -32,7 +32,7 @@ def _month(st):
 
 
 def test_every_situation_with_its_effects_known_to_the_tech_tree():
-    assert len(SPECS) == 14
+    assert len(SPECS) == 16
     assert {s.kind for s in SPECS.values()} == {"crise", "conjoncture"}
     for sid, (name, effects) in situations.effect_specs().items():
         assert tech.situation_effect(sid) is not None, sid

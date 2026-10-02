@@ -199,10 +199,12 @@ MONUMENT_STAGES = 6
 
 # Troupes : part des habitants levee, vivres emportes, duree avant les
 # desertions.
-LEVIES = (("poignee", 0.2, "Une poignee"), ("troupe", 1 / 3, "Une troupe"), ("masse", 0.5, "Levée en masse"))
+# Une levee prend une part des LEVABLES (population.levable : une part des
+# hommes valides seulement).
+LEVIES = (("poignee", 0.35, "Une poignée"), ("troupe", 0.7, "Une troupe"), ("masse", 1.0, "Tous les levables"))
 LEVY_SHARE = {k: v for k, v, _l in LEVIES}
 ARMY_MIN_VILLAGE = 40
-ARMY_MIN = 8
+ARMY_MIN = 5
 VILLAGE_KEEP = 20
 ARMY_SUPPLY_WEEKS = 8
 ARMY_TERM = 26
@@ -412,6 +414,8 @@ def build_block_site(state, site, bid: str) -> str:
     if used_slots(site) >= slots(state, site) and not (monument and has(site, "monument")):
         return f"Plus de place (il faut {SLOT_POP} habitants de plus)"
     cost = build_cost(state, site, bid)
+    if monument:
+        cost -= min(cost, getattr(state.tribes[site.tribe_id], "granary", 0.0))
     if band.stock < cost:
         return f"Il faut {cost:.0f} vivres au grenier"
     return ""
@@ -430,7 +434,13 @@ def build(state, band_id: int, bid: str) -> bool:
         return False
     band = state.bands[band_id]
     site = site_of(state, band)
-    band.stock -= build_cost(state, site, bid)
+    cost = build_cost(state, site, bid)
+    if bid == "monument":
+        # Le grand monument : le grenier du chef paie d'abord.
+        from src.kora import chiefdom
+
+        cost -= chiefdom.granary_pay(state, band.tribe_id, cost)
+    band.stock -= cost
     site.data["build"] = [bid, build_weeks(site, bid)]
     if state.tribes[band.tribe_id].is_player:
         _note(state, LogKind.SURVIE, f"{name(site)} : chantier de {BUILDINGS[bid].name.lower()} ({build_weeks(site, bid)} sem.).", site.hex, to=band.tribe_id)
@@ -711,6 +721,9 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
     from src.kora import goods
 
     parts.extend(goods.stability_parts(state, band.tribe_id))
+    from src.kora import chiefdom
+
+    parts.extend(chiefdom.stability_parts(state, band.tribe_id))
     if chiefs.is_chief_band(state, band):
         parts.append(("Le chef y gouverne", 10.0))
     else:
@@ -886,8 +899,10 @@ def choose_fields(state, site, band) -> list:
 def hands_mult(band, fields: int, busy: int = 0) -> float:
     """Assez de bras pour rentrer la recolte ? (les troupes sont loin, les
     gens de metier a leur ouvrage)."""
+    from src.kora import population
+
     need = fields * FIELD_HANDS
-    hands = band.population - busy
+    hands = population.labor_pop(band) - busy
     if need <= 0 or hands >= need:
         return 1.0
     return max(0.3, hands / need)
@@ -991,7 +1006,11 @@ def harvest(state, site, band) -> float:
     want = SEED * min(MAX_FIELDS, max(1, math.ceil(band.population / FIELD_WORKERS)))
     keep = min(crop, want)
     site.data["seed"] = site.data.get("seed", 0.0) + keep
-    band.stock = min(stock_max(band, state), band.stock + crop - keep)
+    from src.kora import chiefdom
+
+    # La part du chef part au grenier commun (chiefdom.py).
+    left = chiefdom.take_from_harvest(state, band, crop - keep)
+    band.stock = min(stock_max(band, state), band.stock + left)
     site.data["fields"] = []
     site.data["sown_ratio"] = 0.0
     site.data["last_harvest"] = round(crop)
@@ -1356,11 +1375,18 @@ def army_quality(state, band) -> float:
 
 
 def army_morale(state, band) -> float:
-    return WARRIORS_MORALE * _warrior_share(state, band)
+    from src.kora import chiefdom
+
+    return WARRIORS_MORALE * _warrior_share(state, band) + chiefdom.army_morale(state, band.tribe_id)
 
 
 def levy_size(band, share: float) -> int:
-    return int(band.population * share)
+    """Combien d'hommes part une levee : une part des LEVABLES (une part des
+    hommes valides, population.py), jamais les enfants, les femmes, les
+    anciens ni les blesses."""
+    from src.kora import population
+
+    return int(population.levable(band) * share)
 
 
 def levy_type(state, tribe_id: int, type_id: str | None):
@@ -1410,9 +1436,16 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     tribe = state.tribes[band.tribe_id]
     kind = levy_type(state, band.tribe_id, type_id)
     n = levy_size(band, share)
-    supply = min(band.stock, float(ARMY_SUPPLY_WEEKS * n))
-    band.stock -= supply
-    band.population -= n
+    from src.kora import population
+
+    from src.kora import chiefdom
+
+    n = population.take_men(band, n)
+    # Les vivres des guerriers : le grenier du chef d'abord, puis le village.
+    supply = chiefdom.granary_pay(state, band.tribe_id, float(ARMY_SUPPLY_WEEKS * n))
+    extra = min(band.stock, float(ARMY_SUPPLY_WEEKS * n) - supply)
+    band.stock -= extra
+    supply += extra
     here = next(
         (
             a
@@ -1683,9 +1716,12 @@ def _update_armies(state) -> None:
         away = state.world.distance(site.hex, band.position) > 2
         if not away or state.tick_count - band.raised <= ARMY_TERM or state.tick_count % 4:
             continue
+        from src.kora import population
+
         gone = max(1, round(band.population * DESERTION))
         band.population -= gone
-        band_of(state, site).population += gone
+        band.wounded = min(band.wounded, band.population)
+        population.add(band_of(state, site), gone, "hommes")
         if state.tribes[band.tribe_id].is_player and state.tick_count % 12 == 0:
             _note(state, LogKind.COMBAT, f"Trop longtemps loin de {name(site)} : des guerriers désertent et rentrent chez eux.", band.position, to=band.tribe_id)
 

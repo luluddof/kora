@@ -32,10 +32,16 @@ def _village(pop=90, stock=3000.0, known=("huttes", "semis")):
 def test_a_village_raises_a_troop_from_its_people():
     st, village, site = _village(pop=90)
     before = tribe_band_count(st, 1)
+    from src.kora import population
+
+    # Seule une part des hommes valides part : ni enfants, ni femmes, ni anciens.
+    n = villages.levy_size(village, villages.LEVY_SHARE["troupe"])
+    assert 0 < n < population.fit_men(village) < 30
     army = villages.raise_army(st, 1, villages.LEVY_SHARE["troupe"])
     assert army is not None and army.kind == "armee" and army.home == site.id
-    assert army.population == 30 and village.population == 60
-    assert army.stock == villages.ARMY_SUPPLY_WEEKS * 30
+    assert army.population == n and village.population == 90 - n
+    assert population.counts(village)["enfants"] == population.counts(Band(9, 1, site.hex, 90, 0.0))["enfants"]
+    assert army.stock == villages.ARMY_SUPPLY_WEEKS * n
     assert army.leader is not None and army.loyalty == 100.0
     # Une troupe n'est pas un clan : elle ne compte pas dans la limite.
     assert tribe_band_count(st, 1) == before
@@ -86,23 +92,25 @@ def test_a_far_troop_deserts_after_a_while():
 def test_a_troop_does_not_grow_and_has_no_families():
     st, village, site = _village(pop=90)
     army = villages.raise_army(st, 1)
+    n = army.population
     army.growth_acc = 0.99
     update_population(st)
-    assert army.population == 30
+    assert army.population == n
 
 
 def test_clans_and_troops_do_not_mix_by_accident():
     st, village, site = _village(pop=90)
     army = villages.raise_army(st, 1)
+    n = army.population
     army.position = offset_to_axial(40, 15)
     clan = Band(40, 1, army.position, 20, 0.0)
     st.bands[40] = clan
     merge_bands(st, 40)
-    assert army.id in st.bands and army.population == 30 and 40 in st.bands
+    assert army.id in st.bands and army.population == n and 40 in st.bands
     set_march_to_band(st, 40, army.id)
     clan.position = army.position
     resolve_joins(st)
-    assert army.population == 30 and 40 in st.bands
+    assert army.population == n and 40 in st.bands
     # Une troupe qui rejoint son village y redevient villageoise.
     army.position = site.hex
     set_march_to_band(st, army.id, 1)
@@ -120,10 +128,11 @@ def test_a_troop_without_village_becomes_a_clan():
 
 def test_a_troop_away_leaves_the_harvest_short_of_hands():
     st, village, site = _village(pop=100)
-    full = villages.expected_harvest(st, site, village)
-    assert full > 0
+    # Beaucoup de champs : il faut tous les bras.
+    site.data["fields"] = [[c, 0] for c in range(6)]
+    full = villages.field_hands_mult(site, village)
     villages.raise_army(st, 1, villages.LEVY_SHARE["masse"])
-    assert villages.expected_harvest(st, site, village) < full * 0.9
+    assert villages.field_hands_mult(site, village) < full
 
 
 def test_troops_are_saved(tmp_path):

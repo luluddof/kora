@@ -46,9 +46,6 @@ GUARD_MORALE = 10.0
 MARCH_MORALE = -10.0
 LEADER_MORALE = 5.0
 WELD_MORALE = -8.0
-# Un village attaque : 60 % des habitants tiennent les murs (un clan en
-# marche : sim.CLAN_SHARE).
-VILLAGE_SHARE = 0.6
 _T = Terrain
 COVER = {_T.COLLINE: 1.2, _T.FORET: 1.15, _T.MONTAGNE: 1.35, _T.SOMMET: 1.35}
 # Facilite de la poursuite : terrain ouvert, on rattrape ; bois et collines,
@@ -67,7 +64,6 @@ ARMY_PURSUIT = 1.5
 CLAN_PURSUIT = 0.6
 ORDERLY = 0.3
 ENCIRCLED = 0.35
-FAMILIES_CAUGHT = 0.3
 # Un clan aneanti : ses derniers survivants rejoignent la bande de leur
 # peuple la plus proche, a cette distance au plus (une troupe, non).
 SCATTER_RANGE = 16
@@ -211,11 +207,8 @@ def start_morale(state, band: Band, attacker: bool, h) -> tuple[float, list[tupl
 
 
 def fighters_in(band: Band, attacker: bool) -> float:
-    """Combattants d'une bande dans cette bataille : un village attaque
-    defend ses murs avec presque tout le monde."""
-    if band.village and not attacker and band.kind != "armee":
-        return band.population * VILLAGE_SHARE
-    return sim.fighters(band)
+    """Combattants d'une bande dans cette bataille (fighters_now)."""
+    return fighters_now(band, attacker)
 
 
 def _side(state, main: Band, attacker: bool, h) -> Side:
@@ -271,44 +264,6 @@ def _spread(side: Side, hit: float, lost: dict) -> None:
 # --- la bataille ----------------------------------------------------------------------
 
 
-def simulate(state, attacker: Band, defender: Band, h):
-    """Les passes d'armes, sans rien changer au monde : (camp attaquant,
-    camp defenseur, passes, pertes par bande, vaincu, issue)."""
-    rng = random.Random(_seed(state, attacker, defender))
-    a = _side(state, attacker, True, h)
-    d = _side(state, defender, False, h)
-    lost: dict[int, float] = {}
-    rounds = [{"a": 0.0, "d": 0.0, "ma": round(a.morale, 1), "md": round(d.morale, 1)}]
-    a_start, d_start = max(1e-6, a.total_start()), max(1e-6, d.total_start())
-    from src.kora import units
-
-    for rnd in range(ROUNDS):
-        # Premiere passe : la volee des tireurs, avant le choc.
-        volley = units.VOLLEY if rnd == 0 else units.VOLLEY_LATER
-        pa, pd = a.power(volley), d.power(volley)
-        if pa <= 0 or pd <= 0:
-            break
-        hit_d = min(d.total(), pa * KILL * rng.uniform(0.85, 1.15) / (math.sqrt(d.cover) * d.toughness()))
-        hit_a = min(a.total(), pd * KILL * rng.uniform(0.85, 1.15) / (math.sqrt(a.cover) * a.toughness()))
-        _spread(d, hit_d, lost)
-        _spread(a, hit_a, lost)
-        d.morale = max(0.0, d.morale - SHOCK * hit_d / d_start - PRESSURE * max(0.0, min(MAX_RATIO, pa / pd) - 1.0))
-        a.morale = max(0.0, a.morale - SHOCK * hit_a / a_start - PRESSURE * max(0.0, min(MAX_RATIO, pd / pa) - 1.0))
-        rounds.append({"a": round(hit_a, 1), "d": round(hit_d, 1), "ma": round(a.morale, 1), "md": round(d.morale, 1)})
-        if a.morale < ROUT or d.morale < ROUT or a.total() <= 0 or d.total() <= 0:
-            break
-    if a.morale < ROUT or d.morale < ROUT or a.total() <= 0 or d.total() <= 0:
-        # Deroute : le plus ebranle cede (a egalite, l'attaquant).
-        broken = a if (a.total() <= 0 or (d.total() > 0 and a.morale <= d.morale)) else d
-        outcome = "deroute"
-    else:
-        # Personne ne cede : le moins solide se retire (a egalite, le
-        # defenseur tient).
-        broken = a if a.power() * max(1.0, a.morale) <= d.power() * max(1.0, d.morale) else d
-        outcome = "retraite"
-    return a, d, rounds, lost, broken, outcome, rng
-
-
 def pursuit_rate(state, winner: Side, loser: Side, h, outcome: str, encircled: bool) -> float:
     from src.kora import units
 
@@ -323,25 +278,316 @@ def pursuit_rate(state, winner: Side, loser: Side, h, outcome: str, encircled: b
     return min(0.9, rate)
 
 
-def fight(state, attacker: Band, defender: Band, h) -> Result:
-    """Livre la bataille et en applique l'issue : pertes, poursuite, repli
-    ou pillage, butin. Le prestige, le journal et la diplomatie restent a
-    sim.resolve_raids."""
-    a, d, rounds, lost, broken, outcome, rng = simulate(state, attacker, defender, h)
-    lose, win = (a, d) if broken is a else (d, a)
-    loser, winner = lose.main, win.main
-    before = {b.id: b.population for b in a.bands + d.bands}
+# --- la bataille : jour apres jour ------------------------------------------------------
+#
+# Une bataille DURE : chaque jour (day), chaque camp frappe l'autre selon sa
+# puissance - ses combattants (les hommes valides, population.py), leur
+# valeur (prestige, savoirs, chef, troupe), leurs armes sur ce terrain
+# (units.attack_mult), son general (general) et, pour le defenseur, l'abri
+# du terrain ou des murs - multipliee par la FORTUNE du jour (0,8 a 1,2) :
+# le hasard pese sur les pertes, il ne decide jamais seul. Les coups
+# tuent (KILLED_SHARE) ou blessent ; pertes et rapport de force usent le
+# moral. Sous ROUT : deroute. Un camp qui demande le repli se retire en
+# ordre ; au bout de MAX_DAYS, le moins solide se retire.
+# Quand une bataille touche un joueur, le temps passe en jours (sim.tick) ;
+# sinon, une semaine fait jusqu'a sept jours de bataille.
+
+DAY_KILL = 0.07
+KILLED_SHARE = 0.35
+MAX_DAYS = 8
+FORTUNE = 0.4
+# Les familles d'un clan battu : quelques-unes sont prises dans la fuite.
+FAMILIES_CAUGHT = 0.15
+# Les blesses d'un camp battu restent sur le terrain : une part est perdue
+# (deroute / retraite en ordre).
+WOUNDED_LOST = {"deroute": 0.5, "retraite": 0.15}
+# Au mur d'un village attaque : les hommes valides, et une part des femmes.
+WALL_WOMEN = 0.3
+GENERAL_STEP = 0.06
+
+
+@dataclass
+class Battle:
+    uid: int
+    hex: object
+    attackers: list
+    defenders: list
+    started: int
+    hunted: bool = False
+    village: bool = False
+    day: int = 0
+    morale_a: float = 0.0
+    morale_d: float = 0.0
+    start_a: float = 0.0
+    start_d: float = 0.0
+    pop0: dict = field(default_factory=dict)
+    killed: dict = field(default_factory=dict)
+    hurt: dict = field(default_factory=dict)
+    days: list = field(default_factory=list)
+    mods_a: list = field(default_factory=list)
+    mods_d: list = field(default_factory=list)
+    general_a: list = field(default_factory=list)
+    general_d: list = field(default_factory=list)
+    retreat: str = ""
+    outcome: str = ""
+    morale0_a: float = 0.0
+    morale0_d: float = 0.0
+    units0: dict = field(default_factory=dict)
+
+
+def battles(state) -> list:
+    return getattr(state, "battles", [])
+
+
+def battle_of(state, band_id: int):
+    for bt in battles(state):
+        if not bt.outcome and (band_id in bt.attackers or band_id in bt.defenders):
+            return bt
+    return None
+
+
+def in_battle(state, band) -> bool:
+    return band is not None and battle_of(state, band.id) is not None
+
+
+def involves_human(state, bt) -> bool:
+    tids = {state.bands[b].tribe_id for b in bt.attackers + bt.defenders if b in state.bands}
+    return any(sim.is_human(state, t) for t in tids)
+
+
+def slow(state) -> bool:
+    """Une bataille en cours touche un joueur : le temps passe en jours."""
+    return any(not bt.outcome and involves_human(state, bt) for bt in battles(state))
+
+
+def general(state, bands) -> tuple[str, int]:
+    """Le general d'un camp : le chef de sa bande menee (ses traits, sa
+    renommee), et le chef de guerre du peuple (chiefdom.py). Sa competence
+    (0 a 6) fait GENERAL_STEP de puissance par point."""
+    if not bands:
+        return "", 0
+    main = bands[0]
+    lead = main.leader
+    skill = 0
+    name = ""
+    if lead is not None:
+        name = lead.name
+        skill = 1 + (2 if "guerrier" in lead.traits else 0) + min(2, lead.renown // 40)
+    from src.kora import chiefdom
+
+    skill += chiefdom.war_chief_bonus(state, main.tribe_id)
+    return name, min(6, skill)
+
+
+def fighters_now(band: Band, attacker: bool) -> float:
+    """Combattants d'une bande : ses hommes valides ; au mur de son village,
+    une part des femmes aussi."""
+    from src.kora import population
+
+    men = population.men_force(band)
+    if band.village and not attacker and band.kind != "armee":
+        return men + WALL_WOMEN * population.women_force(band)
+    return men
+
+
+def _alive(state, ids) -> list:
+    return [state.bands[b] for b in ids if b in state.bands and state.bands[b].population > 0]
+
+
+def _now(state, bt, attacker: bool) -> Side:
+    """Un camp tel qu'il est ce jour-la (ses bandes vivantes)."""
     from src.kora import units
 
-    units_before = {b.id: [list(u) for u in units.normalize(b)] for b in a.bands + d.bands if b.kind == "armee"}
-    # Morts des passes d'armes (dans une troupe : d'abord les exposes).
+    bands = _alive(state, bt.attackers if attacker else bt.defenders)
+    h = bt.hex
+    terrain = state.world.terrain(h)
+    start = {b.id: fighters_now(b, attacker) for b in bands}
+    quality = {b.id: sim.band_quality(state, b) for b in bands}
+    cover = 1.0
+    if not attacker and bands:
+        for _label, mult in cover_parts(state, bands[0], h):
+            cover *= mult
+    attack, guard, ranged = {}, {}, {}
+    for b in bands:
+        prof = units.profile(b)
+        attack[b.id] = units.attack_mult(b, terrain)
+        guard[b.id] = prof["defense"]
+        ranged[b.id] = prof["ranged"]
+    morale = bt.morale_a if attacker else bt.morale_d
+    main = bands[0] if bands else None
+    return Side(main, bands, start, dict(start), quality, cover, morale, [], attacker, attack, guard, ranged)
+
+
+def start(state, attacker: Band, defender: Band, h, hunted: bool = False) -> Battle:
+    """La bataille commence : deux camps (la bande et ses renforts), leur
+    moral, leurs generaux. Les bandes sur la case ne marchent plus."""
+    a = _side(state, attacker, True, h)
+    d = _side(state, defender, False, h)
+    for side in (a, d):
+        for b in side.bands:
+            side.start[b.id] = fighters_now(b, side.attacker)
+            side.now[b.id] = side.start[b.id]
+    uid = getattr(state, "next_battle_uid", 1)
+    state.next_battle_uid = uid + 1
+    ga, gd = general(state, a.bands), general(state, d.bands)
+    mods_a, mods_d = list(a.mods), list(d.mods)
+    if ga[1]:
+        mods_a.append((f"Général {ga[0]} : {ga[1]} (puissance x{_fmt(1 + GENERAL_STEP * ga[1])})", "+"))
+    if gd[1]:
+        mods_d.append((f"Général {gd[0]} : {gd[1]} (puissance x{_fmt(1 + GENERAL_STEP * gd[1])})", "+"))
+    bt = Battle(
+        uid=uid, hex=h, attackers=[b.id for b in a.bands], defenders=[b.id for b in d.bands], started=state.tick_count,
+        hunted=hunted, village=bool(defender.village), morale_a=a.morale, morale_d=d.morale,
+        start_a=max(1e-6, a.total_start()), start_d=max(1e-6, d.total_start()),
+        pop0={b.id: b.population for b in a.bands + d.bands},
+        mods_a=[list(m) for m in mods_a], mods_d=[list(m) for m in mods_d],
+        general_a=[ga[0], ga[1]], general_d=[gd[0], gd[1]],
+        morale0_a=a.morale, morale0_d=d.morale,
+        units0={b.id: [list(u) for u in b.units] for b in a.bands + d.bands if b.kind == "armee"},
+    )
+    from src.kora.types import stay_order
+
     for b in a.bands + d.bands:
-        dead = int(math.floor(lost.get(b.id, 0.0) + 0.5))
-        _kill(b, dead)
-    if loser.population >= 1 and before[loser.id] - loser.population < 1:
-        _kill(loser, 1)
-    # Les vaincus sur la case partent avec leur bande ; les renforts venus
-    # d'a cote rentrent chez eux.
+        if b.position == h and not b.village:
+            b.path = []
+            b.order = stay_order()
+    state.battles.append(bt)
+    return bt
+
+
+def join(state, bt, band: Band, attacker: bool) -> None:
+    """Des renforts arrivent sur la case : ils entrent dans la bataille."""
+    side = bt.attackers if attacker else bt.defenders
+    if band.id in bt.attackers or band.id in bt.defenders:
+        return
+    side.append(band.id)
+    bt.pop0[band.id] = band.population
+    if attacker:
+        bt.start_a += fighters_now(band, True)
+    else:
+        bt.start_d += fighters_now(band, False)
+    from src.kora.types import stay_order
+
+    band.path = []
+    band.order = stay_order()
+
+
+def _seed_day(state, bt) -> int:
+    return (bt.started * 1_000_003 + bt.uid * 7919 + bt.day * 104_729 + 17) & 0x7FFFFFFF
+
+
+def _hits(state, bt, side: Side, hit: float, prudent: bool) -> tuple[int, int]:
+    """Les coups recus par un camp : morts et blesses, repartis entre ses
+    bandes selon leur part du combat."""
+    from src.kora import population
+
+    if prudent:
+        hit *= 0.9
+    weights = {b.id: side.now[b.id] * side.quality[b.id] for b in side.bands}
+    total = sum(weights.values())
+    if total <= 0 or hit <= 0:
+        return 0, 0
+    dead_all = hurt_all = 0
+    for b in side.bands:
+        share = hit * weights[b.id] / total
+        share = min(share, side.now[b.id])
+        dead = int(math.floor(share * KILLED_SHARE + 0.5))
+        hurt = int(math.floor(share - dead + 0.5))
+        if b.kind == "armee":
+            dead = min(dead, b.population - b.wounded)
+            _kill(b, dead)
+        else:
+            dead = population.kill_fighters(b, dead)
+        hurt = population.wound(b, hurt)
+        bt.killed[b.id] = bt.killed.get(b.id, 0) + dead
+        bt.hurt[b.id] = bt.hurt.get(b.id, 0) + hurt
+        dead_all += dead
+        hurt_all += hurt
+    return dead_all, hurt_all
+
+
+def day(state, bt) -> bool:
+    """Un jour de bataille. Rend True si elle est finie."""
+    from src.kora import units
+
+    if bt.outcome:
+        return True
+    a, d = _now(state, bt, True), _now(state, bt, False)
+    if not a.bands or not d.bands or a.total() <= 0 or d.total() <= 0:
+        _end(state, bt, a, d, a if (not a.bands or a.total() <= 0) else d, "deroute")
+        return True
+    rng = random.Random(_seed_day(state, bt))
+    volley = units.VOLLEY if bt.day == 0 else units.VOLLEY_LATER
+    ga, gd = 1.0 + GENERAL_STEP * bt.general_a[1], 1.0 + GENERAL_STEP * bt.general_d[1]
+    pa, pd = a.power(volley) * ga, d.power(volley) * gd
+    fa = 1.0 - FORTUNE / 2 + FORTUNE * rng.random()
+    fd = 1.0 - FORTUNE / 2 + FORTUNE * rng.random()
+    hit_d = min(d.total(), pa * DAY_KILL * fa / (math.sqrt(d.cover) * d.toughness()))
+    hit_a = min(a.total(), pd * DAY_KILL * fd / (math.sqrt(a.cover) * a.toughness()))
+    prudent_a = a.main.leader is not None and "prudent" in a.main.leader.traits
+    prudent_d = d.main.leader is not None and "prudent" in d.main.leader.traits
+    kd, wd = _hits(state, bt, d, hit_d, prudent_d)
+    ka, wa = _hits(state, bt, a, hit_a, prudent_a)
+    bt.morale_d = max(0.0, bt.morale_d - SHOCK * (kd + wd) / bt.start_d - PRESSURE * max(0.0, min(MAX_RATIO, pa / max(0.1, pd)) - 1.0))
+    bt.morale_a = max(0.0, bt.morale_a - SHOCK * (ka + wa) / bt.start_a - PRESSURE * max(0.0, min(MAX_RATIO, pd / max(0.1, pa)) - 1.0))
+    bt.day += 1
+    bt.days.append({"ka": ka, "wa": wa, "kd": kd, "wd": wd, "ma": round(bt.morale_a, 1), "md": round(bt.morale_d, 1),
+                    "fa": round(fa, 2), "fd": round(fd, 2)})
+    a, d = _now(state, bt, True), _now(state, bt, False)
+    if bt.morale_a < ROUT or bt.morale_d < ROUT or a.total() <= 0 or d.total() <= 0:
+        broken = a if (a.total() <= 0 or (d.total() > 0 and bt.morale_a <= bt.morale_d)) else d
+        _end(state, bt, a, d, broken, "deroute")
+        return True
+    if bt.retreat:
+        _end(state, bt, a, d, a if bt.retreat == "a" else d, "retraite")
+        return True
+    if bt.day >= MAX_DAYS:
+        broken = a if a.power() * max(1.0, bt.morale_a) <= d.power() * max(1.0, bt.morale_d) else d
+        _end(state, bt, a, d, broken, "retraite")
+        return True
+    return False
+
+
+def advance(state, days: int, humans: bool) -> None:
+    """Faire avancer les batailles de `days` jours (humans : aussi celles
+    d'un joueur)."""
+    for bt in sorted(battles(state), key=lambda b: b.uid):
+        if bt.outcome or (not humans and involves_human(state, bt)):
+            continue
+        for _ in range(days):
+            if day(state, bt):
+                break
+    state.battles = [bt for bt in battles(state) if not bt.outcome]
+
+
+def ask_retreat(state, tid: int, band_id: int) -> str:
+    """Un joueur demande le repli de son camp (a la fin du jour)."""
+    bt = battle_of(state, band_id)
+    if bt is None:
+        return "Pas de bataille ici"
+    a_tribe = state.bands[bt.attackers[0]].tribe_id if bt.attackers and bt.attackers[0] in state.bands else 0
+    side = "a" if any(state.bands[b].tribe_id == tid for b in bt.attackers if b in state.bands) else "d"
+    if side == "d" and bt.village and any(state.bands[b].village for b in bt.defenders if b in state.bands):
+        return "Un village ne se replie pas"
+    bt.retreat = side
+    del a_tribe
+    return "Repli ordonné : les vôtres se retirent à la fin du jour."
+
+
+def _end(state, bt, a: Side, d: Side, broken: Side, outcome: str) -> None:
+    """La fin de la bataille : poursuite, repli, butin, village pris."""
+    from src.kora import chiefdom, diplo, population
+
+    h = bt.hex
+    lose, win = (a, d) if broken is a else (d, a)
+    winner = win.main or _alive(state, bt.defenders if broken is a else bt.attackers)[:1] or None
+    if isinstance(winner, list):
+        winner = winner[0] if winner else None
+    loser = lose.main or next(iter(_alive(state, bt.attackers if broken is a else bt.defenders)), None)
+    bt.outcome = outcome
+    if winner is None or loser is None:
+        return
+    before = dict(bt.pop0)
     on_hex = [b for b in lose.bands if b.position == h and b.population > 0]
     encircled = False
     pursuit = 0
@@ -352,76 +598,94 @@ def fight(state, attacker: Band, defender: Band, h) -> Result:
         fled = sim._retreat(state, b, winner)
         if b is loser:
             encircled = not fled
-    if not village:
+    if not village and lose.bands:
         rate = pursuit_rate(state, win, lose, h, outcome, encircled)
         still = lose.now.get(loser.id, 0.0)
-        families = 0.0 if loser.kind == "armee" else max(0.0, loser.population - still)
-        pursuit = int(math.floor(rate * still + rate * FAMILIES_CAUGHT * families + 0.5))
-        pursuit = min(loser.population, pursuit)
-        _kill(loser, pursuit)
+        caught = int(math.floor(rate * still + 0.5))
+        if loser.kind == "armee":
+            caught = min(caught, loser.population)
+            _kill(loser, caught)
+        else:
+            caught = population.kill_fighters(loser, caught)
+            civilians = max(0, loser.population - int(population.men_force(loser)))
+            taken = int(math.floor(rate * FAMILIES_CAUGHT * civilians + 0.5))
+            caught += population.kill(loser, taken)
+        pursuit = caught
+    # Les blesses laisses sur le terrain.
+    for b in lose.bands:
+        if b.position != h or b.wounded <= 0:
+            continue
+        gone = population.lose_wounded(b, int(math.floor(b.wounded * WOUNDED_LOST.get(outcome, 0.3) + 0.5)))
+        if b is loser:
+            pursuit += gone
     wiped = loser.population < WIPE_MIN
-    if loser.kind == "armee" and outcome == "deroute" and loser.population < ARMY_BROKEN * before[loser.id]:
+    fit = loser.population - loser.wounded
+    if loser.kind == "armee" and outcome == "deroute" and fit < ARMY_BROKEN * before.get(loser.id, loser.population):
         wiped = True
-    # Butin : la moitie des vivres, tout si le vaincu est aneanti.
-    loot = loser.stock if wiped else float(math.floor(loser.stock * LOOT))
+    if loser.kind != "armee" and not village and population.men_force(loser) < 1 and loser.population < 3 * WIPE_MIN:
+        wiped = True
+    loot = loser.stock if (wiped and not village) else float(math.floor(loser.stock * LOOT))
     loser.stock -= loot
     winner.stock = min(sim.stock_max(winner, state), winner.stock + loot)
     building = ""
     scattered = 0
-    if wiped:
-        if loser.kind != "armee" and not village and loser.population > 0:
+    final = outcome
+    if wiped and not village:
+        if loser.kind != "armee" and loser.population > 0:
             kin = _nearest_kin(state, loser)
             if kin is not None:
                 scattered = loser.population
+                population.mix(kin, loser)
                 kin.population += scattered
         loser.population = 0
         loser.retreating = False
         loser.path = []
+        final = "aneanti"
     elif village:
-        from src.kora import villages
-
-        building = villages.pillaged(state, loser, rng)
+        # Le village est pris : on ne tue pas ses familles. Le vainqueur
+        # choisit : le soumettre (tributaire) ou le piller (chiefdom.py).
         loser.shield_until = state.tick_count + VILLAGE_SHIELD
         chiefs.battle_death(state, loser)
+        final = "pris"
+        site_id = loser.village
+        if winner.tribe_id in state.tribes and loser.tribe_id in state.tribes:
+            building = chiefdom.village_taken(state, winner, loser, site_id)
     else:
         chiefs.battle_death(state, loser)
     if loser.population <= 0:
         loser.shield_until = state.tick_count + sim.RETREAT_MIN_SHIELD
-    engaged = {b.id for b in a.bands + d.bands if b.position == h}
-    if wiped:
-        final = "rase" if village else "aneanti"
-    else:
-        final = "pille" if village else outcome
-    report = _report(state, a, d, rounds, before, winner is attacker, final, wiped, encircled, pursuit, loot, building, h)
-    for key, side in (("attacker", a), ("defender", d)):
-        old = units_before.get(side.main.id)
-        if old:
-            now = {(u[0], u[2]): u[1] for u in side.main.units} if side.main.population > 0 else {}
-            report[key]["units"] = [
-                [units.UNITS[t].name if t in units.UNITS else t, men, now.get((t, home), 0)] for t, men, home in old
-            ]
-    w_loss = sum(before[b.id] - b.population for b in win.bands)
-    l_loss = sum(before[b.id] - b.population for b in lose.bands) - scattered
+    # Le journal, le prestige, les relations, la marque de bataille.
+    attacker = state.bands.get(bt.attackers[0]) if bt.attackers else None
+    defender = state.bands.get(bt.defenders[0]) if bt.defenders else None
+    report = _battle_report(state, bt, a, d, before, win is a, final, wiped, encircled, pursuit, loot, building)
     if scattered:
-        # Les survivants ne sont pas morts : ils ont rejoint les leurs.
         side = report["attacker" if lose is a else "defender"]
         side["lost"] -= scattered
         report["scattered"] = scattered
         report["headline"] = f"La bande des {side['name']} est dispersée"
-    return Result(
-        winner=winner,
-        loser=loser,
-        winner_before=sum(before[b.id] for b in win.bands),
-        loser_before=sum(before[b.id] for b in lose.bands),
-        winner_loss=w_loss,
-        loser_loss=l_loss,
-        loot=loot,
-        wiped=wiped,
-        outcome=final,
-        report=report,
-        building=building,
-        engaged=engaged,
+    w_loss = sum(before.get(b, 0) - (state.bands[b].population if b in state.bands else 0) for b in (bt.attackers if win is a else bt.defenders))
+    l_loss = sum(before.get(b, 0) - (state.bands[b].population if b in state.bands else 0) for b in (bt.defenders if win is a else bt.attackers)) - scattered
+    res = Result(
+        winner=winner, loser=loser,
+        winner_before=sum(before.get(b, 0) for b in (bt.attackers if win is a else bt.defenders)),
+        loser_before=sum(before.get(b, 0) for b in (bt.defenders if win is a else bt.attackers)),
+        winner_loss=w_loss, loser_loss=l_loss, loot=loot, wiped=wiped, outcome=final, report=report, building=building,
+        engaged={b for b in bt.attackers + bt.defenders},
     )
+    bt.result = res
+    if attacker is not None and defender is not None:
+        sim.after_battle(state, attacker, defender, h, res, bt.hunted)
+    del diplo
+
+
+def fight(state, attacker: Band, defender: Band, h) -> Result:
+    """Toute une bataille d'un coup, jour apres jour (essais, et ce que la
+    semaine resout sans joueur)."""
+    bt = start(state, attacker, defender, h, sim._hunts(attacker, defender))
+    while not day(state, bt):
+        pass
+    state.battles = [b for b in battles(state) if not b.outcome]
+    return bt.result
 
 
 def _kill(band: Band, dead: int) -> None:
@@ -472,35 +736,53 @@ def place_of(state, h) -> str:
     return PLACE.get(state.world.terrain(h), "")
 
 
-def _side_report(state, side: Side, before: dict, pursuit: int, rounds: list, key: str) -> dict:
-    tribe = state.tribes.get(side.main.tribe_id)
-    lead = side.main.leader.name if side.main.leader is not None else ""
-    return {
-        "tribe": side.main.tribe_id,
+def _side_report(state, bt, side: Side, ids: list, before: dict, pursuit: int, key: str) -> dict:
+    from src.kora import units
+
+    first = next((state.bands[b] for b in ids if b in state.bands), None)
+    main = side.main or first
+    tid = main.tribe_id if main is not None else 0
+    tribe = state.tribes.get(tid)
+    lead = main.leader.name if main is not None and main.leader is not None else ""
+    now = {b: state.bands[b].population if b in state.bands else 0 for b in ids}
+    general = bt.general_a if key == "a" else bt.general_d
+    out = {
+        "tribe": tid,
         "name": tribe.name if tribe else "?",
-        "kind": _kind(side.main),
+        "kind": _kind(main) if main is not None else "clan",
         "leader": lead,
-        "bands": len(side.bands),
-        "fighters": round(side.total_start()),
-        "fighters_left": round(side.total()),
-        "pop": before[side.main.id],
-        "left": side.main.population,
-        "lost": sum(before[b.id] - b.population for b in side.bands),
+        "general": list(general),
+        "bands": len(ids),
+        "fighters": round(bt.start_a if key == "a" else bt.start_d),
+        "fighters_left": round(sum(fighters_now(state.bands[b], key == "a") for b in ids if b in state.bands and state.bands[b].population > 0)),
+        "pop": before.get(ids[0], 0) if ids else 0,
+        "left": now.get(ids[0], 0) if ids else 0,
+        "lost": sum(before.get(b, 0) - now[b] for b in ids),
+        "killed": sum(bt.killed.get(b, 0) for b in ids),
+        "wounded": sum(bt.hurt.get(b, 0) for b in ids),
         "pursuit": pursuit,
-        "power": round(sum(side.start[b.id] * side.quality[b.id] for b in side.bands) * math.sqrt(side.cover), 1),
-        "morale": [r["m" + key] for r in rounds],
-        "hits": [r[key] for r in rounds[1:]],
-        "mods": [list(m) for m in side.mods],
+        "power": round(sum(side.start[b.id] * side.quality[b.id] for b in side.bands) * math.sqrt(side.cover), 1) if side.bands else 0.0,
+        "hits": [d["k" + key] + d["w" + key] for d in bt.days],
+        "dead": [d["k" + key] for d in bt.days],
+        "fortune": [d["f" + key] for d in bt.days],
+        "mods": [list(m) for m in (bt.mods_a if key == "a" else bt.mods_d)],
     }
+    out["morale"] = [round(bt.morale0_a if key == "a" else bt.morale0_d, 1)] + [d["m" + key] for d in bt.days]
+    old = bt.units0.get(main.id) if main is not None else None
+    if old:
+        live = {(u[0], u[2]): u[1] for u in main.units} if main.population > 0 else {}
+        out["units"] = [[units.UNITS[t].name if t in units.UNITS else t, men, live.get((t, home), 0)] for t, men, home in old]
+    return out
 
 
-def _report(state, a, d, rounds, before, attacker_won, outcome, wiped, encircled, pursuit, loot, building, h) -> dict:
+def _battle_report(state, bt, a, d, before, attacker_won, outcome, wiped, encircled, pursuit, loot, building) -> dict:
     loser = d if attacker_won else a
     rep = {
-        "place": place_of(state, h),
-        "attacker": _side_report(state, a, before, 0 if attacker_won else pursuit, rounds, "a"),
-        "defender": _side_report(state, d, before, pursuit if attacker_won else 0, rounds, "d"),
-        "rounds": len(rounds) - 1,
+        "place": place_of(state, bt.hex),
+        "attacker": _side_report(state, bt, a, bt.attackers, before, 0 if attacker_won else pursuit, "a"),
+        "defender": _side_report(state, bt, d, bt.defenders, before, pursuit if attacker_won else 0, "d"),
+        "rounds": bt.day,
+        "days": bt.day,
         "winner": "attacker" if attacker_won else "defender",
         "outcome": outcome,
         "wiped": wiped,
@@ -521,6 +803,8 @@ def headline(rep: dict, loser: Band | None = None) -> str:
         return f"{what} des {name} est anéantie"
     if out == "rase":
         return f"Le village des {name} est rasé"
+    if out == "pris":
+        return f"Le village des {name} est pris"
     if out == "pille":
         return f"Le village des {name} est pillé"
     if out == "retraite":
@@ -539,6 +823,8 @@ def log_suffix(state, res: Result, me: int | None = None) -> str:
         return f" Votre {what} est anéantie." if mine else " Ils sont anéantis !"
     if res.outcome == "rase":
         return " Le village est rasé."
+    if res.outcome == "pris":
+        return " Le village est pris."
     if res.report.get("encircled"):
         return " Encerclés, ils ont été massacrés dans la fuite."
     return ""
@@ -559,3 +845,46 @@ def odds(state, band: Band, prey: Band) -> tuple[float, str]:
     else:
         word = "defavorable"
     return ratio, word
+
+
+# --- sauvegarde -----------------------------------------------------------------------------
+
+
+def to_json(bt) -> dict:
+    return {
+        "uid": bt.uid, "hex": [bt.hex.q, bt.hex.r], "attackers": list(bt.attackers), "defenders": list(bt.defenders),
+        "started": bt.started, "hunted": bt.hunted, "village": bt.village, "day": bt.day,
+        "morale_a": bt.morale_a, "morale_d": bt.morale_d, "start_a": bt.start_a, "start_d": bt.start_d,
+        "pop0": [[k, v] for k, v in sorted(bt.pop0.items())],
+        "killed": [[k, v] for k, v in sorted(bt.killed.items())],
+        "hurt": [[k, v] for k, v in sorted(bt.hurt.items())],
+        "days": list(bt.days), "mods_a": list(bt.mods_a), "mods_d": list(bt.mods_d),
+        "general_a": list(bt.general_a), "general_d": list(bt.general_d), "retreat": bt.retreat,
+        "morale0_a": bt.morale0_a, "morale0_d": bt.morale0_d,
+        "units0": [[k, v] for k, v in sorted(bt.units0.items())],
+    }
+
+
+def from_json(d: dict):
+    from src.kora.types import Hex
+
+    try:
+        return Battle(
+            uid=int(d["uid"]), hex=Hex(int(d["hex"][0]), int(d["hex"][1])),
+            attackers=[int(x) for x in d.get("attackers", [])], defenders=[int(x) for x in d.get("defenders", [])],
+            started=int(d.get("started", 0)), hunted=bool(d.get("hunted", False)), village=bool(d.get("village", False)),
+            day=int(d.get("day", 0)), morale_a=float(d.get("morale_a", 0.0)), morale_d=float(d.get("morale_d", 0.0)),
+            start_a=float(d.get("start_a", 1.0)), start_d=float(d.get("start_d", 1.0)),
+            pop0={int(k): int(v) for k, v in d.get("pop0", [])},
+            killed={int(k): int(v) for k, v in d.get("killed", [])},
+            hurt={int(k): int(v) for k, v in d.get("hurt", [])},
+            days=[dict(x) for x in d.get("days", [])],
+            mods_a=[list(m) for m in d.get("mods_a", [])], mods_d=[list(m) for m in d.get("mods_d", [])],
+            general_a=list(d.get("general_a", ["", 0])), general_d=list(d.get("general_d", ["", 0])),
+            retreat=str(d.get("retreat", "")),
+            morale0_a=float(d.get("morale0_a", 0.0)), morale0_d=float(d.get("morale0_d", 0.0)),
+            units0={int(k): [list(u) for u in v] for k, v in d.get("units0", [])},
+        )
+    except (KeyError, ValueError, TypeError):
+        return None
+

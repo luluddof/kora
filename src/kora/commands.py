@@ -21,7 +21,9 @@ KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
     "teams", "diplo", "invite", "build", "raise", "reequip", "dissolve",
     "honor", "promote", "heir", "learn", "event", "situation",
+    "battle_retreat", "levy_rate", "feast", "charge",
 )
+IN_BATTLE = "En bataille : ordonnez le repli d'abord"
 NOT_YOURS = "Ce n'est pas à vous"
 
 
@@ -85,6 +87,10 @@ def _goto(state, tid, band_id, q, r):
         return _out("Un village ne bouge pas : formez une bande [S] pour partir.")
     if band.homebound:
         return _out(orders.HOMEBOUND + ".")
+    from src.kora import battle
+
+    if battle.in_battle(state, band):
+        return _out(IN_BATTLE + ".")
     set_goto(state, band.id, Hex(int(q), int(r)))
     return _out()
 
@@ -313,7 +319,38 @@ def _situation(state, tid, uid, action):
     return _out(situations.act(state, int(uid), tid, str(action)))
 
 
+def _battle_retreat(state, tid, band_id):
+    from src.kora import battle
+
+    band, why = _own_band(state, tid, band_id)
+    if band is None:
+        return _out(why)
+    return _out(battle.ask_retreat(state, tid, band.id))
+
+
+def _levy_rate(state, tid, rate):
+    from src.kora import chiefdom
+
+    return _out(chiefdom.set_rate(state, tid, int(rate)))
+
+
+def _feast(state, tid):
+    from src.kora import chiefdom
+
+    return _out(chiefdom.feast(state, tid))
+
+
+def _charge(state, tid, fam_id, charge):
+    from src.kora import chiefdom
+
+    return _out(chiefdom.set_charge(state, tid, int(fam_id), str(charge)))
+
+
 _HANDLERS = {
+    "battle_retreat": _battle_retreat,
+    "levy_rate": _levy_rate,
+    "feast": _feast,
+    "charge": _charge,
     "goto": _goto,
     "march": _march,
     "band": _band,

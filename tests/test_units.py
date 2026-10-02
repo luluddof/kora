@@ -3,7 +3,7 @@
 from src.kora import battle, chiefs, orders, sites, tech, units, villages
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import GameState, apply_movement, band_force, merge_bands, new_game, resolve_raids
+from src.kora.sim import GameState, apply_movement, band_force, merge_bands, new_game, fight_out
 from src.kora.types import Band, Order, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
@@ -64,6 +64,7 @@ def test_troops_merge_into_one_stack_and_detach_again():
 def test_a_dissolved_troop_walks_home_and_rejoins_the_village():
     st, village, site = _village()
     army = villages.raise_army(st, 1)
+    n = army.population
     army.position = offset_to_axial(40, 15)
     left = village.population
     assert orders.labels(st, army.id)["army"] == "Dissoudre [L]"
@@ -76,7 +77,7 @@ def test_a_dissolved_troop_walks_home_and_rejoins_the_village():
         if army.id not in st.bands:
             break
     assert army.id not in st.bands
-    assert village.population == left + 50
+    assert village.population == left + n
 
 
 def test_companies_from_two_villages_go_back_each_to_its_own():
@@ -140,7 +141,7 @@ def test_the_battle_report_lists_companies():
     st.bands[50] = Band(50, 2, army.position, 12, 50.0)
     chiefs.ensure(st)
     army.order = Order(OrderKind.MARCH_TO_BAND, target_band_id=50)
-    resolve_raids(st)
+    fight_out(st)
     rep = st.fights[0].report
     assert [u[0] for u in rep["attacker"]["units"]] == ["Guerriers", "Archers"]
 

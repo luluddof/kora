@@ -168,6 +168,7 @@ def remove(band, dead: int) -> None:
     for u, c in zip(units, cut):
         u[1] -= c
     band.population = sum(u[1] for u in units)
+    band.wounded = min(band.wounded, band.population)
     band.units = [u for u in units if u[1] > 0] or [[units[0][0], 0, units[0][2]]]
 
 

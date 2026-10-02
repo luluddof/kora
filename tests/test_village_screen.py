@@ -154,7 +154,7 @@ def test_the_windows_draw_without_error():
 
     from src.kora import render_village
     from src.kora.render import Renderer
-    from src.kora.sim import resolve_raids
+    from src.kora.sim import fight_out
     from src.kora.types import Order, OrderKind
 
     pygame.init()
@@ -174,7 +174,7 @@ def test_the_windows_draw_without_error():
         st.bands[70] = Band(70, 2, army.position, 12, 30.0)
         chiefs.ensure(st)
         army.order = Order(OrderKind.MARCH_TO_BAND, target_band_id=70)
-        resolve_raids(st)
+        fight_out(st)
         mark = st.fights[0]
         render_village.draw_battle(r, st, mark)
         assert r.fight_hits["close"]

@@ -69,7 +69,7 @@ def test_drawing_every_screen_leaves_the_game_untouched():
             ui["people_pick"] = pick
             r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, panel, ui=ui)
     for site in villages:
-        for page in ("village", "metiers"):
+        for page in ("village", "metiers", "chef"):
             ui.update(village_open=site.id, village_page=page)
             r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, None, ui=ui)
     ui["village_open"] = None
@@ -97,6 +97,17 @@ def test_drawing_every_screen_leaves_the_game_untouched():
         ui["situation_open"] = inst.uid
         r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, None, ui=ui)
     ui["situation_open"] = None
+    # Une bataille du joueur en cours (render_battle.py).
+    from src.kora import battle as _battle
+
+    foe = next(b for b in st.bands.values() if b.tribe_id != PLAYER_TRIBE_ID and not b.village and b.population > 0)
+    mine = next(b for b in st.bands.values() if b.tribe_id == PLAYER_TRIBE_ID and not b.village and b.kind != "armee")
+    foe.position = mine.position
+    bt = _battle.start(st, foe, mine, mine.position, True)
+    _battle.day(st, bt)
+    before = session.sync_digest(st)
+    rng, story = st.rng.getstate(), st.story_rng.getstate()
+    r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, None, ui=ui)
     for mark in st.fights[:3]:
         r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, None, open_fight=mark, ui=ui)
     r.draw(st, cx, cy, zoom, sel, True, yaw, pitch, None, ui=ui)

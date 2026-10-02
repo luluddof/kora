@@ -68,6 +68,9 @@ MOD_TEXT = {
     "monument": ("Vous les avez reçus au pied du monument", "Ils vous ont reçus au pied de leur monument", 0.3),
     "brade": ("Vous leur avez cédé vos surplus", "Ils vous ont cédé leurs surplus", 0.5),
     "soutien": ("Vous les avez soutenus dans l'effondrement", "Ils vous ont soutenus dans l'effondrement", 0.3),
+    "soumis": ("Vous les avez soumis", "Ils vous ont soumis", 0.2),
+    "revolte": ("Ils se sont révoltés", "Vous vous êtes révoltés", 0.3),
+    "protection": ("Ils sont sous votre protection", "Vous êtes sous leur protection", 0.2),
 }
 
 
@@ -291,6 +294,8 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
             out.append(("Alliance", 25.0))
         elif p.kind == "tribut":
             out.append(("Tribut", -5.0))
+        elif p.kind == "vassal":
+            out.append(("Suzerain et tributaire", -8.0))
         elif p.kind == "commerce":
             out.append(("Accord commercial", 8.0))
     for t in (a, b):
@@ -412,6 +417,8 @@ def status_line(state, a: int, b: int) -> str:
         elif p.kind == "tribut":
             who = "ils vous paient" if p.payer == b else "vous payez"
             parts.append(f"Tribut : {who} ({left} sem.)")
+        elif p.kind == "vassal":
+            parts.append("Vos tributaires" if p.payer == b else "Vous êtes leurs tributaires")
         elif p.kind == "commerce":
             parts.append("Accord commercial")
     return " · ".join(parts)
@@ -663,8 +670,9 @@ def pop_of(state, tid: int) -> int:
 
 # --- propositions -----------------------------------------------------------------------
 
-ACTIONS = ("cadeau", "treve", "alliance", "commerce", "tribut", "union", "rompre")
+ACTIONS = ("cadeau", "treve", "alliance", "commerce", "tribut", "proteger", "union", "rompre")
 ACTION_LABELS = {
+    "proteger": "Prendre sous sa protection",
     "cadeau": "Offrir des vivres",
     "treve": "Proposer une trêve",
     "alliance": "Proposer une alliance",
@@ -810,6 +818,34 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         out.append(("Relation", round(rel * 0.2)))
         if state.tribes[target].prestige >= 50:
             out.append(("Trop fiers pour payer", -10))
+    elif action == "proteger":
+        from src.kora import chiefdom
+
+        if not chiefdom.has_chiefdom(state, actor):
+            return Verdict(blocked="Il vous faut un village")
+        if not chiefdom.has_chiefdom(state, target):
+            return Verdict(blocked="Ils n'ont pas de village")
+        if chiefdom.overlord_of(state, target) == actor:
+            return Verdict(blocked="Ils sont déjà vos tributaires")
+        if chiefdom.overlord_of(state, target):
+            return Verdict(blocked="Ils sont déjà tributaires d'un autre peuple")
+        if chiefdom.overlord_of(state, actor) == target:
+            return Verdict(blocked="Vous êtes leurs tributaires")
+        if ratio < 2.5:
+            return Verdict(blocked="Vous n'êtes pas assez puissants (il faut deux fois et demie leur force)")
+        if len(chiefdom.vassals_of(state, actor)) >= 3 + state.tribes[actor].prestige // 40:
+            return Verdict(blocked="Vous avez déjà autant de tributaires que vous pouvez en tenir")
+        out.append(("Base", -60))
+        out.append(("Rapport de forces", max(-20, min(30, round((ratio - 2.5) * 10)))))
+        out.append(("Relation", round(rel * 0.3)))
+        gap_p = state.tribes[actor].prestige - state.tribes[target].prestige
+        out.append(("Votre prestige", max(-15, min(20, round(gap_p * 0.3)))))
+        if allied(state, actor, target):
+            out.append(("Mariages entre vos familles", 15))
+        if gap(state, actor, target) <= 20:
+            out.append(("Vous êtes à leur porte", 10))
+        if state.tribes[target].prestige >= 50:
+            out.append(("Trop fiers pour plier", -10))
     elif action == "union":
         if not bonus.union:
             return Verdict(blocked="Il faut connaître Confédération")
@@ -867,7 +903,7 @@ def gift_value(state, actor: int, target: int, amount: float) -> float:
 
 
 # Proposer a un autre joueur : il recoit la carte que l'IA lui enverrait.
-HUMAN_OFFERS = {"treve": "offre_treve", "alliance": "offre_alliance", "commerce": "offre_commerce", "tribut": "exige_tribut"}
+HUMAN_OFFERS = {"treve": "offre_treve", "alliance": "offre_alliance", "commerce": "offre_commerce", "tribut": "exige_tribut", "proteger": "offre_protection"}
 
 
 def perform(state, actor: int, target: int, action: str, amount: float = 0.0) -> str:
@@ -937,6 +973,12 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
     if action == "union":
         absorb(state, actor, target)
         return f"Les {names} rejoignent votre peuple."
+    if action == "proteger":
+        from src.kora import chiefdom
+
+        chiefdom.make_vassal(state, actor, target, "protection")
+        add_mod(state, actor, target, "protection", 5)
+        return f"Les {names} se placent sous votre protection : ils deviennent vos tributaires."
     return ""
 
 
@@ -1077,6 +1119,17 @@ def ai_monthly(state) -> None:
                 if not on_cooldown(state, tid, other, "commerce") and evaluate(state, tid, other, "commerce").accepted:
                     perform(state, tid, other, "commerce")
                     continue
+            # Prendre sous sa protection un voisin faible et ami (la chefferie).
+            if (
+                rel >= 0
+                and gap(state, tid, other) <= 30
+                and not on_cooldown(state, tid, other, "proteger")
+                and power(state, tid) > 2.5 * max(1.0, power(state, other))
+                and state.story_rng.random() < 0.1
+                and evaluate(state, tid, other, "proteger").accepted
+            ):
+                perform(state, tid, other, "proteger")
+                continue
             if (
                 not has_pact(state, tid, other)
                 and power(state, tid) > 2.5 * max(1.0, power(state, other))
@@ -1114,6 +1167,14 @@ def _propose_to_player(state, ai: int, player: int) -> None:
         and state.story_rng.random() < 0.5
     ):
         kind = "offre_commerce"
+    elif (
+        rel >= 0
+        and power(state, ai) > 2.0 * max(1.0, power(state, player))
+        and not evaluate(state, ai, player, "proteger").blocked
+        and gap(state, ai, player) <= 30
+        and state.story_rng.random() < 0.15
+    ):
+        kind = "offre_protection"
     elif (
         not has_pact(state, ai, player)
         and power(state, ai) > 2.5 * max(1.0, power(state, player))

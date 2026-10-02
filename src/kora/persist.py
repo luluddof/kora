@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from src.kora import chiefs, diplo, events, sites, situations
+from src.kora import battle, chiefs, diplo, events, sites, situations
 from src.kora.clock import Clock
 from src.kora.log import LOG_CAP, GameLog, LogEntry, LogKind
 from src.kora.sim import GameState
@@ -148,6 +148,8 @@ def _band_to_json(band: Band) -> dict:
         "notables": [chiefs.person_to_json(p) for p in band.notables],
         "welded_until": band.welded_until,
         "autonomy": band.autonomy,
+        "demo": dict(sorted(band.demo.items())),
+        "wounded": band.wounded,
     }
 
 
@@ -181,6 +183,8 @@ def _band_from_json(data: dict) -> Band:
         notables=[p for p in (chiefs.person_from_json(x) for x in data.get("notables", [])) if p is not None],
         welded_until=int(data.get("welded_until", 0)),
         autonomy=float(data.get("autonomy", 0.0)),
+        demo={str(k): float(v) for k, v in data.get("demo", {}).items()},
+        wounded=int(data.get("wounded", 0)),
     )
 
 
@@ -218,6 +222,10 @@ def _tribe_to_json(tribe: Tribe) -> dict:
         "situation_effects": [list(e) for e in tribe.situation_effects],
         "efficiency": dict(sorted(tribe.efficiency.items())),
         "glut": dict(sorted(tribe.glut.items())),
+        "levy_rate": tribe.levy_rate,
+        "granary": tribe.granary,
+        "families": [dict(f) for f in tribe.families],
+        "feast_until": tribe.feast_until,
     }
 
 
@@ -255,6 +263,14 @@ def _tribe_from_json(data: dict) -> Tribe:
         situation_effects=[[str(e[0]), int(e[1])] for e in data.get("situation_effects", [])],
         efficiency={str(k): float(v) for k, v in data.get("efficiency", {}).items()},
         glut={str(k): int(v) for k, v in data.get("glut", {}).items()},
+        levy_rate=int(data.get("levy_rate", 10)),
+        granary=float(data.get("granary", 0.0)),
+        families=[
+            {"id": int(f["id"]), "name": str(f["name"]), "trait": str(f["trait"]), "charge": str(f.get("charge", "")),
+             "favour": float(f.get("favour", 50.0)), "village": int(f.get("village", 0))}
+            for f in data.get("families", [])
+        ],
+        feast_until=int(data.get("feast_until", -1)),
     )
 
 
@@ -448,6 +464,10 @@ def game_to_json(state: GameState, view: dict | None = None) -> dict:
         # joueurs (le joueur solo : log, explored, seen_enemy_tribes).
         "povs": [[tid, _pov_to_json(pov)] for tid, pov in sorted(state.povs.items()) if tid in state.tribes],
         "situations": [situations.to_json(s) for s in state.situations],
+        "battles": [battle.to_json(b) for b in state.battles if not b.outcome],
+        "next_battle_uid": state.next_battle_uid,
+        "day": state.day,
+        "step": state.step,
         "next_situation_uid": state.next_situation_uid,
         "situation_last": dict(state.situation_last),
     }
@@ -526,6 +546,10 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         state.last_pressure = {Hex(int(q), int(r)): float(p) for q, r, p in data.get("pressure", [])}
         state.situations = [s for s in (situations.from_json(raw) for raw in data.get("situations", [])) if s is not None]
         state.next_situation_uid = int(data.get("next_situation_uid", 1))
+        state.battles = [b for b in (battle.from_json(raw) for raw in data.get("battles", [])) if b is not None]
+        state.next_battle_uid = int(data.get("next_battle_uid", 1))
+        state.day = int(data.get("day", 0))
+        state.step = int(data.get("step", data.get("tick_count", 0)))
         state.situation_last = {str(k): int(v) for k, v in data.get("situation_last", {}).items()}
         from src.kora.peoples import LEGACY_COLOR, LEGACY_CULTURE, free_color
 

@@ -5,7 +5,7 @@ import copy
 from src.kora import battle, chiefs, sites, tech, villages
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import GameState, band_force, new_game, resolve_raids
+from src.kora.sim import GameState, band_force, new_game, fight_out
 from src.kora.types import Band, Order, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
@@ -48,10 +48,11 @@ def test_the_same_battle_gives_the_same_result():
     a = _band(st, 1, 1, 40)
     d = _band(st, 2, 2, 34)
     _attack(a, d)
-    h = a.position
-    one = battle.simulate(copy.deepcopy(st), a, d, h)[2]
-    two = battle.simulate(copy.deepcopy(st), a, d, h)[2]
-    assert one == two
+    one, two = copy.deepcopy(st), copy.deepcopy(st)
+    fight_out(one)
+    fight_out(two)
+    assert one.fights[0].report == two.fights[0].report
+    assert one.fights[0].report["days"] >= 1
 
 
 def test_morale_falls_round_after_round_until_a_side_routs():
@@ -59,7 +60,7 @@ def test_morale_falls_round_after_round_until_a_side_routs():
     a = _band(st, 1, 1, 60)
     d = _band(st, 2, 2, 40)
     _attack(a, d)
-    resolve_raids(st)
+    fight_out(st)
     rep = st.fights[0].report
     md = rep["defender"]["morale"]
     assert md[0] > md[-1]
@@ -76,7 +77,7 @@ def test_a_crushed_troop_in_the_open_is_annihilated():
     chiefs.ensure(st)
     _attack(big, small)
     before = st.tribes[1].prestige
-    resolve_raids(st)
+    fight_out(st)
     assert 2 not in st.bands
     rep = st.fights[0].report
     assert rep["wiped"] and rep["outcome"] == "aneanti"
@@ -128,7 +129,7 @@ def test_a_band_fights_only_one_battle_a_week():
     strong = _band(st, 1, 1, 80)
     _band(st, 2, 2, 20)
     _band(st, 3, 3, 20)
-    resolve_raids(st)
+    fight_out(st)
     assert len(st.fights) == 1
     assert strong.last_raid_tick == 0
 
@@ -152,11 +153,12 @@ def test_a_palisade_makes_the_village_hold():
         site = villages.found(st, 1)
         if with_palisade:
             site.data["buildings"].append("palissade")
-        raider = Band(2, 2, site.hex, 44, 0.0, kind="armee")
+        # Une troupe levee par un village de la meme taille : une part de ses hommes.
+        raider = Band(2, 2, site.hex, 28, 0.0, kind="armee")
         st.bands[2] = raider
         chiefs.ensure(st)
         _attack(raider, st.bands[1])
-        resolve_raids(st)
+        fight_out(st)
         return st.fights[0].report if st.fights else None, st, site
 
     open_rep, _st, _site = siege(False)
@@ -185,20 +187,21 @@ def test_a_beaten_village_is_pillaged_and_stays():
     st.bands[2] = Band(2, 2, site.hex, 200, 0.0, kind="armee")
     chiefs.ensure(st)
     _attack(st.bands[2], st.bands[1])
-    resolve_raids(st)
+    fight_out(st)
     rep = st.fights[0].report
-    assert rep["outcome"] in ("pille", "rase")
-    if rep["outcome"] == "pille":
-        village = st.bands[1]
-        assert village.position == site.hex and not village.retreating
-        assert site.data["burned"]
+    # Le village est pris : ses familles restent ; l'IA, sans village, pille.
+    assert rep["outcome"] == "pris"
+    village = st.bands[1]
+    assert village.position == site.hex and not village.retreating
+    assert village.population > 40, "on ne tue pas tout le monde"
+    assert site.data["burned"]
 
 
 def test_odds_read_the_balance_of_forces():
     st = _state()
     a = _band(st, 1, 1, 60, kind="armee")
     weak = _band(st, 2, 2, 20, col=24)
-    strong = _band(st, 3, 2, 200, col=30)
+    strong = _band(st, 3, 2, 400, col=30)
     assert battle.odds(st, a, weak)[1] in ("ecrasant", "favorable")
     assert battle.odds(st, a, strong)[1] == "defavorable"
 
@@ -210,7 +213,7 @@ def test_the_battle_report_is_saved(tmp_path):
     st.bands[90] = foe
     chiefs.ensure(st)
     _attack(me, foe)
-    resolve_raids(st)
+    fight_out(st)
     assert st.fights and st.fights[0].report
     path = tmp_path / "kora.json"
     save_game(st, path, {})

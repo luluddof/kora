@@ -271,6 +271,29 @@ lente, bandes dessinees petites a taille fixe.
     situations Surproduction et Effondrement).
   - "Si on risque une catastrophe, on previent (pas les conjonctures)."
     FAIT : risques au bandeau et au journal (Spec.risk).
+  - "Redetaille pour la profondeur." FAIT :
+    2026-10-02-profondeur-propositions-detaillees.txt.
+
+2026-10-02 (suite, spec 2026-10-02-chefferie-population-batailles.txt)
+  - "1B la chefferie, ca me va, si en plus on peut rendre les villages
+    tributaires en les envahissant." FAIT (0.5.0) : grenier du chef
+    (prelevement 0-30 %), fetes, familles et charges, revolte des
+    cultivateurs ; village PRIS -> soumettre (tributaire) ou piller ;
+    protection ; tributaires qui paient, suivent a la guerre, grondent.
+  - "Separe les pops (enfants, chasseurs... invalides : vieux, blesses)
+    pour separer les taches et decider qui est levable ; prendre un village
+    et le vassaliser sans tuer tout le monde." FAIT : population.py
+    (enfants, hommes, femmes, anciens, blesses) ; seuls des hommes valides
+    se battent et partent ; "pour l'instant seuls les hommes en travail
+    actif, mais pas tous ; plus tard un systeme de LOIS" (a faire : les
+    coutumes du 1A en seront la forme tribale).
+  - "Detaille le 1A." FAIT : 2026-10-02-voix-et-coutumes-detail.txt
+    (attend SA validation).
+  - "Les combats durent plusieurs tics, un par jour (tues, blesses,
+    demoralises) ; generaux, terrain selon les troupes et la defense, un jet
+    qui ne decide pas de facon binaire." FAIT : battle.py jour apres jour,
+    fortune 0,8-1,2 ; "le temps ralentit en bataille" (son choix) : un pas =
+    un jour quand une bataille touche un joueur.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -324,6 +347,13 @@ lente, bandes dessinees petites a taille fixe.
   crise nouvelle dit son risque (Spec.risk) quand on peut la voir venir ;
   une fiche au survol d'un bouton passe avoid=rect (theme.tooltip).
   En attente de SON choix : signer l'exe (SignPath, licence du depot).
+  Fait le 2026-10-02 (suite, 0.5.0) : chefferie, population en classes,
+  batailles en jours, conquete et tributaires. REGLES NOUVELLES : changer la
+  population d'une classe passe par population.py (grow, take_men, kill,
+  kill_fighters, wound, lose_wounded, mix) ; le multijoueur se cale sur
+  state.step (un pas = un jour en bataille d'un joueur, sinon une semaine),
+  state.tick_count reste le compteur des SEMAINES ; un essai qui veut N
+  annees boucle sur tick_count, pas sur le nombre de pas.
   En attente de SON choix : la suite de la profondeur des ages, toutes
   les pistes reunies et detaillees dans
   2026-10-02-profondeur-propositions-detaillees.txt (il a demande de

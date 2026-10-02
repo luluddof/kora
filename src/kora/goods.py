@@ -244,7 +244,12 @@ def total_teams(site) -> int:
 
 def team_cap(band) -> int:
     """Equipes qu'un village peut nourrir de ses bras."""
-    return max(0, band.population // TEAM_POP) if band is not None else 0
+    if band is None:
+        return 0
+    from src.kora import population
+
+    # Les bras du village (les adultes valides : population.py).
+    return max(0, int(population.labor_pop(band)) // TEAM_POP)
 
 
 def max_teams(state, site, cid: str) -> int:
@@ -346,6 +351,10 @@ def output(state, site, cid: str) -> float:
     from src.kora import production
 
     shop *= production.of(state, site.tribe_id, production.craft_kind(cid))
+    if not craft.food:
+        from src.kora import chiefdom
+
+        shop *= chiefdom.craft_mult(state, site.tribe_id)
     if craft.food:
         mult = FISH_NETS if "filets" in state.tribes[site.tribe_id].knowledge else 1.0
         return n * craft.food * rich * mult * shop
@@ -722,7 +731,9 @@ def route_price(state, route) -> float:
     # Le marche refuge vend plus cher ; l'effondrement du commerce fait tout baisser.
     exp = state.tribes.get(route.exporter)
     if exp is not None:
-        p *= tech.bonuses(exp).trade_price
+        from src.kora import chiefdom
+
+        p *= tech.bonuses(exp).trade_price * chiefdom.trade_mult(state, route.exporter)
     p *= situations.route_mult(state, route)
     return round(p, 2)
 

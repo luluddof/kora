@@ -89,13 +89,15 @@ def _play(years, robot, seed=1):
     st = new_game(_default_world())
     st.rng = random.Random(seed)
     yearly = []
-    for _ in range(52 * years):
+    # Des annees de JEU : une bataille du joueur fait passer le temps en jours.
+    while st.tick_count < 52 * years:
+        before = st.tick_count
         if robot:
             _robot(st)
         tick(st)
         st.clock.paused = False
         assert st.last_error is None
-        if st.clock.week == 1:
+        if st.tick_count != before and st.clock.week == 1:
             yearly.append(
                 {
                     tid: sum(b.population for b in st.bands.values() if b.tribe_id == tid)

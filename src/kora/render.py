@@ -816,6 +816,8 @@ class Renderer:
         # Le bandeau des situations (uid -> dalle) et leur fenetre.
         self.situation_hits: dict = {}
         self.situation_window: dict = {}
+        # La bataille en cours du joueur (render_battle.py).
+        self.battle_hits: dict = {}
         # Ecran du village, fenetre de fondation (render_village.py).
         self.village_hits: dict = {}
         self.village_armies: list = []
@@ -992,6 +994,9 @@ class Renderer:
         from src.kora import render_situations
 
         render_situations.draw_on_map(self, state, globe_yaw, globe_pitch, zoom)
+        from src.kora import render_battle
+
+        render_battle.draw_on_map(self, state, globe_yaw, globe_pitch, zoom)
         self.draw_polity_labels(state, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
         if selected_id is not None and selected_id in state.bands:
             self.draw_path(
@@ -1018,13 +1023,18 @@ class Renderer:
         self.draw_toasts(toasts or [], extra_y)
         self.draw_inspect(hover_info, pin_info)
         self.draw_band_card(state, selected_id)
-        self.draw_fight_panel(open_fight, state)
         from src.kora import render_panels
 
         # Les cartes d'evenement et le bandeau des situations restent sous
         # les panneaux ouverts.
         render_panels.draw_event_cards(self, state, ui)
-        render_situations.draw_banner(self, state)
+        if open_fight is None:
+            render_situations.draw_banner(self, state)
+            render_battle.draw(self, state)
+        else:
+            self.situation_hits, self.battle_hits = {}, {}
+        # Le rapport de bataille ouvert passe par-dessus les cartes et le bandeau.
+        self.draw_fight_panel(open_fight, state)
         self.draw_side(state, side_panel, log_filter, log_newest, tech_pick, ui)
         from src.kora import render_village
 
@@ -1748,7 +1758,14 @@ class Renderer:
         season = clock.season()
         self.screen.blit(theme.medallion(SEASON_ICONS.get(season, "printemps"), 18, "normal", C.froid if season is Season.HIVER else None), (8, (HUD_HEIGHT - 40) // 2))
         theme.text(self.screen, SEASON_FR[season], "h2", C.os, (56, 4), shadow=True)
-        theme.text(self.screen, f"an {clock.year}  ·  semaine {clock.week}", "petit", C.lin, (57, 28))
+        day = getattr(state, "day", 0)
+        from src.kora import battle as _battle
+
+        if _battle.slow(state):
+            # Une bataille : le temps passe en jours.
+            theme.text(self.screen, f"an {clock.year}  ·  semaine {clock.week}  ·  jour {day + 1}", "petit", C.braise, (57, 28))
+        else:
+            theme.text(self.screen, f"an {clock.year}  ·  semaine {clock.week}", "petit", C.lin, (57, 28))
         mx, my = pygame.mouse.get_pos()
         pause = layout["pause"]
         theme.icon_button(self.screen, pause, "jouer" if clock.paused else "pause", True, _contains(pause, mx, my), active=clock.paused)

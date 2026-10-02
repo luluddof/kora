@@ -90,7 +90,7 @@ def host_run(port: int, years: int) -> dict:
         frame += 1
         if frame % 3 == 0:
             robot(host.state, host.issue, 1, rng)
-        n = host.state.tick_count
+        n = host.state.step
         if n % session.DIGEST_EVERY == 0 and n not in digests:
             digests[n] = session.sync_digest(host.state)
         time.sleep(0.005)
@@ -100,10 +100,10 @@ def host_run(port: int, years: int) -> dict:
         host.pump(0.05)
         time.sleep(0.01)
     st = host.state
-    digests[st.tick_count] = session.sync_digest(st)
+    digests[st.step] = session.sync_digest(st)
     out = {
         "role": "hote",
-        "tick": st.tick_count,
+        "tick": st.step,
         "digests": digests,
         "resyncs": host.resyncs,
         "seconds": round(time.time() - t0, 1),
@@ -146,12 +146,12 @@ def client_run(port: int, years: int) -> dict:
         frame += 1
         if frame % 3 == 0 and not client.state.clock.paused:
             robot(client.state, client.issue, 2, rng)
-        n = client.state.tick_count
+        n = client.state.step
         if n % session.DIGEST_EVERY == 0 and n not in digests:
             digests[n] = session.sync_digest(client.state)
         time.sleep(0.005)
-    digests[client.state.tick_count] = session.sync_digest(client.state)
-    return {"role": "ami", "tick": client.state.tick_count, "digests": digests, "resyncs": client.resyncs}
+    digests[client.state.step] = session.sync_digest(client.state)
+    return {"role": "ami", "tick": client.state.step, "digests": digests, "resyncs": client.resyncs}
 
 
 def compare(host: dict, friend: dict) -> tuple[bool, str]:

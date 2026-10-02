@@ -50,7 +50,7 @@ def test_save_roundtrip_restores_clock_band_and_fog(tmp_path):
 
 
 def test_save_roundtrip_restores_fight_marks(tmp_path):
-    from src.kora.sim import resolve_raids
+    from src.kora.sim import fight_out
     from src.kora.types import Band, Tribe
     from src.kora.clock import Clock
 
@@ -66,7 +66,7 @@ def test_save_roundtrip_restores_fight_marks(tmp_path):
         },
     )
     recompute_vision(st)
-    resolve_raids(st)
+    fight_out(st)
     assert st.fights
     path = tmp_path / "kora.json"
     save_game(st, path, {"camera_x": 0, "camera_y": 0, "zoom": 1, "selected": 1})

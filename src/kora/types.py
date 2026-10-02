@@ -95,6 +95,10 @@ class Band:
     welded_until: int = 0
     # Clan nomade d'un peuple fixe : son independance (0 a 100, chiefs.py).
     autonomy: float = 0.0
+    # Qui sont ses gens (population.py) : la part de chaque classe (vide :
+    # la structure ordinaire), et ses blesses.
+    demo: dict = field(default_factory=dict)
+    wounded: int = 0
 
 
 @dataclass
@@ -158,6 +162,12 @@ class Tribe:
     # efficacite (1,0 au depart) ; et mois de surproduction par bien.
     efficiency: dict = field(default_factory=dict)
     glut: dict = field(default_factory=dict)
+    # La chefferie (chiefdom.py) : prelevement du chef sur les recoltes (%),
+    # son grenier commun, les familles qui comptent, la derniere fete.
+    levy_rate: int = 10
+    granary: float = 0.0
+    families: list = field(default_factory=list)
+    feast_until: int = -1
 
 
 @dataclass

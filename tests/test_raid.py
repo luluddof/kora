@@ -9,7 +9,7 @@ from src.kora.sim import (
     fight_at,
     fight_lines,
     prune_fight_marks,
-    resolve_raids,
+    fight_out,
 )
 from src.kora.types import Band, FightMark, Terrain, Tribe
 from src.kora.world import hex_distance, make_filled_world, offset_to_axial
@@ -39,7 +39,7 @@ def _raid_state(player=True, visible=True):
 def test_stronger_attacker_reduces_defender_and_forces_flee():
     st, att, deff, pos = _raid_state()
     assert band_force(st, att) > band_force(st, deff)
-    resolve_raids(st)
+    fight_out(st)
     assert deff.population < 20
     # Pas de teleportation : le perdant part a pied la semaine suivante.
     assert deff.position == pos
@@ -53,7 +53,7 @@ def test_stronger_attacker_reduces_defender_and_forces_flee():
 
 def test_visible_raid_leaves_a_fight_mark():
     st, att, deff, pos = _raid_state()
-    resolve_raids(st)
+    fight_out(st)
     assert len(st.fights) == 1
     mark = st.fights[0]
     assert mark.hex == pos
@@ -63,7 +63,10 @@ def test_visible_raid_leaves_a_fight_mark():
     assert mark.loser_before == 20
     # Le vainqueur perd peu, le vaincu surtout dans la fuite (battle.py).
     assert 0 <= mark.winner_loss < mark.loser_loss
-    assert 3 <= mark.loser_loss <= 10
+    # Les hommes tombent ou sont blesses ; les familles fuient.
+    assert 1 <= mark.loser_loss <= 10
+    rep = mark.report["defender"]
+    assert rep["killed"] + rep["wounded"] >= 2
     assert mark.report["outcome"] in ("deroute", "retraite")
     lines = fight_lines(mark)
     assert lines[0] == "Combat"
@@ -87,14 +90,14 @@ def test_fog_ai_raid_leaves_no_mark():
             3: Band(3, 3, pos, 20, 80),
         },
     )
-    resolve_raids(st)
+    fight_out(st)
     assert st.fights == []
 
 
 def test_visible_raid_does_not_pause_the_clock():
     st, _att, _deff, _pos = _raid_state()
     st.clock.paused = False
-    resolve_raids(st)
+    fight_out(st)
     assert st.clock.paused is False
 
 
@@ -114,7 +117,7 @@ def test_fog_ai_raid_does_not_pause_the_clock():
         },
     )
     st.clock.paused = False
-    resolve_raids(st)
+    fight_out(st)
     assert st.clock.paused is False
     assert st.fights == []
 
@@ -123,9 +126,11 @@ def test_visible_raid_lets_the_weeks_flow_and_logs_the_place():
     st, _att, _deff, pos = _raid_state()
     st.clock.paused = False
     st.clock.speed = 5
-    consume_ticks(st, 0.0, dt=2.0, max_per_frame=8)
+    for _ in range(6):
+        consume_ticks(st, 0.0, dt=2.0, max_per_frame=8)
     assert st.clock.paused is False
-    assert st.tick_count > 1
+    # La bataille du joueur : le temps a passe en jours, puis en semaines.
+    assert st.step > 1
     mark = fight_at(st, pos)
     assert mark is not None
     assert any(e.hex == pos for e in st.log.entries)
@@ -133,7 +138,7 @@ def test_visible_raid_lets_the_weeks_flow_and_logs_the_place():
 
 def test_fight_marks_expire_and_cap():
     st, _att, _deff, pos = _raid_state()
-    resolve_raids(st)
+    fight_out(st)
     assert st.fights
     st.tick_count = COMBAT_MARK_WEEKS
     prune_fight_marks(st)
