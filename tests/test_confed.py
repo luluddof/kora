@@ -42,7 +42,7 @@ def test_a_raid_against_one_is_a_raid_against_all():
     assert diplo.has_pact(st, 1, 3)
     diplo.on_fight(st, 1, 3, True, True)
     assert not diplo.has_pact(st, 1, 2) and not diplo.has_pact(st, 1, 3)
-    assert any(m.key == "raid_confedere" for m in st.diplo.mods.get(diplo.pair(1, 2), []))
+    assert any(m.key == "raid_pays" for m in st.diplo.mods.get(diplo.pair(1, 2), []))
 
 
 def test_confederates_come_to_help_in_war():

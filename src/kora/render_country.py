@@ -76,6 +76,10 @@ def _ties(state, tid) -> str:
     group = confed.members(state, tid)
     if len(group) > 1:
         parts.append(confed.name(state, tid) + " (avec les " + ", ".join(state.tribes[t].name for t in group if t != tid) + ")")
+    if parts:
+        parts.append("vous voyez ce qu'ils voient, eux aussi")
+    if lord:
+        parts.append("vous suivez votre suzerain à la guerre, sans en déclarer")
     return " · ".join(parts) or "Un pays libre : ni suzerain, ni tributaires, ni confédérés."
 
 

@@ -121,6 +121,10 @@ def _march(state, tid, band_id, target_id):
         return _out("Un village ne bouge pas : formez une bande [S] pour aller raider.")
     if band.homebound:
         return _out(orders.HOMEBOUND + ".")
+    if target.tribe_id != tid:
+        why = diplo.may_start(state, tid, target.tribe_id)
+        if why:
+            return _out(why + ".")
     set_march_to_band(state, band.id, target.id)
     return _out()
 

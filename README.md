@@ -105,7 +105,11 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   *Confédération*, deux peuples (ou jusqu'à quatre) ne font plus qu'un pays au dehors : chacun reste maître chez
   lui, mais ils se soutiennent à la guerre et font la paix ou la guerre ensemble ; si l'un devient tributaire de
   quelqu'un, la confédération est rompue pour lui.
-- Un clic sur un pays (sans armée choisie) ouvre sa **diplomatie** ; celle de son suzerain s'il est tributaire.
+- Un clic sur un pays ou sur un de ses villages que vous connaissez, même dans le brouillard (sans troupe choisie),
+  ouvre sa **diplomatie** ; celle de son suzerain s'il est tributaire.
+- Un **pays**, c'est un suzerain, ses tributaires et ses confédérés : ils **voient** ce que chacun voit, et une guerre
+  contre l'un est une guerre contre tous. Les tributaires suivent leur suzerain à la guerre, mais **n'en déclarent
+  pas** eux-mêmes ; un confédéré, lui, peut entraîner tout son pays.
 - Le **brouillard de guerre** garde ce que vous avez vu : les villages que vous connaissez y restent, tels que vous
   les avez laissés, et la carte ne se met à jour que quand vous y revenez.
 

@@ -14,7 +14,7 @@ Un raid en cours est annule si la cible s'est renforcee entre-temps.
 
 from __future__ import annotations
 
-from src.kora import battle, chiefs, confed, diplo
+from src.kora import battle, chiefdom, chiefs, diplo
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
 from src.kora.battle import band_force, defense_force, side_force
@@ -45,7 +45,7 @@ def force_at(state: GameState, bands: list[Band], spot) -> float:
         if ally.tribe_id == tribe_id:
             if not chiefs.helps(state, ally):
                 continue
-        elif not (diplo.allied(state, ally.tribe_id, tribe_id) or confed.same(state, ally.tribe_id, tribe_id)):
+        elif not (diplo.allied(state, ally.tribe_id, tribe_id) or ally.tribe_id in chiefdom.country(state, tribe_id)):
             continue
         force += band_force(state, ally)
     return force
@@ -64,6 +64,8 @@ def fair_game(state: GameState, band: Band, prey: Band, hungry: bool) -> bool:
     """Un peuple qu'on peut raider : pas de pacte ; un voisin cordial,
     seulement quand on a faim."""
     if prey.tribe_id == band.tribe_id or diplo.at_peace(state, band.tribe_id, prey.tribe_id):
+        return False
+    if diplo.may_start(state, band.tribe_id, prey.tribe_id):
         return False
     if not hungry and diplo.relation(state, band.tribe_id, prey.tribe_id) >= 15:
         return False
@@ -201,6 +203,7 @@ def advance_plans(state: GameState) -> None:
             or band.retreating
             or state.tick_count > band.intent_until
             or diplo.at_peace(state, band.tribe_id, prey.tribe_id)
+            or diplo.may_start(state, band.tribe_id, prey.tribe_id)
         ):
             _drop_plan(band)
             continue
@@ -256,6 +259,7 @@ def recheck_hunts(state: GameState) -> None:
         if (
             is_shielded(state, target)
             or diplo.at_peace(state, band.tribe_id, target.tribe_id)
+            or diplo.may_start(state, band.tribe_id, target.tribe_id)
             or not wins(state, hunters, target, edge=1.0)
         ):
             band.order = stay_order()

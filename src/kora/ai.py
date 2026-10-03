@@ -518,7 +518,7 @@ def _seek_cache(state: GameState, band: Band, weeks: float) -> bool:
     for site in state.sites.values():
         if site.kind != "cache" or site.tribe_id == band.tribe_id or site.store < 20:
             continue
-        if diplo.at_peace(state, site.tribe_id, band.tribe_id):
+        if diplo.at_peace(state, site.tribe_id, band.tribe_id) or diplo.may_start(state, band.tribe_id, site.tribe_id):
             continue
         d = state.world.distance(site.hex, band.position)
         if d < best_d or (d == best_d and best is not None and site.id < best.id):

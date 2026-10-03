@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from src.kora.gamestate import GameState, PLAYER_TRIBE_ID, humans, note, pov_of
 from src.kora.log import LogKind
 from src.kora.types import Hex
-from src.kora import places, tech
+from src.kora import places, systems, tech
 
 VISION_RADIUS = 8
 TOWER_SIGHT = 3
@@ -36,31 +36,40 @@ def vision_of(state: GameState, tid: int = PLAYER_TRIBE_ID):
     return vis if isinstance(vis, PlayerVision) else None
 
 
+def sharers(state: GameState, tid: int) -> list[int]:
+    """Le peuple et ceux dont il partage la vue (systems.SIGHT : son
+    suzerain, ses tributaires, ses confederes)."""
+    out = [tid]
+    for t in systems.parts(systems.SIGHT, state, tid):
+        if t not in out and t in state.tribes:
+            out.append(t)
+    return out
+
+
 def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
     vis = vis if isinstance(vis, PlayerVision) else PlayerVision()
+    eyes = sharers(state, tid)
     spots = sorted(
-        (band.position.q, band.position.r)
+        (band.tribe_id, band.position.q, band.position.r)
         for band in state.bands.values()
-        if band.tribe_id == tid and band.population > 0
+        if band.tribe_id in eyes and band.population > 0
     )
-    radius = VISION_RADIUS
-    player = state.tribes.get(tid)
-    if player is not None:
-        radius = tech.bonuses(player).vision
+    # Chacun voit a la portee de ses savoirs.
+    radius = {t: tech.bonuses(state.tribes[t]).vision if t in state.tribes else VISION_RADIUS for t in eyes}
     # Tours de guet des villages : on voit plus loin autour.
     towers: list = []
     if state.sites:
-        towers = places.watch_spots(state, tid)
-    key = (id(state.world), radius, tuple(spots), tuple(towers))
+        towers = [(t, h) for t in eyes for h in places.watch_spots(state, t)]
+    key = (id(state.world), tuple(sorted(radius.items())), tuple(spots), tuple((t, h.q, h.r) for t, h in towers))
     if vis.key == key:
         return vis
     visible: set[Hex] = set()
     for band in state.bands.values():
-        if band.tribe_id != tid or band.population <= 0:
+        if band.tribe_id not in eyes or band.population <= 0:
             continue
-        visible.update(state.world.hexes_in_radius(band.position, radius))
-    for h in towers:
-        visible.update(state.world.hexes_in_radius(h, radius + TOWER_SIGHT))
+        visible.update(state.world.hexes_in_radius(band.position, radius[band.tribe_id]))
+    for t, h in towers:
+        visible.update(state.world.hexes_in_radius(h, radius[t] + TOWER_SIGHT))
     vis.visible = visible
     vis.explored |= visible
     vis.key = key

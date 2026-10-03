@@ -133,6 +133,9 @@ bas au plus haut :
        - une icone : theme.ICON_FILES puis tools/recuperer_assets.py.
 
   j) Les regles du jeu a respecter partout :
+       - attaquer : diplo.may_start (un tributaire ne declare pas de
+         guerre) en plus d'at_peace ; une guerre ou une paix s'etend au
+         pays (chiefdom.country, followers) ;
        - le hasard : state.rng (simulation), _rand de situations.py (tirage
          tire de la semaine et de cles), story_rng pour les evenements
          seulement ; jamais le module random directement ;

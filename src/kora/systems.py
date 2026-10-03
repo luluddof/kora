@@ -25,6 +25,7 @@ part ailleurs, on dit ou il se branche sur le reste du jeu :
   BAND_SPLIT, BAND_MERGE, MERGE_ALLOWED
                  une bande se scinde, se reunit, peut se reunir (bands.py)
   EMANCIPATED    un clan devient un peuple : ou il part (state, band)
+  SIGHT          la vue partagee : (state, peuple) -> peuples
 
 Un systeme nouveau : son module, puis UNE ligne dans chaque tableau ou il
 intervient ; le reste du jeu n'a pas a l'importer. L'ordre des tableaux
@@ -110,6 +111,10 @@ BAND_SPLIT = ("chiefs.on_split",)
 BAND_MERGE = ("chiefs.on_merge",)
 # Une bande peut-elle rejoindre les autres (bands.merge_mates) ; (state, bande) -> bool.
 MERGE_ALLOWED = ("chiefs.obeys",)
+
+# La vue partagee (vision.py) : (state, peuple) -> les peuples dont il voit
+# ce qu'ils voient (et qui voient ce qu'il voit).
+SIGHT = ("chiefdom.sight_partners", "confed.sight_partners")
 
 # Un clan devient un peuple independant (chiefs.emancipate) ; (state, band).
 EMANCIPATED = ("ai.head_for_new_land",)

@@ -195,7 +195,8 @@ src/kora/confed.py  (pas de pygame)
   (diplo.add_pact -> outside_pairs ; break_pact, on_fight les font tomber
   pour tous ; raid contre un membre : mod "raid_confedere") ; aide a la
   guerre (battle.helpers_of, ai_war.force_at). block / reasons
-  (diplo.evaluate "confederer"), form, leave, on_vassal (chiefdom.make_vassal
+  (diplo.evaluate "confederer"), war_pairs (la guerre de pays a pays),
+  sight_partners, form, leave, on_vassal (chiefdom.make_vassal
   : un tributaire en sort), shared_note, monthly (systems.MONTHLY : l'IA
   sans amis s'en va), ai_wants (diplo.ai_monthly, _propose_to_player ->
   carte "offre_confederation"), lines (ecran Peuples).
@@ -415,6 +416,8 @@ src/kora/log.py
 src/kora/vision.py
   Brouillard JOUEUR seulement. Rayon 8 (tech.BASE_VISION).
   explored / visible, et la memoire (sites, zones, mem_gen : memory.py).
+  La vue est PARTAGEE (sharers : systems.SIGHT) avec le suzerain, les
+  tributaires, les confederes.
   L'IA n'appelle pas ce module.
 
 src/kora/ai.py
@@ -587,6 +590,10 @@ src/kora/chiefdom.py  (pas de pygame)
   take_from_harvest (appele par villages.harvest), granary_pay (troupes,
   monument), feast, set_rate, set_charge, charge_power / _effect
   (war_chief_bonus, trade_mult, craft_mult), stability_parts, army_morale ;
+  LE PAYS : lords_of, top_lord, descendants, followers (que la diplomatie
+  engage : confederes et tributaires), country (le grand suzerain, sa
+  confederation, tous les tributaires : guerre et renforts), sight_partners
+  (systems.SIGHT : la vue partagee).
   tributaires : pacte diplo "vassal" (payer = le tributaire), overlord_of,
   vassals_of, make_vassal, village_taken (battle._end) -> carte
   "conquete" (joueur) ou ai_choice, conquer (soumettre / piller), unrest,

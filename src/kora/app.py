@@ -33,12 +33,14 @@ from src.kora import (
 from src.kora.globe import (
     FOCUS_ZOOM,
     clamp_pitch,
+    hex_to_globe_screen,
     look_at_hex,
     orbit_sensitivity,
     pixel_to_hex_globe,
     view_params,
 )
 from src.kora.bands import is_army
+from src.kora.types import Hex
 from src.kora.log import FILTER_ALL, LogKind
 from src.kora.persist import (
     default_save_path,
@@ -129,6 +131,29 @@ def _band_at_pixel(state, x, y, zoom, globe_yaw, globe_pitch, sw, sh):
         if d < best:
             best = d
             hit = state.bands[band_id]
+    return hit
+
+
+def _seen_village_at_pixel(state, x, y, zoom, globe_yaw, globe_pitch, sw, sh):
+    """Le peuple d'un village etranger qu'on connait sous la souris : dans le
+    brouillard, d'apres la memoire du joueur (memory.py) ; 0 sinon."""
+    vis = vision_of(state, state.viewer)
+    if vis is None:
+        return 0
+    gcx, gcy, focal, dist = view_params(zoom, sw, sh, HUD_HEIGHT)
+    best, hit = 14.0, 0
+    for _sid, (q, r, kind, tid, _w, _lord) in sorted(vis.sites.items()):
+        if kind != "village" or tid == state.viewer:
+            continue
+        h = Hex(q, r)
+        if h in vis.visible:
+            continue
+        pos = hex_to_globe_screen(h, state.world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
+        if pos is None:
+            continue
+        d = ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
+        if d < best:
+            best, hit = d, tid
     return hit
 
 
@@ -1631,6 +1656,11 @@ class Play:
             elif hit is not None:
                 # Un pays clique sans armee choisie : sa diplomatie.
                 self.open_diplomacy(hit.tribe_id)
+            elif not self._army_selected() and (
+                seen := _seen_village_at_pixel(self.state, mx, my, self.zoom, self.globe_yaw, self.globe_pitch, self.sw, self.sh)
+            ) and seen in diplo.contacts_of(self.state, self.state.viewer):
+                # Une ville connue, meme dans le brouillard : sa diplomatie.
+                self.open_diplomacy(seen)
             else:
                 gcx, gcy, focal, dist = view_params(self.zoom, self.sw, self.sh, HUD_HEIGHT)
                 hx = pixel_to_hex_globe(

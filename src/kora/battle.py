@@ -29,7 +29,6 @@ from dataclasses import dataclass, field
 from src.kora import (
     chiefdom,
     chiefs,
-    confed,
     diplo,
     influence,
     places,
@@ -1023,8 +1022,9 @@ def helpers_of(state: GameState, band: Band) -> list[Band]:
     # freres, les villages de sa civilisation viennent aussi.
     friends.update(chiefdom.vassals_of(state, tid))
     friends.update(chiefdom.kin_of(state, tid))
-    # Les confederes se soutiennent a la guerre (confed.py).
-    friends.update(confed.members(state, tid))
+    # Tout le pays se soutient a la guerre : les confederes, le suzerain et
+    # ses tributaires (chiefdom.country).
+    friends.update(chiefdom.country(state, tid))
     world = state.world
     pool = bands_near(state, band.position, reach) if state.band_grid is not None else state.bands.values()
     for ally in pool:

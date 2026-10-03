@@ -5,9 +5,11 @@ commerce), mais ils :
   - se soutiennent a la guerre (leurs bandes viennent en renfort, comme des
     allies : battle.helpers_of, ai_war.force_at) ;
   - ont UNE diplomatie exterieure : une treve ou une alliance conclue par
-    l'un avec un peuple du dehors engage tous les autres ; un pacte rompu,
-    ou un raid contre le dehors, les engage aussi (diplo.add_pact,
-    break_pact, on_fight) ; un raid contre l'un est un raid contre tous ;
+    l'un avec un peuple du dehors engage tous les autres (et leurs
+    tributaires) ; un pacte rompu, ou un raid contre le dehors, les engage
+    aussi (diplo.add_pact, break_pact, on_fight) ; un raid contre l'un est
+    un raid contre tout le pays (war_pairs : tributaires compris) ;
+  - partagent leur vue (vision : systems.SIGHT) ;
   - se lisent comme un seul pays sur la carte (look.country_color).
 Elle tient par un pacte "confederation" entre deux membres ; le groupe est
 l'ensemble des peuples relies par ces pactes (au plus MAX_MEMBERS).
@@ -106,13 +108,27 @@ def name(state, tid: int) -> str:
 
 
 def outside_pairs(state, a: int, b: int) -> list[tuple[int, int]]:
-    """Les paires engagees par un pacte entre a et b : chaque confedere de a
-    avec chaque confedere de b (sauf a-b lui-meme) ; rien s'ils sont du
-    meme pays."""
-    ga, gb = members(state, a), members(state, b)
-    if b in ga:
+    """Les paires engagees par un pacte entre a et b : ceux que la
+    diplomatie de a engage (ses confederes, leurs tributaires) avec ceux que
+    celle de b engage (sauf a-b lui-meme) ; rien s'ils sont du meme pays."""
+    ga, gb = chiefdom.followers(state, a), chiefdom.followers(state, b)
+    if b in ga or a in gb:
         return []
-    return [(x, y) for x in ga for y in gb if (x, y) != (a, b) and x != y]
+    return sorted((x, y) for x in ga for y in gb if (x, y) != (a, b) and x != y)
+
+
+def war_pairs(state, a: int, b: int) -> list[tuple[int, int]]:
+    """Une guerre entre a et b : chaque peuple du pays de a contre chaque
+    peuple du pays de b (sauf a-b lui-meme)."""
+    ga, gb = chiefdom.country(state, a), chiefdom.country(state, b)
+    if b in ga or a in gb:
+        return []
+    return sorted((x, y) for x in ga for y in gb if (x, y) != (a, b) and x != y)
+
+
+def sight_partners(state, tid: int) -> list[int]:
+    """La vue partagee entre confederes (systems.SIGHT)."""
+    return [m for m in members(state, tid) if m != tid]
 
 
 def block(state, actor: int, target: int) -> str:

@@ -1,6 +1,6 @@
 Kora - Une vague de corrections : pays, lois, argent, brouillard, terrain
 =========================================================================
-Date : 2026-10-03. Statut : FAIT (version 0.9.0).
+Date : 2026-10-03. Statut : FAIT (version 0.9.0 ; complements 0.9.1, section 11).
 
 Demandes (ses mots, raccourcis), et ce qui est fait :
   1. "Le clic sur la conjoncture ne l'ouvre pas." CORRIGE : les medaillons
@@ -194,3 +194,39 @@ Demandes (ses mots, raccourcis), et ce qui est fait :
   L'IA paie ses batisseurs (9 mois sur 24, tous peuples) et offre des
   sicles (8 mois). Rien ne s'emballe : pas de tresor qui gonfle, les
   confederations restent petites.
+
+
+11. COMPLEMENTS (0.9.1) : "par contre, aussi trois choses"
+---------------------------------------------------------
+  a) "Une fois la ville du pays trouvee, meme sous le brouillard, si on
+     clique dessus on accede au menu diplomatique." Le clic visait la case
+     et donnait un ordre de marche a la bande choisie. Maintenant un clic
+     sur une ville connue (vue, ou dans la memoire du brouillard : a 14
+     pixels de son icone) ouvre sa diplomatie, sauf si une TROUPE est
+     choisie (alors : marche, attaque). app._seen_village_at_pixel.
+  b) "On a la vision des pays tributaires et confederes (on voit ce qu'ils
+     voient, et eux aussi)." La vue d'un joueur = ses bandes et ses tours,
+     plus celles de ses suzerains, de ses tributaires (et de leurs
+     tributaires) et de ses confederes, chacun a sa portee
+     (vision.sharers, systems.SIGHT : chiefdom.sight_partners,
+     confed.sight_partners). La memoire du brouillard en profite.
+  c) "En guerre, comme les confederes, les tributaires rejoignent leur
+     suzerain ; mais a l'inverse des confederes, ils ne declarent pas eux-
+     memes de guerre." Le PAYS (chiefdom.country) = le grand suzerain, sa
+     confederation et tous leurs tributaires :
+     - un raid contre l'un est un raid contre tout le pays (mod "raid_pays"),
+       et une guerre de l'un est celle de tout le pays : les pactes entre
+       les deux pays tombent (confed.war_pairs, diplo._drop_war) ;
+     - tout le pays vient en renfort (battle.helpers_of, ai_war.force_at) ;
+     - la paix du suzerain engage ses tributaires (confed.outside_pairs :
+       chiefdom.followers) ;
+     - un TRIBUTAIRE ne declare pas de guerre : il ne se bat que contre qui
+       son pays combat deja (depuis un an : diplo.at_war) ou contre son
+       suzerain (une revolte) - diplo.may_start, lu par l'IA (fair_game,
+       plans de raid, caches), l'ordre "march" (le joueur tributaire) et
+       les rencontres (hostile_intent) ; un confedere, lui, entraine tout
+       son pays.
+  L'ecran du pays le dit. Tests : test_realm.py. Sa partie (15 ans) :
+  62 combats (66 avant ce complement : les tributaires ne lancent plus de
+  raids d'eux-memes), tributaires 36, 5 confederations. Empreinte et
+  multijoueur identiques.

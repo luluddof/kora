@@ -396,6 +396,50 @@ def top_lord(state, tid: int) -> int:
     return tid
 
 
+def lords_of(state, tid: int) -> list[int]:
+    """Ses suzerains, du plus proche au grand suzerain."""
+    out = []
+    lord = overlord_of(state, tid)
+    while lord and lord not in out and lord != tid:
+        out.append(lord)
+        lord = overlord_of(state, lord)
+    return out
+
+
+def descendants(state, tid: int) -> list[int]:
+    """Ses tributaires, et les tributaires de ses tributaires."""
+    out, todo = [], [tid]
+    while todo:
+        for v in vassals_of(state, todo.pop()):
+            if v not in out and v != tid:
+                out.append(v)
+                todo.append(v)
+    return sorted(out)
+
+
+def followers(state, tid: int) -> set:
+    """Ceux que la diplomatie de tid engage : ses confederes (confed.py) et
+    leurs tributaires a tous (un tributaire suit son suzerain)."""
+    out = set()
+    for m in confed.members(state, tid):
+        out.add(m)
+        out.update(descendants(state, m))
+    return out
+
+
+def country(state, tid: int) -> set:
+    """Le PAYS de tid : son grand suzerain, la confederation de celui-ci et
+    tous leurs tributaires. Une guerre contre l'un est une guerre contre
+    tous."""
+    return followers(state, top_lord(state, tid))
+
+
+def sight_partners(state, tid: int) -> list[int]:
+    """Ceux dont tid partage la vue (systems.SIGHT) : ses suzerains et ses
+    tributaires (eux voient aussi ce qu'il voit)."""
+    return lords_of(state, tid) + descendants(state, tid)
+
+
 def vassals_of(state, tid: int) -> list[int]:
     out = []
     for (a, b), pacts in getattr(state.diplo, "pacts", {}).items():

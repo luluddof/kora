@@ -90,6 +90,7 @@ MOD_TEXT = {
     "freres": ("Un village né du vôtre", "Votre village est né du leur", 0.1),
     # La confederation (confed.py).
     "raid_confedere": ("Vous avez attaqué leurs confédérés", "Ils ont attaqué vos confédérés", 1.0),
+    "raid_pays": ("Vous avez attaqué leur pays", "Ils ont attaqué votre pays", 1.0),
     "confed_refusee": ("Confédération refusée", "Confédération refusée", 0.8),
 }
 
@@ -408,13 +409,14 @@ def on_fight(state, attacker: int, defender: int, attacker_won: bool, hunted: bo
         add_mod(state, attacker, defender, "accrochage", -8, actor=attacker)
         return
     add_mod(state, attacker, defender, "raid", -25, actor=attacker)
-    # Un raid contre l'un est un raid contre tous ses confederes ; la paix
-    # des deux pays (treves, alliances) tombe.
-    for m in confed.members(state, defender):
+    # Un raid contre l'un est un raid contre tout son pays (ses confederes,
+    # son suzerain, ses tributaires) : les deux pays sont en guerre, leurs
+    # pactes tombent (sauf entre suzerain et tributaire).
+    for m in sorted(chiefdom.country(state, defender)):
         if m != defender and m != attacker:
-            add_mod(state, attacker, m, "raid_confedere", -10, actor=attacker)
-    for x, y in confed.outside_pairs(state, attacker, defender):
-        _drop_shared(state, x, y)
+            add_mod(state, attacker, m, "raid_pays", -10, actor=attacker)
+    for x, y in confed.war_pairs(state, attacker, defender):
+        _drop_war(state, x, y)
     if has_pact(state, attacker, defender):
         excused = d.casus.get((attacker, defender), -1) >= state.tick_count
         d.pacts.pop(pair(attacker, defender), None)
@@ -440,8 +442,45 @@ def betray(state, traitor: int, victim: int) -> None:
 
 
 def hostile_intent(state, a: int, b: int) -> bool:
-    """Deux peuples qui se battraient en se croisant."""
-    return not at_peace(state, a, b)
+    """Deux peuples qui se battraient en se croisant (un tributaire ne se bat
+    pas de lui-meme contre qui son pays ne combat pas)."""
+    if at_peace(state, a, b):
+        return False
+    return not may_start(state, a, b) and not may_start(state, b, a)
+
+
+WAR_WEEKS = 52
+
+
+def at_war(state, a: int, b: int) -> bool:
+    """Les pays de a et de b se sont battus depuis un an (un raid, un
+    accrochage), ou l'un a un pretexte contre l'autre."""
+    d = _d(state)
+    ga, gb = chiefdom.country(state, a), chiefdom.country(state, b)
+    for x in ga:
+        for y in gb:
+            for key in ((x, y), (y, x)):
+                hit = d.raids.get(key)
+                if hit is not None and state.tick_count - hit[0] <= WAR_WEEKS:
+                    return True
+                if d.casus.get(key, -1) >= state.tick_count:
+                    return True
+    return False
+
+
+def may_start(state, a: int, b: int) -> str:
+    """Pourquoi a ne peut pas attaquer b de lui-meme ("" : il peut). Un
+    TRIBUTAIRE suit son suzerain a la guerre mais n'en declare pas : il ne
+    se bat que contre qui son pays combat deja (ou contre son suzerain : une
+    revolte). Un confedere, lui, peut entrainer tout son pays."""
+    if a == b or a not in state.tribes or b not in state.tribes:
+        return ""
+    lords = chiefdom.lords_of(state, a)
+    if not lords or b in lords or b in chiefdom.country(state, a):
+        return ""
+    if at_war(state, a, b):
+        return ""
+    return f"Un tributaire ne déclare pas la guerre : les {state.tribes[lords[-1]].name} ne combattent pas les {state.tribes[b].name}"
 
 
 # --- pactes et paiements -------------------------------------------------------------
@@ -457,6 +496,17 @@ def add_pact(state, a: int, b: int, kind: str, weeks: int = 0, payer: int = 0, s
             _set_pact(state, x, y, kind, weeks, payer)
         if pairs:
             confed.shared_note(state, a, b, kind, pairs)
+
+
+def _drop_war(state, a: int, b: int) -> None:
+    """La guerre entre deux pays : plus de treve, d'alliance, de commerce."""
+    d = _d(state)
+    k = pair(a, b)
+    kept = [p for p in d.pacts.get(k, []) if p.kind == "vassal"]
+    if kept:
+        d.pacts[k] = kept
+    else:
+        d.pacts.pop(k, None)
 
 
 def _drop_shared(state, a: int, b: int) -> None:

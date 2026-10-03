@@ -461,6 +461,11 @@ lente, bandes dessinees petites a taille fixe.
     "Le T1, le terrain legerement deforme, j'aime bien." FAIT (S3 des
     frontieres naturelles : dessin seul, clic compris). Restent en
     attente : S1, S2, S4.
+    Puis (0.9.1) : "une ville trouvee, meme sous le brouillard, un clic
+    ouvre son menu diplomatique" FAIT ; "on a la vision des pays
+    tributaires et confederes, et eux la notre" FAIT ; "en guerre, les
+    tributaires rejoignent leur suzerain mais ne declarent pas eux-memes
+    de guerre, a l'inverse des confederes" FAIT (le pays : chiefdom.country).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -567,6 +572,10 @@ lente, bandes dessinees petites a taille fixe.
   une Law dans laws._build ; un reglage d'argent = un curseur (money
   .SLIDER_KEYS), pas un interrupteur ; le terrain se dessine et se clique
   par globe.warp (les deux ensemble). Toujours en attente : S1, S2, S4.
+  0.9.1 : REGLE NOUVELLE : une decision d'attaquer passe par
+  diplo.may_start (un tributaire ne declare pas de guerre) ; une guerre ou
+  une paix s'etend au PAYS (chiefdom.country / followers) ; la vue d'un
+  joueur se partage par systems.SIGHT.
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes
