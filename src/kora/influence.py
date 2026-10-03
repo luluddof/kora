@@ -23,6 +23,7 @@ import math
 
 from src.kora import tech
 from src.kora.types import Terrain
+from src.kora.places import influence_radius
 
 ZONE_MIN = 0.12
 CORE_MIN = 0.40
@@ -151,8 +152,6 @@ def update(state) -> None:
         if site.kind == "camp":
             _spread(cells, world, site.hex, site.tribe_id, radius_of(state, site.tribe_id) + 1, CAMP_GAIN)
         elif site.kind == "village":
-            from src.kora.villages import influence_radius
-
             _spread(cells, world, site.hex, site.tribe_id, influence_radius(site, VILLAGE_RADIUS), VILLAGE_GAIN)
     world._influence = cells
     world._influence_cells = set(cells)

@@ -1,7 +1,7 @@
 """Ecran des savoirs, dans l'esprit de Victoria 3.
 
 Un seul arbre vertical, dessine sur une TOILE qu'on parcourt (voir
-render.tech_panel_layout / tech_world / clamp_cam) : tout n'est pas a
+layout.tech_panel_layout / tech_world / clamp_cam) : tout n'est pas a
 l'ecran ; on glisse a la souris (n'importe quel bouton) ou aux fleches, on
 zoome a la molette (autour du curseur) ou aux boutons ; "Recentrer" revient
 a la recherche en cours.
@@ -21,9 +21,14 @@ import math
 import pygame
 import pygame.gfxdraw
 
-from src.kora import learning, render_numbers, tech, theme
-from src.kora.render import TREE_GUTTER, TREE_PAD, TREE_ROW, cam_on, tech_panel_layout, to_screen
+from src.kora import layout, learning, render_numbers, tech, theme
+from src.kora.layout import TREE_GUTTER, TREE_PAD, TREE_ROW, cam_on, tech_panel_layout, to_screen
 from src.kora.theme import C
+from src.kora.theme import (  # noqa: F401
+    _CACHE,
+    _gradient_card,
+    _lerp,
+)
 
 # La charte (theme.C) : ocre, os, lin, cendre.
 GOLD = C.ocre_jaune
@@ -64,7 +69,6 @@ MEDAL_STATE = {"connu": "connu", "en_cours": "actif", "disponible": "normal", "a
 
 ROMAN = ("I", "II", "III", "IV", "V", "VI")
 
-_CACHE: dict = {}
 
 
 def _fonts(r):
@@ -79,32 +83,6 @@ def _era_font(r, name: str, width: int):
         if all(font.size(word)[0] <= width for word in name.split(" ")):
             return font
     return font
-
-
-def _lerp(a, b, t):
-    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
-
-
-def _gradient_card(w: int, h: int, top, bot, radius: int) -> pygame.Surface:
-    """Une carte en pierre taillee (theme.chamfer), degrade et grain."""
-    key = ("card", w, h, top, bot, radius)
-    hit = _CACHE.get(key)
-    if hit is not None:
-        return hit
-    surf = pygame.Surface((w, h), pygame.SRCALPHA)
-    for y in range(h):
-        pygame.draw.line(surf, _lerp(top, bot, y / max(1, h - 1)) + (255,), (0, y), (w, y))
-    g = theme.grain(12)
-    for gx in range(0, w, g.get_width()):
-        for gy in range(0, h, g.get_height()):
-            surf.blit(g, (gx, gy))
-    mask = pygame.Surface((w, h), pygame.SRCALPHA)
-    pygame.draw.polygon(mask, (255, 255, 255, 255), theme.chamfer((0, 0, w, h), max(3, min(radius, 10))))
-    surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-    if len(_CACHE) > 400:
-        _CACHE.clear()
-    _CACHE[key] = surf
-    return surf
 
 
 def _band(screen, rect, top, bot) -> None:

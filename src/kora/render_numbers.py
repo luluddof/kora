@@ -14,39 +14,11 @@ from __future__ import annotations
 import pygame
 
 from src.kora import money, numbers, tech, theme
-from src.kora.theme import C
+from src.kora.theme import C, _gradient_card
+# La mise en page de l'onglet (pure) : layout.py.
+from src.kora.layout import numbers_items as items, page_layout  # noqa: F401
 
 GREEN = (178, 205, 140)
-
-
-def page_layout(area) -> dict:
-    """area : la place sous la barre des onglets (toile + fiche)."""
-    x0, y0, w, h = area
-    lw = int(w * 0.48)
-    left = (x0, y0, lw, h)
-    right = (x0 + lw + 16, y0, w - lw - 16, h)
-    top = y0 + 52
-    calc_h = 118
-    card_h = max(52, min(96, (h - (top - y0) - calc_h - 14) // 4 - 8))
-    bases = {}
-    for i, base in enumerate(numbers.BASE_ORDER):
-        cy = top + i * (card_h + 8)
-        card = (x0, cy, lw, card_h)
-        btn = (x0 + lw - 12 - 150, cy + (card_h - 28) // 2, 150, 28)
-        bases[base] = {"card": card, "btn": btn}
-    calc = (x0, top + 4 * (card_h + 8) + 6, lw, calc_h)
-    rows = len(numbers.OPS) + 1
-    row_top = y0 + 52
-    row_h = max(48, min(86, (h - (row_top - y0) - 8) // rows - 6))
-    ops = {}
-    for i, op in enumerate(numbers.OPS):
-        ops[op[0]] = (right[0], row_top + i * (row_h + 6), right[2], row_h)
-    later = (right[0], row_top + len(numbers.OPS) * (row_h + 6), right[2], row_h)
-    return {"left": left, "right": right, "bases": bases, "calc": calc, "ops": ops, "later": later}
-
-
-def items(lay: dict) -> dict:
-    return {f"nbase:{b}": r["btn"] for b, r in lay["bases"].items()}
 
 
 def _hover(rect, mx, my) -> bool:
@@ -55,8 +27,6 @@ def _hover(rect, mx, my) -> bool:
 
 
 def _card(screen, rect, top, bot, edge) -> None:
-    from src.kora.render_tech import _gradient_card
-
     x, y, w, h = (int(v) for v in rect)
     screen.blit(_gradient_card(w, h, top, bot, 6), (x, y))
     pygame.draw.rect(screen, edge, (x, y, w, h), 1, border_radius=6)

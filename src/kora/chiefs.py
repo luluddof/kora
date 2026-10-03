@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import influence, peoples, places, sites, systems, tech
+from src.kora import chiefdom, diplo, events, influence, peoples, places, sites, systems, tech, villages
 from src.kora.log import LogKind
 from src.kora.types import Person, Tribe, stay_order
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
@@ -305,8 +305,6 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
     if state.tick_count - band.famine_tick <= 8:
         parts.append(("Famine récente", -10.0))
     if state.sites:
-        from src.kora import villages
-
         parts.extend(villages.loyalty_parts(state, band))
         if tribe.settled_at >= 0 and not band.village and band.kind != "armee":
             near = villages.nearest_village(state, band, villages.NEAR)
@@ -322,8 +320,6 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
     if bonus.loyalty:
         parts.append(("Savoirs (rites, chefferie...)", float(bonus.loyalty)))
     if band.village and state.sites:
-        from src.kora import villages
-
         site = places.site_of(state, band)
         if site is not None:
             s = (villages.stability(state, site, band) - villages.STABILITY_BASE) * 0.3
@@ -399,8 +395,6 @@ def autonomy_parts(state, band) -> list[tuple[str, str]]:
 
 
 def _autonomy(state, band) -> tuple[float, list]:
-    from src.kora import villages
-
     if not gains_autonomy(state, band):
         return 0.0, []
     parts = [("Le chef gouverne le village", f"+{AUTONOMY_MONTH:.1f}")]
@@ -423,8 +417,6 @@ def _autonomy(state, band) -> tuple[float, list]:
     # tributaires), plus les clans veulent le leur.
     own = len(sites.of_tribe(state, band.tribe_id, "village"))
     if own:
-        from src.kora import chiefdom
-
         count = own + chiefdom.kin_villages(state, band.tribe_id)
     else:
         count = 0
@@ -487,8 +479,6 @@ def emancipate(state, band_id: int) -> int:
 def _wants_to_leave(state, band) -> None:
     tribe = state.tribes[band.tribe_id]
     if tribe.is_player:
-        from src.kora import events
-
         if events.hook(state, "clan_part", tribe_id=tribe.id, band_id=band.id):
             return
         secede(state, band.id)
@@ -609,8 +599,6 @@ def secede(state, band_id: int, hostile: bool = False, independence: bool = Fals
     il reste, faute de place). Independance (apres les villages) : il ne
     rejoint pas un peuple etranger, il fonde le sien, de la meme
     civilisation (le monde plein : il attend)."""
-    from src.kora import diplo
-
     band = state.bands.get(band_id)
     if band is None or is_chief_band(state, band):
         # Le chef ne quitte pas son peuple (une carte "le clan veut partir"
@@ -780,8 +768,6 @@ def _succession(state, tid: int, dead: Person | None, cause: str = "") -> None:
         tribe.chief_band = 0
         return
     if tribe.is_player and dead is not None:
-        from src.kora import events
-
         # Le joueur choisit parmi les meilleurs ; en attendant, le premier.
         crown(state, tid, ranked[0].id, quiet=True)
         if events.hook(state, "succession", tribe_id=tid, band_id=ranked[0].id, dead=dead.name, cause=cause):
@@ -818,8 +804,6 @@ def crown(state, tid: int, band_id: int, quiet: bool = False) -> None:
 
 def _players_knowing(state, tid: int) -> list[int]:
     """Les joueurs qui connaissent ce peuple."""
-    from src.kora import diplo
-
     return [t.id for t in sorted(state.tribes.values(), key=lambda t: t.id) if t.is_player and t.id != tid and diplo.in_contact(state, t.id, tid)]
 
 

@@ -83,14 +83,14 @@ def test_the_world_is_big_little_seen_slowly_crossed():
 
 
 def test_bands_do_not_grow_on_screen_with_their_people():
-    from src.kora.render import band_radius
+    from src.kora.layout import band_radius
 
     assert band_radius(10, 1.4) == band_radius(400, 1.4)
     assert band_radius(10, 1.2) <= 9
 
 
 def test_the_army_tab_comes_with_the_first_village():
-    from src.kora.render import side_layout
+    from src.kora.layout import side_layout
     from src.kora.render_panels import army_ready
 
     st = _state()
@@ -113,7 +113,8 @@ def test_the_army_panel_and_square_villages_draw():
     import pygame
 
     from src.kora import render_panels
-    from src.kora.render import Renderer, side_layout
+    from src.kora.render import Renderer
+    from src.kora.layout import side_layout
 
     pygame.init()
     try:

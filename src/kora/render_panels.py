@@ -29,6 +29,11 @@ from src.kora.peoples import civ_name, civ_of, color_of, label_of, living_tribe_
 from src.kora.bands import civ_band_cap, civ_band_count, max_bands_of, tribe_band_count
 
 from src.kora.theme import C
+from src.kora.layout import (  # noqa: F401
+    panel_box,
+)
+from src.kora.layout import HUD_HEIGHT
+
 # L'icone d'un evenement : un mot de son nom, sinon son humeur.
 EVENT_WORDS = (
     ("fievre", "epidemie"), ("mal", "epidemie"), ("loup", "loup"), ("ours", "danger"), ("hiver", "froid"),
@@ -62,18 +67,6 @@ GOLD = C.ocre_jaune
 GOOD = C.bon
 BAD = C.mauvais
 WARN = C.alerte
-
-
-def panel_box(width: int, height: int, panel: str, tab_w: int = 66) -> tuple:
-    from src.kora.render import HUD_HEIGHT
-
-    top = HUD_HEIGHT + 12
-    if panel == "tribu":
-        bw = max(540, min(680, width - tab_w - 24))
-    else:
-        bw = max(600, min(880, width - tab_w - 24))
-    bh = max(420, min(660, height - top - 14))
-    return (width - tab_w - bw - 8, top, bw, bh)
 
 
 def _fonts(r):
@@ -240,8 +233,6 @@ def draw_tribe(r, state, layout, ui) -> None:
     heart = chiefs.chief_band(state, state.viewer)
     _box(r, (bx + 12, y, bw - 24, 62), fill=(32, 24, 19), edge=(60, 56, 44), radius=6)
     if heart is not None and heart.leader is not None:
-        from src.kora.render import _draw_crown
-
         _draw_crown(r.screen, bx + 30, y + 16)
         lead = heart.leader
         _text(r, head_font, f"{lead.name}, chef de la tribu ({chiefs.age(state, lead)} ans)", TEXT, bx + 44, y + 6)
@@ -410,8 +401,6 @@ def _chief_card(r, state, tribe, rect, head_font) -> None:
     if heart is None or heart.leader is None:
         _text(r, r.small, "Pas de chef.", SOFT, x + 14, y + 8)
         return
-    from src.kora.render import _draw_crown
-
     _draw_crown(r.screen, x + 18, y + 16)
     lead = heart.leader
     where = ""
@@ -797,8 +786,6 @@ def draw_event_cards(r, state, ui) -> None:
     """Cartes "A decider" a gauche (voir events.py) ; rien s'il n'y en a pas.
     Elles respirent : elles attendent une decision."""
     r.event_hits = {}
-    from src.kora.render import HUD_HEIGHT
-
     # Multijoueur : une carte repondue attend que l'hote applique la reponse.
     answered = ui.get("answered", ()) if isinstance(ui, dict) else ()
     pending = [p for p in events.pending(state, state.viewer) if p.uid not in answered]
@@ -1032,3 +1019,10 @@ def draw_army(r, state, layout, ui) -> None:
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
     for tip in tips:
         _tooltip(r, *tip)
+
+
+def _draw_crown(surf: pygame.Surface, cx: int, cy: int) -> None:
+    gold = (236, 196, 80)
+    pts = [(cx - 6, cy + 3), (cx - 6, cy - 3), (cx - 3, cy), (cx, cy - 5), (cx + 3, cy), (cx + 6, cy - 3), (cx + 6, cy + 3)]
+    pygame.draw.polygon(surf, gold, pts)
+    pygame.draw.polygon(surf, (90, 64, 20), pts, 1)

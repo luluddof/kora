@@ -345,7 +345,7 @@ def test_numbers_and_treasury_survive_a_save():
 
 def test_the_numbers_page_and_the_treasury_lay_out_cleanly():
     from src.kora import render_numbers, render_treasury
-    from src.kora.render import side_hit, side_layout
+    from src.kora.layout import side_hit, side_layout
 
     for w, h in ((1024, 640), (1280, 720), (1920, 1080)):
         lay = side_layout(w, h, panel="savoirs", tech_tab="nombres")

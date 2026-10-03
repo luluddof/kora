@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import chiefdom, chiefs, events, goods, influence, tech
+from src.kora import battle, chiefdom, chiefs, events, goods, influence, tech
 from src.kora.log import LogKind
 # Les donnees (contacts, relations, pactes, routes) : types.py.
 from src.kora.types import Diplomacy, Mod, Pact, TradeRoute  # noqa: F401
@@ -601,9 +601,7 @@ def diffusion_bonus(state, tid: int, tech_id: str) -> float:
 
 
 def power(state, tid: int) -> float:
-    from src.kora.battle import band_force
-
-    return sum(band_force(state, b) for b in state.bands.values() if b.tribe_id == tid and b.population > 0)
+    return sum(battle.band_force(state, b) for b in state.bands.values() if b.tribe_id == tid and b.population > 0)
 
 
 def gap(state, a: int, b: int) -> int:

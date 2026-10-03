@@ -20,6 +20,8 @@ part ailleurs, on dit ou il se branche sur le reste du jeu :
   TECH_LINES     ce qu'un systeme dit d'un savoir (le metier qu'il ouvre)
   EVENT_VOCABULARY  les modules qui ajoutent des conditions et des effets
                  aux evenements (events.vocabulary)
+  BAND_SPLIT, BAND_MERGE, MERGE_ALLOWED
+                 une bande se scinde, se reunit, peut se reunir (bands.py)
   EMANCIPATED    un clan devient un peuple : ou il part (state, band)
 
 Un systeme nouveau : son module, puis UNE ligne dans chaque tableau ou il
@@ -92,6 +94,13 @@ TECH_LINES = ("goods.tech_lines",)
 # Les modules qui ajoutent des conditions, des effets et leurs textes aux
 # evenements (EVENT_CONDITIONS, EVENT_EFFECTS, EVENT_TEXTS ; events.vocabulary).
 EVENT_VOCABULARY = ("goods", "money", "numbers", "ai_war")
+
+# Une bande se scinde (bands.split_band) ; (state, ancienne, nouvelle).
+BAND_SPLIT = ("chiefs.on_split",)
+# Deux bandes se reunissent (bands._absorb) ; (state, celle qui reste, celle qui part).
+BAND_MERGE = ("chiefs.on_merge",)
+# Une bande peut-elle rejoindre les autres (bands.merge_mates) ; (state, bande) -> bool.
+MERGE_ALLOWED = ("chiefs.obeys",)
 
 # Un clan devient un peuple independant (chiefs.emancipate) ; (state, band).
 EMANCIPATED = ("ai.head_for_new_land",)

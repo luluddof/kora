@@ -12,7 +12,7 @@ N'importe pas pygame.
 
 from __future__ import annotations
 
-from src.kora import chiefs, population, systems, tech, units
+from src.kora import population, systems, tech, units
 from src.kora.gamestate import GameState, is_human, note
 from src.kora.log import LogKind
 from src.kora.path import astar
@@ -311,7 +311,9 @@ def split_band(state: GameState, band_id: int) -> int | None:
     population.split_wounded(band, state.bands[nid], moved, band.population)
     band.population -= moved
     band.stock -= stock
-    chiefs.on_split(state, band, state.bands[nid])
+    # Ce que les systemes en font (les chefs du clan : systems.BAND_SPLIT).
+    for path in systems.BAND_SPLIT:
+        systems.fn(path)(state, band, state.bands[nid])
     _ai_caches_changed(state)
     if is_human(state, band.tribe_id):
         note(
@@ -357,7 +359,9 @@ def _absorb(state: GameState, keep: Band, gone: Band) -> None:
     keep.famine_in_period = keep.famine_in_period or gone.famine_in_period
     keep.growth_acc += gone.growth_acc
     keep.famine_tick = max(keep.famine_tick, gone.famine_tick)
-    chiefs.on_merge(state, keep, gone)
+    # Ce que les systemes en font (les anciens : systems.BAND_MERGE).
+    for path in systems.BAND_MERGE:
+        systems.fn(path)(state, keep, gone)
     del state.bands[gone.id]
     _ai_caches_changed(state)
     for b in state.bands.values():
@@ -389,7 +393,7 @@ def merge_mates(state: GameState, band: Band, radius: int = MERGE_CALL) -> list:
             and not b.retreating
             and not b.homebound
             and (b.kind == "armee") == (band.kind == "armee")
-            and chiefs.obeys(state, b)
+            and all(systems.fn(path)(state, b) for path in systems.MERGE_ALLOWED)
             and world.distance(b.position, band.position) <= radius
         ),
         key=lambda b: (world.distance(b.position, band.position), b.id),

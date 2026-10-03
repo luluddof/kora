@@ -22,7 +22,8 @@ from src.kora.peoples import color_of
 from src.kora.situations import CRISE, SPECS
 from src.kora.theme import C
 from src.kora.gamestate import seen_of
-from src.kora.globe import hex_to_globe_screen
+from src.kora.globe import hex_to_globe_screen, view_params
+from src.kora.layout import HUD_HEIGHT, TAB_W, hud_layout
 
 # Une case du bandeau (dans la barre du haut).
 CARD_W, CARD_H = 40, 40
@@ -49,8 +50,6 @@ def banner_items(state) -> list:
 def banner_layout(width: int, n: int) -> dict:
     """Les medaillons, dans la barre du haut, entre la date (a gauche) et les
     boutons du temps ; s'il y en a trop, la suite passe juste dessous."""
-    from src.kora.render import HUD_HEIGHT, hud_layout
-
     left = 236
     right = hud_layout(width)["pause"][0] - 12
     per_row = max(1, (right - left + 6) // (CARD_W + 6))
@@ -208,8 +207,6 @@ def draw_banner(r, state) -> None:
 
 
 def window_layout(width: int, height: int, n_actions: int, story_lines: int = 3) -> dict:
-    from src.kora.render import TAB_W
-
     bw = min(860, width - TAB_W - 60)
     action_h = 62
     head = 112
@@ -448,8 +445,6 @@ def draw_on_map(r, state, yaw, pitch, zoom) -> None:
     """Le lieu d'une situation du joueur, seulement quand on la regarde (son
     medaillon survole, ou sa fenetre ouverte) : un cercle de pointilles a son
     rayon et le medaillon au centre. Le reste du temps, la carte est libre."""
-    from src.kora.render import HUD_HEIGHT, view_params
-
     shown = {getattr(r, "situation_hover", None), getattr(r, "situation_open_uid", None)}
     items = [s for s in situations.of_tribe(state, state.viewer) if s.center is not None and s.radius > 0 and s.uid in shown]
     if not items:

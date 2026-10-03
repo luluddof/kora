@@ -33,7 +33,7 @@ from src.kora import (
 )
 from src.kora.look import BIOME_COLORS
 from src.kora.peoples import color_of
-from src.kora.render import HUD_HEIGHT
+from src.kora.layout import HUD_HEIGHT
 from src.kora.render_tech import (
     BAD,
     GOLD,
@@ -48,15 +48,13 @@ from src.kora.render_tech import (
     _check,
     _cross,
     _fit,
-    _gradient_card,
-    _lerp,
     _lock,
     _ornate_frame,
     _tick,
     _wrap,
 )
+from src.kora.theme import C, _gradient_card, _lerp
 from src.kora.types import Hex
-from src.kora.theme import C
 from src.kora.sim import GROWTH_RATE
 from src.kora.battle import band_force
 from src.kora.bands import bonus_of, stock_max

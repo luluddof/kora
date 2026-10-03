@@ -149,7 +149,7 @@ def test_the_tribe_tab_becomes_the_villages_when_no_nomad_is_left():
     assert [b.id for b in st.bands.values() if b.tribe_id == 1] == [1]
     pygame.init()
     from src.kora import render_panels
-    from src.kora.render import side_hit
+    from src.kora.layout import side_hit
 
     assert render_panels.tribe_tab_label(st) == "Village"
     try:

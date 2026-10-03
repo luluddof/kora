@@ -18,6 +18,10 @@ from __future__ import annotations
 import importlib
 from dataclasses import dataclass
 
+from src.kora.render_trade import trade_hit
+from src.kora.render_treasury import treasury_hit
+from src.kora.render_village import village_hit
+
 
 @dataclass(frozen=True)
 class Screen:
@@ -29,20 +33,14 @@ class Screen:
 
 
 def _village_hit(r, mx, my):
-    from src.kora.render_village import village_hit
-
     return village_hit(r.village_hits, mx, my, r.village_armies)
 
 
 def _trade_hit(r, mx, my):
-    from src.kora.render_trade import trade_hit
-
     return trade_hit(r.trade_hits, mx, my, r.trade_partners, len(r.trade_routes), r.trade_candidates)
 
 
 def _treasury_hit(r, mx, my):
-    from src.kora.render_treasury import treasury_hit
-
     return treasury_hit(r.treasury_hits, mx, my)
 
 

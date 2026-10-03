@@ -505,7 +505,8 @@ def test_the_commerce_screen_fits_answers_and_draws():
     import pygame
 
     from src.kora import render_trade
-    from src.kora.render import Renderer, side_layout
+    from src.kora.render import Renderer
+    from src.kora.layout import side_layout
 
     for w, h in ((1024, 640), (1280, 720), (1920, 1080)):
         lay = render_trade.trade_layout(w, h, 3, 2, 2)
@@ -571,7 +572,8 @@ def test_routes_show_only_in_the_commerce_map_mode(monkeypatch):
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     import pygame
 
-    from src.kora.render import MAP_MODES, Renderer
+    from src.kora.render import Renderer
+    from src.kora.layout import MAP_MODES
 
     assert "commerce" in dict(MAP_MODES)
     st, site, band, osite, other = _partners()

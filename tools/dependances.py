@@ -19,7 +19,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "kora"
 
 # La presentation (pygame) ; le reste est la simulation et ses outils.
-PRESENTATION = {"app", "render", "theme", "look", "globe", "globe_draw", "screens"}
+PRESENTATION = {"app", "render", "theme", "look", "globe", "globe_draw", "screens", "layout"}
 
 # LES ETAGES, du plus bas au plus haut. Un module n'importe en tete que des
 # etages plus bas ; un import cache (dans une fonction) ne vise que le meme

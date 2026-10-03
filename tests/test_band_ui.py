@@ -1,12 +1,6 @@
 from src.kora.app import _next_player_band, _refresh_selection
 from src.kora.globe import FOCUS_ZOOM, look_at_hex, view_params
-from src.kora.render import (
-    BAND_BUTTONS,
-    band_card_hit,
-    band_card_layout,
-    band_screen_positions,
-    wrap_text,
-)
+from src.kora.layout import BAND_BUTTONS, band_card_hit, band_card_layout, band_screen_positions, wrap_text
 from src.kora.sim import band_lines, band_summary, new_game
 from src.kora.bands import split_band
 from src.kora.types import Terrain
@@ -78,7 +72,7 @@ def test_wrap_text_keeps_every_word():
 
 
 def test_only_placed_toasts_are_clickable():
-    from src.kora.render import toast_hit
+    from src.kora.layout import toast_hit
 
     placed = {"text": "Raid", "hex": (1, 2)}
     hits = [((10, 60, 200, 20), placed)]

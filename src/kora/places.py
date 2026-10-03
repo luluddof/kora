@@ -149,3 +149,7 @@ def watch_spots(state, tribe_id: int) -> list:
         for s in sorted(state.sites.values(), key=lambda s: s.id)
         if s.kind == "village" and s.tribe_id == tribe_id and has(s, "tour")
     ]
+
+
+def influence_radius(site, base: int) -> int:
+    return base + (1 if has(site, "pierre") else 0)

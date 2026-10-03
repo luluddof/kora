@@ -24,7 +24,7 @@ import json
 import time
 from dataclasses import dataclass, field
 
-from src.kora import commands, tech
+from src.kora import __version__, commands, tech
 from src.kora.net import Listener, PORT, pack, unpack
 from src.kora.sim import new_game, tick
 from src.kora.persist import dumps_game, game_to_json, loads_game
@@ -155,8 +155,6 @@ class HostSession(_Base):
 
     def __init__(self, setup: dict, port: int = PORT, resume=None) -> None:
         super().__init__()
-        from src.kora import __version__
-
         self.version = __version__
         self.listener = Listener(port)
         self.port = port
@@ -472,8 +470,6 @@ class ClientSession(_Base):
 
     def __init__(self, conn, setup: dict, slot: int | None = None) -> None:
         super().__init__()
-        from src.kora import __version__
-
         self.conn = conn
         self.setup = dict(setup)
         self.me = None

@@ -17,10 +17,10 @@ import pygame
 
 from src.kora import money, tech, theme
 from src.kora.peoples import color_of
-from src.kora.render import HUD_HEIGHT
-from src.kora.render_tech import BAD, GOLD, GOOD, INK, NOTE, SOFT, _gradient_card
+from src.kora.layout import HUD_HEIGHT
+from src.kora.render_tech import BAD, GOLD, GOOD, INK, NOTE, SOFT
+from src.kora.theme import C, _gradient_card
 from src.kora.render_village import WARN, _fonts, _frame, _hover, _section, _tile, _tip
-from src.kora.theme import C
 
 TOGGLES = money.TOGGLE_KEYS
 

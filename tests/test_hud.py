@@ -1,16 +1,6 @@
 import os
 
-from src.kora.render import (
-    HUD_HEIGHT,
-    FILTER_BY_HIT,
-    fight_panel_layout,
-    hud_hit,
-    hud_layout,
-    menu_hit,
-    menu_layout,
-    side_hit,
-    side_layout,
-)
+from src.kora.layout import HUD_HEIGHT, FILTER_BY_HIT, fight_panel_layout, hud_hit, hud_layout, menu_hit, menu_layout, side_hit, side_layout
 
 
 def test_speed_squares_are_five_and_ordered():
@@ -48,7 +38,7 @@ def test_side_tabs_are_on_the_right_when_closed():
 
 def test_savoirs_tree_is_a_canvas_you_pan_and_zoom():
     from src.kora import tech
-    from src.kora.render import pan, tech_world, tree_zoom_min, zoom_at
+    from src.kora.layout import pan, tech_world, tree_zoom_min, zoom_at
 
     world = tech_world()
     for w, h in ((1280, 720), (1024, 640), (1920, 1080)):

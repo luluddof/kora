@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pygame
+from src.kora import theme
 
 
 class C:
@@ -661,3 +662,32 @@ def veil(surf, alpha: int = 150) -> None:
         v = pygame.transform.smoothscale(small, (w, h))
         _PANELS[key] = v
     surf.blit(v, (0, 0))
+
+
+_CACHE: dict = {}
+
+
+def _lerp(a, b, t):
+    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
+def _gradient_card(w: int, h: int, top, bot, radius: int) -> pygame.Surface:
+    """Une carte en pierre taillee (theme.chamfer), degrade et grain."""
+    key = ("card", w, h, top, bot, radius)
+    hit = _CACHE.get(key)
+    if hit is not None:
+        return hit
+    surf = pygame.Surface((w, h), pygame.SRCALPHA)
+    for y in range(h):
+        pygame.draw.line(surf, _lerp(top, bot, y / max(1, h - 1)) + (255,), (0, y), (w, y))
+    g = theme.grain(12)
+    for gx in range(0, w, g.get_width()):
+        for gy in range(0, h, g.get_height()):
+            surf.blit(g, (gx, gy))
+    mask = pygame.Surface((w, h), pygame.SRCALPHA)
+    pygame.draw.polygon(mask, (255, 255, 255, 255), theme.chamfer((0, 0, w, h), max(3, min(radius, 10))))
+    surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    if len(_CACHE) > 400:
+        _CACHE.clear()
+    _CACHE[key] = surf
+    return surf

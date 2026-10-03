@@ -134,6 +134,7 @@ def _book(state) -> Book:
 
 
 def _events():
+    # paresseux : les donnees des evenements importent le moteur (Event, Option...).
     from src.kora.events_data import EVENTS as data
 
     return data

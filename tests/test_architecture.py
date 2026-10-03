@@ -21,7 +21,7 @@ SRC = ROOT / "src" / "kora"
 # La presentation (pygame permis) ; tout le reste est la simulation et ses
 # outils, en python pur.
 PRESENTATION = {
-    "app", "render", "theme", "look", "globe", "globe_draw", "screens",
+    "app", "render", "theme", "look", "globe", "globe_draw", "screens", "layout",
 } | {p.stem for p in SRC.glob("render_*.py")}
 
 
@@ -141,11 +141,13 @@ def test_an_old_save_without_the_new_fields_still_loads():
 
 
 def test_every_system_hook_exists():
-    tables = {
-        "MONTHLY": systems.MONTHLY, "STABILITY": systems.STABILITY, "ARMY_MORALE": systems.ARMY_MORALE,
-        "FLEE": systems.FLEE, "CRAFT_OUTPUT": systems.CRAFT_OUTPUT, "EFFECT_FIELDS": systems.EFFECT_FIELDS,
-        "EFFECT_SPECS": tuple(systems.EFFECT_SPECS.values()),
-    }
+    # Tous les tableaux de systems.py (un tableau ajoute est verifie d'office).
+    tables = {}
+    for name in dir(systems):
+        value = getattr(systems, name)
+        if name.isupper() and not name.startswith("_") and name != "EVENT_VOCABULARY" and isinstance(value, (tuple, dict)):
+            tables[name] = tuple(value.values()) if isinstance(value, dict) else value
+    assert {"MONTHLY", "STABILITY", "BAND_SPLIT", "EMANCIPATED"} <= set(tables)
     for name, table in tables.items():
         assert len(set(table)) == len(table) or name == "EFFECT_SPECS", f"systems.{name} : une ligne en double"
         for path in table:

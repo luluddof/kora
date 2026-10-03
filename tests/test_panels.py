@@ -1,7 +1,8 @@
 """Mise en page des nouveaux panneaux (sans fenetre)."""
 
-from src.kora.render import HUD_HEIGHT, MAP_MODES, map_mode_hit, map_mode_layout, side_hit, side_layout
-from src.kora.render_panels import event_modal_layout, panel_box
+from src.kora.layout import HUD_HEIGHT, MAP_MODES, map_mode_hit, map_mode_layout, side_hit, side_layout
+from src.kora.render_panels import event_modal_layout
+from src.kora.layout import panel_box
 
 
 def test_four_side_tabs_stack_on_the_right():

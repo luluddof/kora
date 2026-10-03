@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-from src.kora import places, records, tech
+from src.kora import diplo, events, places, records, tech, villages
 from src.kora.log import LogKind
 from src.kora.types import Hex, Terrain
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
@@ -25,6 +25,7 @@ from src.kora.places import (  # noqa: F401
     VillageData,
     _village_data,
 )
+from src.kora.bands import stock_max
 
 CAMP_STORE = 600
 CACHE_ROT = 0.015
@@ -197,8 +198,6 @@ def deposit(state, band_id: int) -> float:
 
 
 def withdraw_block(state, band_id: int) -> str:
-    from src.kora.bands import stock_max
-
     band = state.bands.get(band_id)
     if band is None:
         return "Pas de bande"
@@ -211,8 +210,6 @@ def withdraw_block(state, band_id: int) -> str:
 
 
 def withdraw(state, band_id: int) -> float:
-    from src.kora.bands import stock_max
-
     if withdraw_block(state, band_id):
         return 0.0
     band = state.bands[band_id]
@@ -233,8 +230,6 @@ def update(state) -> None:
     puis la vie des villages (villages.update)."""
     if not state.sites:
         return
-    from src.kora import villages
-
     villages.update(state)
     world = state.world
     here: dict = {}
@@ -291,8 +286,6 @@ def _strike_camp(state, site: Site) -> None:
 
 
 def _maybe_found(state, site: Site, foes: list) -> None:
-    from src.kora.bands import stock_max
-
     for foe in sorted(foes, key=lambda b: b.id):
         foe_tribe = state.tribes.get(foe.tribe_id)
         if foe_tribe is None:
@@ -306,8 +299,6 @@ def _maybe_found(state, site: Site, foes: list) -> None:
         # vient la chercher : ai._seek_cache).
         if site.kind == "cache" and foe.position != site.hex and state.story_rng.random() >= FIND_CHANCE:
             continue
-        from src.kora import diplo
-
         if diplo.at_peace(state, foe.tribe_id, site.tribe_id):
             continue
         take = min(site.store, max(0.0, stock_max(foe, state) - foe.stock))
@@ -330,8 +321,6 @@ def _maybe_found(state, site: Site, foes: list) -> None:
 
 
 def _offer_player_find(state, site: Site, band) -> None:
-    from src.kora import events
-
     events.hook(state, "cache_trouvee", tribe_id=band.tribe_id, band_id=band.id, other=site.tribe_id, site_id=site.id)
 
 

@@ -18,7 +18,8 @@ from src.kora.peoples import color_of
 from src.kora.theme import C
 from src.kora.battle import fighters_now
 from src.kora.vision import is_visible
-from src.kora.globe import hex_to_globe_screen
+from src.kora.globe import hex_to_globe_screen, view_params
+from src.kora.layout import HUD_HEIGHT, TAB_W
 
 PANEL_W, PANEL_H = 600, 262
 
@@ -37,8 +38,6 @@ def mine(state) -> list:
 
 
 def layout(width: int, height: int) -> dict:
-    from src.kora.render import HUD_HEIGHT, TAB_W
-
     bw = min(PANEL_W, width - TAB_W - 40)
     bx = (width - TAB_W - bw) // 2
     by = HUD_HEIGHT + 52
@@ -159,8 +158,6 @@ def draw(r, state) -> None:
 
 def draw_on_map(r, state, yaw, pitch, zoom) -> None:
     """Des epees qui battent sur chaque bataille en cours que l'on voit."""
-    from src.kora.render import HUD_HEIGHT, view_params
-
     w, h = r.screen.get_size()
     gcx, gcy, focal, dist = view_params(zoom, w, h, HUD_HEIGHT)
     t = pygame.time.get_ticks() / 1000.0

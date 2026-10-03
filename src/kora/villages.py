@@ -80,6 +80,9 @@ from src.kora.places import (  # noqa: F401
 )
 
 from src.kora.population import ACTIVE_NORM, CRAFT_SEX, CRAFT_WORKERS, _craft_take, fit_men, fit_women
+from src.kora.places import (  # noqa: F401
+    influence_radius,
+)
 
 FIELD_WORKERS = 25
 MAX_FIELDS = 12
@@ -590,10 +593,6 @@ def defense_mult(state, band) -> float:
     for _label, m in defense_parts(state, band):
         mult *= m
     return mult
-
-
-def influence_radius(site, base: int) -> int:
-    return base + (1 if has(site, "pierre") else 0)
 
 
 def winter_prestige(state, tribe_id: int) -> int:

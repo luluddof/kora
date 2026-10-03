@@ -9,6 +9,7 @@ from src.kora import (
     diplo,
     events,
     goods,
+    layout,
     money,
     net,
     orders,
@@ -42,11 +43,11 @@ from src.kora.persist import (
     save_prefs,
     set_aside_save,
 )
-from src.kora.render import (
+from src.kora.render import Renderer
+from src.kora.layout import (
     FILTER_BY_HIT,
     HUD_HEIGHT,
     MAX_ZOOM,
-    Renderer,
     TREE_ZOOM_STEP,
     band_card_hit,
     band_screen_positions,
@@ -581,7 +582,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
     dragging = False
     drag_button = 0
     last_mouse = (0, 0)
-    # La toile des savoirs se deplace a la souris (render.tech_panel_layout) :
+    # La toile des savoirs se deplace a la souris (layout.tech_panel_layout) :
     # on glisse depuis n'importe ou ; sans bouger, un clic choisit le savoir.
     tech_drag = 0
     tech_press = {"at": (0, 0), "moved": False, "pick": None}

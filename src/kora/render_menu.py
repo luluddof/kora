@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import net, session, tech, theme
+from src.kora import __version__, net, session, tech, theme
 from src.kora.render_tech import (
     GOLD,
     GOLD_DEEP,
@@ -27,16 +27,15 @@ from src.kora.render_tech import (
     _button,
     _fit,
     _fonts,
-    _gradient_card,
     _wrap,
     medallion,
 )
+from src.kora.theme import C, _gradient_card
 from src.kora.render_village import _frame, _hover, _plain_button
-from src.kora.theme import C
 from src.kora.gamestate import human_dead
 from src.kora.peoples import CULTURES, make_name
 from src.kora.globe_draw import Planet
-from src.kora.render import HUD_HEIGHT
+from src.kora.layout import HUD_HEIGHT
 
 # Couleurs proposees au joueur (le bleu et le vert sont ceux des grands peuples IA).
 PALETTE = (
@@ -102,8 +101,6 @@ def title_hit(lay: dict, mx: int, my: int, can_continue: bool = True):
 def draw_title(r, scene, save_info: dict | None, t: float, message: str = "") -> None:
     """Le menu de demarrage. `scene` : un objet avec .world (la planete),
     dessinee sans brouillard et qui tourne lentement."""
-    from src.kora import __version__
-
     screen = r.screen
     w, h = screen.get_size()
     yaw = 0.8 + t * 0.03
