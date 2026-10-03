@@ -10,7 +10,7 @@ N'importe ni pygame ni render.
 
 from __future__ import annotations
 
-from src.kora import battle, chiefs, sites, villages
+from src.kora import battle, chiefs, places, sites, villages
 from src.kora.bands import (
     SPLIT_MIN_POP,
     can_split,
@@ -187,7 +187,7 @@ def perform(state, band_id: int, key: str):
         if band.kind == "armee" and villages.disband_block(state, band_id) == "" and not _mates(state, band):
             site = villages._village_near(state, band)
             villages.disband(state, band_id)
-            home = villages.band_of(state, site) if site is not None else None
+            home = places.band_of(state, site) if site is not None else None
             return (home.id if home is not None else band_id), ""
         merge_bands(state, band_id)
         return band_id, ""
@@ -222,7 +222,7 @@ def perform(state, band_id: int, key: str):
         if band.kind == "armee":
             site = villages._village_near(state, band)
             villages.dissolve(state, band_id)
-            home = villages.band_of(state, site) if site is not None and band_id not in state.bands else None
+            home = places.band_of(state, site) if site is not None and band_id not in state.bands else None
             return (home.id if home is not None else band_id), ""
         army = villages.raise_army(state, band_id)
         return (army.id if army is not None else band_id), ""

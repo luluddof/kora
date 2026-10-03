@@ -128,7 +128,7 @@ def test_village_people_work_by_trade_and_sex_and_soldiers_return_to_work():
     _all_knowledge(st, 1)
     vb, site = _village(st, 1, 1, pop=120)
     site.data.teams = {"potiers": 1, "tailleurs": 1}
-    o = population.occupations(st, vb)
+    o = villages.occupations(st, vb)
     assert o["metiers"]["potiers"] == goods.TEAM and o["metiers"]["tailleurs"] == goods.TEAM
     assert o["chasse"] == population.fit_men(vb) - goods.TEAM - (o["champs"] - (population.fit_women(vb) - goods.TEAM - o["cueillette"]))
     # Plus de femmes libres : pas de potieres de plus.
@@ -136,10 +136,10 @@ def test_village_people_work_by_trade_and_sex_and_soldiers_return_to_work():
     assert "femmes" in goods.add_block(st, site, "potiers") or goods.max_teams(st, site, "potiers") <= 1
     vb.demo = {}
     army = villages.raise_army(st, 1, villages.LEVY_SHARE["troupe"])
-    assert population.occupations(st, vb)["soldats"] == army.population
+    assert villages.occupations(st, vb)["soldats"] == army.population
     army.position = site.hex
     villages.disband(st, army.id)
-    assert population.occupations(st, vb)["soldats"] == 0
+    assert villages.occupations(st, vb)["soldats"] == 0
 
 
 # --- la fuite et le repli -------------------------------------------------------------

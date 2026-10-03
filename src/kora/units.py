@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.kora.types import Terrain
+from src.kora import places
 
 
 @dataclass(frozen=True)
@@ -211,6 +212,6 @@ def lines(state, band) -> list[str]:
     for type_id, men, home in normalize(band):
         u = UNITS.get(type_id)
         site = state.sites.get(home)
-        where = f" ({villages.name(site)})" if site is not None else ""
+        where = f" ({places.name(site)})" if site is not None else ""
         parts.append(f"{men} {u.name.lower() if u else type_id}{where}")
     return ["Compagnies : " + " · ".join(parts)]

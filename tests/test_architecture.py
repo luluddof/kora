@@ -13,7 +13,7 @@ import sys
 import typing
 
 from src.kora import records, screens, systems, tech
-from src.kora.sites import Site, VillageData
+from src.kora.places import Site, VillageData
 from src.kora.types import Band, Hex, Order, OrderKind, Person, Tribe
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]

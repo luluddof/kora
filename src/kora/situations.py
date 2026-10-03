@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import chiefs, population, tech
+from src.kora import chiefs, places, population, tech
 from src.kora.log import LogKind
 from src.kora.types import Hex, Season, Terrain
 from src.kora.gamestate import humans, is_human, note
@@ -670,7 +670,7 @@ def _villages(state, tid=None):
 def _village_band(state, site):
     from src.kora import villages
 
-    return villages.band_of(state, site)
+    return places.band_of(state, site)
 
 
 class Rouille(Spec):
@@ -767,7 +767,7 @@ class MalDesBetes(Spec):
         out = []
         for site in _villages(state):
             band = _village_band(state, site)
-            if band is not None and band.population >= 110 and villages.has(site, "enclos"):
+            if band is not None and band.population >= 110 and places.has(site, "enclos"):
                 out.append((site.hex, 6, [site.tribe_id], {"site": site.id}))
         return out
 
@@ -895,8 +895,8 @@ class GrandsTravaux(Spec):
             for site in _villages(state, tid):
                 if not in_zone(state, inst, site.hex):
                     continue
-                score += villages.monument_stages(site)
-                job = villages.works(site)
+                score += places.monument_stages(site)
+                job = places.works(site)
                 if job and job[0] == "monument":
                     total = max(1, villages.build_weeks(site, "monument"))
                     score += 1.0 - job[1] / total
@@ -907,7 +907,7 @@ class GrandsTravaux(Spec):
 
         if action == "corvee":
             for site in _villages(state, tid):
-                job = villages.works(site)
+                job = places.works(site)
                 if job and job[0] == "monument":
                     site.data.build = [job[0], max(1, job[1] - MONTH)]
         elif action == "fete":
@@ -1491,7 +1491,7 @@ def _risk_mal_betes(self, state, tid):
 
     for site in _villages(state, tid):
         band = _village_band(state, site)
-        if band is not None and band.population >= 100 and villages.has(site, "enclos"):
+        if band is not None and band.population >= 100 and places.has(site, "enclos"):
             return "Un gros village vit serré avec ses bêtes : le mal des bêtes peut naître et voyager par vos routes."
     return ""
 

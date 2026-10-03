@@ -7,7 +7,7 @@ from src.kora.ai_war import (
     start_plan,
     unsafe_spots,
 )
-from src.kora import chiefs, diplo, goods, sites, units, villages
+from src.kora import chiefs, diplo, goods, places, sites, units, villages
 from src.kora.peoples import culture_of
 from src.kora.battle import band_force, band_quality, defense_force
 from src.kora.bands import (
@@ -404,11 +404,11 @@ def _settle_ai(state: GameState, band: Band) -> bool:
 def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     """Un village IA : batit (palissade d'abord), leve une troupe s'il est
     menace ou s'il voit une proie, envoie des colons quand il deborde."""
-    site = villages.site_of(state, band)
+    site = places.site_of(state, band)
     if site is not None:
         goods.ai_crafts(state, site, band, weeks)
     warm = state.world.hex_season(band.position).value in ("printemps", "ete")
-    if site is not None and warm and villages.works(site) is None:
+    if site is not None and warm and places.works(site) is None:
         # On batit au printemps et en ete, sur le surplus : pas avec les
         # vivres de l'hiver.
         # Pendant les grands travaux, le monument passe d'abord.
@@ -490,7 +490,7 @@ def _army_ai(state: GameState, band: Band, weeks: float) -> None:
     home = villages.home_of(state, band)
     if home is None:
         return
-    village = villages.band_of(state, home)
+    village = places.band_of(state, home)
     at_home = state.world.distance(home.hex, band.position) <= villages.ARMY_HOME
     foe, foe_f = _threat(state, village, AI_THREAT_RANGE) if village is not None else (None, 0.0)
     if foe is not None and not at_home and state.world.distance(home.hex, band.position) > AI_THREAT_RANGE:

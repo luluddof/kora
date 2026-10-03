@@ -7,7 +7,7 @@ from src.kora.commands import NOT_YOURS, apply, make
 from src.kora.sim import new_game
 from src.kora.types import OrderKind, Terrain
 from src.kora.world import make_filled_world, offset_to_axial
-from src.kora import learning
+from src.kora import learning, places
 
 
 def _mp():
@@ -64,7 +64,7 @@ def test_found_a_village_and_run_it():
     site = st.sites[res["site"]]
     pick = next(b for b in villages.BUILD_ORDER if villages.building_status(st, site, b) == "possible")
     assert apply(st, make(1, "build", band.id, pick))["msg"] == ""
-    assert villages.works(site)
+    assert places.works(site)
     cid = next(c for c in goods.CRAFTS if not goods.add_block(st, site, c))
     assert apply(st, make(1, "teams", site.id, cid, 1))["msg"] == ""
     assert goods.teams_of(site, cid) == 1

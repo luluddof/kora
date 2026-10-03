@@ -1,6 +1,6 @@
 """Troupes : levees au village, elles se battent, rentrent, desertent."""
 
-from src.kora import chiefs, orders, sites, tech, villages
+from src.kora import chiefs, orders, places, sites, tech, villages
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
@@ -167,7 +167,7 @@ def test_an_ai_village_raises_a_troop_when_threatened():
     chiefs.ensure(st)
     sites.make_camp(st, 2)
     site = villages.found(st, 2, oath=villages.ai_oath(st, 2))
-    assert villages.oath_of(site) == "champs"
+    assert places.oath_of(site) == "champs"
     st.bands[3] = Band(3, 3, offset_to_axial(34, 15), 120, 500.0)
     chiefs.ensure(st)
     for week in range(8):

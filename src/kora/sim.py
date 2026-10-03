@@ -17,6 +17,7 @@ from src.kora import (
     events,
     influence,
     learning,
+    places,
     population,
     records,
     sites,
@@ -74,7 +75,8 @@ from src.kora.peoples import (
     pick_minor_spots,
 )
 from src.kora.mapgen import generate_world
-from src.kora.villages import food_mult, growth_mult, note_forage, site_of, store_weeks, winter_famine_mult
+from src.kora.villages import food_mult, growth_mult, note_forage, store_weeks, winter_famine_mult
+from src.kora.places import site_of
 from src.kora.bands import (  # noqa: F401
     SPLIT_MIN_POP,
     _absorb,
@@ -100,6 +102,10 @@ from src.kora.battle import (  # noqa: F401
     prune_fight_marks,
     resolve_raids,
 )
+from src.kora.world import (  # noqa: F401
+    local_winter_weeks,
+)
+from src.kora.ai import decide_ai
 
 # Famine progressive : part de la bande qui meurt par semaine
 # = part de nourriture manquante x FAMINE_RATE (minimum 1 mort).
@@ -153,7 +159,7 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
     elif site is None:
         owner = villages.field_site(state, placed)
         if owner is not None and (visible or owner.tribe_id == me):
-            site_info = [f"Champ de {villages.name(owner)}"]
+            site_info = [f"Champ de {places.name(owner)}"]
     return {
         "hex": placed,
         "terrain": terrain,
@@ -168,34 +174,6 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
         "site": site_info,
         "resources": state.world.resource_lines(placed) if getattr(state.world, "resources", None) else [],
     }
-
-
-@functools.lru_cache(maxsize=4)
-def _winter_weeks_by_row(height: int) -> tuple[int, ...]:
-    # Rejoue une annee de propagation (memes regles que apply_season_spread)
-    # sur une carte d'une colonne : hiver court a l'equateur, long aux poles.
-    world = make_filled_world(1, height, Terrain.PLAINE)
-    clock = Clock()
-    world.fill_season(clock.season())
-    counts = [0] * height
-    for week in range(104):
-        clock.advance_week()
-        target = clock.season()
-        if world._aimed_season is not target:
-            world.seed_season(target)
-        world.spread_season(target)
-        if week >= 52:
-            for row in range(height):
-                if world.hex_season(offset_to_axial(0, row)) is Season.HIVER:
-                    counts[row] += 1
-    return tuple(counts)
-
-
-def local_winter_weeks(world: World, h: Hex) -> int:
-    placed = world.canonicalize(h)
-    if placed is None:
-        return 0
-    return _winter_weeks_by_row(world.height)[placed.r]
 
 
 def band_summary(state: GameState, band_id: int) -> dict | None:
@@ -284,11 +262,11 @@ def _people_lines(band: Band) -> list[str]:
 
 
 def _work_lines(state: GameState, band: Band) -> list[str]:
-    """Qui fait quoi (population.occupations) : pour un clan, la chasse et la
+    """Qui fait quoi (villages.occupations) : pour un clan, la chasse et la
     cueillette."""
     if band.kind == "armee" or band.village:
         return []
-    return population.occupation_lines(state, band)
+    return villages.occupation_lines(state, band)
 
 
 def band_lines(info: dict) -> list[str]:
@@ -992,7 +970,6 @@ def tick(state: GameState) -> None:
 def _week(state: GameState, battle_days: int) -> None:
     """La semaine du monde. Les batailles sans joueur y font `battle_days`
     jours."""
-    from src.kora.ai import decide_ai
     prev_season = state.clock.season()
     state.clock.advance_week()
     if state.clock.season() is not prev_season:

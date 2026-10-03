@@ -20,6 +20,7 @@ part ailleurs, on dit ou il se branche sur le reste du jeu :
   TECH_LINES     ce qu'un systeme dit d'un savoir (le metier qu'il ouvre)
   EVENT_VOCABULARY  les modules qui ajoutent des conditions et des effets
                  aux evenements (events.vocabulary)
+  EMANCIPATED    un clan devient un peuple : ou il part (state, band)
 
 Un systeme nouveau : son module, puis UNE ligne dans chaque tableau ou il
 intervient ; le reste du jeu n'a pas a l'importer. L'ordre des tableaux
@@ -90,7 +91,10 @@ TECH_LINES = ("goods.tech_lines",)
 
 # Les modules qui ajoutent des conditions, des effets et leurs textes aux
 # evenements (EVENT_CONDITIONS, EVENT_EFFECTS, EVENT_TEXTS ; events.vocabulary).
-EVENT_VOCABULARY = ("goods", "money", "numbers")
+EVENT_VOCABULARY = ("goods", "money", "numbers", "ai_war")
+
+# Un clan devient un peuple independant (chiefs.emancipate) ; (state, band).
+EMANCIPATED = ("ai.head_for_new_land",)
 
 _FN: dict = {}
 

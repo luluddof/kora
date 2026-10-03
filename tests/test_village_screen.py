@@ -2,7 +2,7 @@
 
 import os
 
-from src.kora import chiefs, influence, orders, sites, tech, villages
+from src.kora import chiefs, influence, orders, places, sites, tech, villages
 from src.kora.clock import Clock
 from src.kora.sim import update_prestige
 from src.kora.bands import stock_max
@@ -27,7 +27,7 @@ def test_the_first_village_opens_an_age():
     info = villages.found_preview(st, 1)
     assert info["first"] and info["name"] and info["fields"] > 0
     site = villages.found(st, 1, oath="grenier", name_=info["name"])
-    assert site.name == info["name"] and villages.oath_of(site) == "grenier"
+    assert site.name == info["name"] and places.oath_of(site) == "grenier"
     assert st.tribes[1].prestige == prestige + villages.FIRST_VILLAGE_PRESTIGE
     assert "age_villages" in st.tribes[1].flags
     assert any("âge des villages" in e.text for e in st.log.entries)
@@ -66,7 +66,7 @@ def test_a_building_costs_food_takes_weeks_then_works():
     assert "à la fois" in villages.build_block(st, 1, "puits")
     for _ in range(villages.BUILDINGS["grenier"].weeks):
         villages.update(st)
-    assert villages.has(site, "grenier")
+    assert places.has(site, "grenier")
     assert stock_max(band, st) > cap
 
 
@@ -81,7 +81,7 @@ def test_buildings_need_knowledge_and_room():
 
 
 def test_old_palisades_are_read_as_buildings():
-    from src.kora.sites import _village_data
+    from src.kora.places import _village_data
 
     st, band = _state()
     site = villages.found(st, 1)
@@ -89,7 +89,7 @@ def test_old_palisades_are_read_as_buildings():
     assert villages.palisade_state(site) == "built"
     site.data = _village_data({"band": 1, "palisade": 5, "fields": []})
     assert villages.palisade_state(site) == "building"
-    assert villages.works(site) == ("palissade", 5)
+    assert places.works(site) == ("palissade", 5)
 
 
 def test_altar_tower_and_stone_reach_beyond_the_village():
@@ -106,7 +106,7 @@ def test_altar_tower_and_stone_reach_beyond_the_village():
     far = offset_to_axial(30, 15)
     vis = recompute_vision(st)
     assert far in vis.visible
-    assert villages.watch_spots(st, 1) == [site.hex]
+    assert places.watch_spots(st, 1) == [site.hex]
     st.clock.week = 12
     st.clock.advance_week()
     if st.clock.just_finished_winter():

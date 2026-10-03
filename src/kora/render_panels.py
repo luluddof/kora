@@ -11,12 +11,13 @@ import pygame
 
 from src.kora import (
     chiefs,
-    diplo as _diplo,
     diplo,
+    diplo as _diplo,
     events,
     goods,
     influence,
     money,
+    places,
     sites,
     tech,
     theme,
@@ -143,7 +144,7 @@ def tribe_alert(state) -> bool:
         return any(
             villages.stability(state, s) < villages.UNREST
             for s in state.sites.values()
-            if s.kind == "village" and s.tribe_id == state.viewer and villages.band_of(state, s) is not None
+            if s.kind == "village" and s.tribe_id == state.viewer and places.band_of(state, s) is not None
         )
     return any(
         b.tribe_id == state.viewer and not chiefs.is_chief_band(state, b) and b.loyalty < chiefs.OBEY
@@ -415,8 +416,8 @@ def _chief_card(r, state, tribe, rect, head_font) -> None:
     lead = heart.leader
     where = ""
     if heart.village:
-        site = villages.site_of(state, heart)
-        where = f", gouverne {villages.name(site)}" if site is not None else ""
+        site = places.site_of(state, heart)
+        where = f", gouverne {places.name(site)}" if site is not None else ""
     _text(r, head_font, r._fit(head_font, f"{lead.name}, chef du peuple ({chiefs.age(state, lead)} ans){where}", w - 44), TEXT, x + 32, y + 6)
     names, effects = [], []
     for t in lead.traits:
@@ -446,9 +447,9 @@ def draw_villages(r, state, layout, ui) -> None:
     color = color_of(tribe)
     pygame.draw.rect(r.screen, color, (bx, by + 10, 5, 44), border_radius=2)
     homes = [
-        (s, villages.band_of(state, s))
+        (s, places.band_of(state, s))
         for s in sorted(state.sites.values(), key=lambda s: s.id)
-        if s.kind == "village" and s.tribe_id == state.viewer and villages.band_of(state, s) is not None
+        if s.kind == "village" and s.tribe_id == state.viewer and places.band_of(state, s) is not None
     ]
     _text(r, title_font, f"Les villages des {tribe.name}", TEXT, bx + 18, by + 10)
     pop = sum(b.population for b in state.bands.values() if b.tribe_id == state.viewer and b.population > 0)
@@ -476,7 +477,7 @@ def draw_villages(r, state, layout, ui) -> None:
         items[f"vil_row:{site.id}"] = row
         is_heart = chiefs.is_chief_band(state, band)
         r.draw_village_icon(site, cols["nom"] + 5, y + 12, color, 6)
-        label = villages.name(site) + (" (le chef)" if is_heart else "")
+        label = places.name(site) + (" (le chef)" if is_heart else "")
         _text(r, r.small, r._fit(r.small, label, 170), TEXT, cols["nom"] + 16, y + 3)
         _text(r, r.small, str(band.population), SOFT, cols["gens"], y + 3)
         stab = villages.stability(state, site, band)
@@ -489,9 +490,9 @@ def draw_villages(r, state, layout, ui) -> None:
         _text(r, r.tiny, grain, BAD if margin < 0 else GOOD if weeks >= 8 else WARN, cols["grenier"], y + 5)
         # Seconde ligne : rang, metiers, chantier.
         crafts = ", ".join(f"{goods.CRAFTS[c].name.lower()} {n}" for c, n in sorted(goods.teams(site).items()) if n)
-        job = villages.works(site)
+        job = places.works(site)
         work = f"chantier : {villages.BUILDINGS[job[0]].name.lower()} ({job[1]} sem.)" if job else "pas de chantier"
-        second = f"{villages.rank_name(band.population)}  ·  {crafts or 'aucun métier'}  ·  {work}"
+        second = f"{places.rank_name(band.population)}  ·  {crafts or 'aucun métier'}  ·  {work}"
         _text(r, r.tiny, r._fit(r.tiny, second, cols["act"] - cols["nom"] - 24), NOTE, cols["nom"] + 16, y + 20)
         see = (cols["act"], y + 7, 44, 20)
         items[f"vil_see:{site.id}"] = see
@@ -954,13 +955,13 @@ def draw_army(r, state, layout, ui) -> None:
     block_h = 84
     max_blocks = max(1, (bh - 250) // block_h)
     for site in homes[:max_blocks]:
-        home = villages.band_of(state, site)
+        home = places.band_of(state, site)
         if home is None:
             continue
         _box(r, (bx + 12, y, bw - 24, block_h - 6), fill=(32, 24, 19), edge=(60, 56, 44), radius=6)
         name_rect = (bx + 20, y + 5, 150, 20)
         items[f"avillage:{site.id}"] = name_rect
-        _button(r, name_rect, villages.name(site))
+        _button(r, name_rect, places.name(site))
         info = f"{home.population} habitants  ·  compagnies {villages.companies_of(state, site)}/{villages.army_cap(state, site)}"
         _text(r, r.tiny, info, SOFT, bx + 180, y + 8)
         role = roles.get(site.id, "melee")
@@ -1011,7 +1012,7 @@ def draw_army(r, state, layout, ui) -> None:
             break
         lead = army.leader.name if army.leader else "?"
         home = villages.home_of(state, army)
-        where = villages.name(home) if home is not None else "sans village"
+        where = places.name(home) if home is not None else "sans village"
         d = state.world.distance(home.hex, army.position) if home is not None else 0
         status = "rentre" if army.homebound else ("au village" if home is not None and d <= villages.ARMY_HOME else f"à {d} cases de {where}")
         _text(r, r.small, r._fit(r.small, f"{lead} · {army.population} guerriers · {status}", bw - 200), TEXT, bx + 20, y)

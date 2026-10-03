@@ -1,7 +1,7 @@
 """Le savoir-faire des villages (production.py), la surproduction et
 l'effondrement du commerce (situations.py), les crises que l'on voit venir."""
 
-from src.kora import diplo, goods, persist, production, sites, situations, tech, villages
+from src.kora import diplo, goods, persist, places, production, sites, situations, tech, villages
 from src.kora.sim import new_game
 from src.kora.gamestate import PLAYER_TRIBE_ID
 from src.kora.situations import SPECS
@@ -40,7 +40,7 @@ def test_no_know_how_before_the_villages():
 
 def test_hungry_villages_learn_to_get_more_food_slowly():
     st = _villages_state()
-    band = villages.band_of(st, _site(st, 1))
+    band = places.band_of(st, _site(st, 1))
     tribe = st.tribes[1]
     band.stock = 0.0
     before = villages.food_mult(st, band)
@@ -61,7 +61,7 @@ def test_a_craft_in_short_supply_gains_know_how_and_produces_more():
     st = _villages_state()
     site = _site(st, 1)
     # Un gros village : une equipe ne suffit plus a ce qu'il use.
-    villages.band_of(st, site).population = 400
+    places.band_of(st, site).population = 400
     goods.set_teams(st, site, "tisserands", 1)
     st.tribes[1].goods.pop("etoffes", None)
     out = goods.output(st, site, "tisserands")
@@ -160,7 +160,7 @@ def test_know_how_and_gluts_are_saved():
 def test_the_monument_rises_in_stages_and_only_the_winner_keeps_it():
     st = _villages_state((1, 2))
     s1, s2 = _site(st, 1), _site(st, 2)
-    b1, b2 = villages.band_of(st, s1), villages.band_of(st, s2)
+    b1, b2 = places.band_of(st, s1), places.band_of(st, s2)
     assert villages.building_status(st, s1, "monument") == "verrouille"
     assert "grands travaux" in villages.build_block_site(st, s1, "monument")
     inst = situations._start(st, SPECS["travaux"], s1.hex, 40, [1, 2], {})
@@ -172,7 +172,7 @@ def test_the_monument_rises_in_stages_and_only_the_winner_keeps_it():
             assert villages.build(st, band.id, "monument")
             for _ in range(weeks):
                 villages._advance_works(st, site, band)
-            assert villages.monument_stages(site) == k + 1
+            assert places.monument_stages(site) == k + 1
     assert villages.build_weeks(s1, "monument") > villages.BUILDINGS["monument"].weeks, "chaque etape est plus longue"
     assert "Grand monument · 3/" in villages.building_name(s1, "monument")
     SPECS["travaux"].month(st, inst)
@@ -181,8 +181,8 @@ def test_the_monument_rises_in_stages_and_only_the_winner_keeps_it():
     inst.until = st.tick_count
     situations.monthly(st)
     assert inst.outcome == "gagnee" and inst.winner == 1
-    assert villages.monument_stages(s1) == 3 and villages.has(s1, "monument")
-    assert villages.monument_stages(s2) == 0 and not villages.has(s2, "monument"), "le monument du vaincu est abattu"
+    assert places.monument_stages(s1) == 3 and places.has(s1, "monument")
+    assert places.monument_stages(s2) == 0 and not places.has(s2, "monument"), "le monument du vaincu est abattu"
     assert tech.bonuses(st.tribes[1]).prestige_gain > 1.0
     from src.kora.bands import gain_prestige
 
@@ -200,15 +200,15 @@ def test_the_ai_raises_its_monument_during_the_works():
 
     st = _villages_state((1, 2))
     s2 = _site(st, 2)
-    band = villages.band_of(st, s2)
+    band = places.band_of(st, s2)
     situations._start(st, SPECS["travaux"], s2.hex, 40, [1, 2], {})
     band.stock = band.population * 60.0
     st.clock.week = 20
     for k in range(3):
-        if villages.works(s2):
+        if places.works(s2):
             break
         ai._village_ai(st, band, band.stock / band.population)
-    job = villages.works(s2)
+    job = places.works(s2)
     assert job and job[0] == "monument"
 
 

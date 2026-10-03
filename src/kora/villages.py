@@ -39,7 +39,7 @@ from src.kora.log import LogKind
 from src.kora.types import Band, Season, Terrain, stay_order
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.world import offset_to_axial
-from src.kora.sites import VillageData
+from src.kora.places import VillageData
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.peoples import CULTURES, civ_of, culture_of, make_name
 from src.kora.bands import (
@@ -52,6 +52,21 @@ from src.kora.bands import (
     set_goto,
     stock_max,
 )
+from src.kora.places import (  # noqa: F401
+    RANKS,
+    band_of,
+    built,
+    has,
+    monument_stages,
+    name,
+    oath_of,
+    rank_name,
+    site_of,
+    watch_spots,
+    works,
+)
+
+from src.kora.population import ACTIVE_NORM, CRAFT_SEX, CRAFT_WORKERS, _craft_take, fit_men, fit_women
 
 FIELD_WORKERS = 25
 MAX_FIELDS = 12
@@ -234,59 +249,11 @@ def _bonus(state, tribe_id: int):
     return tech.bonuses(tribe) if tribe is not None else tech.NO_BONUS
 
 
-def site_of(state, band):
-    if band is None or not band.village:
-        return None
-    site = state.sites.get(band.village)
-    if site is None or site.kind != "village":
-        return None
-    return site
-
-
-def band_of(state, site):
-    bid = site.data.band
-    band = state.bands.get(bid)
-    if band is None or band.village != site.id or band.population <= 0:
-        return None
-    return band
-
-
 def _key(col: int, row: int) -> str:
     return f"{col},{row}"
 
 
-def name(site) -> str:
-    return site.name or "Le village"
-
-
-# Rang d'un village selon ses habitants (titre de son ecran, panneau).
-RANKS = ((150, "Gros village"), (50, "Village"), (0, "Hameau"))
-
-
-def rank_name(population: int) -> str:
-    return next(label for floor, label in RANKS if population >= floor)
-
-
-def oath_of(site) -> str:
-    return site.data.oath if site is not None else ""
-
-
 # --- batiments ---------------------------------------------------------------------
-
-
-def built(site) -> list:
-    # (Les vieilles palissades sont relues a la relecture : sites._village_data.)
-    if site is None:
-        return []
-    return site.data.buildings
-
-
-def has(site, bid: str) -> bool:
-    return site is not None and bid in built(site)
-
-
-def monument_stages(site) -> int:
-    return int(site.data.monument) if site is not None else 0
 
 
 def monument_open(state, site) -> bool:
@@ -324,14 +291,6 @@ def pull_down_monument(state, site) -> bool:
         site.data.build = None
         had = True
     return had
-
-
-def works(site):
-    """Chantier en cours : (id, semaines restantes) ou None."""
-    if site is None:
-        return None
-    job = site.data.build
-    return (job[0], int(job[1])) if job else None
 
 
 def slots(state, site) -> int:
@@ -813,15 +772,6 @@ def _unrest(state, site, band) -> None:
     chiefs.emancipate(state, nid)
 
 
-def watch_spots(state, tribe_id: int) -> list:
-    """Villages a tour de guet (vision.py : +3 de vue autour)."""
-    return [
-        s.hex
-        for s in sorted(state.sites.values(), key=lambda s: s.id)
-        if s.kind == "village" and s.tribe_id == tribe_id and has(s, "tour")
-    ]
-
-
 # --- fertilite et champs -----------------------------------------------------------
 
 
@@ -897,7 +847,7 @@ def hands_mult(band, fields: int, busy: int = 0) -> float:
 
 def field_hands_mult(site, band, state=None) -> float:
     """Assez de bras aux champs ? Les adultes valides qui ne sont pas aux
-    metiers (population.occupations) ; les hommes partis a la guerre manquent."""
+    metiers (villages.occupations) ; les hommes partis a la guerre manquent."""
     from src.kora import goods, population
 
     fields = len(site.data.fields)
@@ -1087,7 +1037,7 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
     band.village = camp.id
     band.autonomy = 0.0
     camp.founded = state.clock.year
-    # L'etat du village (sites.VillageData) : sa bande, son serment ; ce que
+    # L'etat du village (places.VillageData) : sa bande, son serment ; ce que
     # le campement savait (sa saison) est garde.
     data = camp.data
     data.band = band.id
@@ -1890,3 +1840,74 @@ def army_lines(state, band) -> list[str]:
 def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
     """Au journal du joueur `to` (par defaut le joueur solo)."""
     note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)
+
+
+def occupations(state, band) -> dict:
+    """Qui fait quoi dans une bande : {"chasse", "cueillette", "champs",
+    "metiers" (metier -> gens), "soldats" (partis a la guerre), "valides"}."""
+    men, women = fit_men(band), fit_women(band)
+    out = {"chasse": 0, "cueillette": 0, "champs": 0, "metiers": {}, "soldats": 0, "valides": men + women}
+    if band.kind == "armee":
+        out["soldats"] = men
+        return out
+    if band.village:
+        from src.kora import goods, villages
+
+        site = villages.site_of(state, band)
+        if site is not None:
+            for cid, n in sorted(goods.teams(site).items()):
+                if n <= 0 or cid not in goods.CRAFTS:
+                    continue
+                m, w = _craft_take(cid, goods.TEAM * n, men, women)
+                men -= m
+                women -= w
+                out["metiers"][cid] = m + w
+            fields = len(site.data.fields)
+            need = int(round(fields * villages.FIELD_HANDS * ACTIVE_NORM))
+            free = men + women
+            take = min(need, free)
+            if take > 0 and free > 0:
+                m = int(round(take * men / free))
+                w = take - m
+                men -= m
+                women -= w
+                out["champs"] = take
+            out["soldats"] = sum(
+                u[1] for a in state.bands.values() if a.kind == "armee" and a.tribe_id == band.tribe_id for u in a.units if u[2] == site.id
+            )
+    out["chasse"] = men
+    out["cueillette"] = women
+    return out
+
+
+def free_for_craft(state, band, cid: str) -> int:
+    """Combien de gens du bon sexe pourraient encore entrer a ce metier."""
+    from src.kora import goods, villages
+
+    men, women = fit_men(band), fit_women(band)
+    site = villages.site_of(state, band)
+    if site is not None:
+        for other, n in sorted(goods.teams(site).items()):
+            if n <= 0 or other not in goods.CRAFTS:
+                continue
+            m, w = _craft_take(other, goods.TEAM * n, men, women)
+            men -= m
+            women -= w
+    sex = CRAFT_SEX.get(cid, "")
+    return men if sex == "hommes" else women if sex == "femmes" else men + women
+
+
+def occupation_lines(state, band) -> list[str]:
+    o = occupations(state, band)
+    parts = []
+    if o["chasse"]:
+        parts.append(f"{o['chasse']} à la chasse")
+    if o["cueillette"]:
+        parts.append(f"{o['cueillette']} à la cueillette")
+    if o["champs"]:
+        parts.append(f"{o['champs']} aux champs")
+    for cid, n in o["metiers"].items():
+        parts.append(f"{n} {CRAFT_WORKERS.get(cid, cid)}")
+    if o["soldats"] and band.kind != "armee":
+        parts.append(f"{o['soldats']} à la guerre")
+    return [" · ".join(parts)] if parts else []

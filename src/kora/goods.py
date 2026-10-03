@@ -44,7 +44,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.kora import population, tech
+from src.kora import places, population, tech, villages
 from src.kora.log import LogKind
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.types import TradeRoute
@@ -327,7 +327,7 @@ def add_block(state, site, cid: str) -> str:
     if cid not in CRAFTS:
         return "?"
     craft = CRAFTS[cid]
-    band = villages.band_of(state, site)
+    band = places.band_of(state, site)
     if band is None:
         return "Le village est vide"
     if craft.needs not in state.tribes[site.tribe_id].knowledge:
@@ -341,7 +341,7 @@ def add_block(state, site, cid: str) -> str:
         return f"Plus de bras (une équipe par {TEAM_POP} habitants)"
     # Chaque metier ses gens : les potieres et les tisserandes sont des femmes,
     # les tailleurs de silex et les pecheurs des hommes.
-    if population.free_for_craft(state, band, cid) < TEAM:
+    if villages.free_for_craft(state, band, cid) < TEAM:
         sex = population.CRAFT_SEX.get(cid, "")
         return f"Il manque {population.SEX_WORD[sex]} valides pour ce métier ({TEAM} par équipe)"
     return ""
@@ -402,7 +402,7 @@ def output(state, site, cid: str) -> float:
         return n * money.wage_mult(state, site.tribe_id, "calcul")
     _count, best = deposits(state, site, cid)
     rich = 0.5 + best
-    shop = WORKSHOP if villages.has(site, "atelier") else 1.0
+    shop = WORKSHOP if places.has(site, "atelier") else 1.0
     # Le savoir-faire, la chefferie, les gages... (systems.CRAFT_OUTPUT).
     from src.kora import money, systems
 
@@ -435,7 +435,7 @@ def villagers(state, tribe_id: int) -> int:
     total = 0
     for site in state.sites.values():
         if site.kind == "village" and site.tribe_id == tribe_id:
-            band = villages.band_of(state, site)
+            band = places.band_of(state, site)
             if band is not None:
                 total += band.population
     return total
@@ -461,7 +461,7 @@ def update(state) -> None:
     for site in sorted(state.sites.values(), key=lambda s: s.id):
         if site.kind != "village":
             continue
-        band = villages.band_of(state, site)
+        band = places.band_of(state, site)
         if band is None:
             continue
         users[band.tribe_id] = users.get(band.tribe_id, 0) + band.population
@@ -560,7 +560,7 @@ def _village_sites(state, tribe_id: int) -> list:
     return [
         s
         for s in sorted(state.sites.values(), key=lambda s: s.id)
-        if s.kind == "village" and s.tribe_id == tribe_id and villages.band_of(state, s) is not None
+        if s.kind == "village" and s.tribe_id == tribe_id and places.band_of(state, s) is not None
     ]
 
 
@@ -688,10 +688,9 @@ def trade_load(state, a: int, b: int) -> float:
     return LOAD * (2 if _routes_tech(state, a, b) else 1)
 
 
-def places(state, tribe_id: int) -> int:
-    from src.kora import villages
-
-    return sum(1 for s in _village_sites(state, tribe_id) if villages.has(s, "place"))
+def trading_places(state, tribe_id: int) -> int:
+    """Combien de villages du peuple ont une Place d'echange."""
+    return sum(1 for s in _village_sites(state, tribe_id) if places.has(s, "place"))
 
 
 def convoys(state, tribe_id: int) -> int:
@@ -699,7 +698,7 @@ def convoys(state, tribe_id: int) -> int:
     tribe = state.tribes.get(tribe_id)
     if tribe is None:
         return 0
-    n = CONVOYS_BASE + len(_village_sites(state, tribe_id)) + CONVOYS_PLACE * places(state, tribe_id)
+    n = CONVOYS_BASE + len(_village_sites(state, tribe_id)) + CONVOYS_PLACE * trading_places(state, tribe_id)
     if tech.bonuses(tribe).trade:
         n += CONVOYS_ROUTES
     return n
@@ -782,7 +781,7 @@ def route_price(state, route) -> float:
     from src.kora import situations
 
     p = (price(state, route.exporter, route.good) + price(state, route.importer, route.good)) / 2.0
-    if places(state, route.exporter):
+    if trading_places(state, route.exporter):
         p *= PLACE_PRICE
     # Le marche refuge vend plus cher ; l'effondrement du commerce fait tout baisser.
     exp = state.tribes.get(route.exporter)
@@ -828,7 +827,7 @@ def _food_spare(state, tribe_id: int) -> list:
 
     out = []
     for site in _village_sites(state, tribe_id):
-        band = villages.band_of(state, site)
+        band = places.band_of(state, site)
         if band is not None:
             out.append(band)
     return out
@@ -1159,7 +1158,7 @@ def lines(state, site, band) -> list[str]:
 def _ev_site(state, band):
     from src.kora import villages
 
-    return villages.site_of(state, band)
+    return places.site_of(state, band)
 
 
 def _ev_craft_teams(state, inst, tribe, band, cid) -> bool:

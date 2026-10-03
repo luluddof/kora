@@ -26,7 +26,19 @@ import math
 import random
 from dataclasses import dataclass, field
 
-from src.kora import chiefdom, chiefs, diplo, influence, population, sites, systems, tech, units, villages
+from src.kora import (
+    chiefdom,
+    chiefs,
+    diplo,
+    influence,
+    places,
+    population,
+    sites,
+    systems,
+    tech,
+    units,
+    villages,
+)
 from src.kora.log import LogKind, terrain_fr
 from src.kora.types import Band, FightMark, Hex, OrderKind, Terrain, stay_order
 from src.kora.bands import (
@@ -189,7 +201,7 @@ def start_morale(state, band: Band, attacker: bool, h) -> tuple[float, list[tupl
         parts.append(("Défend son village", VILLAGE_MORALE))
         from src.kora import villages
 
-        site = villages.site_of(state, band)
+        site = places.site_of(state, band)
         if site is not None:
             s = round((villages.stability(state, site, band) - villages.STABILITY_BASE) / 5.0)
             if s:
@@ -584,7 +596,7 @@ def _flee(state, bt, side: Side, morale: float, rng) -> int:
                 continue
             home = villages.home_of(state, b)
             _kill(b, n)
-            band = villages.band_of(state, home) if home is not None else None
+            band = places.band_of(state, home) if home is not None else None
             if band is not None:
                 population.add(band, n, "hommes")
         else:
@@ -807,7 +819,7 @@ def place_of(state, h) -> str:
             continue
         dist = state.world.distance(site.hex, h)
         if dist <= 3 and (best is None or dist < best[0]):
-            best = (dist, villages.name(site))
+            best = (dist, places.name(site))
     if best is not None:
         return f"près de {best[1]}" if best[0] else f"à {best[1]}"
     return PLACE.get(state.world.terrain(h), "")

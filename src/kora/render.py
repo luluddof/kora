@@ -17,7 +17,7 @@ from src.kora.globe_draw import (
 from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
-from src.kora import battle as _battle, chiefs, goods, learning, money, money as _money, orders, tech, theme
+from src.kora import battle as _battle, chiefs, goods, learning, money as _money, money, orders, tech, theme
 from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
 from src.kora.gamestate import GameState, human_dead, log_of
 from src.kora.types import Hex, Season

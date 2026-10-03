@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from src.kora.commands import make
 from src.kora.sim import _default_world
-from src.kora import chiefs, learning, money, orders, situations, tech, villages
+from src.kora import chiefs, learning, money, orders, places, situations, tech, villages
 
 
 def robot(state, issue, me: int, rng: random.Random) -> None:
@@ -48,7 +48,7 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
                 issue(make(me, "situation", inst.uid, rng.choice(ok)))
     band = rng.choice(mine)
     if band.village:
-        site = villages.site_of(state, band)
+        site = places.site_of(state, band)
         if site is not None and rng.random() < 0.3:
             pick = next((b for b in villages.BUILD_ORDER if villages.building_status(state, site, b) == "possible"), None)
             if pick:

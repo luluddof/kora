@@ -25,27 +25,30 @@ PRESENTATION = {"app", "render", "theme", "look", "globe", "globe_draw", "screen
 # etages plus bas ; un import cache (dans une fonction) ne vise que le meme
 # etage ou plus bas, jamais plus haut (tests/test_architecture.py).
 LAYERS = (
-    # 0. les briques : les types du jeu, le francais, le reseau, le tableau
+    # 0. les briques : les types du jeu, le francais, le reseau, le tableau des systemes
     ("types", "francais", "net", "systems"),
-    # 1. le temps, le journal, les ressources, les fiches
+    # 1. le temps, le journal, les ressources de la carte, les fiches
     ("clock", "log", "resources", "records"),
     # 2. la planete
     ("world",),
-    # 3. ce qui se pose dessus : chemins, atlas, cuisson, etat de la partie, peuples
-    ("path", "atlas", "mapgen", "gamestate", "peoples"),
-    # 4. les savoirs, les unites, la vue
-    ("tech", "units", "vision"),
-    # 5. les gens et les lieux : population, savoir-faire, lieux, chefs, influence
-    ("population", "production", "sites", "chiefs", "influence"),
-    # les outils des bandes que tous les systemes partagent
-    ("bands",),
-    # 6. les systemes (ils se parlent entre eux, de preference par systems.py)
-    ("learning", "diplo", "goods", "money", "numbers", "chiefdom", "villages", "battle", "situations", "events"),
-    # 7. les donnees des evenements ; la semaine du monde (sim)
-    ("events_data", "sim"),
-    # 8. ce qui la mene : l'IA, les ordres des bandes, les ordres des joueurs
+    # 3. ce qui se pose dessus : chemins, atlas, cuisson, l'etat de la partie,
+    #    les peuples, les lieux (et ce qu'on y lit)
+    ("path", "atlas", "mapgen", "gamestate", "peoples", "places"),
+    # 4. les savoirs (l'arbre et ses effets), les unites, la vue, les gens
+    ("tech", "units", "vision", "population"),
+    # 5. LES SYSTEMES : ils se parlent entre eux (en tete s'il n'y a pas de
+    #    cercle, sinon dans la fonction), de preference par systems.py
+    (
+        "learning", "bands", "chiefs", "sites", "influence", "production", "diplo", "goods", "money",
+        "numbers", "chiefdom", "villages", "battle", "situations", "events", "events_data",
+    ),
+    # 6. l'IA et les ordres des bandes
     ("ai_war", "orders"),
-    ("ai", "commands"),
+    ("ai",),
+    # 7. la semaine du monde
+    ("sim",),
+    # 8. les ordres des joueurs
+    ("commands",),
     # 9. la sauvegarde, le multijoueur, les essais
     ("persist", "session", "essai"),
 )

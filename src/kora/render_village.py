@@ -21,8 +21,9 @@ from src.kora import (
     goods,
     numbers,
     orders,
-    population,
+    places,
     population as _pop,
+    population,
     production,
     tech,
     theme,
@@ -594,7 +595,7 @@ def _tile(r, rect, label, value, sub, color=INK) -> None:
 
 def draw_village(r, state, ui) -> None:
     site = state.sites.get(ui.get("village_open"))
-    band = villages.band_of(state, site) if site is not None and site.kind == "village" else None
+    band = places.band_of(state, site) if site is not None and site.kind == "village" else None
     if band is None:
         r.village_hits = {}
         return
@@ -612,9 +613,9 @@ def draw_village(r, state, ui) -> None:
     tribe = state.tribes[band.tribe_id]
     color = color_of(tribe)
     pygame.draw.rect(screen, color, (bx + 22, by + 18, 6, 34), border_radius=2)
-    screen.blit(title_font.render(villages.name(site), True, GOLD), (bx + 36, by + 12))
-    oath = villages.OATHS.get(villages.oath_of(site))
-    sub = f"{villages.rank_name(band.population)} des {tribe.name}  ·  fonde en l'an {site.founded or '?'}"
+    screen.blit(title_font.render(places.name(site), True, GOLD), (bx + 36, by + 12))
+    oath = villages.OATHS.get(places.oath_of(site))
+    sub = f"{places.rank_name(band.population)} des {tribe.name}  ·  fonde en l'an {site.founded or '?'}"
     sub += f"  ·  serment : {oath.name}" if oath else "  ·  sans serment"
     screen.blit(r.tiny.render(sub, True, NOTE), (bx + 38, by + 42))
     _button(screen, r.small, lay["close"], "Fermer [Échap]", True, _hover(lay["close"], mx, my))
@@ -718,7 +719,7 @@ def _draw_chef(r, state, site, band, lay, ui, mx, my) -> None:
     for line in population.lines(band):
         theme.text(r.screen, line, "petit", C.lin, (lx, yy), lw)
         yy += 19
-    for line in population.occupation_lines(state, band):
+    for line in villages.occupation_lines(state, band):
         for part in _wrap(r.tiny, "Qui fait quoi : " + line, lw)[:3]:
             theme.text(r.screen, part, "mini", C.ocre_jaune, (lx, yy), lw)
             yy += 16
@@ -890,7 +891,7 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         yy += 40
     yy = _section(r, sx, yy + 4, sw, "BRAS")
     hands = villages.field_hands_mult(site, band)
-    occ = _pop.occupation_lines(state, band)
+    occ = villages.occupation_lines(state, band)
     rows = [
         ((occ[0] if occ else f"{busy} aux métiers"), SOFT),
         (f"Récolte rentrée : x{hands:.2f}".replace(".", ",") + ("" if hands >= 1 else " (il manque des bras)"), SOFT if hands >= 1 else WARN),
@@ -1018,7 +1019,7 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     x, y, w, _h = lay["mid"]
     _section(r, x, y, w, f"BÂTIMENTS  ·  places {villages.used_slots(site)}/{villages.slots(state, site)} (une de plus par {villages.SLOT_POP} habitants)")
     pick = ui.get("village_pick") or next((b for b in villages.BUILD_ORDER if villages.building_status(state, site, b) == "possible"), villages.BUILD_ORDER[0])
-    job = villages.works(site)
+    job = places.works(site)
     for bid, rect in lay["cards"].items():
         b = villages.BUILDINGS[bid]
         st = villages.building_status(state, site, bid)
@@ -1111,7 +1112,7 @@ def _today(r, state, site, band, rect) -> None:
         ("Défense : " + (", ".join(f"{lab} x{m:.2f}".replace(".", ",") for lab, m in parts) if parts else "aucune"), SOFT),
         (f"Troupes : {villages.army_cap(state, site)} au plus", SOFT),
     ]
-    oath = villages.OATHS.get(villages.oath_of(site))
+    oath = villages.OATHS.get(places.oath_of(site))
     if oath is not None:
         rows.append((f"Serment : {oath.name}", GOLD_DIM))
     yy = y + 20

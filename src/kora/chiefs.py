@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import peoples, tech
+from src.kora import peoples, places, systems, tech
 from src.kora.log import LogKind
 from src.kora.types import Person, Tribe, stay_order
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
@@ -313,7 +313,7 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
         if tribe.settled_at >= 0 and not band.village and band.kind != "armee":
             near = villages.nearest_village(state, band, villages.NEAR)
             if near is not None:
-                parts.append((f"Près de {villages.name(near)}", NEAR_VILLAGE))
+                parts.append((f"Près de {places.name(near)}", NEAR_VILLAGE))
     for notable in band.notables:
         if "ambitieux" in notable.traits:
             parts.append((f"Un ancien ambitieux ({notable.name})", AMBITIOUS_NOTABLE))
@@ -326,7 +326,7 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
     if band.village and state.sites:
         from src.kora import villages
 
-        site = villages.site_of(state, band)
+        site = places.site_of(state, band)
         if site is not None:
             s = (villages.stability(state, site, band) - villages.STABILITY_BASE) * 0.3
             if abs(s) >= 1:
@@ -476,13 +476,13 @@ def _grow_autonomy(state, tribe) -> None:
 def emancipate(state, band_id: int) -> int:
     """Le clan prend son independance : un peuple de la meme civilisation,
     sous son propre chef (secede sans rancune). Il s'en va chercher sa terre,
-    loin des villages (ai.find_new_land) : il ne s'installe pas au pied du
+    loin des villages (ai.find_new_land, par systems.EMANCIPATED) : il ne s'installe pas au pied du
     village qu'il quitte."""
     new = secede(state, band_id, independence=True)
     if new:
-        from src.kora import ai
-
-        ai.head_for_new_land(state, state.bands[band_id])
+        # Ou il part (systems.EMANCIPATED : l'IA lui cherche une terre).
+        for path in systems.EMANCIPATED:
+            systems.fn(path)(state, state.bands[band_id])
     return new
 
 

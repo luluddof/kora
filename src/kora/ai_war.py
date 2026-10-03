@@ -276,3 +276,23 @@ def unsafe_spots(state: GameState, band: Band, radius: int) -> list:
         if side_force(state, foe) >= mine:
             spots.append(foe.position)
     return spots
+
+
+# --- ce que l'IA de guerre ajoute aux evenements (events.vocabulary) ----------------
+
+
+def _ev_provoke(state, inst, tribe, band) -> None:
+    """Le peuple offense prepare un raid s'il peut le gagner."""
+    if band is None or inst.other not in state.tribes:
+        return
+    theirs = [b for b in state.bands.values() if b.tribe_id == inst.other and b.population > 0]
+    theirs.sort(key=lambda b: (state.world.distance(b.position, band.position), b.id))
+    for foe in theirs[:2]:
+        plan = plan_raid(state, foe, 6)
+        if plan is not None:
+            start_plan(state, foe, plan)
+            return
+
+
+EVENT_EFFECTS = {"provoke": _ev_provoke}
+EVENT_TEXTS = {"provoke": lambda a: "ils pourraient venir se venger"}

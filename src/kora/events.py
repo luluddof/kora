@@ -26,11 +26,17 @@ import copy
 from dataclasses import dataclass, field
 
 from src.kora.log import LogKind
-from src.kora.world import axial_to_offset, enter_cost_for, food_production, offset_to_axial
+from src.kora.world import (
+    axial_to_offset,
+    enter_cost_for,
+    food_production,
+    local_winter_weeks,
+    offset_to_axial,
+)
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.types import stay_order
 from src.kora.vision import vision_of
-from src.kora import chiefs, sites, systems, tech
+from src.kora import chiefs, places, sites, systems, tech
 from src.kora.bands import gain_prestige, max_bands_of, set_goto, split_band, stock_max, tribe_band_count
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
@@ -233,7 +239,6 @@ def _fmt(state, inst, text: str) -> str:
 
 def check(state, inst, cond) -> bool:
     """Une condition (nom, arguments...) sur la portee de l'evenement."""
-    from src.kora.sim import local_winter_weeks
     kind, *args = cond
     tribe = state.tribes.get(inst.tribe_id)
     if tribe is None:
@@ -333,7 +338,7 @@ def check(state, inst, cond) -> bool:
         # Des gens de metier au village (goods.py).
         from src.kora import goods, villages
 
-        return goods.total_teams(villages.site_of(state, band)) > 0
+        return goods.total_teams(places.site_of(state, band)) > 0
     if kind == "trade_partner":
         # Un partenaire dont une route a porte le dernier mois : "l'autre".
         from src.kora import goods
@@ -493,8 +498,6 @@ def apply(state, inst, effect) -> None:
             tribe.progress[tid] = min(cost - 1.0, tribe.progress.get(tid, 0.0) + cost * share)
     elif kind == "reveal":
         _reveal(state, inst, args[0])
-    elif kind == "provoke":
-        _provoke(state, inst)
     elif kind == "crown":
         target = state.bands.get(args[0]) if args else band
         if target is not None and target.tribe_id == tribe.id:
@@ -534,7 +537,7 @@ def apply(state, inst, effect) -> None:
         # Une belle veine : de chaque bien que fait le village.
         from src.kora import goods, villages
 
-        site = villages.site_of(state, band)
+        site = places.site_of(state, band)
         for cid, n in sorted(goods.teams(site).items()):
             craft = goods.CRAFTS.get(cid)
             if n and craft is not None and craft.good:
@@ -585,7 +588,7 @@ def apply(state, inst, effect) -> None:
     elif kind == "seed_pct":
         from src.kora import villages
 
-        site = villages.site_of(state, band)
+        site = places.site_of(state, band)
         if site is not None:
             site.data.seed = max(0.0, site.data.seed * (1.0 + args[0]))
     elif kind == "eat_seed":
@@ -654,22 +657,6 @@ def _reveal(state, inst, radius: int) -> None:
         center = offset_to_axial(state.story_rng.randrange(world.width), world.height // 2)
     vision.explored |= set(world.hexes_in_radius(center, radius))
     inst.data["lieu"] = "vers le soleil levant" if center.q > band.position.q else "vers le couchant"
-
-
-def _provoke(state, inst) -> None:
-    """Le peuple offense prepare un raid s'il peut le gagner."""
-    from src.kora.ai_war import plan_raid, start_plan
-
-    band = _band(state, inst)
-    if band is None or inst.other not in state.tribes:
-        return
-    theirs = [b for b in state.bands.values() if b.tribe_id == inst.other and b.population > 0]
-    theirs.sort(key=lambda b: (state.world.distance(b.position, band.position), b.id))
-    for foe in theirs[:2]:
-        plan = plan_raid(state, foe, 6)
-        if plan is not None:
-            start_plan(state, foe, plan)
-            return
 
 
 # --- options ---------------------------------------------------------------------
@@ -760,7 +747,6 @@ EFFECT_TEXT = {
     "tech_progress_id": lambda a: f"{_tech_name(a[0])} avance de {round(a[1] * 100)} %",
     "learn_boost": lambda a: f"le savoir en cours avance de {round(a[0] * 100)} %",
     "reveal": lambda a: "une contree lointaine apparaît sur la carte",
-    "provoke": lambda a: "ils pourraient venir se venger",
     "pact": lambda a: {"treve": "trêve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : échanges chaque mois", "protection": "vous devenez leurs tributaires (une part de vos réserves chaque mois ; vous les suivez à la guerre)"}.get(a[0], a[0]),
     "conquest": lambda a: {"soumettre": "ils deviennent vos tributaires : une part de leurs réserves chaque mois, ils vous suivent à la guerre", "piller": "champs brûlés, grain pris, un bâtiment peut-être perdu"}.get(a[0], a[0]),
     "casus": lambda a: "ils pourront vous raider sans trahir",

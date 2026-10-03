@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from src.kora.gamestate import GameState, PLAYER_TRIBE_ID, humans, note, pov_of
 from src.kora.log import LogKind
 from src.kora.types import Hex
+from src.kora import places
 
 VISION_RADIUS = 8
 TOWER_SIGHT = 3
@@ -47,7 +48,7 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
     if state.sites:
         from src.kora import villages
 
-        towers = villages.watch_spots(state, tid)
+        towers = places.watch_spots(state, tid)
     key = (id(state.world), radius, tuple(spots), tuple(towers))
     if vis.key == key:
         return vis

@@ -25,6 +25,7 @@ from src.kora import (
     money,
     numbers,
     orders,
+    places,
     situations,
     tech,
     villages,
@@ -184,7 +185,7 @@ def _route_level(state, tid, key, level):
 
 def _village_of(state, tid, site_id):
     site = state.sites.get(int(site_id))
-    home = villages.band_of(state, site) if site is not None and site.kind == "village" else None
+    home = places.band_of(state, site) if site is not None and site.kind == "village" else None
     if home is None:
         return None, None, "Ce village n'existe plus"
     if site.tribe_id != tid or home.tribe_id != tid:

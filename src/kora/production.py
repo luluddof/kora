@@ -27,7 +27,7 @@ N'importe pas pygame.
 """
 
 from __future__ import annotations
-from src.kora import tech
+from src.kora import places, tech
 
 KINDS = ("collecte", "agriculture", "peche", "potiers", "sauniers", "tisserands", "pelletiers", "tailleurs")
 KIND_NAMES = {
@@ -116,7 +116,7 @@ def food_pressure(state, tid: int) -> float:
 
     total, weight = 0.0, 0
     for site in _villages(state, tid):
-        band = villages.band_of(state, site)
+        band = places.band_of(state, site)
         if band is None or band.population <= 0:
             continue
         _weeks, margin = villages.food_outlook(state, site, band)

@@ -16,7 +16,7 @@ Les types connus :
   Hex, Order, Person           leurs propres codecs (register)
   un autre dataclass           sa propre fiche (imbriquee) ; s'il porte
                                COMPACT = True, seuls les champs differents
-                               du defaut sont ecrits (sites.VillageData)
+                               du defaut sont ecrits (places.VillageData)
   Any                          une valeur JSON simple (nombre, texte, booleen)
   list[list]                   des rangees de valeurs simples ([id, semaine])
   dict, list (nus)             tels quels (JSON) ; copie profonde

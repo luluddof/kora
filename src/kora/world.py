@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from src.kora import resources as _res
 from src.kora.types import Hex, Season, Terrain
 from src.kora.resources import LABELS, NAMES, PRESENT_BYTE, derive_silver, level_word, richness
+import functools
+from src.kora.clock import Clock
 
 INSHORE_MOVE_COST = 10
 
@@ -823,3 +825,31 @@ def food_production(
     if season is Season.HIVER and t in (Terrain.COLLINE, Terrain.MONTAGNE):
         value *= bonus.winter_hills
     return value
+
+
+@functools.lru_cache(maxsize=4)
+def _winter_weeks_by_row(height: int) -> tuple[int, ...]:
+    # Rejoue une annee de propagation (memes regles que apply_season_spread)
+    # sur une carte d'une colonne : hiver court a l'equateur, long aux poles.
+    world = make_filled_world(1, height, Terrain.PLAINE)
+    clock = Clock()
+    world.fill_season(clock.season())
+    counts = [0] * height
+    for week in range(104):
+        clock.advance_week()
+        target = clock.season()
+        if world._aimed_season is not target:
+            world.seed_season(target)
+        world.spread_season(target)
+        if week >= 52:
+            for row in range(height):
+                if world.hex_season(offset_to_axial(0, row)) is Season.HIVER:
+                    counts[row] += 1
+    return tuple(counts)
+
+
+def local_winter_weeks(world: World, h: Hex) -> int:
+    placed = world.canonicalize(h)
+    if placed is None:
+        return 0
+    return _winter_weeks_by_row(world.height)[placed.r]

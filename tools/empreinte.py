@@ -26,7 +26,7 @@ from test_balance import _robot  # noqa: E402
 
 
 # Les donnees d'un lieu, sans les cles a leur valeur par defaut (la forme
-# d'avant, un dict, et celle d'apres, sites.VillageData, s'y comparent).
+# d'avant, un dict, et celle d'apres, places.VillageData, s'y comparent).
 _DATA_DEFAULTS = {
     "band": 0, "oath": "", "fields": [], "soil": {}, "seed": 0.0, "sown_ratio": 0.0, "burned": False,
     "buildings": [], "build": None, "monument": 0, "history": [], "last_harvest": None, "season": None,

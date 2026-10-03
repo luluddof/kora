@@ -16,10 +16,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-from src.kora import records, tech
+from src.kora import places, records, tech
 from src.kora.log import LogKind
 from src.kora.types import Hex, Terrain
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
+from src.kora.places import (  # noqa: F401
+    Site,
+    VillageData,
+    _village_data,
+)
 
 CAMP_STORE = 600
 CACHE_ROT = 0.015
@@ -31,74 +36,6 @@ FOREIGN_SPACING = 3
 FIND_CHANCE = 0.25
 # Voisinage d'un lieu : a cette distance, une bande "y est".
 AT = 1
-
-
-@dataclass
-class VillageData:
-    """L'etat d'un VILLAGE (villages.py) ; un campement ou une cache garde
-    ces valeurs par defaut. Sauve en ne gardant que ce qui differe du defaut
-    (records.py : COMPACT)."""
-
-    COMPACT = True
-
-    # La bande installee, le serment de la fondation.
-    band: int = 0
-    oath: str = ""
-    # Les champs ([col, row]) et le sol de chaque case ("col,row" -> 0..1).
-    fields: list[list] = field(default_factory=list)
-    soil: dict[str, float] = field(default_factory=dict)
-    # Semences au grenier, part semee de la derniere saison, champs brules.
-    seed: float = 0.0
-    sown_ratio: float = 0.0
-    burned: bool = False
-    # Les batiments, le chantier en cours [batiment, semaines restantes],
-    # les etapes du grand monument.
-    buildings: list[str] = field(default_factory=list)
-    build: Optional[list] = None
-    monument: int = 0
-    # Les recoltes : [annee, vivres] et la derniere.
-    history: list[list] = field(default_factory=list)
-    last_harvest: Optional[int] = None
-    # La saison locale et la semaine ou elle a commence.
-    season: Optional[str] = None
-    season_at: Optional[int] = None
-    # Collecte moyenne par saison (prevoir l'hiver en ete).
-    forage: dict[str, float] = field(default_factory=dict)
-    # Equipes de metier (goods.py) : metier -> equipes.
-    teams: dict[str, int] = field(default_factory=dict)
-    # Derniere alerte au joueur, derniere annee ou il a ete sollicite.
-    alert: int = -1000
-    asked: Optional[int] = None
-
-
-def _village_data(raw) -> VillageData:
-    """Relire les donnees d'un lieu (vieilles parties : la palissade etait
-    un compteur a part, "palisade" : -1 batie, n en cours)."""
-    raw = dict(raw or {})
-    p = raw.pop("palisade", None)
-    data = records.from_json(VillageData, {k: v for k, v in raw.items() if k in VillageData.__dataclass_fields__})
-    if p is not None:
-        if p < 0 and "palissade" not in data.buildings:
-            data.buildings.append("palissade")
-        elif p > 0 and not data.build:
-            data.build = ["palissade", int(p)]
-    return data
-
-
-@dataclass
-class Site:
-    id: int
-    kind: str  # "camp", "cache", "village"
-    tribe_id: int
-    hex: Hex
-    store: float = 0.0
-    founded: int = 0
-    visited: int = 0
-    name: str = ""
-    # population : inutilise (les villageois sont une bande installee).
-    population: int = 0
-    # L'etat du village (VillageData ; par defaut pour un campement).
-    data: VillageData = field(default_factory=VillageData, metadata={"decode": _village_data})
 
 
 def copy_site(site: Site) -> Site:
@@ -436,9 +373,9 @@ def site_lines(state, site: Site) -> list[str]:
         return lines
     from src.kora import villages
 
-    band = villages.band_of(state, site)
+    band = places.band_of(state, site)
     people = band.population if band is not None else 0
-    return [f"Village de {villages.name(site)} ({who})", f"Habitants : {people}  ·  champs {len(site.data.fields)}"]
+    return [f"Village de {places.name(site)} ({who})", f"Habitants : {people}  ·  champs {len(site.data.fields)}"]
 
 
 # --- sauvegarde ----------------------------------------------------------------------

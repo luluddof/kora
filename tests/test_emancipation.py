@@ -1,7 +1,7 @@
 """Apres le premier village, les clans errants s'eloignent et partent fonder
 des villages de votre souche."""
 
-from src.kora import chiefs, sites, tech, villages
+from src.kora import chiefs, places, sites, tech, villages
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
 from src.kora.peoples import culture_of
@@ -303,7 +303,7 @@ def test_neolithic_knowledge_steadies_villages_not_nomad_clans():
 
     st = _tribe()
     village = st.bands[1]
-    site = villages.site_of(st, village)
+    site = places.site_of(st, village)
     base = stability(st, site)
     nomad_before = chiefs.loyalty_target(st, st.bands[3])
     st.tribes[1].knowledge.update(("ancetres", "megalithes"))

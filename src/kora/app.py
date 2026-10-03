@@ -11,6 +11,7 @@ from src.kora import (
     goods,
     money,
     orders,
+    places,
     screens,
     situations,
     units,
@@ -789,7 +790,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         """Clic dans l'ecran du village."""
         nonlocal selected, globe_yaw, globe_pitch
         site = state.sites.get(ui["village_open"])
-        home = villages.band_of(state, site) if site is not None and site.kind == "village" else None
+        home = places.band_of(state, site) if site is not None and site.kind == "village" else None
         if home is None or choice == "vclose":
             screens.close_all(ui)
             return
@@ -844,7 +845,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                 issue(commands.make(me(), "teams", site.id, cid, -1))
             return
         if choice == "vsplit":
-            place = villages.name(site)
+            place = places.name(site)
 
             def split_done(res, home_id=home.id):
                 nonlocal selected
@@ -930,7 +931,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             return
         if kind in ("araise", "avillage"):
             site = state.sites.get(int(rest))
-            home = villages.band_of(state, site) if site is not None and site.kind == "village" else None
+            home = places.band_of(state, site) if site is not None and site.kind == "village" else None
             if home is None:
                 return
             if kind == "avillage":

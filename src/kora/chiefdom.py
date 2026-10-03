@@ -33,7 +33,7 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
-from src.kora import chiefs, tech
+from src.kora import chiefs, places, tech
 from src.kora.bands import gain_prestige, stock_max
 
 RATES = (0, 10, 20, 30)
@@ -128,7 +128,7 @@ def split_extra_villages(state) -> None:
         for band in sorted(mine, key=lambda b: b.id):
             if band is keep or chiefs.is_chief_band(state, band):
                 continue
-            site = villages.site_of(state, band)
+            site = places.site_of(state, band)
             new = chiefs.secede(state, band.id, independence=True)
             if not new or site is None:
                 continue
@@ -136,7 +136,7 @@ def split_extra_villages(state) -> None:
             tribe = state.tribes[tid]
             tribe.families = [f for f in tribe.families if f.get("village") != site.id]
             make_vassal(state, tid, band.tribe_id, "fondation")
-            _note(state, tid, LogKind.POLITIQUE, f"{villages.name(site)} a désormais son propre chef : un village frère, votre tributaire.", site.hex)
+            _note(state, tid, LogKind.POLITIQUE, f"{places.name(site)} a désormais son propre chef : un village frère, votre tributaire.", site.hex)
 
 
 def has_chiefdom(state, tid: int) -> bool:
@@ -152,7 +152,7 @@ def _village_bands(state, tid: int) -> list:
 
     out = []
     for site in _villages(state, tid):
-        band = villages.band_of(state, site)
+        band = places.band_of(state, site)
         if band is not None and band.population > 0:
             out.append(band)
     return out
@@ -454,7 +454,7 @@ def conquer(state, w: int, l: int, site_id: int, choice: str) -> str:
     """Soumettre (tributaire) ou piller le village pris."""
     from src.kora import villages
     site = state.sites.get(site_id)
-    band = villages.band_of(state, site) if site is not None else None
+    band = places.band_of(state, site) if site is not None else None
     if l not in state.tribes or w not in state.tribes:
         return ""
     if choice == "soumettre":
@@ -470,7 +470,7 @@ def conquer(state, w: int, l: int, site_id: int, choice: str) -> str:
         tribe.granary -= stolen
         lord = state.tribes[w]
         lord.granary = getattr(lord, "granary", 0.0) + stolen
-    name = villages.name(site)
+    name = places.name(site)
     _note(state, w, LogKind.COMBAT, f"{name} est pillé" + (f" ({lost} perdu)." if lost else "."), site.hex)
     _note(state, l, LogKind.COMBAT, f"Les {state.tribes[w].name} pillent {name}" + (f" : {lost} perdu." if lost else "."), site.hex)
     return lost
@@ -552,7 +552,7 @@ def monthly(state) -> None:
             tribe.granary *= 1.0 - GRANARY_ROT
         # Il nourrit les villages qui vont manquer.
         for band in _village_bands(state, tid):
-            site = villages.site_of(state, band)
+            site = places.site_of(state, band)
             if site is None or tribe.granary <= 0:
                 continue
             _weeks, margin = villages.food_outlook(state, site, band)
@@ -564,7 +564,7 @@ def monthly(state) -> None:
                     band.stock += give
                     tribe.granary -= give
                     if state.tick_count % 12 == 0:
-                        _note(state, tid, LogKind.SURVIE, f"Le grenier du chef nourrit {villages.name(site)} ({give:.0f} vivres).", site.hex)
+                        _note(state, tid, LogKind.SURVIE, f"Le grenier du chef nourrit {places.name(site)} ({give:.0f} vivres).", site.hex)
         # L'accaparement : du prestige.
         if tribe.levy_rate >= 20 and (state.tick_count // 4) % 2 == 0:
             gain_prestige(state, tribe, 1)
@@ -625,7 +625,7 @@ def overthrow(state, tid: int) -> None:
         bands[0].stock += give
     for fam in tribe.families or []:
         fam["favour"] = max(fam["favour"], 50.0)
-    site = villages.site_of(state, bands[0]) if bands else None
+    site = places.site_of(state, bands[0]) if bands else None
     _note(state, tid, LogKind.POLITIQUE, "La révolte l'emporte : le chef est renversé. Le nouveau chef abolit le prélèvement.", site.hex if site else None)
     if heart is not None and heart.leader is not None:
         chiefs.leader_dies(state, heart, "renversé par les siens")
@@ -641,13 +641,13 @@ def village_secedes(state, tid: int) -> int:
     if tribe is None or not cands:
         return 0
     band = max(cands, key=lambda b: (b.population, -b.id))
-    site = villages.site_of(state, band)
+    site = places.site_of(state, band)
     new = chiefs.secede(state, band.id, independence=True)
     if not new or site is None:
         return 0
     site.tribe_id = band.tribe_id
     tribe.families = [f for f in tribe.families if f.get("village") != site.id]
-    _note(state, tid, LogKind.POLITIQUE, f"{villages.name(site)} fait sécession : ses familles ne reconnaissent plus votre chef.", site.hex)
+    _note(state, tid, LogKind.POLITIQUE, f"{places.name(site)} fait sécession : ses familles ne reconnaissent plus votre chef.", site.hex)
     return new
 
 
@@ -655,13 +655,13 @@ def _family_leaves(state, tribe, fam) -> None:
     from src.kora import population, villages
 
     site = state.sites.get(fam.get("village", 0))
-    band = villages.band_of(state, site) if site is not None else None
+    band = places.band_of(state, site) if site is not None else None
     tribe.families = [f for f in tribe.families if f["id"] != fam["id"]]
     if band is None:
         return
     gone = max(1, round(band.population * 0.08))
     population.kill(band, gone)
-    _note(state, tribe.id, LogKind.POLITIQUE, f"La famille {fam['name']}, furieuse, quitte {villages.name(site)} avec les siens ({gone} personnes).", site.hex)
+    _note(state, tribe.id, LogKind.POLITIQUE, f"La famille {fam['name']}, furieuse, quitte {places.name(site)} avec les siens ({gone} personnes).", site.hex)
 
 
 def _ai(state, tribe) -> None:
