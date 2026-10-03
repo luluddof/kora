@@ -26,6 +26,9 @@ import copy
 from dataclasses import dataclass, field
 
 from src.kora.log import LogKind
+from src.kora.world import axial_to_offset, enter_cost_for, food_production, offset_to_axial
+from src.kora.gamestate import PLAYER_TRIBE_ID, note
+from src.kora.types import stay_order
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
 PLAYER_GAP = 16
@@ -562,8 +565,6 @@ def apply(state, inst, effect) -> None:
     elif kind == "heir":
         chiefs.set_heir(state, band.id)
     elif kind == "stop":
-        from src.kora.types import stay_order
-
         if not band.retreating:
             band.path = []
             band.order = stay_order()
@@ -612,8 +613,6 @@ def apply(state, inst, effect) -> None:
 
 
 def _far_spot(state, band, lo: int, hi: int):
-    from src.kora.world import enter_cost_for, food_production
-
     world = state.world
     around, dists = world.hexes_and_distances(band.position, hi)
     best = None
@@ -629,8 +628,6 @@ def _far_spot(state, band, lo: int, hi: int):
 
 
 def _warm_spot(state, band, reach: int):
-    from src.kora.world import axial_to_offset, enter_cost_for, offset_to_axial
-
     world = state.world
     col, row = axial_to_offset(world.canonicalize(band.position))
     mid = world.height // 2
@@ -663,8 +660,6 @@ def _reveal(state, inst, radius: int) -> None:
     if unknown:
         center = unknown[0].position
     else:
-        from src.kora.world import offset_to_axial
-
         center = offset_to_axial(state.story_rng.randrange(world.width), world.height // 2)
     vision.explored |= set(world.hexes_in_radius(center, radius))
     inst.data["lieu"] = "vers le soleil levant" if center.q > band.position.q else "vers le couchant"
@@ -1065,8 +1060,6 @@ OFFERS = ("offre_treve", "offre_alliance", "offre_commerce", "exige_tribut")
 
 
 def _log(state, tid: int, kind, text: str, where=None) -> None:
-    from src.kora.gamestate import note
-
     note(state, kind, text, where, to=tid)
 
 
@@ -1134,8 +1127,6 @@ def pending(state, tid: int | None = None) -> list:
     if not isinstance(state.events, Book):
         return []
     if tid is None:
-        from src.kora.gamestate import PLAYER_TRIBE_ID
-
         tid = PLAYER_TRIBE_ID
     return [p for p in state.events.pending if p.tribe_id == tid]
 

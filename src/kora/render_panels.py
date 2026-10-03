@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import chiefs, diplo, influence, sites, tech
+from src.kora import chiefs, diplo, influence, sites, tech, theme
 from src.kora.peoples import color_of, label_of
 from src.kora.sim import max_bands_of
 
-from src.kora import theme
 from src.kora.theme import C
 # L'icone d'un evenement : un mot de son nom, sinon son humeur.
 EVENT_WORDS = (

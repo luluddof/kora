@@ -30,6 +30,8 @@ from dataclasses import dataclass, field
 from src.kora import tech
 from src.kora.log import LogKind
 from src.kora.types import Hex, Season, Terrain
+from src.kora.gamestate import humans, is_human, note
+from src.kora.world import axial_to_offset, enter_cost_for
 
 MONTH = 4
 YEAR = 52
@@ -158,8 +160,6 @@ def in_zone(state, inst, h) -> bool:
     if inst.radius == 0:
         return True
     if inst.radius < 0:
-        from src.kora.world import axial_to_offset
-
         _col, row = axial_to_offset(state.world.canonicalize(h) or h)
         north = row < state.world.height // 2
         return north == (inst.data.get("moitie") == "nord")
@@ -171,8 +171,6 @@ def zone_bands(state, inst, tid: int, village=None) -> list:
 
 
 def _note(state, tid: int, kind, text: str, where=None) -> None:
-    from src.kora.gamestate import is_human, note
-
     if is_human(state, tid):
         note(state, kind, text, where, to=tid)
 
@@ -376,8 +374,6 @@ class MalQuiCourt(Spec):
 
 def _away(state, h, center, dist):
     """Une case praticable a `dist` cases, a l'oppose de `center`."""
-    from src.kora.world import enter_cost_for
-
     world = state.world
     best = None
     for c in world.hexes_in_radius(h, dist)[::3]:
@@ -1663,8 +1659,6 @@ def _risks(state) -> None:
     """Les crises qui menacent chaque joueur (Spec.risk) : au bandeau
     (state.situation_risks), et une fois au journal (pas plus d'une fois
     tous les deux ans pour la meme). Les conjonctures ne previennent pas."""
-    from src.kora.gamestate import humans
-
     out = {}
     last = state.situation_last
     for tid in humans(state):

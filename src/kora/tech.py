@@ -20,7 +20,8 @@ from dataclasses import dataclass, field
 from src.kora.log import LogKind
 from src.kora.peoples import culture_of
 from src.kora.types import Season, Terrain
-from src.kora.world import MOVE_COST
+from src.kora.world import MOVE_COST, is_inshore
+from src.kora.gamestate import note
 
 BASE_STOCK_WEEKS = 10
 BASE_MAX_BANDS = 8
@@ -627,8 +628,6 @@ def set_start_bonuses(tribe, picks, tick: int) -> None:
 
 def update_start_bonuses(state) -> None:
     """Fin des bonus de depart, START_BONUS_YEARS ans apres le debut."""
-    from src.kora.log import LogKind
-
     for tribe in state.tribes.values():
         if tribe.start_bonuses and state.tick_count >= tribe.start_bonus_until:
             names = ", ".join(START_BONUSES[b].name for b in tribe.start_bonuses if b in START_BONUSES)
@@ -636,8 +635,6 @@ def update_start_bonuses(state) -> None:
             tribe.start_bonus_until = -1
             invalidate()
             if tribe.is_player:
-                from src.kora.gamestate import note
-
                 note(state, LogKind.DECOUVERTE, f"Les bonus de départ s'éteignent ({names}) : votre peuple vole de ses propres ailes.", to=tribe.id)
 
 
@@ -1269,8 +1266,6 @@ def update_practice(state, count: bool = True) -> None:
     for tribe in state.tribes.values():
         bands = by_tribe.get(tribe.id, [])
         if not tribe.shore_seen or not tribe.steppe_seen:
-            from src.kora.world import is_inshore
-
             for band in bands:
                 # La carte ne change pas : une position deja examinee n'a
                 # rien de neuf a montrer.
@@ -1367,8 +1362,6 @@ def _update_learning(state) -> None:
         if tribe.progress[tid] >= TECHS[tid].cost:
             grant(tribe, tid)
             if tribe.is_player:
-                from src.kora.gamestate import note
-
                 tech = TECHS[tid]
                 note(state, LogKind.DECOUVERTE, f"Nouveau savoir : {tech.name}. {summary(tech)}", to=tribe.id)
 

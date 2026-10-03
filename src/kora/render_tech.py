@@ -21,9 +21,8 @@ import math
 import pygame
 import pygame.gfxdraw
 
-from src.kora import tech
+from src.kora import tech, theme
 from src.kora.render import TREE_GUTTER, TREE_PAD, TREE_ROW, cam_on, tech_panel_layout, to_screen
-from src.kora import theme
 from src.kora.theme import C
 
 # La charte (theme.C) : ocre, os, lin, cendre.

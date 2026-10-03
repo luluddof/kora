@@ -13,18 +13,17 @@ from src.kora import chiefs, diplo, events, influence, population, records, site
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LogKind, season_fr, terrain_fr
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
-from src.kora.types import (
-    Band,
-    FightMark,
-    Hex,
-    Order,
-    OrderKind,
-    Season,
-    Terrain,
-    Tribe,
-    stay_order,
+from src.kora.types import Band, FightMark, Hex, Order, OrderKind, Season, Terrain, Tribe, stay_order
+from src.kora.world import (
+    World,
+    enter_cost_for,
+    food_production,
+    load_world,
+    make_filled_world,
+    offset_to_axial,
+    pick_spawn_hexes,
+    save_world,
 )
-from src.kora.world import World, enter_cost_for, food_production, offset_to_axial
 
 # L'etat de la partie et ses joueurs vivent dans gamestate.py ; note_seen
 # dans vision.py. sim les rend aussi (anciens appels, tests).
@@ -195,8 +194,6 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
 def _winter_weeks_by_row(height: int) -> tuple[int, ...]:
     # Rejoue une annee de propagation (memes regles que apply_season_spread)
     # sur une carte d'une colonne : hiver court a l'equateur, long aux poles.
-    from src.kora.world import make_filled_world
-
     world = make_filled_world(1, height, Terrain.PLAINE)
     clock = Clock()
     world.fill_season(clock.season())
@@ -1593,8 +1590,6 @@ def _restore(state: GameState, saved: _Snap) -> None:
 
 
 def _default_world() -> World:
-    from src.kora.world import load_world, save_world
-
     candidates: list[Path] = []
     if getattr(sys, "frozen", False):
         meipass = getattr(sys, "_MEIPASS", None)
@@ -1638,11 +1633,7 @@ def new_game(
     "bonuses" (tech.START_BONUSES) de la tribu du joueur. others
     (multijoueur) : {place: setup} des autres joueurs, places 2 a 4
     (steppe, foret, cote) ; les places libres restent a l'IA."""
-    from src.kora.clock import Clock
-    from src.kora.types import Band, Tribe
     from src.kora.vision import recompute_vision
-    from src.kora.world import pick_spawn_hexes
-
     from src.kora.peoples import CULTURES, LEGACY_COLOR, make_name
 
     if world is None:

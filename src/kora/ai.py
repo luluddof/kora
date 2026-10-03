@@ -9,7 +9,19 @@ from src.kora.ai_war import (
 )
 from src.kora import chiefs, diplo, sites
 from src.kora.peoples import culture_of
-from src.kora.sim import band_force, band_quality, bands_near, bonus_of, build_band_grid, can_split, defense_force, forage_hexes, is_shielded, set_goto, split_band
+from src.kora.sim import (
+    band_force,
+    band_quality,
+    bands_near,
+    bonus_of,
+    build_band_grid,
+    can_split,
+    defense_force,
+    forage_hexes,
+    is_shielded,
+    set_goto,
+    split_band,
+)
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, stay_order
 from src.kora.world import MOVE_COST, SEASONS_BY_CODE, food_production

@@ -26,6 +26,7 @@ lus par tech.bonuses comme des savoirs. N'importe pas pygame.
 from __future__ import annotations
 
 from src.kora.log import LogKind
+from src.kora.gamestate import is_human, note
 
 BASES = {
     10: ("Base dix", "On compte sur ses doigts : les nombres s'apprennent vite.", {"learn": 1.05}),
@@ -197,8 +198,6 @@ def lines(state, tid: int) -> list[str]:
 
 
 def _note(state, tid: int, text: str) -> None:
-    from src.kora.gamestate import is_human, note
-
     if is_human(state, tid):
         note(state, LogKind.DECOUVERTE, text, to=tid)
 

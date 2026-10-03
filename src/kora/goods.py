@@ -46,6 +46,10 @@ from dataclasses import dataclass
 
 from src.kora import tech
 from src.kora.log import LogKind
+from src.kora.resources import LABELS, NAMES, PRESENT
+from src.kora.types import TradeRoute
+from src.kora.world import axial_to_offset, offset_to_axial
+from src.kora.gamestate import note
 
 TEAM = 10
 TEAM_POP = 30
@@ -191,7 +195,6 @@ FAR_RES = {"argent": 6}
 def riches(world, h) -> dict:
     """Ressources des terres d'un village : nom -> (gisements, meilleure
     valeur). La carte ne change pas : memorise."""
-    from src.kora.resources import NAMES, PRESENT
     from src.kora.villages import FIELD_RADIUS
 
     memo = getattr(world, "_lands", None)
@@ -243,8 +246,6 @@ def deposits(state, site, cid: str) -> tuple[int, float]:
 
 def wild_source(state, site, cid: str) -> str:
     """La ressource des terres qui fait vivre le metier ("" : troupeaux)."""
-    from src.kora.resources import LABELS
-
     found = riches(state.world, site.hex)
     if not CRAFTS[cid].res:
         return ""
@@ -265,8 +266,6 @@ def de(word: str) -> str:
 
 
 def res_label(cid: str) -> str:
-    from src.kora.resources import LABELS
-
     labels = [LABELS.get(r, r) for r in CRAFTS[cid].res]
     if not labels:
         return "rien"
@@ -740,8 +739,6 @@ def open_block(state, tribe_id: int, partner: int, good: str, sell: bool, level:
 
 
 def open_route(state, tribe_id: int, partner: int, good: str, sell: bool, level: int = 1, quiet: bool = False):
-    from src.kora.types import TradeRoute
-
     if open_block(state, tribe_id, partner, good, sell, level):
         return None
     exporter, importer = (tribe_id, partner) if sell else (partner, tribe_id)
@@ -824,8 +821,6 @@ def _flow(state, route) -> tuple[float, str]:
 
 def preview(state, tribe_id: int, partner: int, good: str, sell: bool, level: int = 1) -> dict:
     """Ce que rapporterait (ou couterait) cette route le mois prochain."""
-    from src.kora.types import TradeRoute
-
     exporter, importer = (tribe_id, partner) if sell else (partner, tribe_id)
     route = find_route(state, exporter, importer, good) or TradeRoute(exporter, importer, good, level, tribe_id, state.tick_count)
     units, why = _flow(state, TradeRoute(exporter, importer, good, level, route.by, route.since))
@@ -1004,8 +999,6 @@ def _player_in(state, route) -> bool:
 def _reveal(state, route) -> None:
     """Les porteurs racontent le chemin : le joueur voit le pays entre les
     deux villages."""
-    from src.kora.world import axial_to_offset, offset_to_axial
-
     vis = getattr(state, "vision", None)
     ends = trade_ends(state, route.exporter, route.importer)
     if vis is None or ends is None or not hasattr(vis, "explored"):
@@ -1073,8 +1066,6 @@ def route_text(state, me: int, route) -> str:
 
 def _note_opened(state, route) -> None:
     """Un autre peuple (IA, ou un autre joueur) ouvre une route avec un joueur."""
-    from src.kora.gamestate import note
-
     by = state.tribes.get(route.by)
     if by is None:
         return
@@ -1098,8 +1089,6 @@ def _note_player(state) -> None:
             continue
         month = last_month(state, tribe.id)
         if month["sold"] >= 1 or month["bought"] >= 1:
-            from src.kora.gamestate import note
-
             note(state, LogKind.POLITIQUE, f"Commerce du mois : ventes +{month['sold']:.0f} vivres, achats -{month['bought']:.0f} vivres.", to=tribe.id)
 
 

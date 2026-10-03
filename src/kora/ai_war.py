@@ -17,8 +17,18 @@ from __future__ import annotations
 from src.kora import chiefs, diplo
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
-from src.kora.sim import band_force, bands_near, bonus_of, costs_of, defense_force, is_shielded, set_goto, set_march_to_band, side_force
-from src.kora.gamestate import GameState, note
+from src.kora.sim import (
+    band_force,
+    bands_near,
+    bonus_of,
+    costs_of,
+    defense_force,
+    is_shielded,
+    set_goto,
+    set_march_to_band,
+    side_force,
+)
+from src.kora.gamestate import GameState, humans, note
 from src.kora.types import Band, OrderKind, stay_order
 
 AI_RAID_REST = 12
@@ -175,8 +185,6 @@ def start_plan(state: GameState, band: Band, plan) -> None:
         band.order = stay_order()
         band.path = []
         set_goto(state, ally.id, band.position)
-    from src.kora.gamestate import humans
-
     tribe = state.tribes.get(band.tribe_id)
     name = tribe.name if tribe else "ennemis"
     for me in humans(state):

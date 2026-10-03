@@ -18,7 +18,20 @@ import pygame
 from src.kora import diplo, goods, tech
 from src.kora.peoples import color_of
 from src.kora.render import HUD_HEIGHT
-from src.kora.render_tech import BAD, GOLD, GOLD_DEEP, GOLD_DIM, GOOD, INK, NOTE, SOFT, _button, _fit, _gradient_card, _wrap
+from src.kora.render_tech import (
+    BAD,
+    GOLD,
+    GOLD_DEEP,
+    GOLD_DIM,
+    GOOD,
+    INK,
+    NOTE,
+    SOFT,
+    _button,
+    _fit,
+    _gradient_card,
+    _wrap,
+)
 from src.kora.render_village import WARN, _fonts, _frame, _hover, _section, _tile, _tip
 
 MAX_ROUTES_SHOWN = 8

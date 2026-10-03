@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from src.kora import resources as _res
 from src.kora.types import Hex, Season, Terrain
+from src.kora.resources import LABELS, NAMES, PRESENT_BYTE, derive_silver, level_word, richness
 
 INSHORE_MOVE_COST = 10
 
@@ -305,14 +306,10 @@ class World:
 
     def set_resources(self, layers: dict, rich: bytes | None = None) -> None:
         """layers : nom -> octets 0..255 (rangee par rangee)."""
-        from src.kora.resources import NAMES, richness
-
         n = self.width * self.height
         self.resources = {k: bytes(v) for k, v in layers.items() if k in NAMES and len(v) == n}
         if "argent" not in self.resources and self.resources:
             # Les filons d'argent viennent du relief (resources.derive_silver).
-            from src.kora.resources import derive_silver
-
             self.resources["argent"] = derive_silver(self.width, self.height, self._terrains)
         if rich is None or len(rich) != n:
             rich = richness(self.resources, self.width, self.height)
@@ -337,8 +334,6 @@ class World:
         hit = memo.get(idx)
         if hit is not None:
             return hit
-        from src.kora.resources import PRESENT_BYTE
-
         found = set()
         width = self.width
         for x in self.hexes_in_radius(h, 1):
@@ -354,8 +349,6 @@ class World:
         return out
 
     def resource_lines(self, h: Hex) -> list[str]:
-        from src.kora.resources import LABELS, NAMES, level_word
-
         parts = []
         for name in NAMES:
             v = self.resource(h, name)

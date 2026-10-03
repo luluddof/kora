@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 
 from src.kora import tech
 from src.kora.log import LogKind
-from src.kora.types import Person
+from src.kora.types import Person, Tribe, stay_order
+from src.kora.gamestate import PLAYER_TRIBE_ID, note
 
 OBEY = 40.0
 LEAVE = 20.0
@@ -604,8 +605,6 @@ def secede(state, band_id: int, hostile: bool = False, independence: bool = Fals
     civilisation (le monde plein : il attend)."""
     from src.kora import diplo, influence
     from src.kora.peoples import MAX_LIVING_TRIBES, civ_of, culture_for_place, free_color, kin_color, living_tribe_ids
-    from src.kora.types import Tribe, stay_order
-
     band = state.bands.get(band_id)
     if band is None or is_chief_band(state, band):
         # Le chef ne quitte pas son peuple (une carte "le clan veut partir"
@@ -952,6 +951,4 @@ def band_lines_extra(state, band) -> list[str]:
 
 def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
     """Au journal du joueur `to` (par defaut le joueur solo)."""
-    from src.kora.gamestate import PLAYER_TRIBE_ID, note
-
     note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

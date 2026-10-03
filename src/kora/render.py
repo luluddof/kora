@@ -17,15 +17,14 @@ from src.kora.globe_draw import (
 from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
-from src.kora import chiefs, orders
+from src.kora import chiefs, orders, tech, theme
 from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
 from src.kora.gamestate import GameState, human_dead, log_of
-from src.kora import tech
 from src.kora.types import Hex, Season
 from src.kora.vision import enemy_band_visible
 from src.kora.world import axial_to_offset, offset_to_axial
-from src.kora import theme
 from src.kora.theme import C
+from src.kora.resources import COLORS, LABELS, NAMES
 
 # Le rail des onglets (a droite) : une pastille par onglet, icone et nom.
 TAB_W = 62
@@ -1329,8 +1328,6 @@ class Renderer:
         pygame.draw.rect(self.screen, _darken(color, 0.7), inner, 1)
 
     def draw_fields(self, state, site, yaw, pitch, gcx, gcy, focal, dist) -> None:
-        from src.kora.world import offset_to_axial
-
         w, h = self.screen.get_size()
         big = dist <= LABEL_DIST
         for col, row in site.data.get("fields", []):
@@ -1361,8 +1358,6 @@ class Renderer:
         if self.map_mode == "commerce":
             self._draw_trade_legend(layout, w)
         if self.map_mode == "ressources":
-            from src.kora.resources import COLORS, LABELS, NAMES
-
             x0 = layout["relief"][0]
             y = layout["relief"][1] + 36
             bw = w - TAB_W - 14 - x0

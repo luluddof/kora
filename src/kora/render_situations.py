@@ -21,6 +21,7 @@ from src.kora import situations, tech, theme
 from src.kora.peoples import color_of
 from src.kora.situations import CRISE, SPECS
 from src.kora.theme import C
+from src.kora.gamestate import seen_of
 
 # Une case du bandeau (dans la barre du haut).
 CARD_W, CARD_H = 40, 40
@@ -63,8 +64,6 @@ def banner_layout(width: int, n: int) -> dict:
 
 def people_name(state, tid: int) -> str:
     from src.kora import diplo
-    from src.kora.gamestate import seen_of
-
     me = state.viewer
     tribe = state.tribes.get(tid)
     if tid == me:

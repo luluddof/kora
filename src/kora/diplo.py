@@ -25,6 +25,8 @@ from src.kora import tech
 from src.kora.log import LogKind
 # Les donnees (contacts, relations, pactes, routes) : types.py.
 from src.kora.types import Diplomacy, Mod, Pact, TradeRoute  # noqa: F401
+from src.kora.types import stay_order
+from src.kora.gamestate import PLAYER_TRIBE_ID, note
 
 CONTACT_RANGE = 16
 NEIGHBOR_RANGE = 40
@@ -972,8 +974,6 @@ def invite_chance(state, actor: int, band) -> float:
 def invite(state, actor: int, band_id: int) -> str:
     """Debaucher un clan indocile : il quitte son peuple pour le votre."""
     from src.kora import chiefs
-    from src.kora.types import stay_order
-
     band = state.bands.get(band_id)
     if band is None or band not in invitable(state, actor, band.tribe_id):
         return "Ce clan ne peut pas être invite"
@@ -1010,8 +1010,6 @@ def absorb(state, actor: int, target: int) -> None:
     """Un petit peuple se fond dans un autre : ses bandes, ses lieux, une
     partie de ses savoirs."""
     from src.kora import chiefs
-    from src.kora.types import stay_order
-
     for band in state.bands.values():
         if band.tribe_id == target:
             band.tribe_id = actor
@@ -1208,6 +1206,4 @@ def from_json(data) -> Diplomacy:
 
 def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
     """Au journal du joueur `to` (par defaut le joueur solo)."""
-    from src.kora.gamestate import PLAYER_TRIBE_ID, note
-
     note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

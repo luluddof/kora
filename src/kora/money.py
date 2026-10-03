@@ -32,6 +32,8 @@ N'importe pas pygame.
 from __future__ import annotations
 
 from src.kora.log import LogKind
+from src.kora.types import Hex
+from src.kora.gamestate import is_human, note
 
 # Vivres pour un sicle (payer une route en argent, convertir un peage).
 VPS = 20.0
@@ -238,8 +240,6 @@ def toll_owner(state, route) -> int:
     """Le peuple qui tient le passage d'une route : celui qui domine le
     milieu du chemin entre les deux villages (Droits de passage)."""
     from src.kora import goods, influence, tech
-    from src.kora.types import Hex
-
     ends = goods.trade_ends(state, route.exporter, route.importer)
     if ends is None:
         return 0
@@ -372,8 +372,6 @@ def last_month(tribe) -> dict:
 
 
 def _note(state, tid: int, text: str) -> None:
-    from src.kora.gamestate import is_human, note
-
     if is_human(state, tid):
         note(state, LogKind.POLITIQUE, text, to=tid)
 

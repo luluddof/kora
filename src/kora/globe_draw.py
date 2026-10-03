@@ -19,6 +19,7 @@ from src.kora.look import season_color
 from src.kora.types import Season, Terrain
 from src.kora.vision import vision_of
 from src.kora.world import NEIGHBOR_DELTAS, axial_to_offset
+from src.kora.resources import COLORS, NAMES
 
 FOG_UNEXPLORED = (8, 8, 10)
 TERRAINS = tuple(Terrain)
@@ -213,8 +214,6 @@ class Planet:
 
     def _resources(self):
         if self._res_color is None:
-            from src.kora.resources import COLORS, NAMES
-
             world = self.world
             color = np.zeros((self.height, self.width, 3), dtype=np.float32)
             best = np.zeros((self.height, self.width), dtype=np.float32)

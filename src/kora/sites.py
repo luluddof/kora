@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from src.kora import records, tech
 from src.kora.log import LogKind
 from src.kora.types import Hex, Terrain
+from src.kora.gamestate import PLAYER_TRIBE_ID, note
 
 CAMP_STORE = 600
 CACHE_ROT = 0.015
@@ -346,8 +347,6 @@ def _offer_player_find(state, site: Site, band) -> None:
 
 def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
     """Au journal du joueur `to` (par defaut le joueur solo)."""
-    from src.kora.gamestate import PLAYER_TRIBE_ID, note
-
     note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)
 
 

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from src.kora.gamestate import PLAYER_TRIBE_ID, GameState, humans, note
+from src.kora.gamestate import GameState, PLAYER_TRIBE_ID, humans, note, pov_of
 from src.kora.log import LogKind
 from src.kora.types import Hex
 
@@ -66,8 +66,6 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
 
 def recompute_vision(state: GameState) -> PlayerVision:
     """La vue de chaque peuple joueur ; rend celle du joueur solo."""
-    from src.kora.gamestate import humans, pov_of
-
     vis = _recompute_for(state, PLAYER_TRIBE_ID, state.vision)
     state.vision = vis
     for tid in humans(state)[1:]:

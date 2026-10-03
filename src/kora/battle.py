@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 
 from src.kora import chiefs, influence, sim
 from src.kora.log import terrain_fr
-from src.kora.types import Band, Terrain
+from src.kora.types import Band, Hex, OrderKind, Terrain, stay_order
 
 ROUNDS = 6
 KILL = 0.12
@@ -456,8 +456,6 @@ def start(state, attacker: Band, defender: Band, h, hunted: bool = False) -> Bat
         morale0_a=a.morale, morale0_d=d.morale,
         units0={b.id: [list(u) for u in b.units] for b in a.bands + d.bands if b.kind == "armee"},
     )
-    from src.kora.types import OrderKind, stay_order
-
     # Intercepte : le defenseur marchait lui-meme a l'attaque (ou une troupe
     # loin de chez elle).
     if defender.order.kind is OrderKind.MARCH_TO_BAND or (defender.kind == "armee" and not defender.homebound):
@@ -481,8 +479,6 @@ def join(state, bt, band: Band, attacker: bool) -> None:
         bt.start_a += fighters_now(band, True)
     else:
         bt.start_d += fighters_now(band, False)
-    from src.kora.types import stay_order
-
     band.path = []
     band.order = stay_order()
 
@@ -955,8 +951,6 @@ def to_json(bt) -> dict:
 
 
 def from_json(d: dict):
-    from src.kora.types import Hex
-
     try:
         return Battle(
             uid=int(d["uid"]), hex=Hex(int(d["hex"][0]), int(d["hex"][1])),

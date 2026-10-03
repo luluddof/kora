@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import base64
 import zlib
+from src.kora.types import Terrain
 
 RESOURCES = (
     ("cereales", "céréales sauvages", "plante"),
@@ -95,8 +96,6 @@ def _unit(text: str) -> float:
 def derive_silver(width: int, height: int, terrains) -> bytes:
     """La couche d'argent (octets 0..255, rangee par rangee) a partir des
     terrains (terrains[row][col])."""
-    from src.kora.types import Terrain
-
     hills = (Terrain.COLLINE, Terrain.MONTAGNE, Terrain.SOMMET)
     out = bytearray(width * height)
     for row in range(height):

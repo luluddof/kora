@@ -26,6 +26,14 @@ import numpy as np
 
 from src.kora.resources import BAKED, COVER, PRESENT
 from src.kora.types import Terrain
+from src.kora.world import (
+    CHAR_TO_TERRAIN,
+    NEIGHBOR_DELTAS,
+    World,
+    axial_to_offset,
+    offset_to_axial,
+    save_world,
+)
 
 PLANET_WIDTH = 768
 PLANET_HEIGHT = 384
@@ -130,8 +138,6 @@ def sphere_points(width: int, height: int) -> tuple[np.ndarray, np.ndarray]:
 def _hex_neighbors(width: int, height: int):
     """Pour chaque direction hexagonale (ordre de world.NEIGHBOR_DELTAS),
     les indices (rangee, colonne) du voisin, et un masque 'dans la carte'."""
-    from src.kora.world import NEIGHBOR_DELTAS
-
     rows = np.arange(height)[:, None]
     cols = np.arange(width)[None, :]
     half = lambda r: (r - (r & 1)) // 2  # noqa: E731
@@ -479,8 +485,6 @@ def _generate(seed: int, width: int, height: int):
 
 
 def generate_world(seed: int = 42, width: int = PLANET_WIDTH, height: int = PLANET_HEIGHT, resources: bool = False):
-    from src.kora.world import CHAR_TO_TERRAIN, World
-
     grid, climate = _generate(seed, width, height)
     terrains = [[CHAR_TO_TERRAIN[ch] for ch in row] for row in grid.tolist()]
     world = World(terrains, wrap_x=True)
@@ -495,8 +499,6 @@ def bake(seed: int = 42, path=None, width: int = PLANET_WIDTH, height: int = PLA
     from pathlib import Path
 
     from src.kora.atlas import build_atlas_labels
-    from src.kora.world import save_world
-
     world = generate_world(seed, width, height, resources=True)
     if path is None:
         path = Path(__file__).resolve().parents[2] / "data" / "kora_map.json"
@@ -515,8 +517,6 @@ def _is_polar_cap(world, col: int, row: int) -> bool:
 
 
 def continent_sizes(world) -> list[int]:
-    from src.kora.world import axial_to_offset, offset_to_axial
-
     visited = [[False] * world.width for _ in range(world.height)]
     sizes: list[int] = []
     for row in range(world.height):

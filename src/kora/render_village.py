@@ -14,7 +14,7 @@ import math
 import pygame
 import pygame.gfxdraw
 
-from src.kora import battle, villages
+from src.kora import battle, theme, villages
 from src.kora.look import BIOME_COLORS
 from src.kora.peoples import color_of
 from src.kora.render import HUD_HEIGHT
@@ -40,7 +40,6 @@ from src.kora.render_tech import (
     _wrap,
 )
 from src.kora.types import Hex
-from src.kora import theme
 from src.kora.theme import C
 
 WARN = C.alerte

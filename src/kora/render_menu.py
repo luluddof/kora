@@ -16,11 +16,23 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import tech
-from src.kora.render_tech import GOLD, GOLD_DEEP, GOLD_DIM, INK, NOTE, SOFT, _button, _fit, _gradient_card, _wrap, medallion
+from src.kora import tech, theme
+from src.kora.render_tech import (
+    GOLD,
+    GOLD_DEEP,
+    GOLD_DIM,
+    INK,
+    NOTE,
+    SOFT,
+    _button,
+    _fit,
+    _gradient_card,
+    _wrap,
+    medallion,
+)
 from src.kora.render_village import _frame, _hover, _plain_button
-from src.kora import theme
 from src.kora.theme import C
+from src.kora.gamestate import human_dead
 
 # Couleurs proposees au joueur (le bleu et le vert sont ceux des grands peuples IA).
 PALETTE = (
@@ -638,8 +650,6 @@ def draw_mp_overlay(r, mp, state, chat_text) -> None:
     import time as _time
 
     from src.kora.render import HUD_HEIGHT
-    from src.kora.gamestate import human_dead
-
     screen = r.screen
     w, h = screen.get_size()
     chips = []

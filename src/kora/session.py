@@ -25,7 +25,7 @@ import time
 from dataclasses import dataclass, field
 
 from src.kora import commands
-from src.kora.net import PORT, Listener, pack, unpack
+from src.kora.net import Listener, PORT, pack, unpack
 
 PROTO = 1
 LAG = 6

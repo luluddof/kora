@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
+from src.kora.types import Season, Terrain
 
 
 class LogKind(Enum):
@@ -60,8 +61,6 @@ class GameLog:
 
 
 def season_fr(season) -> str:
-    from src.kora.types import Season
-
     names = {
         Season.PRINTEMPS: "Printemps",
         Season.ETE: "Été",
@@ -72,8 +71,6 @@ def season_fr(season) -> str:
 
 
 def terrain_fr(terrain) -> str:
-    from src.kora.types import Terrain
-
     names = {
         Terrain.PLAINE: "Plaine",
         Terrain.VALLEE: "Vallée",

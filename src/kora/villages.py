@@ -36,7 +36,10 @@ from dataclasses import dataclass
 
 from src.kora import tech
 from src.kora.log import LogKind
-from src.kora.types import Season, Terrain
+from src.kora.types import Band, Season, Terrain, stay_order
+from src.kora.resources import LABELS, NAMES, PRESENT
+from src.kora.world import offset_to_axial
+from src.kora.gamestate import PLAYER_TRIBE_ID, note
 
 FIELD_WORKERS = 25
 MAX_FIELDS = 12
@@ -767,7 +770,6 @@ def stability_growth(state, band) -> float:
 def _unrest(state, site, band) -> None:
     """Village agite : des familles s'en vont former un clan nomade."""
     from src.kora.sim import _ai_caches_changed, new_band_id
-    from src.kora.types import Band
     from src.kora import chiefs
 
     if band.population < UNREST_MIN_POP:
@@ -847,8 +849,6 @@ def fertility(state, tribe_id: int, h) -> float:
 def land_profile(world, h) -> tuple:
     """Terrains et ressources presentes (0,4) des terres d'un village : les
     cases a FIELD_RADIUS ou moins. La carte ne change pas : memorise."""
-    from src.kora.resources import NAMES, PRESENT
-
     memo = getattr(world, "_lands", None)
     if memo is None:
         memo = world._lands = {}
@@ -929,8 +929,6 @@ def expected_harvest(state, site, band=None) -> float:
     band = band or band_of(state, site)
     if band is None:
         return 0.0
-    from src.kora.world import offset_to_axial
-
     soil = site.data.get("soil", {})
     total = 0.0
     fields = site.data.get("fields", [])
@@ -1108,8 +1106,6 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
         camp.name = make_name(state.story_rng, culture_of(tribe) if culture_of(tribe).syllables else CULTURES["vallee"], taken)
     band.position = camp.hex
     band.path = []
-    from src.kora.types import stay_order
-
     band.order = stay_order()
     band.village = camp.id
     band.autonomy = 0.0
@@ -1206,8 +1202,6 @@ def found_preview(state, band_id: int) -> dict:
     """Ce que la fenetre de fondation montre : le lieu, ses terres, ses
     dangers, le nom propose, et si c'est le premier village du peuple."""
     from src.kora import diplo, sites
-    from src.kora.resources import LABELS, PRESENT
-
     band = state.bands[band_id]
     camp = sites.own_site_at(state, band)
     world = state.world
@@ -1441,8 +1435,6 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     sinon, c'est une nouvelle troupe, menee par un chef de guerre."""
     from src.kora import chiefs, units
     from src.kora.sim import _ai_caches_changed, new_band_id, stock_max
-    from src.kora.types import Band
-
     if army_block(state, band_id, share, type_id):
         return None
     band = state.bands[band_id]
@@ -1505,8 +1497,6 @@ def _split_units(state, band, comps: list, leader=None, homebound: bool = False)
     """Une nouvelle troupe faite de ces compagnies (retirees de band)."""
     from src.kora import chiefs
     from src.kora.sim import _ai_caches_changed, new_band_id
-    from src.kora.types import Band
-
     men = sum(u[1] for u in comps)
     share = men / max(1, band.population)
     stock = band.stock * share
@@ -1973,6 +1963,4 @@ def army_lines(state, band) -> list[str]:
 
 def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
     """Au journal du joueur `to` (par defaut le joueur solo)."""
-    from src.kora.gamestate import PLAYER_TRIBE_ID, note
-
     note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

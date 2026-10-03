@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.kora.types import Terrain
+from src.kora.world import offset_to_axial, spawn_forage
 
 _T = Terrain
 # Au-dela, un clan qui fait secession rejoint un voisin (ou un peuple frere)
@@ -212,8 +213,6 @@ def pick_minor_spots(world, taken: list, count: int, rng, avoid=None) -> list:
     """Departs des petits peuples : loin de tous les autres (point le plus
     eloigne, tire parmi les meilleurs), sur une terre qui nourrit, hors des
     poles. avoid : cases a eviter (deja explorees par le joueur)."""
-    from src.kora.world import offset_to_axial, spawn_forage
-
     good = {_T.PLAINE, _T.VALLEE, _T.STEPPE, _T.FORET, _T.COLLINE, _T.COTE, _T.DESERT}
     pool = []
     step = 7
