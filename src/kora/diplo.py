@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import chiefs, influence, tech
+from src.kora import chiefs, events, goods, influence, tech
 from src.kora.log import LogKind
 # Les donnees (contacts, relations, pactes, routes) : types.py.
 from src.kora.types import Diplomacy, Mod, Pact, TradeRoute  # noqa: F401
@@ -155,8 +155,6 @@ def make_contact(state, a: int, b: int, quiet: bool = False) -> bool:
         if quiet:
             break
         other = b if player == a else a
-        from src.kora import events
-
         _note(state, LogKind.POLITIQUE, f"Premier contact avec les {state.tribes[other].name}.", to=player)
         found = gift_carrier(state, player, other)
         band_id = found[0].id if found is not None else next(
@@ -728,8 +726,6 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         if ally_count(state, target) >= 2:
             out.append(("Ils ont déjà deux alliés", -15))
     elif action == "commerce":
-        from src.kora import goods
-
         if not bonus.commerce:
             return Verdict(blocked="Il faut connaître Échanges lointains")
         if has_pact(state, actor, target, "commerce"):
@@ -884,8 +880,6 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
             _note(state, LogKind.POLITIQUE, f"Les {state.tribes[actor].name} rompent leur pacte avec vous.", to=target)
         return f"Pacte rompu avec les {names}."
     if human and action in HUMAN_OFFERS:
-        from src.kora import events
-
         found = gift_carrier(state, target, actor)
         band_id = found[0].id if found is not None else next(
             (x.id for x in sorted(state.bands.values(), key=lambda x: x.id) if x.tribe_id == target and x.population > 0), 0
@@ -1082,8 +1076,6 @@ PROPOSE_EVERY = 52
 def _propose_to_player(state, ai: int, player: int) -> None:
     """Un peuple IA fait une proposition au joueur (un evenement a decider).
     Il ne propose que ce qu'il accepterait lui-meme."""
-    from src.kora import events
-
     d = _d(state)
     key = f"propose:{ai}:{player}"
     if state.tick_count - d.cooldown.get(key, -10**6) < PROPOSE_EVERY:

@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from src.kora import commands, tech
 from src.kora.net import Listener, PORT, pack, unpack
 from src.kora.sim import new_game, tick
+from src.kora.persist import dumps_game, game_to_json, loads_game
 
 PROTO = 1
 LAG = 6
@@ -82,8 +83,6 @@ class Seat:
 def sync_digest(state) -> str:
     """L'empreinte de la partie, la meme sur chaque machine si elles
     calculent la meme chose. Ni la pause, ni la vitesse, ni la camera."""
-    from src.kora.persist import game_to_json
-
     data = game_to_json(state)
     data.pop("view", None)
     clock = dict(data.get("clock", {}))
@@ -328,8 +327,6 @@ class HostSession(_Base):
     def start(self, world) -> object:
         """Lance la partie : la meme pour tous (la partie en texte, rechargee
         aussi par l'hote)."""
-        from src.kora.persist import dumps_game, loads_game
-
         if self.resume is not None:
             base = self.resume
         else:
@@ -355,8 +352,6 @@ class HostSession(_Base):
         machine repart exactement du meme etat (memes nombres, meme
         rangement ; une partie relue range autrement, "350" devient
         "350.0"). Apres un ecart, ou quand un joueur revient."""
-        from src.kora.persist import dumps_game, loads_game
-
         self._want_share = False
         self._flush()
         text = dumps_game(self.state)
@@ -546,8 +541,6 @@ class ClientSession(_Base):
 
     def begin(self, world):
         """La partie recue de l'hote."""
-        from src.kora.persist import loads_game
-
         loaded = loads_game(unpack(self.snap["snap"]), world)
         if loaded is None:
             self.ended = "La partie reçue ne se lit pas (versions différentes ?)."
@@ -570,8 +563,6 @@ class ClientSession(_Base):
         self.conn.send({"t": "speed", "n": int(n)})
 
     def pump(self, dt: float) -> None:
-        from src.kora.persist import loads_game
-
         msgs = self.backlog + self.conn.poll()
         self.backlog = []
         ran = 0

@@ -30,7 +30,8 @@ from src.kora.tech import (
 )
 from src.kora.types import Season, Terrain
 from src.kora.world import is_inshore
-from src.kora import chiefs, sites
+from src.kora import chiefdom, chiefs, diplo, sites
+from src.kora.villages import land_profile
 
 
 def _pop(state, tribe_id: int) -> int:
@@ -114,8 +115,6 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
     if kind == "camp_years":
         return sites.oldest_camp_years(state, tribe.id), cond.need, f"Un campement tenu {cond.need} ans"
     if kind in ("contacts", "friends", "allies"):
-        from src.kora import diplo
-
         have = {
             "contacts": diplo.contact_count,
             "friends": diplo.friend_count,
@@ -128,8 +127,6 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
         }[kind]
         return have, cond.need, label
     if kind == "kin_villages":
-        from src.kora import chiefdom
-
         return chiefdom.kin_villages(state, tribe.id), cond.need, f"{_plural(cond.need, 'village frère')} (de votre civilisation, ou tributaire)"
     if kind in ("villages", "village_years"):
         if kind == "villages":
@@ -149,8 +146,6 @@ def _key(terrain) -> str:
 
 
 def _neighbors_know(state, tribe_id: int, tech_id: str) -> list:
-    from src.kora import diplo
-
     return diplo.teachers(state, tribe_id, tech_id)
 
 
@@ -205,8 +200,6 @@ def diffusion_bonus(state, tribe_id: int, tech_id: str | None) -> float:
     """Part d'apprentissage en plus quand des voisins connaissent le savoir."""
     if tech_id is None:
         return 0.0
-    from src.kora import diplo
-
     return diplo.diffusion_bonus(state, tribe_id, tech_id)
 
 
@@ -281,8 +274,6 @@ def update_practice(state, count: bool = True) -> None:
             if band.village:
                 # Un village vit de ses terres : chasse, peche, cueillette et
                 # glaise de tout son pays (villages.FIELD_RADIUS).
-                from src.kora.villages import land_profile
-
                 terrains, found = land_profile(world, band.position)
                 seen |= terrains
                 if has_res:
@@ -331,8 +322,6 @@ def update_learning(state) -> None:
     """Chaque semaine : l'apprentissage avance ; l'IA choisit le suivant (une
     semaine sur quatre, decalee selon le peuple ; un peuple eteint ne
     cherche plus)."""
-    from src.kora import diplo
-
     with diplo.frozen_relations(state):
         _update_learning(state)
 

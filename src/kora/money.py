@@ -34,7 +34,7 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.types import Hex
 from src.kora.gamestate import is_human, note
-from src.kora import chiefs, tech
+from src.kora import chiefs, influence, tech
 
 # Vivres pour un sicle (payer une route en argent, convertir un peage).
 VPS = 20.0
@@ -234,7 +234,7 @@ def pay_route(state, payer: int, receiver: int, vivres: float) -> float:
 def toll_owner(state, route) -> int:
     """Le peuple qui tient le passage d'une route : celui qui domine le
     milieu du chemin entre les deux villages (Droits de passage)."""
-    from src.kora import goods, influence
+    from src.kora import goods
 
     ends = goods.trade_ends(state, route.exporter, route.importer)
     if ends is None:

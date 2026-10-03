@@ -18,6 +18,7 @@ from src.kora.peoples import color_of
 from src.kora.theme import C
 from src.kora.battle import fighters_now
 from src.kora.vision import is_visible
+from src.kora.globe import hex_to_globe_screen
 
 PANEL_W, PANEL_H = 600, 262
 
@@ -158,7 +159,6 @@ def draw(r, state) -> None:
 
 def draw_on_map(r, state, yaw, pitch, zoom) -> None:
     """Des epees qui battent sur chaque bataille en cours que l'on voit."""
-    from src.kora.globe import hex_to_globe_screen
     from src.kora.render import HUD_HEIGHT, view_params
 
     w, h = r.screen.get_size()

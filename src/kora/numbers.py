@@ -28,7 +28,7 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import culture_of
-from src.kora import tech
+from src.kora import goods, money, tech
 
 BASES = {
     10: ("Base dix", "On compte sur ses doigts : les nombres s'apprennent vite.", {"learn": 1.05}),
@@ -148,8 +148,6 @@ def ai_base(state, tribe) -> int:
 def points(state, tid: int) -> float:
     """Points de calcul par mois : les equipes de calculateurs du peuple (et
     la base dix, les gages payes)."""
-    from src.kora import goods, money
-
     tribe = state.tribes.get(tid)
     if tribe is None:
         return 0.0
@@ -197,8 +195,6 @@ def _note(state, tid: int, text: str) -> None:
 
 
 def teams(state, tid: int) -> int:
-    from src.kora import goods
-
     return sum(
         goods.teams_of(s, "calculateurs") for s in state.sites.values() if s.kind == "village" and s.tribe_id == tid
     )

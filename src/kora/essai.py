@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from src.kora.commands import make
 from src.kora.sim import _default_world
-from src.kora import chiefs, learning, money, net, orders, places, situations, tech, villages
+from src.kora import chiefs, learning, money, net, orders, places, session, situations, tech, villages
 
 
 def robot(state, issue, me: int, rng: random.Random) -> None:
@@ -75,8 +75,6 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
 
 
 def host_run(port: int, years: int) -> dict:
-    from src.kora import session
-
     host = session.HostSession({"name": "Aroha", "color": (220, 70, 70), "bonuses": ["bonus:conteurs", "bonus:froid"]}, port=port)
     end = time.time() + 90
     while time.time() < end and host.can_start():
@@ -122,8 +120,6 @@ def host_run(port: int, years: int) -> dict:
 
 
 def client_run(port: int, years: int) -> dict:
-    from src.kora import session
-
     conn = None
     for _ in range(300):
         try:

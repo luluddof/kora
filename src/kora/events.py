@@ -36,7 +36,7 @@ from src.kora.world import (
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.types import stay_order
 from src.kora.vision import vision_of
-from src.kora import chiefs, places, sites, systems, tech
+from src.kora import chiefs, goods, places, sites, systems, tech, villages
 from src.kora.bands import gain_prestige, max_bands_of, set_goto, split_band, stock_max, tribe_band_count
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
@@ -336,13 +336,9 @@ def check(state, inst, cond) -> bool:
         return extra(state, inst, tribe, band, *args)
     if kind == "crafts":
         # Des gens de metier au village (goods.py).
-        from src.kora import goods
-
         return goods.total_teams(places.site_of(state, band)) > 0
     if kind == "trade_partner":
         # Un partenaire dont une route a porte le dernier mois : "l'autre".
-        from src.kora import goods
-
         active = sorted(
             (r.importer if r.exporter == tribe.id else r.exporter)
             for r in goods.routes_of(state, tribe.id)
@@ -519,8 +515,6 @@ def apply(state, inst, effect) -> None:
     elif kind == "stock":
         band.stock = max(0.0, min(stock_max(band, state), band.stock + args[0] * band.population))
     elif kind == "good":
-        from src.kora import goods
-
         tribe.goods[args[0]] = min(goods.CAP, tribe.goods.get(args[0], 0.0) + args[1])
     elif kind == "lose_goods":
         # Une charge perdue : du bien dont le peuple a le plus.
@@ -536,8 +530,6 @@ def apply(state, inst, effect) -> None:
         vocabulary()[1][kind](state, inst, tribe, band, *args)
     elif kind == "craft_bonus":
         # Une belle veine : de chaque bien que fait le village.
-        from src.kora import goods, villages
-
         site = places.site_of(state, band)
         for cid, n in sorted(goods.teams(site).items()):
             craft = goods.CRAFTS.get(cid)
@@ -587,18 +579,12 @@ def apply(state, inst, effect) -> None:
     elif kind == "stock_pct":
         band.stock = max(0.0, band.stock * (1.0 + args[0]))
     elif kind == "seed_pct":
-        from src.kora import villages
-
         site = places.site_of(state, band)
         if site is not None:
             site.data.seed = max(0.0, site.data.seed * (1.0 + args[0]))
     elif kind == "eat_seed":
-        from src.kora import villages
-
         inst.data["butin"] = int(villages.eat_seed(state, band))
     elif kind == "burn":
-        from src.kora import villages
-
         villages.pillaged(state, band)
     elif kind == "steal_cache":
         site = state.sites.get(inst.site_id)
@@ -793,8 +779,6 @@ def condition_kinds() -> set:
 
 
 def _good_name(good: str) -> str:
-    from src.kora import goods
-
     return goods.GOOD_NAMES.get(good, good).lower()
 
 

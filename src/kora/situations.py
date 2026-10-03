@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import chiefs, places, population, tech
+from src.kora import chiefs, places, population, production, tech, villages
 from src.kora.log import LogKind
 from src.kora.types import Hex, Season, Terrain
 from src.kora.gamestate import humans, is_human, note
@@ -884,8 +884,6 @@ class GrandsTravaux(Spec):
     def month(self, state, inst):
         # Le score : les etapes du monument dans les villages du lieu, et
         # l'etape en cours (au prorata de ce qui est fait).
-        from src.kora import villages
-
         for tid in sorted(inst.participants):
             score = 0.0
             for site in _villages(state, tid):
@@ -912,8 +910,6 @@ class GrandsTravaux(Spec):
                     diplo.add_mod(state, tid, other, "monument", 5, actor=tid)
 
     def end(self, state, inst):
-        from src.kora import villages
-
         win = inst.winner
         if not win:
             for t in inst.participants:
@@ -1070,7 +1066,7 @@ class Surproduction(Spec):
     natural = 0.0
 
     def candidates(self, state):
-        from src.kora import goods, production
+        from src.kora import goods
 
         out = []
         for tid in sorted(state.tribes):
@@ -1088,7 +1084,7 @@ class Surproduction(Spec):
         return 0.35
 
     def risk(self, state, tid):
-        from src.kora import goods, production
+        from src.kora import goods
 
         tribe = state.tribes.get(tid)
         if tribe is None or not tribe.glut:
@@ -1110,7 +1106,7 @@ class Surproduction(Spec):
         return f"{base} ({good.lower()})" if good else base
 
     def month(self, state, inst):
-        from src.kora import goods, production
+        from src.kora import goods
 
         tid = next(iter(inst.participants))
         good = self._good(inst)
@@ -1154,7 +1150,7 @@ class Surproduction(Spec):
             gain_prestige(state, tribe, 1)
 
     def end(self, state, inst):
-        from src.kora import goods, production
+        from src.kora import goods
 
         tid = next(iter(inst.participants), None)
         if tid is None:
@@ -1199,7 +1195,7 @@ class Effondrement(Spec):
         return []
 
     def month(self, state, inst):
-        from src.kora import goods, production
+        from src.kora import goods
 
         depth = inst.data.setdefault("depth", {})
         # Le mal gagne les partenaires des partenaires, jusqu'a EFFONDREMENT_DEPTH.
@@ -1269,8 +1265,6 @@ class Revolte(Spec):
     cooldown = 5 * YEAR
 
     def _calm(self, state, tid) -> float:
-        from src.kora import villages
-
         sites = _villages(state, tid)
         vals = [villages.stability(state, s) for s in sites if _village_band(state, s) is not None]
         return sum(vals) / len(vals) if vals else 50.0

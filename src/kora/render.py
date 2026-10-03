@@ -5,7 +5,7 @@ import math
 import pygame
 
 from src.kora.atlas import build_atlas_labels
-from src.kora.globe import hex_to_globe_screen, view_params
+from src.kora.globe import hex_to_globe_screen, offset_to_xyz, project_xyz, rotate_xyz, view_params
 from src.kora.globe_draw import (
     FAST_SAMPLES,
     FINE_SAMPLES,
@@ -17,7 +17,22 @@ from src.kora.globe_draw import (
 from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
-from src.kora import battle as _battle, chiefs, goods, learning, money as _money, money, orders, tech, theme
+from src.kora import (
+    battle as _battle,
+    chiefs,
+    goods,
+    learning,
+    money as _money,
+    money,
+    orders,
+    render_battle,
+    render_numbers,
+    render_panels,
+    render_situations,
+    screens,
+    tech,
+    theme,
+)
 from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
 from src.kora.gamestate import GameState, human_dead, log_of
 from src.kora.types import Hex, Season
@@ -26,6 +41,7 @@ from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.theme import C
 from src.kora.resources import COLORS, LABELS, NAMES
 from src.kora.villages import palisade_state
+from src.kora.render_panels import panel_box
 
 # Le rail des onglets (a droite) : une pastille par onglet, icone et nom.
 TAB_W = 62
@@ -440,8 +456,6 @@ def tech_panel_layout(width: int, height: int, tab_w: int = 66, era: int = 0, ca
     }
     numbers = None
     if tab == "nombres":
-        from src.kora import render_numbers
-
         numbers = render_numbers.page_layout((bx + 14, top + 6, bw - 28, by + bh - 12 - top - 6))
     return {
         "tab": tab,
@@ -509,8 +523,6 @@ def side_layout(width: int, height: int, panel: str | None = None, era: int = 0,
         for key, rect in tech_panel["tabs"].items():
             items["ttab:" + key] = rect
         if tech_panel["numbers"] is not None:
-            from src.kora import render_numbers
-
             items.update(render_numbers.items(tech_panel["numbers"]))
             priority = ("ttab:arbre", "ttab:nombres")
         else:
@@ -523,8 +535,6 @@ def side_layout(width: int, height: int, panel: str | None = None, era: int = 0,
                 items["t" + key] = tech_panel[key]
             priority = ("tzoom_in", "tzoom_out", "tcenter", "ttab:arbre", "ttab:nombres")
     elif panel in ("tribu", "peuples", "armee"):
-        from src.kora.render_panels import panel_box
-
         box = panel_box(width, height, "tribu" if panel == "armee" else panel, rail)
     elif panel == "journal":
         box_w = 340
@@ -1007,11 +1017,7 @@ class Renderer:
             if dist <= LABEL_DIST:
                 tags.append((str(band.population), bx + radius + 4, by))
         self.draw_fight_marks(state, globe_yaw, globe_pitch, zoom, open_fight)
-        from src.kora import render_situations
-
         render_situations.draw_on_map(self, state, globe_yaw, globe_pitch, zoom)
-        from src.kora import render_battle
-
         render_battle.draw_on_map(self, state, globe_yaw, globe_pitch, zoom)
         self.draw_polity_labels(state, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
         if selected_id is not None and selected_id in state.bands:
@@ -1039,8 +1045,6 @@ class Renderer:
         self.draw_toasts(toasts or [], extra_y)
         self.draw_inspect(hover_info, pin_info)
         self.draw_band_card(state, selected_id)
-        from src.kora import render_panels
-
         # Les cartes d'evenement et le bandeau des situations restent sous
         # les panneaux ouverts.
         render_panels.draw_event_cards(self, state, ui)
@@ -1053,7 +1057,7 @@ class Renderer:
         # Le rapport de bataille ouvert passe par-dessus les cartes et le bandeau.
         self.draw_fight_panel(open_fight, state)
         self.draw_side(state, side_panel, log_filter, log_newest, tech_pick, ui)
-        from src.kora import render_village, screens
+        from src.kora import render_village
 
         # Le grand ecran ouvert : village, commerce ou tresor (screens.py).
         screens.draw(self, state, ui)
@@ -1154,8 +1158,6 @@ class Renderer:
     def _draw_reach(self, center, reach, yaw, pitch, gcx, gcy, focal, dist) -> None:
         """La portee des porteurs autour du village du chef : un anneau fin
         de points sur le globe."""
-        from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
-
         world = self._legend_world
         c, r_ = axial_to_offset(center)
         cx0, cy0, cz0 = offset_to_xyz(c, r_, world.width, world.height)
@@ -1180,8 +1182,6 @@ class Renderer:
         villages (ceux que vous connaissez), a sa couleur."""
         if dist > 2.9:
             return
-        from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
-
         world = state.world
         homes: dict = {}
         for site in sorted(state.sites.values(), key=lambda s: s.id):
@@ -1217,8 +1217,6 @@ class Renderer:
         d = getattr(state, "diplo", None)
         if d is None or not getattr(d, "routes", None):
             return
-        from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
-
         world = state.world
         homes: dict = {}
         for site in state.sites.values():
@@ -1541,8 +1539,6 @@ class Renderer:
     ) -> None:
         ui = ui or {}
         w, h = self.screen.get_size()
-        from src.kora import render_panels
-
         army = render_panels.army_ready(state)
         commerce = render_panels.commerce_ready(state)
         treasury = money.has_money(state, state.viewer)

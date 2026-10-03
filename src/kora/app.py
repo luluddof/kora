@@ -13,6 +13,9 @@ from src.kora import (
     net,
     orders,
     places,
+    render_battle,
+    render_menu,
+    render_tech,
     screens,
     session,
     situations,
@@ -40,24 +43,30 @@ from src.kora.persist import (
     set_aside_save,
 )
 from src.kora.render import (
+    FILTER_BY_HIT,
     HUD_HEIGHT,
     MAX_ZOOM,
-    FILTER_BY_HIT,
     Renderer,
+    TREE_ZOOM_STEP,
     band_card_hit,
     band_screen_positions,
-    map_mode_hit,
-    toast_hit,
     fight_mark_screen_pos,
     fight_panel_hit,
     hud_hit,
+    map_mode_hit,
     menu_hit,
     min_zoom_for,
+    pan,
     side_hit,
+    toast_hit,
+    zoom_at,
 )
 from src.kora.sim import _default_world, consume_ticks, fight_at, hex_inspect, new_game, player_home_hex
 from src.kora.gamestate import human_dead, log_of, note
 from src.kora.situations import SPECS
+from src.kora.render_situations import banner_hit, window_hit
+from src.kora.render_village import found_hit
+from src.kora.render_panels import army_ready, commerce_ready
 
 
 TOAST_LIFE = 4.0
@@ -331,8 +340,6 @@ def _remember(setup: dict) -> None:
 
 
 def _prefilled(setup: dict) -> dict:
-    from src.kora import render_menu
-
     prefs = load_prefs()
     if isinstance(prefs.get("name"), str) and prefs["name"].strip():
         setup["name"] = prefs["name"][: render_menu.NAME_MAX]
@@ -352,8 +359,6 @@ def title_screen(renderer, clock, worlds, message: str = ""):
     Rend ("continue",), ("new", setup), ("host", setup), ("join", setup),
     ("resume_mp",) ou ("quit",)."""
     import random
-
-    from src.kora import render_menu
 
     scene = render_menu.TitleScene(worlds.shown)
     info = peek_save(default_save_path())
@@ -447,8 +452,6 @@ def _multiplayer(renderer, clock, worlds, choice):
     """Heberger, rejoindre ou reprendre : jusqu'au lancement de la partie.
     Rend ("play", session, state), ("back", message) ou ("quit",)."""
     import threading
-
-    from src.kora import render_menu
 
     scene = render_menu.TitleScene(worlds.shown)
     mp = None
@@ -1093,9 +1096,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         if not isinstance(choice, str):
             return False
         if choice in ("tview", "tzoom_in", "tzoom_out", "tcenter"):
-            from src.kora import render_tech
-            from src.kora.render import TREE_ZOOM_STEP, zoom_at
-
             lay = renderer.side_hits.get("tech")
             if not lay:
                 return True
@@ -1288,8 +1288,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     pygame.K_PLUS, pygame.K_KP_PLUS, pygame.K_EQUALS, pygame.K_MINUS, pygame.K_KP_MINUS,
                 ):
                     # Fleches : se deplacer dans l'arbre ; + et - : zoomer.
-                    from src.kora.render import TREE_ZOOM_STEP, pan, zoom_at
-
                     tlay = renderer.side_hits.get("tech")
                     if tlay:
                         view = tlay["view"]
@@ -1311,16 +1309,12 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     band_action(ACTION_KEYS[event.key])
                 elif event.key in PANEL_KEYS:
                     key = PANEL_KEYS[event.key]
-                    from src.kora.render_panels import army_ready
-
                     if key == "armee" and not army_ready(state):
                         toast("L'armée vient avec le premier village.")
                         continue
                     side_panel = None if side_panel == key else key
                     screens.close_all(ui)
                 elif event.key == pygame.K_m:
-                    from src.kora.render_panels import commerce_ready
-
                     if not commerce_ready(state):
                         toast("Le commerce vient avec le premier village.")
                         continue
@@ -1399,23 +1393,17 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                             break
             elif ui["situation_open"] is not None:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    from src.kora.render_situations import window_hit
-
                     hit = window_hit(renderer.situation_window, event.pos[0], event.pos[1])
                     if hit != "box":
                         situation_click(hit)
             elif ui["found"] is not None:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    from src.kora.render_village import found_hit
-
                     found_click(found_hit(renderer.found_hits, event.pos[0], event.pos[1]))
             elif event.type == pygame.MOUSEWHEEL:
                 tlay = renderer.side_hits.get("tech") if side_panel == "savoirs" else None
                 wx_, wy_ = pygame.mouse.get_pos()
                 if tlay and tlay.get("numbers") is None and _in_rect(tlay["view"], wx_, wy_):
                     # La molette zoome l'arbre des savoirs, autour du curseur.
-                    from src.kora.render import TREE_ZOOM_STEP, zoom_at
-
                     factor = TREE_ZOOM_STEP if event.y > 0 else 1.0 / TREE_ZOOM_STEP
                     ui["tech_cam"] = zoom_at(tlay["cam"], tlay["view"], tlay["world"], wx_, wy_, factor)
                     continue
@@ -1477,8 +1465,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     if card_uid is not None:
                         open_event(card_uid)
                         continue
-                    from src.kora import render_battle
-
                     bhit = render_battle.hit(renderer.battle_hits, mx, my)
                     if bhit is not None:
                         bt = next((x for x in _battle.battles(state) if x.uid == renderer.battle_hits.get("uid")), None)
@@ -1489,8 +1475,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         elif bt is not None and bhit == "see":
                             show_place(bt.hex)
                         continue
-                    from src.kora.render_situations import banner_hit
-
                     sit_uid = banner_hit(renderer.situation_hits, mx, my)
                     if sit_uid is not None:
                         open_situation(sit_uid)
@@ -1565,8 +1549,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             elif event.type == pygame.MOUSEMOTION and tech_drag:
                 tlay = renderer.side_hits.get("tech")
                 if tlay and side_panel == "savoirs":
-                    from src.kora.render import pan
-
                     mx, my = event.pos
                     ax, ay = tech_press["at"]
                     if tech_drag != 1 or tech_press["moved"] or abs(mx - ax) + abs(my - ay) > 4:
@@ -1684,7 +1666,5 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             ui,
         )
         if mp is not None:
-            from src.kora import render_menu
-
             render_menu.draw_mp_overlay(renderer, mp, state, chat_text)
         pygame.display.flip()

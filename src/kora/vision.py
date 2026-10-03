@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from src.kora.gamestate import GameState, PLAYER_TRIBE_ID, humans, note, pov_of
 from src.kora.log import LogKind
 from src.kora.types import Hex
-from src.kora import places
+from src.kora import places, tech
 
 VISION_RADIUS = 8
 TOWER_SIGHT = 3
@@ -40,8 +40,6 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
     radius = VISION_RADIUS
     player = state.tribes.get(tid)
     if player is not None:
-        from src.kora import tech
-
         radius = tech.bonuses(player).vision
     # Tours de guet des villages : on voit plus loin autour.
     towers: list = []

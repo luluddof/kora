@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import peoples, places, systems, tech
+from src.kora import influence, peoples, places, sites, systems, tech
 from src.kora.log import LogKind
 from src.kora.types import Person, Tribe, stay_order
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
@@ -269,8 +269,6 @@ def winter_prestige(state, tid: int) -> int:
 
 def loyalty_parts(state, band) -> list[tuple[str, float]]:
     """Raisons de la cible d'attachement d'un clan, lisibles."""
-    from src.kora import influence, sites
-
     tribe = state.tribes.get(band.tribe_id)
     if tribe is None:
         return []
@@ -401,7 +399,7 @@ def autonomy_parts(state, band) -> list[tuple[str, str]]:
 
 
 def _autonomy(state, band) -> tuple[float, list]:
-    from src.kora import sites, villages
+    from src.kora import villages
 
     if not gains_autonomy(state, band):
         return 0.0, []
@@ -611,7 +609,7 @@ def secede(state, band_id: int, hostile: bool = False, independence: bool = Fals
     il reste, faute de place). Independance (apres les villages) : il ne
     rejoint pas un peuple etranger, il fonde le sien, de la meme
     civilisation (le monde plein : il attend)."""
-    from src.kora import diplo, influence
+    from src.kora import diplo
 
     band = state.bands.get(band_id)
     if band is None or is_chief_band(state, band):

@@ -33,8 +33,9 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
-from src.kora import chiefs, places, population, tech
+from src.kora import chiefs, diplo, events, places, population, tech, villages
 from src.kora.bands import gain_prestige, stock_max
+from src.kora.situations import _rand
 
 RATES = (0, 10, 20, 30)
 DEFAULT_RATE = 10
@@ -98,8 +99,6 @@ def kin_of(state, tid: int) -> set:
     """Les peuples freres d'un peuple qui connait Villages freres : ceux de
     sa civilisation qui ne se sont pas razzies l'un l'autre depuis un an, et
     ses tributaires. (Pas la relation : elle compte deja les freres.)"""
-    from src.kora import diplo
-
     tribe = state.tribes.get(tid)
     if tribe is None or not tech.bonuses(tribe).kin:
         return set()
@@ -382,8 +381,6 @@ def vassals_of(state, tid: int) -> list[int]:
 
 
 def make_vassal(state, lord: int, vassal: int, how: str = "force") -> None:
-    from src.kora import diplo
-
     d = state.diplo
 
     def drop(a: int, b: int, kinds) -> None:
@@ -425,8 +422,6 @@ def village_taken(state, winner, loser, site_id: int) -> str:
     """Le village de `loser` est pris par `winner` (battle._end). Un joueur
     choisit (carte : soumettre ou piller) ; l'IA decide. Rend le batiment
     perdu (pillage tout de suite)."""
-    from src.kora import events
-
     w, l = winner.tribe_id, loser.tribe_id
     if overlord_of(state, l) == w:
         # Deja son tributaire (il s'etait dresse contre lui) : on pille.
@@ -439,8 +434,6 @@ def village_taken(state, winner, loser, site_id: int) -> str:
 
 
 def ai_choice(state, w: int, l: int) -> str:
-    from src.kora import diplo
-
     if diplo.relation(state, w, l) < -60:
         return "piller"
     return "soumettre" if has_chiefdom(state, w) else "piller"
@@ -448,8 +441,6 @@ def ai_choice(state, w: int, l: int) -> str:
 
 def conquer(state, w: int, l: int, site_id: int, choice: str) -> str:
     """Soumettre (tributaire) ou piller le village pris."""
-    from src.kora import villages
-
     site = state.sites.get(site_id)
     band = places.band_of(state, site) if site is not None else None
     if l not in state.tribes or w not in state.tribes:
@@ -474,15 +465,11 @@ def conquer(state, w: int, l: int, site_id: int, choice: str) -> str:
 
 
 def protection_power(state, a: int, b: int) -> float:
-    from src.kora import diplo
-
     return diplo.power(state, a) / max(1.0, diplo.power(state, b))
 
 
 def unrest(state, vassal: int, lord: int) -> float:
     """Ce qui pousse un tributaire a se revolter (0 a 100)."""
-    from src.kora import diplo
-
     u = 0.0
     rel = diplo.relation(state, vassal, lord)
     if rel < 0:
@@ -523,8 +510,6 @@ def _pay_vassal(state, vassal: int, lord: int) -> float:
 
 
 def _revolt(state, vassal: int, lord: int) -> None:
-    from src.kora import diplo
-
     while diplo.has_pact(state, vassal, lord, "vassal"):
         diplo.break_pact(state, vassal, lord, "vassal")
     diplo.add_mod(state, lord, vassal, "revolte", -25, actor=vassal)
@@ -537,8 +522,6 @@ def _revolt(state, vassal: int, lord: int) -> None:
 
 
 def monthly(state) -> None:
-    from src.kora import villages
-
     split_extra_villages(state)
     for tid in sorted(state.tribes):
         tribe = state.tribes[tid]
@@ -582,8 +565,6 @@ def monthly(state) -> None:
         for fam in list(tribe.families or []):
             if fam["favour"] >= 20:
                 continue
-            from src.kora.situations import _rand
-
             if _rand(state, "famille", tid, fam["id"]) < 0.04:
                 _family_leaves(state, tribe, fam)
         if not is_human(state, tid):

@@ -22,6 +22,7 @@ from src.kora.peoples import color_of
 from src.kora.situations import CRISE, SPECS
 from src.kora.theme import C
 from src.kora.gamestate import seen_of
+from src.kora.globe import hex_to_globe_screen
 
 # Une case du bandeau (dans la barre du haut).
 CARD_W, CARD_H = 40, 40
@@ -447,7 +448,6 @@ def draw_on_map(r, state, yaw, pitch, zoom) -> None:
     """Le lieu d'une situation du joueur, seulement quand on la regarde (son
     medaillon survole, ou sa fenetre ouverte) : un cercle de pointilles a son
     rayon et le medaillon au centre. Le reste du temps, la carte est libre."""
-    from src.kora.globe import hex_to_globe_screen
     from src.kora.render import HUD_HEIGHT, view_params
 
     shown = {getattr(r, "situation_hover", None), getattr(r, "situation_open_uid", None)}

@@ -44,13 +44,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.kora import places, population, systems, tech, villages
+from src.kora import money, places, population, situations, systems, tech, villages
 from src.kora.log import LogKind
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.types import TradeRoute
 from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.gamestate import note
 from src.kora.bands import stock_max
+from src.kora.villages import FIELD_RADIUS
 
 TEAM = 10
 TEAM_POP = 30
@@ -196,8 +197,6 @@ FAR_RES = {"argent": 6}
 def riches(world, h) -> dict:
     """Ressources des terres d'un village : nom -> (gisements, meilleure
     valeur). La carte ne change pas : memorise."""
-    from src.kora.villages import FIELD_RADIUS
-
     memo = getattr(world, "_lands", None)
     if memo is None:
         memo = world._lands = {}
@@ -393,15 +392,11 @@ def output(state, site, cid: str) -> float:
     craft = CRAFTS[cid]
     if craft.special == "calcul":
         # Des equipes de calculateurs (numbers.points en fait des points).
-        from src.kora import money
-
         return n * money.wage_mult(state, site.tribe_id, "calcul")
     _count, best = deposits(state, site, cid)
     rich = 0.5 + best
     shop = WORKSHOP if places.has(site, "atelier") else 1.0
     # Le savoir-faire, la chefferie, les gages... (systems.CRAFT_OUTPUT).
-    from src.kora import money
-
     shop = systems.apply_mult(shop, systems.CRAFT_OUTPUT, state, site, craft)
     if craft.special == "argent":
         return n * money.SILVER_OUT * rich * shop
@@ -468,8 +463,6 @@ def update(state) -> None:
                 continue
             got = output(state, site, cid)
             if craft.special == "argent":
-                from src.kora import money
-
                 money.earn(state, band.tribe_id, "mines", got)
             elif craft.food:
                 band.stock = min(stock_max(band, state), band.stock + got)
@@ -585,8 +578,6 @@ def offers(state, giver: int, taker: int) -> list[str]:
 def price(state, tribe_id: int, good: str) -> float:
     """Prix d'une charge chez ce peuple : sa valeur, x1,6 quand il n'en a
     pas, x0,5 quand il en a deux fois sa reserve."""
-    from src.kora import situations
-
     base = value(good) * situations.price_mult(state, tribe_id, good)
     target = reserve(state, tribe_id)
     if target <= 0:
@@ -769,8 +760,6 @@ def close_route(state, tribe_id: int, route) -> bool:
 def route_price(state, route) -> float:
     """Prix d'une charge sur cette route : le prix moyen des deux marches,
     +10 % si le vendeur a une Place d'echange."""
-    from src.kora import situations
-
     p = (price(state, route.exporter, route.good) + price(state, route.importer, route.good)) / 2.0
     if trading_places(state, route.exporter):
         p *= PLACE_PRICE
@@ -872,8 +861,6 @@ def _run_pair(state, routes: list) -> None:
         receiver = b if payer == a else a
         due = owe[payer] - owe[receiver]
         can = _can_pay(state, payer)
-        from src.kora import money
-
         if money.pays_in_money(state, payer, receiver):
             # Le tresor paie aussi (money.py).
             can += state.tribes[payer].money * money.VPS
@@ -908,8 +895,6 @@ def _run_pair(state, routes: list) -> None:
     receiver = b if payer == a else a
     due = owe[payer] - owe[receiver]
     if due > 0:
-        from src.kora import money
-
         if money.pays_in_money(state, payer, receiver):
             # En argent d'abord ; le reste en vivres.
             due -= money.pay_route(state, payer, receiver, due)
@@ -953,8 +938,6 @@ def monthly(state) -> None:
                 delivered.add(key)
                 if _player_in(state, r):
                     _reveal(state, r)
-    from src.kora import money
-
     money.collect_tolls(state)
     for a, b in sorted(delivered):
         mods = d.mods.get((a, b), [])

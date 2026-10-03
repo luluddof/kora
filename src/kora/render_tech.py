@@ -21,7 +21,7 @@ import math
 import pygame
 import pygame.gfxdraw
 
-from src.kora import learning, tech, theme
+from src.kora import learning, render_numbers, tech, theme
 from src.kora.render import TREE_GUTTER, TREE_PAD, TREE_ROW, cam_on, tech_panel_layout, to_screen
 from src.kora.theme import C
 
@@ -327,8 +327,6 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
     if lay.get("tabs"):
         _tabs(r, lay, mx, my)
     if lay.get("numbers") is not None:
-        from src.kora import render_numbers
-
         render_numbers.draw(r, state, lay, ui)
         return
     view, cam = lay["view"], lay["cam"]

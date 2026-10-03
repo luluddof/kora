@@ -34,6 +34,7 @@ from src.kora.world import (
     offset_to_axial,
     save_world,
 )
+from src.kora.atlas import build_atlas_labels
 
 PLANET_WIDTH = 768
 PLANET_HEIGHT = 384
@@ -497,8 +498,6 @@ def bake(seed: int = 42, path=None, width: int = PLANET_WIDTH, height: int = PLA
     """Recuire la carte du jeu : generation, ressources du pays, noms de
     l'atlas, dans data/kora_map.json. Usage : python -m src.kora.mapgen [graine]"""
     from pathlib import Path
-
-    from src.kora.atlas import build_atlas_labels
 
     world = generate_world(seed, width, height, resources=True)
     if path is None:

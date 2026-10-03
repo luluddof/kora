@@ -26,6 +26,7 @@ from src.kora.render_tech import (
     SOFT,
     _button,
     _fit,
+    _fonts,
     _gradient_card,
     _wrap,
     medallion,
@@ -34,6 +35,8 @@ from src.kora.render_village import _frame, _hover, _plain_button
 from src.kora.theme import C
 from src.kora.gamestate import human_dead
 from src.kora.peoples import CULTURES, make_name
+from src.kora.globe_draw import Planet
+from src.kora.render import HUD_HEIGHT
 
 # Couleurs proposees au joueur (le bleu et le vert sont ceux des grands peuples IA).
 PALETTE = (
@@ -218,8 +221,6 @@ START_LABEL = {"solo": "Commencer la partie", "host": "Ouvrir le salon", "join":
 def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "") -> None:
     """setup : {"name", "color", "bonuses" (liste), "typing" (False, True :
     le nom, "address" : l'adresse), "mode" (solo, host, join), "address"}."""
-    from src.kora.render_tech import _fonts
-
     title_font, head_font, _era, _num = _fonts(r)
     screen = r.screen
     w, h = screen.get_size()
@@ -409,8 +410,6 @@ class TitleScene:
 
 def title_planet(r, world):
     """La planete du menu, toute eclairee (pas de brouillard), gardee a part."""
-    from src.kora.globe_draw import Planet
-
     planet = getattr(r, "_title_planet", None)
     if planet is None or planet.world is not world:
         planet = Planet(world)
@@ -541,8 +540,6 @@ def _addresses(mp) -> tuple[str, str]:
 def draw_lobby(r, mp, t: float, chat_text, hint: str = "", status: str = "") -> None:
     """Le salon : les quatre places (vallee, steppe, foret, cote), qui est
     pret, la discussion. mp : session.HostSession ou ClientSession."""
-    from src.kora.render_tech import _fonts
-
     title_font, head_font, _era, _num = _fonts(r)
     screen = r.screen
     w, h = screen.get_size()
@@ -644,8 +641,6 @@ CHAT_SHOWN = 24.0
 
 def draw_mp_overlay(r, mp, state, chat_text) -> None:
     import time as _time
-
-    from src.kora.render import HUD_HEIGHT
 
     screen = r.screen
     w, h = screen.get_size()
