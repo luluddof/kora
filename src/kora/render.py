@@ -1319,7 +1319,7 @@ class Renderer:
     def draw_fields(self, state, site, yaw, pitch, gcx, gcy, focal, dist) -> None:
         w, h = self.screen.get_size()
         big = dist <= LABEL_DIST
-        for col, row in site.data.get("fields", []):
+        for col, row in site.data.fields:
             hx = offset_to_axial(col, row)
             pos = hex_to_globe_screen(hx, state.world, yaw, pitch, gcx, gcy, focal, dist)
             if pos is None:

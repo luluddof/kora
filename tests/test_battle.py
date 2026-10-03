@@ -154,7 +154,7 @@ def test_a_palisade_makes_the_village_hold():
         sites.make_camp(st, 1)
         site = villages.found(st, 1)
         if with_palisade:
-            site.data["buildings"].append("palissade")
+            site.data.buildings.append("palissade")
         # Une troupe levee par un village de la meme taille : une part de ses hommes.
         raider = Band(2, 2, site.hex, 28, 0.0, kind="armee")
         st.bands[2] = raider
@@ -196,7 +196,7 @@ def test_a_beaten_village_is_pillaged_and_stays():
     village = st.bands[1]
     assert village.position == site.hex and not village.retreating
     assert village.population > 40, "on ne tue pas tout le monde"
-    assert site.data["burned"]
+    assert site.data.burned
 
 
 def test_odds_read_the_balance_of_forces():

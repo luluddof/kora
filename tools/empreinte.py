@@ -25,6 +25,21 @@ from src.kora.sim import _default_world, new_game, tick  # noqa: E402
 from test_balance import _robot  # noqa: E402
 
 
+# Les donnees d'un lieu, sans les cles a leur valeur par defaut (la forme
+# d'avant, un dict, et celle d'apres, sites.VillageData, s'y comparent).
+_DATA_DEFAULTS = {
+    "band": 0, "oath": "", "fields": [], "soil": {}, "seed": 0.0, "sown_ratio": 0.0, "burned": False,
+    "buildings": [], "build": None, "monument": 0, "history": [], "last_harvest": None, "season": None,
+    "season_at": None, "forage": {}, "teams": {}, "alert": -1000, "asked": None,
+}
+
+
+def _site_data(data) -> str:
+    if not isinstance(data, dict):
+        data = {k: getattr(data, k) for k in _DATA_DEFAULTS}
+    return str(sorted(((k, v) for k, v in data.items() if not (k in _DATA_DEFAULTS and v == _DATA_DEFAULTS[k])), key=str))
+
+
 def digest(st) -> str:
     parts = [str(st.tick_count), str(st.clock.week), str(st.clock.year)]
     for bid in sorted(st.bands):
@@ -65,7 +80,7 @@ def digest(st) -> str:
         )
     for sid in sorted(st.sites):
         site = st.sites[sid]
-        parts.append(f"S{sid}|{site.kind}|{site.tribe_id}|{site.hex}|{site.store!r}|{sorted(site.data.items(), key=str)}")
+        parts.append(f"S{sid}|{site.kind}|{site.tribe_id}|{site.hex}|{site.store!r}|{_site_data(site.data)}")
     parts.append(str(sorted(st.diplo.contacts)))
     parts.append(str(sorted((k, [(m.key, m.value) for m in v]) for k, v in st.diplo.mods.items())))
     parts.append(str(sorted((k, [(p.kind, p.until) for p in v]) for k, v in st.diplo.pacts.items())))

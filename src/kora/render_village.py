@@ -640,8 +640,8 @@ def draw_village(r, state, ui) -> None:
     tiles = (
         ("HABITANTS", f"{band.population}", f"places à bâtir {villages.used_slots(site)}/{villages.slots(state, site)}", INK),
         ("GRENIER", f"{band.stock:.0f} / {cap:.0f}", f"{weeks:.0f} semaines de vivres", GOOD if weeks >= 8 else WARN),
-        ("SEMENCES", f"{site.data.get('seed', 0.0):.0f}", f"{step} (~{left} sem.)", INK),
-        ("RÉCOLTE ATTENDUE", f"~{crop:.0f}" if site.data.get("fields") else "-", f"{len(site.data.get('fields', []))} champs · sol {100 * villages.soil_avg(site):.0f} %", INK),
+        ("SEMENCES", f"{site.data.seed:.0f}", f"{step} (~{left} sem.)", INK),
+        ("RÉCOLTE ATTENDUE", f"~{crop:.0f}" if site.data.fields else "-", f"{len(site.data.fields)} champs · sol {100 * villages.soil_avg(site):.0f} %", INK),
         ("DÉFENSE", f"x{defense:.2f}".replace(".", ","), f"force {band_force(state, band):.0f} · {len(villages.defense_parts(state, band))} abri(s)", INK),
         ("GUERRIERS", f"{warriors}", f"compagnies {villages.companies_of(state, site)}/{villages.army_cap(state, site)}", INK),
     )
@@ -948,8 +948,8 @@ def _draw_lands(r, state, site, band, lay) -> None:
     radius = villages.FIELD_RADIUS
     size = min((mw - 16) / (math.sqrt(3) * (2 * radius + 1)), (mh - 16) / (1.5 * (2 * radius) + 2))
     cx0, cy0 = mx_ + mw / 2, my_ + mh / 2
-    fields = {tuple(f) for f in site.data.get("fields", [])}
-    soil = site.data.get("soil", {})
+    fields = {tuple(f) for f in site.data.fields}
+    soil = site.data.soil
     center = site.hex
     for dq in range(-radius, radius + 1):
         for dr in range(max(-radius, -dq - radius), min(radius, -dq + radius) + 1):
@@ -985,7 +985,7 @@ def _draw_lands(r, state, site, band, lay) -> None:
     gx, gy, gw, gh = lay["graph"]
     screen.blit(r.tiny.render("RÉCOLTES DES DERNIÈRES ANNÉES", True, GOLD), (gx, gy - 18))
     screen.blit(_gradient_card(gw, gh, (30, 23, 18), (20, 16, 12), 6), (gx, gy))
-    history = site.data.get("history", [])
+    history = site.data.history
     need = band.population * 52
     top = max([c for _y, c in history] + [need * 0.6, 100])
     base_y = gy + gh - 18

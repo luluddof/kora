@@ -156,7 +156,7 @@ def test_herders_weave_without_wild_goats():
 
 def test_craftsmen_are_not_in_the_fields():
     st, site, band = _village(known=("poterie",), res={"argile": (255, 2)}, pop=90)
-    site.data["fields"] = [[30, 15], [31, 15], [29, 15], [30, 14], [31, 14]]
+    site.data.fields = [[30, 15], [31, 15], [29, 15], [30, 14], [31, 14]]
     full = villages.field_hands_mult(site, band)
     goods.set_teams(st, site, "potiers", 3)
     assert villages.field_hands_mult(site, band) < full
@@ -305,7 +305,7 @@ def test_a_trade_place_and_workshops():
     before = goods.convoys(st, 1)
     goods.set_teams(st, site, "potiers", 1)
     made = goods.output(st, site, "potiers")
-    site.data["buildings"] = ["place", "atelier"]
+    site.data.buildings = ["place", "atelier"]
     assert goods.convoys(st, 1) == before + goods.CONVOYS_PLACE
     assert abs(goods.output(st, site, "potiers") - made * goods.WORKSHOP) < 1e-9
 
@@ -384,7 +384,7 @@ def test_a_village_has_children_only_if_food_will_last():
     band.stock = 40.0 * band.population
     assert villages.granary_growth(st, band) == 1.0
     band.stock = 0.0
-    site.data["forage"] = {s: band.population * 0.5 for s in ("hiver", "printemps", "ete", "automne")}
+    site.data.forage = {s: band.population * 0.5 for s in ("hiver", "printemps", "ete", "automne")}
     assert villages.granary_growth(st, band) == villages.FOOD_LOW_GROWTH
 
 
@@ -537,16 +537,16 @@ def test_the_commerce_screen_fits_answers_and_draws():
 def test_a_village_that_ate_its_seed_sows_again():
     st, site, band = _village(res={"cereales": (200, 3)})
     # Plus de semences : on seme le grain du grenier (4 semaines gardees).
-    site.data["seed"] = 0.0
+    site.data.seed = 0.0
     band.stock = 20.0 * band.population
     villages.sow(st, site, band)
-    assert site.data["fields"] and site.data["sown_ratio"] > 0.9
+    assert site.data.fields and site.data.sown_ratio > 0.9
     assert band.stock >= villages.SOW_KEEP_WEEKS * band.population
     # Plus rien au grenier : les graines sauvages donnent au moins un champ.
-    site.data["seed"] = 0.0
+    site.data.seed = 0.0
     band.stock = 0.0
     villages.sow(st, site, band)
-    assert site.data["fields"] and site.data["sown_ratio"] > 0
+    assert site.data.fields and site.data.sown_ratio > 0
     assert band.stock == 0.0
 
 

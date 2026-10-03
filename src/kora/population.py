@@ -327,7 +327,7 @@ def occupations(state, band) -> dict:
                 men -= m
                 women -= w
                 out["metiers"][cid] = m + w
-            fields = len(site.data.get("fields", []))
+            fields = len(site.data.fields)
             need = int(round(fields * villages.FIELD_HANDS * ACTIVE_NORM))
             free = men + women
             take = min(need, free)

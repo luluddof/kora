@@ -279,7 +279,7 @@ def res_label(cid: str) -> str:
 def teams(site) -> dict:
     if site is None:
         return {}
-    return site.data.get("teams") or {}
+    return site.data.teams or {}
 
 
 def teams_of(site, cid: str) -> int:
@@ -356,10 +356,10 @@ def set_teams(state, site, cid: str, n: int) -> bool:
         if add_block(state, site, cid):
             break
         now += 1
-        site.data.setdefault("teams", {})[cid] = now
+        site.data.teams[cid] = now
     if n < now:
         now = n
-        t = site.data.setdefault("teams", {})
+        t = site.data.teams
         if now:
             t[cid] = now
         else:

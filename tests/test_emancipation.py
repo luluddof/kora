@@ -261,7 +261,7 @@ def test_a_full_civilisation_sends_its_restless_families_to_a_kin_village():
     other = st.bands[3]
     before = other.population
     st.tribes[1].prestige = 0
-    site.data["burned"] = True
+    site.data.burned = True
     for month in range(1, 40):
         st.tick_count = 4 * month
         village.famine_tick = st.tick_count
@@ -320,7 +320,7 @@ def test_a_troubled_village_loses_families():
     site = v.site_of(st, village)
     st.tribes[1].prestige = 0
     village.famine_tick = 0
-    site.data["burned"] = True
+    site.data.burned = True
     assert v.stability(st, site) < v.UNREST
     before = village.population
     for month in range(1, 30):

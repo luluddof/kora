@@ -46,7 +46,7 @@ def test_a_village_needs_sowing_knowledge_and_a_camp():
 def test_founding_settles_the_band_on_its_camp():
     st, band, site = _village()
     assert band.village == site.id and site.kind == "village" and site.name
-    assert site.data["fields"], "au printemps on seme tout de suite"
+    assert site.data.fields, "au printemps on seme tout de suite"
     before = band.position
     set_goto(st, 1, offset_to_axial(40, 15))
     assert not band.path and band.position == before
@@ -56,7 +56,7 @@ def test_founding_settles_the_band_on_its_camp():
 
 def test_fields_spread_over_several_hexes_and_follow_the_best_soil():
     st, band, site = _village(pop=110)
-    fields = site.data["fields"]
+    fields = site.data.fields
     assert len(fields) == 5
     assert len({tuple(f) for f in fields}) == 5
     centre = st.world._index(site.hex)
@@ -64,7 +64,7 @@ def test_fields_spread_over_several_hexes_and_follow_the_best_soil():
     assert centre is not None
     # Un champ au sol epuise cede la place.
     worn = tuple(fields[0])
-    site.data["soil"][f"{worn[0]},{worn[1]}"] = 0.2
+    site.data.soil[f"{worn[0]},{worn[1]}"] = 0.2
     again = villages.choose_fields(st, site, band)
     assert list(worn) not in again
 
@@ -72,12 +72,12 @@ def test_fields_spread_over_several_hexes_and_follow_the_best_soil():
 def test_harvest_in_autumn_keeps_seed_and_wears_the_soil():
     st, band, site = _village(pop=60)
     band.stock = 0.0
-    fields = [tuple(f) for f in site.data["fields"]]
+    fields = [tuple(f) for f in site.data.fields]
     _to_season(st, Season.ETE)
     _to_season(st, Season.AUTOMNE)
-    assert site.data["last_harvest"] > 0
-    assert band.stock > 0 and site.data["seed"] > 0
-    assert all(site.data["soil"][f"{c},{r}"] < 1.0 for c, r in fields)
+    assert site.data.last_harvest > 0
+    assert band.stock > 0 and site.data.seed > 0
+    assert all(site.data.soil[f"{c},{r}"] < 1.0 for c, r in fields)
 
 
 def test_no_seed_the_granary_sows_and_without_grain_no_fields():
@@ -89,7 +89,7 @@ def test_no_seed_the_granary_sows_and_without_grain_no_fields():
     band.stock = 30.0 * band.population
     _to_season(st, Season.HIVER)
     _to_season(st, Season.PRINTEMPS)
-    assert site.data["fields"] and band.stock < 30.0 * band.population
+    assert site.data.fields and band.stock < 30.0 * band.population
     # Ni semences, ni grain, ni graines sauvages (carte sans ressources) :
     # les champs restent vides.
     st, band, site = _village(pop=60)
@@ -97,9 +97,9 @@ def test_no_seed_the_granary_sows_and_without_grain_no_fields():
     _to_season(st, Season.AUTOMNE)
     villages.eat_seed(st, band)
     band.stock = 0.0
-    site.data["seed"] = 0.0
+    site.data.seed = 0.0
     villages.sow(st, site, band)
-    assert site.data["fields"] == []
+    assert site.data.fields == []
     assert "Semailles" in " ".join(villages.lines(st, band)) or "semences 0" in " ".join(villages.lines(st, band))
 
 
@@ -117,7 +117,7 @@ def test_a_village_does_not_flee_it_is_pillaged():
     set_march_to_band(st, 2, 1)
     fight_out(st)
     assert band.position == site.hex and band.village == site.id
-    assert site.data["burned"] and not band.retreating
+    assert site.data.burned and not band.retreating
     assert st.bands[2].stock > 0
 
 
@@ -159,4 +159,4 @@ def test_villages_are_saved(tmp_path):
     loaded, _ = load_game(path, world)
     band = loaded.bands[1]
     assert band.village == site.id
-    assert loaded.sites[site.id].data["fields"] == site.data["fields"]
+    assert loaded.sites[site.id].data.fields == site.data.fields

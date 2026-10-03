@@ -49,7 +49,7 @@ def test_raising_needs_people_and_one_troop_at_a_time():
     assert villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"]) is not None
     assert villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"]) is not None
     assert "compagnies" in villages.army_block(st2, 1, villages.LEVY_SHARE["poignee"])
-    s2.data["buildings"].append("guerriers")
+    s2.data.buildings.append("guerriers")
     assert villages.army_block(st2, 1, villages.LEVY_SHARE["poignee"]) == ""
 
 
@@ -125,7 +125,7 @@ def test_a_troop_without_village_becomes_a_clan():
 def test_a_troop_away_leaves_the_harvest_short_of_hands():
     st, village, site = _village(pop=100)
     # Beaucoup de champs : il faut tous les bras.
-    site.data["fields"] = [[c, 0] for c in range(6)]
+    site.data.fields = [[c, 0] for c in range(6)]
     full = villages.field_hands_mult(site, village)
     villages.raise_army(st, 1, villages.LEVY_SHARE["masse"])
     assert villages.field_hands_mult(site, village) < full

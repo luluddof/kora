@@ -39,6 +39,7 @@ from src.kora.log import LogKind
 from src.kora.types import Band, Season, Terrain, stay_order
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.world import offset_to_axial
+from src.kora.sites import VillageData
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.peoples import CULTURES, civ_of, culture_of, make_name
 from src.kora.bands import (
@@ -243,7 +244,7 @@ def site_of(state, band):
 
 
 def band_of(state, site):
-    bid = site.data.get("band", 0)
+    bid = site.data.band
     band = state.bands.get(bid)
     if band is None or band.village != site.id or band.population <= 0:
         return None
@@ -267,29 +268,17 @@ def rank_name(population: int) -> str:
 
 
 def oath_of(site) -> str:
-    return site.data.get("oath", "") if site is not None else ""
+    return site.data.oath if site is not None else ""
 
 
 # --- batiments ---------------------------------------------------------------------
 
 
-def _migrate(site) -> None:
-    """Anciennes sauvegardes : la palissade etait un compteur a part."""
-    data = site.data
-    if "palisade" in data:
-        p = data.pop("palisade")
-        built = data.setdefault("buildings", [])
-        if p < 0 and "palissade" not in built:
-            built.append("palissade")
-        elif p > 0 and not data.get("build"):
-            data["build"] = ["palissade", int(p)]
-
-
 def built(site) -> list:
+    # (Les vieilles palissades sont relues a la relecture : sites._village_data.)
     if site is None:
         return []
-    _migrate(site)
-    return site.data.get("buildings", [])
+    return site.data.buildings
 
 
 def has(site, bid: str) -> bool:
@@ -297,7 +286,7 @@ def has(site, bid: str) -> bool:
 
 
 def monument_stages(site) -> int:
-    return int(site.data.get("monument", 0)) if site is not None else 0
+    return int(site.data.monument) if site is not None else 0
 
 
 def monument_open(state, site) -> bool:
@@ -327,12 +316,12 @@ def pull_down_monument(state, site) -> bool:
     if site is None:
         return False
     had = monument_stages(site) > 0 or has(site, "monument")
-    site.data.pop("monument", None)
-    if "monument" in site.data.get("buildings", []):
-        site.data["buildings"].remove("monument")
+    site.data.monument = 0
+    if "monument" in site.data.buildings:
+        site.data.buildings.remove("monument")
     job = works(site)
     if job and job[0] == "monument":
-        site.data["build"] = None
+        site.data.build = None
         had = True
     return had
 
@@ -341,8 +330,7 @@ def works(site):
     """Chantier en cours : (id, semaines restantes) ou None."""
     if site is None:
         return None
-    _migrate(site)
-    job = site.data.get("build")
+    job = site.data.build
     return (job[0], int(job[1])) if job else None
 
 
@@ -455,7 +443,7 @@ def build(state, band_id: int, bid: str) -> bool:
 
         cost -= chiefdom.granary_pay(state, band.tribe_id, cost)
     band.stock -= cost
-    site.data["build"] = [bid, build_weeks(site, bid)]
+    site.data.build = [bid, build_weeks(site, bid)]
     if state.tribes[band.tribe_id].is_player:
         _note(state, LogKind.SURVIE, f"{name(site)} : chantier de {BUILDINGS[bid].name.lower()} ({build_weeks(site, bid)} sem.).", site.hex, to=band.tribe_id)
     return True
@@ -468,18 +456,18 @@ def _advance_works(state, site, band) -> None:
     bid, left = job
     left -= 1
     if left > 0:
-        site.data["build"] = [bid, left]
+        site.data.build = [bid, left]
         return
-    site.data["build"] = None
+    site.data.build = None
     if bid == "monument":
         n = monument_stages(site) + 1
-        site.data["monument"] = n
-        if "monument" not in site.data.setdefault("buildings", []):
-            site.data["buildings"].append("monument")
+        site.data.monument = n
+        if "monument" not in site.data.buildings:
+            site.data.buildings.append("monument")
         if state.tribes[band.tribe_id].is_player:
             _note(state, LogKind.SURVIE, f"{name(site)} : le grand monument s'élève (étape {n} sur {MONUMENT_STAGES}).", site.hex, to=band.tribe_id)
         return
-    site.data.setdefault("buildings", []).append(bid)
+    site.data.buildings.append(bid)
     if state.tribes[band.tribe_id].is_player:
         text = f"{name(site)} : la palissade est debout." if bid == "palissade" else f"{name(site)} : {BUILDINGS[bid].name.lower()} achevée."
         _note(state, LogKind.SURVIE, text, site.hex, to=band.tribe_id)
@@ -535,7 +523,7 @@ def _to_harvest(state, site) -> list:
     """[(saison, semaines)] jusqu'a la prochaine recolte (debut de l'automne
     local)."""
     season = state.world.hex_season(site.hex)
-    since = site.data.get("season_at")
+    since = site.data.season_at
     if since is None:
         left = 13 - (state.clock.week - 1) % 13
     else:
@@ -556,9 +544,9 @@ def note_forage(state, site, take: float) -> None:
     """Collecte de la semaine (sim.collect_food) : une moyenne par saison,
     pour prevoir l'hiver en ete."""
     key = state.world.hex_season(site.hex).value
-    memo = site.data.setdefault("forage", {})
+    memo = site.data.forage
     if not isinstance(memo, dict):
-        memo = site.data["forage"] = {}
+        memo = site.data.forage = {}
     old = memo.get(key)
     memo[key] = round(take if old is None else old + FORAGE_MEMORY * (take - old), 2)
 
@@ -568,7 +556,7 @@ def food_outlook(state, site, band) -> tuple[int, float]:
     from src.kora import goods
 
     pop = max(1, band.population)
-    memo = site.data.get("forage")
+    memo = site.data.forage
     memo = memo if isinstance(memo, dict) else {}
     here = memo.get(state.world.hex_season(site.hex).value, float(pop))
     fish = goods.output(state, site, "pecheurs")
@@ -747,7 +735,7 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
         parts.append(("Prestige", round(p)))
     if state.tick_count - band.famine_tick <= 8:
         parts.append(("Famine récente", -20.0))
-    if site.data.get("burned"):
+    if site.data.burned:
         parts.append(("Champs brûlés", -10.0))
     crowd = band.population - CROWD_POP - (40 if has(site, "maison_longue") else 0)
     if crowd > 0:
@@ -873,7 +861,7 @@ def _taken_by_others(state, site) -> set:
     taken = set()
     for other in state.sites.values():
         if other.kind == "village" and other.id != site.id:
-            taken.update(tuple(f) for f in other.data.get("fields", []))
+            taken.update(tuple(f) for f in other.data.fields)
     return taken
 
 
@@ -881,7 +869,7 @@ def choose_fields(state, site, band) -> list:
     """Les meilleures cases autour du village, sol compris."""
     world = state.world
     want = min(MAX_FIELDS, max(1, math.ceil(band.population / FIELD_WORKERS)))
-    soil = site.data.setdefault("soil", {})
+    soil = site.data.soil
     taken = _taken_by_others(state, site)
     scored = []
     for h in world.hexes_in_radius(site.hex, FIELD_RADIUS):
@@ -912,7 +900,7 @@ def field_hands_mult(site, band, state=None) -> float:
     metiers (population.occupations) ; les hommes partis a la guerre manquent."""
     from src.kora import goods, population
 
-    fields = len(site.data.get("fields", []))
+    fields = len(site.data.fields)
     need = fields * FIELD_HANDS * population.ACTIVE_NORM
     if need <= 0:
         return 1.0
@@ -930,14 +918,14 @@ def expected_harvest(state, site, band=None) -> float:
     band = band or band_of(state, site)
     if band is None:
         return 0.0
-    soil = site.data.get("soil", {})
+    soil = site.data.soil
     total = 0.0
-    fields = site.data.get("fields", [])
+    fields = site.data.fields
     for col, row in fields:
         h = offset_to_axial(col, row)
         total += fertility(state, site.tribe_id, h) * soil.get(_key(col, row), 1.0)
-    ratio = site.data.get("sown_ratio", 0.0)
-    burned = BURNED if site.data.get("burned") else 1.0
+    ratio = site.data.sown_ratio
+    burned = BURNED if site.data.burned else 1.0
     return total * FIELD_FOOD * ratio * yield_mult(state, site) * burned * field_hands_mult(site, band)
 
 
@@ -958,7 +946,7 @@ def _wild_seed(state, site) -> float:
 def sow(state, site, band, late: bool = False) -> None:
     fields = choose_fields(state, site, band)
     need = SEED * len(fields)
-    seed = site.data.get("seed", 0.0)
+    seed = site.data.seed
     from_granary = 0.0
     wild = 0.0
     if seed < need:
@@ -969,15 +957,15 @@ def sow(state, site, band, late: bool = False) -> None:
         wild = min(_wild_seed(state, site), need - seed)
         seed += wild
     sown = min(seed, need)
-    site.data["seed"] = seed - sown
+    site.data.seed = seed - sown
     # Ce qui reste des semences retourne au grenier.
-    if site.data["seed"] > 0:
-        band.stock = min(stock_max(band, state), band.stock + site.data["seed"])
-        site.data["seed"] = 0.0
-    site.data["fields"] = fields if sown > 0 else []
+    if site.data.seed > 0:
+        band.stock = min(stock_max(band, state), band.stock + site.data.seed)
+        site.data.seed = 0.0
+    site.data.fields = fields if sown > 0 else []
     ratio = (sown / need) if need > 0 else 0.0
-    site.data["sown_ratio"] = ratio * (LATE_SOW if late else 1.0)
-    site.data["burned"] = False
+    site.data.sown_ratio = ratio * (LATE_SOW if late else 1.0)
+    site.data.burned = False
     if state.tribes[band.tribe_id].is_player:
         if sown <= 0:
             _note(state, LogKind.SURVIE, f"{name(site)} : pas de semences, les champs restent vides cette année.", site.hex, to=band.tribe_id)
@@ -997,8 +985,8 @@ def harvest(state, site, band) -> float:
     crop = expected_harvest(state, site, band) * luck
     short = field_hands_mult(site, band)
     # Le sol des champs s'epuise ; celui des cases au repos se refait.
-    soil = site.data.setdefault("soil", {})
-    fields = {tuple(f) for f in site.data.get("fields", [])}
+    soil = site.data.soil
+    fields = {tuple(f) for f in site.data.fields}
     for key in list(soil):
         col, row = (int(x) for x in key.split(","))
         if (col, row) not in fields:
@@ -1011,16 +999,16 @@ def harvest(state, site, band) -> float:
     # Semences de l'an prochain d'abord, le reste au grenier.
     want = SEED * min(MAX_FIELDS, max(1, math.ceil(band.population / FIELD_WORKERS)))
     keep = min(crop, want)
-    site.data["seed"] = site.data.get("seed", 0.0) + keep
+    site.data.seed = site.data.seed + keep
     from src.kora import chiefdom
 
     # La part du chef part au grenier commun (chiefdom.py).
     left = chiefdom.take_from_harvest(state, band, crop - keep)
     band.stock = min(stock_max(band, state), band.stock + left)
-    site.data["fields"] = []
-    site.data["sown_ratio"] = 0.0
-    site.data["last_harvest"] = round(crop)
-    history = site.data.setdefault("history", [])
+    site.data.fields = []
+    site.data.sown_ratio = 0.0
+    site.data.last_harvest = round(crop)
+    history = site.data.history
     history.append([state.clock.year, round(crop)])
     del history[:-HISTORY]
     if state.tribes[band.tribe_id].is_player and crop > 0:
@@ -1099,28 +1087,22 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
     band.village = camp.id
     band.autonomy = 0.0
     camp.founded = state.clock.year
-    camp.data.update(
-        {
-            "band": band.id,
-            "fields": [],
-            "soil": {},
-            "seed": 0.0,
-            "sown_ratio": 0.0,
-            "buildings": [],
-            "build": None,
-            "oath": oath if oath in OATHS else "",
-            "history": [],
-        }
-    )
+    # L'etat du village (sites.VillageData) : sa bande, son serment ; ce que
+    # le campement savait (sa saison) est garde.
+    data = camp.data
+    data.band = band.id
+    data.fields, data.soil, data.seed, data.sown_ratio = [], {}, 0.0, 0.0
+    data.buildings, data.build, data.history = [], None, []
+    data.oath = oath if oath in OATHS else ""
     # Les reserves du campement et une part du stock deviennent semences.
     band.stock = min(stock_max(band, state), band.stock + camp.store)
     camp.store = 0.0
     need = SEED * min(MAX_FIELDS, max(1, math.ceil(band.population / FIELD_WORKERS)))
     seed = min(need, band.stock * 0.5)
     band.stock -= seed
-    camp.data["seed"] = seed
+    camp.data.seed = seed
     season = state.world.hex_season(camp.hex)
-    camp.data["season"] = season.value
+    camp.data.season = season.value
     if season in (Season.PRINTEMPS, Season.ETE):
         sow(state, camp, band, late=season is Season.ETE)
     if first:
@@ -1257,11 +1239,11 @@ def leave(state, band_id: int) -> bool:
         return False
     band.village = 0
     cap = stock_max(band, state)
-    extra = max(0.0, band.stock - cap) + site.data.get("seed", 0.0)
+    extra = max(0.0, band.stock - cap) + site.data.seed
     band.stock = min(band.stock, cap)
     site.kind = "camp"
     site.store = extra
-    site.data = {}
+    site.data = VillageData()
     if state.tribes[band.tribe_id].is_player:
         _note(state, LogKind.SURVIE, f"{name(site)} est abandonné.", site.hex, to=band.tribe_id)
     return True
@@ -1720,7 +1702,7 @@ def _alert(state, site, band) -> None:
 
     if not state.tribes[band.tribe_id].is_player or not has(site, "tour"):
         return
-    if state.tick_count - site.data.get("alert", -1000) < ALERT_EVERY:
+    if state.tick_count - site.data.alert < ALERT_EVERY:
         return
     for foe in state.bands.values():
         if foe.tribe_id == band.tribe_id or foe.population <= 0:
@@ -1728,7 +1710,7 @@ def _alert(state, site, band) -> None:
         if diplo.at_peace(state, foe.tribe_id, band.tribe_id):
             continue
         if state.world.distance(foe.position, site.hex) <= ALERT_RANGE:
-            site.data["alert"] = state.tick_count
+            site.data.alert = state.tick_count
             who = state.tribes[foe.tribe_id].name if foe.tribe_id in state.tribes else "étrangers"
             what = "une troupe" if foe.kind == "armee" else f"{foe.population} personnes"
             _note(state, LogKind.COMBAT, f"Tour de guet de {name(site)} : des {who} approchent ({what}) !", foe.position, to=band.tribe_id)
@@ -1757,10 +1739,10 @@ def update(state) -> None:
             tribe.settled_at = state.tick_count
         bonus = _bonus(state, site.tribe_id)
         season = state.world.hex_season(site.hex)
-        last = site.data.get("season")
+        last = site.data.season
         if last != season.value:
-            site.data["season"] = season.value
-            site.data["season_at"] = state.tick_count
+            site.data.season = season.value
+            site.data.season_at = state.tick_count
             if season is Season.PRINTEMPS:
                 sow(state, site, band)
                 if state.world.terrain(site.hex) is _T.VALLEE and state.story_rng.random() < FLOOD_CHANCE:
@@ -1770,8 +1752,8 @@ def update(state) -> None:
         if band.stock > 0:
             band.stock *= 1.0 - GRAIN_ROT * rot_mult(state, site)
         _advance_works(state, site, band)
-        if band.famine_in_period and site.data.get("seed", 0.0) > 0 and site.data.get("asked") != state.clock.year:
-            site.data["asked"] = state.clock.year
+        if band.famine_in_period and site.data.seed > 0 and site.data.asked != state.clock.year:
+            site.data.asked = state.clock.year
             if not events.hook(state, "semences", tribe_id=band.tribe_id, band_id=band.id):
                 if not state.tribes[band.tribe_id].is_player and state.story_rng.random() < 0.5:
                     eat_seed(state, band)
@@ -1792,9 +1774,9 @@ def eat_seed(state, band) -> float:
     site = site_of(state, band)
     if site is None:
         return 0.0
-    seed = site.data.get("seed", 0.0)
+    seed = site.data.seed
     band.stock = min(stock_max(band, state) + seed, band.stock + seed)
-    site.data["seed"] = 0.0
+    site.data.seed = 0.0
     return seed
 
 
@@ -1804,12 +1786,12 @@ def pillaged(state, band, rng=None) -> str:
     site = site_of(state, band)
     if site is None:
         return ""
-    site.data["burned"] = True
+    site.data.burned = True
     rng = rng or state.story_rng
     lost = [b for b in built(site) if b != "palissade"]
     if lost and rng.random() < LOSE_BUILDING:
         gone = lost[int(rng.random() * len(lost)) % len(lost)]
-        site.data["buildings"].remove(gone)
+        site.data.buildings.remove(gone)
         return BUILDINGS[gone].name
     return ""
 
@@ -1833,14 +1815,14 @@ def field_site(state, h):
     if idx is None:
         return None
     for site in state.sites.values():
-        if site.kind == "village" and list(idx) in site.data.get("fields", []):
+        if site.kind == "village" and list(idx) in site.data.fields:
             return site
     return None
 
 
 def soil_avg(site) -> float:
-    soil = site.data.get("soil", {})
-    fields = site.data.get("fields", [])
+    soil = site.data.soil
+    fields = site.data.fields
     if not fields:
         return 1.0
     return sum(soil.get(_key(c, r), 1.0) for c, r in fields) / len(fields)
@@ -1866,15 +1848,15 @@ def lines(state, band) -> list[str]:
     site = site_of(state, band)
     if site is None:
         return []
-    fields = site.data.get("fields", [])
-    seed = site.data.get("seed", 0.0)
+    fields = site.data.fields
+    seed = site.data.seed
     out = [f"Village de {name(site)}  ·  champs {len(fields)}  ·  semences {seed:.0f}  ·  bâtiments {len(built(site))}"]
     season = state.world.hex_season(site.hex)
     crop = expected_harvest(state, site, band)
     if fields:
         out.append(f"Récolte attendue à l'automne : ~{crop:.0f}  ·  sol {100 * soil_avg(site):.0f} %")
     elif season in (Season.ETE, Season.AUTOMNE, Season.HIVER):
-        last = site.data.get("last_harvest")
+        last = site.data.last_harvest
         out.append(f"Dernière récolte : {last}  ·  semailles au printemps" if last is not None else "Semailles au printemps")
     job = works(site)
     if job:

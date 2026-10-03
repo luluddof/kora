@@ -127,7 +127,7 @@ def test_village_people_work_by_trade_and_sex_and_soldiers_return_to_work():
     st = _state(Terrain.VALLEE)
     _all_knowledge(st, 1)
     vb, site = _village(st, 1, 1, pop=120)
-    site.data["teams"] = {"potiers": 1, "tailleurs": 1}
+    site.data.teams = {"potiers": 1, "tailleurs": 1}
     o = population.occupations(st, vb)
     assert o["metiers"]["potiers"] == goods.TEAM and o["metiers"]["tailleurs"] == goods.TEAM
     assert o["chasse"] == population.fit_men(vb) - goods.TEAM - (o["champs"] - (population.fit_women(vb) - goods.TEAM - o["cueillette"]))

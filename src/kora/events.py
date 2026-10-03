@@ -587,7 +587,7 @@ def apply(state, inst, effect) -> None:
 
         site = villages.site_of(state, band)
         if site is not None:
-            site.data["seed"] = max(0.0, site.data.get("seed", 0.0) * (1.0 + args[0]))
+            site.data.seed = max(0.0, site.data.seed * (1.0 + args[0]))
     elif kind == "eat_seed":
         from src.kora import villages
 

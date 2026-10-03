@@ -703,7 +703,7 @@ class Rouille(Spec):
             tribe = state.tribes.get(site.tribe_id)
             if tribe is None or "jachere" in tribe.knowledge:
                 continue
-            if len(site.data.get("fields", [])) >= 4:
+            if len(site.data.fields) >= 4:
                 out.append((site.hex, 10, [site.tribe_id], {"site": site.id}))
         return out
 
@@ -909,7 +909,7 @@ class GrandsTravaux(Spec):
             for site in _villages(state, tid):
                 job = villages.works(site)
                 if job and job[0] == "monument":
-                    site.data["build"] = [job[0], max(1, job[1] - MONTH)]
+                    site.data.build = [job[0], max(1, job[1] - MONTH)]
         elif action == "fete":
             for other in sorted(inst.participants):
                 if other != tid:
@@ -1481,7 +1481,7 @@ def _risk_gibier(self, state, tid):
 def _risk_rouille(self, state, tid):
     if not 10 <= state.clock.week <= 26 or "jachere" in state.tribes[tid].knowledge:
         return ""
-    if any(len(s.data.get("fields", [])) >= 3 for s in _villages(state, tid)):
+    if any(len(s.data.fields) >= 3 for s in _villages(state, tid)):
         return "Beaucoup de champs sans jachère : la rouille des blés guette (le savoir Jachère l'éloigne)."
     return ""
 

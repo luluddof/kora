@@ -163,7 +163,7 @@ def active_kinds(state, tid: int) -> list[str]:
 
     out = {"collecte"}
     for site in _villages(state, tid):
-        if site.data.get("fields"):
+        if site.data.fields:
             out.add("agriculture")
         for cid, n in goods.teams(site).items():
             if n > 0 and cid in goods.CRAFTS:

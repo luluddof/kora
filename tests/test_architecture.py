@@ -13,7 +13,7 @@ import sys
 import typing
 
 from src.kora import records, screens, systems, tech
-from src.kora.sites import Site
+from src.kora.sites import Site, VillageData
 from src.kora.types import Band, Hex, Order, OrderKind, Person, Tribe
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -86,6 +86,8 @@ def _sample(hint, i: int):
         return {"k": {"j": [1, 2]}}
     if hint is list:
         return [[1, 2.5, {"k": 1.0}]]
+    if isinstance(hint, type) and dataclasses.is_dataclass(hint):
+        return _filled(hint)
     raise AssertionError(f"type inconnu de records.py : {hint}")
 
 
@@ -118,7 +120,7 @@ def test_every_field_survives_a_save_and_a_copy():
     relit, se copie sans rien partager : rien d'autre a ecrire."""
     import json
 
-    for cls in (Tribe, Band, Site):
+    for cls in (Tribe, Band, Site, VillageData):
         obj = _filled(cls)
         back = records.from_json(cls, json.loads(json.dumps(records.to_json(obj))))
         for f in dataclasses.fields(cls):

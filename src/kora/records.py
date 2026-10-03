@@ -14,6 +14,9 @@ Les types connus :
   tuple[T, ...]                une liste
   list[T], dict[str, T]        element par element
   Hex, Order, Person           leurs propres codecs (register)
+  un autre dataclass           sa propre fiche (imbriquee) ; s'il porte
+                               COMPACT = True, seuls les champs differents
+                               du defaut sont ecrits (sites.VillageData)
   Any                          une valeur JSON simple (nombre, texte, booleen)
   list[list]                   des rangees de valeurs simples ([id, semaine])
   dict, list (nus)             tels quels (JSON) ; copie profonde
@@ -73,11 +76,17 @@ def _immutable(hint) -> bool:
     return False
 
 
+def _nested(hint) -> bool:
+    return isinstance(hint, type) and dataclasses.is_dataclass(hint) and hint not in _CODECS
+
+
 def _encoder(hint):
     if hint in _SCALARS or hint is Any:
         return None
     if hint in _CODECS:
         return _CODECS[hint][0]
+    if _nested(hint):
+        return lambda v: plan(hint).to_json(v)
     origin = typing.get_origin(hint)
     args = typing.get_args(hint)
     if origin is typing.Union:
@@ -105,6 +114,8 @@ def _decoder(hint):
         return None
     if hint in _CODECS:
         return _CODECS[hint][1]
+    if _nested(hint):
+        return lambda v: plan(hint).from_json(v)
     origin = typing.get_origin(hint)
     args = typing.get_args(hint)
     if origin is typing.Union:
@@ -137,6 +148,8 @@ def _copier(hint):
         return None
     if hint in _CODECS:
         return _CODECS[hint][2]
+    if _nested(hint):
+        return lambda v: plan(hint).copy(v)
     origin = typing.get_origin(hint)
     args = typing.get_args(hint)
     if origin is typing.Union:
@@ -165,6 +178,11 @@ class _Plan:
     def __init__(self, cls) -> None:
         hints = typing.get_type_hints(cls, include_extras=False)
         self.cls = cls
+        # COMPACT : n'ecrire que ce qui differe du defaut.
+        self.defaults = None
+        if getattr(cls, "COMPACT", False):
+            blank = cls()
+            self.defaults = {f.name: getattr(blank, f.name) for f in dataclasses.fields(cls)}
         self.fields = []
         self.copiers = []
         for f in dataclasses.fields(cls):
@@ -191,6 +209,8 @@ class _Plan:
             if not save:
                 continue
             v = getattr(obj, name)
+            if self.defaults is not None and v == self.defaults[name]:
+                continue
             out[name] = enc(v) if enc is not None and v is not None else v
         return out
 

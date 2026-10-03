@@ -76,17 +76,18 @@ def test_buildings_need_knowledge_and_room():
     assert villages.building_status(st, site, "palissade") == "verrouille"
     assert "Palissades" in villages.build_block(st, 1, "palissade")
     assert villages.slots(st, site) == villages.BASE_SLOTS + 1
-    site.data["buildings"] = ["grenier", "puits", "enclos"]
+    site.data.buildings = ["grenier", "puits", "enclos"]
     assert "place" in villages.build_block(st, 1, "autel")
 
 
 def test_old_palisades_are_read_as_buildings():
+    from src.kora.sites import _village_data
+
     st, band = _state()
     site = villages.found(st, 1)
-    site.data["palisade"] = -1
-    site.data["buildings"] = []
+    site.data = _village_data({"band": 1, "palisade": -1, "buildings": []})
     assert villages.palisade_state(site) == "built"
-    site.data = {"band": 1, "palisade": 5, "fields": []}
+    site.data = _village_data({"band": 1, "palisade": 5, "fields": []})
     assert villages.palisade_state(site) == "building"
     assert villages.works(site) == ("palissade", 5)
 
@@ -94,7 +95,7 @@ def test_old_palisades_are_read_as_buildings():
 def test_altar_tower_and_stone_reach_beyond_the_village():
     st, band = _state(known=("huttes", "semis", "guetteurs", "rites", "megalithes"))
     site = villages.found(st, 1)
-    site.data["buildings"] = ["autel", "tour", "pierre"]
+    site.data.buildings = ["autel", "tour", "pierre"]
     clan = Band(5, 1, offset_to_axial(33, 15), 20, 100.0)
     st.bands[5] = clan
     assert any("autel" in label for label, _v in chiefs.loyalty_parts(st, clan))
