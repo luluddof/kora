@@ -33,9 +33,8 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
-from src.kora import chiefs, diplo, events, places, population, tech, villages
+from src.kora import chiefs, diplo, events, places, population, situations, tech, villages
 from src.kora.bands import gain_prestige, stock_max
-from src.kora.situations import _rand
 
 RATES = (0, 10, 20, 30)
 DEFAULT_RATE = 10
@@ -565,7 +564,7 @@ def monthly(state) -> None:
         for fam in list(tribe.families or []):
             if fam["favour"] >= 20:
                 continue
-            if _rand(state, "famille", tid, fam["id"]) < 0.04:
+            if situations._rand(state, "famille", tid, fam["id"]) < 0.04:
                 _family_leaves(state, tribe, fam)
         if not is_human(state, tid):
             _ai(state, tribe)

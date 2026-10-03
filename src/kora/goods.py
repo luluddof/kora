@@ -51,7 +51,6 @@ from src.kora.types import TradeRoute
 from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.gamestate import note
 from src.kora.bands import stock_max
-from src.kora.villages import FIELD_RADIUS
 
 TEAM = 10
 TEAM_POP = 30
@@ -206,7 +205,7 @@ def riches(world, h) -> dict:
         return hit
     out: dict = {}
     if world.resources:
-        for x in world.hexes_in_radius(h, FIELD_RADIUS):
+        for x in world.hexes_in_radius(h, villages.FIELD_RADIUS):
             for n in NAMES:
                 if n in FAR_RES:
                     continue

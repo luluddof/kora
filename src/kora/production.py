@@ -27,7 +27,7 @@ N'importe pas pygame.
 """
 
 from __future__ import annotations
-from src.kora import places, tech, villages
+from src.kora import goods, places, tech, villages
 
 KINDS = ("collecte", "agriculture", "peche", "potiers", "sauniers", "tisserands", "pelletiers", "tailleurs")
 KIND_NAMES = {
@@ -96,8 +96,6 @@ def adjust(tribe, kind: str, delta: float) -> None:
 def demand(state, tid: int, good: str) -> tuple[float, float]:
     """(ce que le peuple use et vend d'un bien par semaine, ce que ses
     routes de vente auraient voulu en plus)."""
-    from src.kora import goods
-
     use = goods.need(state, tid)
     sold = 0.0
     unmet = 0.0
@@ -126,8 +124,6 @@ def food_pressure(state, tid: int) -> float:
 
 def craft_pressure(state, tid: int, cid: str) -> float:
     """0 a 1 : on ne fait pas assez de ce bien pour ce qu'on en use et vend."""
-    from src.kora import goods
-
     good = goods.CRAFTS[cid].good
     use, unmet = demand(state, tid, good)
     want = use + unmet
@@ -141,8 +137,6 @@ def craft_pressure(state, tid: int, cid: str) -> float:
 
 
 def glutted(state, tid: int, good: str) -> bool:
-    from src.kora import goods
-
     cid = goods.GOOD_CRAFT[good]
     made = goods.made(state, tid, good)
     if made <= 0:
@@ -157,8 +151,6 @@ def glutted(state, tid: int, good: str) -> bool:
 
 def active_kinds(state, tid: int) -> list[str]:
     """Les genres de production que ce peuple pratique dans ses villages."""
-    from src.kora import goods
-
     out = {"collecte"}
     for site in _villages(state, tid):
         if site.data.fields:
@@ -172,8 +164,6 @@ def active_kinds(state, tid: int) -> list[str]:
 def monthly(state) -> None:
     """Chaque mois : le savoir-faire monte la ou il le faut ; on compte les
     mois de surproduction de chaque bien."""
-    from src.kora import goods
-
     for tid in sorted(state.tribes):
         tribe = state.tribes[tid]
         if not _villages(state, tid):
@@ -199,8 +189,6 @@ def monthly(state) -> None:
 def lines(state, tid: int) -> list[tuple[str, float, str]]:
     """Pour l'ecran : (nom, efficacite, ce qui la pousse) de chaque genre
     pratique."""
-    from src.kora import goods
-
     out = []
     food = food_pressure(state, tid)
     for kind in active_kinds(state, tid):

@@ -34,7 +34,20 @@ import math
 import random
 from dataclasses import dataclass
 
-from src.kora import chiefs, population, production, sites, situations, systems, tech, units
+from src.kora import (
+    chiefdom,
+    chiefs,
+    diplo,
+    events,
+    goods,
+    population,
+    production,
+    sites,
+    situations,
+    systems,
+    tech,
+    units,
+)
 from src.kora.log import LogKind
 from src.kora.types import Band, Season, Terrain, stay_order
 from src.kora.resources import LABELS, NAMES, PRESENT
@@ -313,8 +326,6 @@ def build_weeks(site, bid: str) -> int:
 def build_cost(state, site, bid: str) -> float:
     band = band_of(state, site)
     pop = band.population if band is not None else 0
-    from src.kora import goods
-
     cost_weeks = BUILDINGS[bid].cost_weeks
     if bid == "monument":
         cost_weeks += 0.5 * monument_stages(site)
@@ -396,8 +407,6 @@ def build(state, band_id: int, bid: str) -> bool:
     cost = build_cost(state, site, bid)
     if bid == "monument":
         # Le grand monument : le grenier du chef paie d'abord.
-        from src.kora import chiefdom
-
         cost -= chiefdom.granary_pay(state, band.tribe_id, cost)
     band.stock -= cost
     site.data.build = [bid, build_weeks(site, bid)]
@@ -442,8 +451,6 @@ def stock_weeks(state, band) -> int:
 def store_weeks(state, band) -> float:
     """Semaines de reserve propres au village (stock_max) : grenier de base,
     savoirs, Grenier sureleve, serment."""
-    from src.kora import goods
-
     site = site_of(state, band)
     weeks = STORE_WEEKS + _bonus(state, band.tribe_id).granary + goods.store_weeks(state, band.tribe_id)
     if site is not None:
@@ -455,8 +462,6 @@ def store_weeks(state, band) -> float:
 
 
 def rot_mult(state, site) -> float:
-    from src.kora import goods
-
     mult = _bonus(state, site.tribe_id).grain_rot * goods.rot_mult(state, site.tribe_id)
     if has(site, "grenier"):
         mult *= 0.6
@@ -510,8 +515,6 @@ def note_forage(state, site, take: float) -> None:
 
 def food_outlook(state, site, band) -> tuple[int, float]:
     """(semaines avant la recolte, semaines de vivres qui resteront alors)."""
-    from src.kora import goods
-
     pop = max(1, band.population)
     memo = site.data.forage
     memo = memo if isinstance(memo, dict) else {}
@@ -545,8 +548,6 @@ def growth_mult(state, band) -> float:
 
 
 def food_mult(state, band) -> float:
-    from src.kora import goods
-
     site = site_of(state, band)
     mult = _bonus(state, band.tribe_id).village_food
     if has(site, "enclos"):
@@ -559,14 +560,10 @@ def food_mult(state, band) -> float:
 
 def winter_famine_mult(state, band) -> float:
     """Sel et etoffes : l'hiver tue moins au village."""
-    from src.kora import goods
-
     return goods.winter_famine(state, band.tribe_id) if band.village else 1.0
 
 
 def yield_mult(state, site) -> float:
-    from src.kora import goods
-
     mult = _bonus(state, site.tribe_id).field_yield * goods.yield_mult(state, site.tribe_id)
     mult *= production.of(state, site.tribe_id, "agriculture")
     if oath_of(site) == "champs":
@@ -600,8 +597,6 @@ def influence_radius(site, base: int) -> int:
 
 
 def winter_prestige(state, tribe_id: int) -> int:
-    from src.kora import goods
-
     gain = goods.winter_prestige(state, tribe_id) if goods.has_village(state, tribe_id) else 0
     for site in state.sites.values():
         if site.kind != "village" or site.tribe_id != tribe_id or band_of(state, site) is None:
@@ -846,8 +841,6 @@ def hands_mult(band, fields: int, busy: int = 0) -> float:
 def field_hands_mult(site, band, state=None) -> float:
     """Assez de bras aux champs ? Les adultes valides qui ne sont pas aux
     metiers (occupations) ; les hommes partis a la guerre manquent."""
-    from src.kora import goods
-
     fields = len(site.data.fields)
     need = fields * FIELD_HANDS * population.ACTIVE_NORM
     if need <= 0:
@@ -885,8 +878,6 @@ SOW_KEEP_WEEKS = 4
 
 
 def _wild_seed(state, site) -> float:
-    from src.kora import goods
-
     found = goods.riches(state.world, site.hex)
     return SEED if found.get("cereales") or found.get("racines") else 0.0
 
@@ -948,8 +939,6 @@ def harvest(state, site, band) -> float:
     want = SEED * min(MAX_FIELDS, max(1, math.ceil(band.population / FIELD_WORKERS)))
     keep = min(crop, want)
     site.data.seed = site.data.seed + keep
-    from src.kora import chiefdom
-
     # La part du chef part au grenier commun (chiefdom.py).
     left = chiefdom.take_from_harvest(state, band, crop - keep)
     band.stock = min(stock_max(band, state), band.stock + left)
@@ -965,8 +954,6 @@ def harvest(state, site, band) -> float:
             text += " Il manquait des bras : une part est restee aux champs."
         _note(state, LogKind.SURVIE, text, site.hex, to=band.tribe_id)
     if crop > 0 and luck >= 1.15:
-        from src.kora import events
-
         events.hook(state, "bonne_recolte", tribe_id=band.tribe_id, band_id=band.id)
     return crop
 
@@ -1110,8 +1097,6 @@ def ai_oath(state, tribe_id: int) -> str:
 def found_preview(state, band_id: int) -> dict:
     """Ce que la fenetre de fondation montre : le lieu, ses terres, ses
     dangers, le nom propose, et si c'est le premier village du peuple."""
-    from src.kora import diplo
-
     band = state.bands[band_id]
     camp = sites.own_site_at(state, band)
     world = state.world
@@ -1282,8 +1267,6 @@ def _warrior_share(state, band) -> float:
 
 
 def army_quality(state, band) -> float:
-    from src.kora import goods
-
     return (1.0 + (WARRIORS_QUALITY - 1.0) * _warrior_share(state, band)) * goods.army_mult(state, band.tribe_id)
 
 
@@ -1338,8 +1321,6 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     tribe = state.tribes[band.tribe_id]
     kind = levy_type(state, band.tribe_id, type_id)
     n = levy_size(band, share)
-    from src.kora import chiefdom
-
     n = population.take_men(band, n)
     # Les vivres des guerriers : le grenier du chef d'abord, puis le village.
     supply = chiefdom.granary_pay(state, band.tribe_id, float(ARMY_SUPPLY_WEEKS * n))
@@ -1647,8 +1628,6 @@ def _update_armies(state) -> None:
 
 def _alert(state, site, band) -> None:
     """Tour de guet : on voit venir l'ennemi."""
-    from src.kora import diplo
-
     if not state.tribes[band.tribe_id].is_player or not has(site, "tour"):
         return
     if state.tick_count - site.data.alert < ALERT_EVERY:
@@ -1672,8 +1651,6 @@ def _alert(state, site, band) -> None:
 def update(state) -> None:
     """Saisons locales (semailles, recolte), grain qui se perd, chantiers,
     semences en temps de famine, fievres, crues, troupes, tours de guet."""
-    from src.kora import events
-
     for site in sorted(state.sites.values(), key=lambda s: s.id):
         if site.kind != "village":
             continue
@@ -1713,8 +1690,6 @@ def update(state) -> None:
             if state.story_rng.random() < risk:
                 events.hook(state, "fievre_village", tribe_id=band.tribe_id, band_id=band.id)
         _alert(state, site, band)
-    from src.kora import goods
-
     goods.update(state)
     _update_armies(state)
 
@@ -1850,8 +1825,6 @@ def occupations(state, band) -> dict:
         out["soldats"] = men
         return out
     if band.village:
-        from src.kora import goods
-
         site = site_of(state, band)
         if site is not None:
             for cid, n in sorted(goods.teams(site).items()):
@@ -1881,8 +1854,6 @@ def occupations(state, band) -> dict:
 
 def free_for_craft(state, band, cid: str) -> int:
     """Combien de gens du bon sexe pourraient encore entrer a ce metier."""
-    from src.kora import goods
-
     men, women = fit_men(band), fit_women(band)
     site = site_of(state, band)
     if site is not None:

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import chiefs, places, population, production, tech, villages
+from src.kora import chiefdom, chiefs, diplo, goods, places, population, production, tech, villages
 from src.kora.log import LogKind
 from src.kora.types import Hex, Season, Terrain
 from src.kora.gamestate import humans, is_human, note
@@ -556,8 +556,6 @@ class GrandPassage(Spec):
         return 0.2
 
     def month(self, state, inst):
-        from src.kora import diplo
-
         # Le passage avance.
         c = inst.center
         inst.center = Hex(c.q + 4 * inst.data.get("dq", 1), c.r + 4 * inst.data.get("dr", 0))
@@ -580,8 +578,6 @@ class GrandPassage(Spec):
                 diplo.add_mod(state, a, b, "passage", -2)
 
     def act(self, state, inst, tid, action):
-        from src.kora import diplo
-
         p = inst.participants[tid]
         if action == "battue":
             p["score"] = p["score"] * 1.3 + 20
@@ -619,8 +615,6 @@ class Rassemblement(Spec):
     cooldown = 3 * YEAR
 
     def candidates(self, state):
-        from src.kora import diplo
-
         if state.clock.week not in range(30, 34):
             return []
         for tid in sorted(state.tribes):
@@ -644,8 +638,6 @@ class Rassemblement(Spec):
             inst.participants[tid]["score"] += sum(b.population for b in zone_bands(state, inst, tid)) / 10.0
 
     def end(self, state, inst):
-        from src.kora import diplo
-
         win = inst.winner
         tids = sorted(inst.participants)
         for i, a in enumerate(tids):
@@ -771,8 +763,6 @@ class MalDesBetes(Spec):
         return 0.015
 
     def month(self, state, inst):
-        from src.kora import goods
-
         # Le mal voyage avec les routes commerciales.
         for tid in sorted(inst.participants):
             for r in goods.routes_of(state, tid):
@@ -789,8 +779,6 @@ class MalDesBetes(Spec):
             inst.stage = 1
 
     def act(self, state, inst, tid, action):
-        from src.kora import goods
-
         if action == "routes":
             for r in list(goods.routes_of(state, tid)):
                 goods.close_route(state, tid, r)
@@ -897,8 +885,6 @@ class GrandsTravaux(Spec):
             inst.participants[tid]["score"] = round(score, 3)
 
     def act(self, state, inst, tid, action):
-        from src.kora import diplo
-
         if action == "corvee":
             for site in _villages(state, tid):
                 job = places.works(site)
@@ -944,8 +930,6 @@ class RouteDuSel(Spec):
     cooldown = 10 * YEAR
 
     def candidates(self, state):
-        from src.kora import diplo
-
         if not 29 <= state.clock.week <= 32:
             return []
         traders = sorted({t for t in state.tribes if _has_village(state, t)})
@@ -959,14 +943,10 @@ class RouteDuSel(Spec):
         return 0.3
 
     def month(self, state, inst):
-        from src.kora import goods
-
         for tid in sorted(inst.participants):
             inst.participants[tid]["score"] += sum(r.units for r in goods.routes_of(state, tid))
 
     def end(self, state, inst):
-        from src.kora import diplo
-
         win = inst.winner
         if not win:
             return
@@ -1018,8 +998,6 @@ class Chefferies(Spec):
             p["score"] += 2 * n + state.tribes[tid].prestige / 10.0 + 10 * wins
 
     def act(self, state, inst, tid, action):
-        from src.kora import diplo
-
         others = [t for t in inst.participants if t != tid]
         if action == "force":
             for t in others:
@@ -1029,8 +1007,6 @@ class Chefferies(Spec):
             diplo.add_mod(state, tid, rival, "mariage", 10)
 
     def end(self, state, inst):
-        from src.kora import diplo
-
         win = inst.winner
         if not win:
             return
@@ -1066,8 +1042,6 @@ class Surproduction(Spec):
     natural = 0.0
 
     def candidates(self, state):
-        from src.kora import goods
-
         out = []
         for tid in sorted(state.tribes):
             tribe = state.tribes[tid]
@@ -1084,8 +1058,6 @@ class Surproduction(Spec):
         return 0.35
 
     def risk(self, state, tid):
-        from src.kora import goods
-
         tribe = state.tribes.get(tid)
         if tribe is None or not tribe.glut:
             return ""
@@ -1099,15 +1071,11 @@ class Surproduction(Spec):
         return inst.data.get("good", "")
 
     def stage_name(self, inst):
-        from src.kora import goods
-
         base = super().stage_name(inst)
         good = goods.GOOD_NAMES.get(self._good(inst), "")
         return f"{base} ({good.lower()})" if good else base
 
     def month(self, state, inst):
-        from src.kora import goods
-
         tid = next(iter(inst.participants))
         good = self._good(inst)
         have = goods.stock(state, tid, good)
@@ -1123,8 +1091,6 @@ class Surproduction(Spec):
             _note(state, tid, LogKind.POLITIQUE, "La surproduction s'aggrave : les artisans sont sans ouvrage.")
 
     def act(self, state, inst, tid, action):
-        from src.kora import diplo, goods
-
         good = self._good(inst)
         cid = goods.GOOD_CRAFT.get(good)
         tribe = state.tribes[tid]
@@ -1150,8 +1116,6 @@ class Surproduction(Spec):
             gain_prestige(state, tribe, 1)
 
     def end(self, state, inst):
-        from src.kora import goods
-
         tid = next(iter(inst.participants), None)
         if tid is None:
             return
@@ -1195,8 +1159,6 @@ class Effondrement(Spec):
         return []
 
     def month(self, state, inst):
-        from src.kora import goods
-
         depth = inst.data.setdefault("depth", {})
         # Le mal gagne les partenaires des partenaires, jusqu'a EFFONDREMENT_DEPTH.
         for tid in sorted(inst.participants):
@@ -1221,8 +1183,6 @@ class Effondrement(Spec):
             inst.participants[tid]["score"] += 2 * supplied + 3 * running
 
     def act(self, state, inst, tid, action):
-        from src.kora import diplo, goods
-
         if action == "soutenir":
             for other in sorted(inst.participants):
                 if other != tid:
@@ -1327,8 +1287,6 @@ class Revolte(Spec):
     def end(self, state, inst):
         if inst.outcome != "ratee":
             return
-        from src.kora import chiefdom
-
         tid = next(iter(inst.participants), None)
         if tid is None:
             return
@@ -1357,8 +1315,6 @@ class RevolteTributaires(Spec):
     natural = 5.0
 
     def candidates(self, state):
-        from src.kora import chiefdom
-
         out = []
         for lord in sorted(state.tribes):
             for vassal in chiefdom.vassals_of(state, lord):
@@ -1371,8 +1327,6 @@ class RevolteTributaires(Spec):
         return 0.3
 
     def risk(self, state, tid):
-        from src.kora import chiefdom
-
         for vassal in chiefdom.vassals_of(state, tid):
             if vassal in state.tribes and not state.tribes[vassal].is_player and chiefdom.unrest(state, vassal, tid) >= 25:
                 return f"Les {state.tribes[vassal].name}, vos tributaires, se sentent assez forts pour se révolter. Approchez une troupe de leurs villages, ou faites-leur des présents."
@@ -1382,8 +1336,6 @@ class RevolteTributaires(Spec):
         return super().stage_name(inst)
 
     def month(self, state, inst):
-        from src.kora import chiefdom
-
         lord = next(iter(inst.participants))
         vassal = inst.data.get("vassal", 0)
         if vassal not in state.tribes or chiefdom.overlord_of(state, vassal) != lord:
@@ -1393,8 +1345,6 @@ class RevolteTributaires(Spec):
             inst.progress += 15
 
     def act(self, state, inst, tid, action):
-        from src.kora import diplo
-
         vassal = inst.data.get("vassal", 0)
         if vassal not in state.tribes:
             return
@@ -1406,8 +1356,6 @@ class RevolteTributaires(Spec):
     def end(self, state, inst):
         if inst.outcome != "ratee":
             return
-        from src.kora import chiefdom
-
         lord = next(iter(inst.participants), None)
         vassal = inst.data.get("vassal", 0)
         if lord is not None and vassal in state.tribes and chiefdom.overlord_of(state, vassal) == lord:
