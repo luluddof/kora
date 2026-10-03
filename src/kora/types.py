@@ -222,6 +222,11 @@ class Tribe:
     money_month: dict[str, float] = field(default_factory=dict)
     # [annee, semaine, rentrees, depenses, tresor, {poste: sicles}]
     money_hist: list = field(default_factory=list)
+    # L'approche de son chef envers les autres peuples (approach.py), depuis
+    # quand, et le chef qui l'a prise.
+    approach: str = ""
+    approach_since: int = -1000000
+    approach_chief: int = 0
 
 
 @dataclass

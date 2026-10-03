@@ -128,7 +128,7 @@ n'importe que son etage ou plus bas) :
   0 types, francais, net, systems        1 clock, log, resources, records
   2 world                                 3 path, atlas, mapgen, gamestate,
                                             peoples, places
-  4 tech, units, vision, population      5 les systemes : learning, bands,
+  4 tech, units, vision, population      5 les systemes : learning, bands, approach,
                                             chiefs, sites, influence,
                                             production, diplo, goods, money,
                                             numbers, chiefdom, villages,
@@ -172,6 +172,18 @@ src/kora/bands.py  (pas de pygame)
   (max_bands_of, civ_band_cap...), split_band, merge_bands (les chefs y
   reagissent par systems.BAND_SPLIT / BAND_MERGE / MERGE_ALLOWED),
   fighters, CLAN_SHARE.
+
+src/kora/approach.py  (pas de pygame)
+  L'APPROCHE des chefs de l'IA envers les autres peuples : APPROACHES
+  (conquerant, protecteur, marchand, paisible, mefiant, affame ; soumis /
+  retif pour un tributaire), TRAIT_WEIGHTS (la personnalite), scores (la
+  situation : voisins forts ou faibles, vivres, routes, raids subis,
+  tributaires, prestige), choose (hysteresis, nouveau chef), monthly
+  (systems.MONTHLY, apres chiefs), PROFILES / factor (ce que l'IA fait :
+  raids, levees, tributs, protection, dons, fetes, seuils d'alliance et de
+  commerce : ai.py, diplo.ai_monthly, chiefdom), ACCEPT / accept (la
+  reponse aux propositions : diplo.evaluate), BEHAVIOR / reasons (l'ecran
+  Peuples). Tribe.approach / approach_since / approach_chief.
 
 src/kora/learning.py  (pas de pygame)
   Comment un peuple apprend : cond_progress, status, available, choose,

@@ -33,7 +33,7 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
-from src.kora import chiefs, diplo, events, places, population, situations, tech, villages
+from src.kora import approach, chiefs, diplo, events, places, population, situations, tech, villages
 from src.kora.bands import gain_prestige, stock_max
 
 RATES = (0, 10, 20, 30)
@@ -301,7 +301,8 @@ def granary_pay(state, tid: int, amount: float) -> float:
 
 
 def feast_cost(state, tid: int) -> float:
-    return FEAST_WEEKS * sum(b.population for b in _village_bands(state, tid))
+    cost = FEAST_WEEKS * sum(b.population for b in _village_bands(state, tid))
+    return cost * tech.bonuses(state.tribes[tid]).feast_cost
 
 
 def feast_block(state, tid: int) -> str:
@@ -329,6 +330,19 @@ def feast(state, tid: int) -> str:
     for fam in tribe.families or []:
         fam["favour"] = min(100.0, fam["favour"] + 15.0)
     _note(state, tid, LogKind.POLITIQUE, "Grande fête : le grenier du chef nourrit tout le peuple. Les familles s'en souviendront.")
+    if tech.bonuses(tribe).feasts:
+        # Festins de prestige : les voisins sont invites, et s'en souviennent.
+        guests = [
+            o for o in diplo.contacts_of(state, tid)
+            if o in state.tribes and diplo.gap(state, tid, o) <= FEAST_RANGE
+        ]
+        for o in guests:
+            diplo.add_mod(state, tid, o, "festin", FEAST_NEIGHBORS, actor=tid)
+            if is_human(state, o):
+                _note(state, o, LogKind.POLITIQUE, f"Les {tribe.name} vous ont invités à leur grande fête.")
+        tribe.flags["festin_voisins"] = state.tick_count + FEAST_SPELL
+        if guests:
+            _note(state, tid, LogKind.POLITIQUE, f"{len(guests)} peuple{'s' if len(guests) > 1 else ''} voisin{'s' if len(guests) > 1 else ''} ont mangé à votre table.")
     return "La fête est donnée."
 
 
@@ -377,6 +391,33 @@ def vassals_of(state, tid: int) -> list[int]:
             if p.kind == "vassal" and tid in (a, b) and p.payer != tid:
                 out.append(p.payer)
     return sorted(set(out))
+
+
+VASSAL_BASE = 3
+PROTECT_RATIO = 2.5
+FEAST_NEIGHBORS = 8.0
+FEAST_RANGE = 40
+FEAST_SPELL = 52
+
+
+def vassal_cap(state, tid: int) -> int:
+    """Les tributaires qu'un chef peut tenir : 3, +1 par 40 de prestige, et
+    Chef des chefs."""
+    tribe = state.tribes[tid]
+    return VASSAL_BASE + tribe.prestige // 40 + tech.bonuses(tribe).vassal_cap
+
+
+def protect_ratio(state, tid: int) -> float:
+    """Combien de fois plus fort il faut etre pour prendre un peuple sous sa
+    protection (deux fois et demie ; deux avec Chef des chefs)."""
+    return PROTECT_RATIO * tech.bonuses(state.tribes[tid]).protect_ratio
+
+
+def feasted(state, actor: int, target: int) -> bool:
+    """`target` a ete honore par une grande fete de `actor` cette annee
+    (Festins de prestige)."""
+    until = (state.tribes[actor].flags or {}).get("festin_voisins", -1)
+    return until > state.tick_count and target in diplo.contacts_of(state, actor)
 
 
 def make_vassal(state, lord: int, vassal: int, how: str = "force") -> None:
@@ -433,7 +474,8 @@ def village_taken(state, winner, loser, site_id: int) -> str:
 
 
 def ai_choice(state, w: int, l: int) -> str:
-    if diplo.relation(state, w, l) < -60:
+    # Un chef aux abois veut du grain, pas des tributaires.
+    if diplo.relation(state, w, l) < -60 or approach.of(state, w) == "affame":
         return "piller"
     return "soumettre" if has_chiefdom(state, w) else "piller"
 
@@ -484,6 +526,8 @@ def unrest(state, vassal: int, lord: int) -> float:
     )
     if lord_near:
         u -= 20.0
+    # Otages et serments.
+    u *= tech.bonuses(state.tribes[lord]).vassal_unrest
     return max(0.0, min(100.0, u))
 
 
@@ -493,7 +537,8 @@ def _pay_vassal(state, vassal: int, lord: int) -> float:
     for band in sorted(bands, key=lambda b: b.id):
         spare = band.stock - 6.0 * band.population
         if spare > 0:
-            take = spare * VASSAL_SHARE
+            # Chef des chefs : un tribut plus lourd.
+            take = spare * VASSAL_SHARE * tech.bonuses(state.tribes[lord]).vassal_tribute
             band.stock -= take
             paid += take
     if paid > 0:
@@ -652,7 +697,8 @@ def _ai(state, tribe) -> None:
         if match:
             fam["charge"] = match
             free.discard(match)
-    if tribe.granary > feast_cost(state, tribe.id) * 3 and not feast_block(state, tribe.id):
+    # Un chef protecteur donne la fete plus tot (approach.py).
+    if tribe.granary > feast_cost(state, tribe.id) * 3 / approach.factor(state, tribe.id, "feast") and not feast_block(state, tribe.id):
         feast(state, tribe.id)
 
 

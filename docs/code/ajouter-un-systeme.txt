@@ -101,7 +101,11 @@ bas au plus haut :
      neolithique). Ce qui fait avancer un savoir : learning.py.
 
   h) L'IA : une fonction _ai pour les peuples qui ne sont pas des joueurs
-     (gamestate.is_human ; le peuple 1 est toujours traite en joueur).
+     (gamestate.is_human ; le peuple 1 est toujours traite en joueur). Une
+     decision envers un autre peuple (raider, exiger, proteger, offrir,
+     s'allier) tient compte de l'approche de son chef : approach.factor
+     (une cle nouvelle dans approach.PROFILES) ; une reponse a une
+     proposition : approach.ACCEPT.
 
   i) L'interface :
        - un panneau ou un onglet : sa mise en page PURE dans layout.py (ou

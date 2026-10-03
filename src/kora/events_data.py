@@ -235,7 +235,7 @@ EVENTS: dict[str, Event] = {
                 Option(
                     "Apprendre a les garder",
                     effects=(("tech_progress_id", "troupeau", 0.4),),
-                    text="Garder les bêtes plutot que les chasser : le savoir du Troupeau avance.",
+                    text="Garder les bêtes plutôt que les chasser : la Garde des troupeaux avance.",
                     ai=1.5,
                 ),
                 Option("Continuer a les chasser", effects=(("stock", 2),), text="La chasse est bonne."),

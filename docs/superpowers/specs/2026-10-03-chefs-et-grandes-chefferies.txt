@@ -1,0 +1,128 @@
+Kora - Les approches des chefs, les grandes chefferies, les noms des savoirs
+==========================================================================
+Date : 2026-10-03. Statut : FAIT (version 0.8.0).
+
+Demandes (ses mots, raccourcis) :
+  1. "Les frontieres naturelles : au pire on verra plus tard." -> en attente
+     (2026-10-03-frontieres-naturelles-propositions.txt).
+  2. "Les zones d'influence ne restent pas eternellement : a l'ere tribale,
+     quand on part d'un endroit, l'influence decroit progressivement."
+  3. "Durant l'ere actuelle, vois si on peut inclure des techs en plus, sans
+     passer a la suivante, qui encouragent l'expansion par la vassalisation
+     des voisins, bien que pas forcement." "Si tu ne peux pas pour des
+     raisons historiques, commence la suivante, mais seulement dans ce cas."
+  4. "Les dirigeants des proto-pays seront des personnes qui, selon la
+     situation de leur pays et leur personnalite, auront differentes
+     approches avec les autres pays."
+  5. "Retravaille les noms de recherche : Cueillette savante ne veut rien
+     dire -> Cueillette."
+
+
+1. L'INFLUENCE QUI S'EFFACE (deja vrai, verifie)
+-----------------------------------------------
+Chaque mois l'influence s'use (x0,94 : demi-vie d'environ un an) ; seuls les
+campements et les villages l'ancrent (un campement est leve des que la bande
+part). Mesure : une bande d'un an au meme endroit (influence 0,74) ; partie,
+la case sort de la zone en 30 mois (2 ans et demi), progressivement. Dans SA
+partie (an 45) : 4 615 cases en zone, 94 (2 %) a plus de 10 cases de toute
+bande ou lieu du peuple : des traces d'anciens passages, en train de
+s'effacer. Rien a changer.
+
+
+2. LES GRANDES CHEFFERIES : UN PALIER 6 DU NEOLITHIQUE (tech.py)
+----------------------------------------------------------------
+Le neolithique avait ses paliers 4 et 5 pleins (une case par colonne) ; un
+palier 6, "Grandes chefferies" (500 points), dans le meme age : tout y est
+atteste a la fin du neolithique (5000-3000 av. J.-C. : enceintes a fosses,
+araire, festins, produits secondaires des betes, chefferies a plusieurs
+niveaux, biens de prestige comme les haches de jade). Pas d'age suivant.
+
+  Vers la vassalisation :
+  Enceintes et fossés   (Guerre et défense ; Haches polies ; village 6 ans)
+      défense du village +30 %
+  Festins de prestige   (Greniers et artisans ; Greniers, Culte des ancêtres ;
+      prestige 40, village 5 ans) la grande fete coute 25 % de moins et
+      les voisins sont invites (a 40 cases) : relation +8 (s'use en 20 mois),
+      et pendant un an ils se mettent plus volontiers sous votre protection
+      (+10)
+  Biens de prestige     (Échanges ; Échanges lointains ; 4 peuples connus)
+      dons +50 % ; qui recoit vos dons vous est OBLIGE (un an) : protection
+      +12, tribut +8
+  Chef des chefs        (Villages ; Maisons, Ancêtres ; 1 tributaire,
+      prestige 50) +2 tributaires tenus, tribut x1,5 ; il suffit d'etre deux
+      fois plus fort (au lieu de deux fois et demie) pour proteger
+  Otages et serments    (Esprits et pouvoir ; Ancêtres ; 1 tributaire)
+      agitation des tributaires -40 %
+  Pas forcement (sa demande) : l'autre voie
+  Araire                (Champs ; Jachère, Bœufs ; village 6 ans) récolte +15 %
+  Lait et laine         (Troupeaux ; Bœufs ; village 5 ans) vivres du village
+      +8 %, stabilité +3
+Condition nouvelle : "vassals" (avoir N tributaires : learning.cond_progress).
+Hooks : chiefdom.vassal_cap / protect_ratio / feasted, feast (invites),
+unrest (Otages), _pay_vassal et money (tribut), diplo.evaluate (proteger,
+tribut), diplo.perform (cadeau -> mod "oblige"), villages.defense_parts.
+
+
+3. LES APPROCHES DES CHEFS (approach.py, nouveau systeme)
+---------------------------------------------------------
+Le chef de chaque peuple de l'IA a une APPROCHE de ses voisins, tiree de sa
+PERSONNALITE (traits) et de la SITUATION de son pays, recalculee chaque mois
+(il la garde tant qu'une autre ne fait pas 1,5 point de plus ; au plus une
+fois par trimestre ; un nouveau chef choisit la sienne) :
+  Conquérant   ambitieux +3, guerrier +2, querelleur, chasseur ; peuple
+               guerrier ; des voisins faibles (2,5 fois moins forts) ; venger
+               un raid ; grand prestige (70)
+  Protecteur   genereux +3, rassembleur +2, conteur, fidele ; des voisins
+               faibles ; grand prestige ; Festins, Biens de prestige (il
+               faut un village)
+  Marchand     sage ; des routes ouvertes (il faut un village)
+  Paisible     de base ; sage +2, prudent ; peuple discret ; personne a sa
+               porte ; peu de prestige
+  Méfiant      prudent +2, querelleur ; un voisin 1,6 fois plus fort ; raide
+  Aux abois    moins de 3 semaines de vivres
+  Soumis / Rétif   un tributaire (agitation 40 et plus : retif)
+  A egalite, la voie la plus paisible.
+Ce qu'elle change (PROFILES) : envie de raider et de lever des troupes
+(ai.py ; conquerant x2, paisible x0,3), d'exiger un tribut, d'offrir sa
+protection (protecteur x3), de faire des dons aux voisins plus faibles (un
+comportement nouveau), la fete plus tot (protecteur), le seuil des alliances
+(mefiant) et du commerce (marchand), soumettre ou piller un village pris
+(aux abois : piller) ; et la REPONSE aux propositions (ACCEPT : "Leur chef :
+méfiant +15" a une offre de protection, "conquérant -15" a un tribut...).
+Un chef conquerant inquiete ses voisins : relation -4.
+Le joueur l'apprend : quand un chef voisin (60 cases) change d'approche, une
+ligne au journal. Ecran Peuples : "Approche : ..." sous le chef, et au
+survol pourquoi (ses raisons) et ce que cela change.
+Les peuples joueurs n'ont pas d'approche (le joueur decide).
+Tribe.approach, approach_since, approach_chief (sauves).
+Dans SA partie (an 45) au premier mois : 18 conquerants, 15 paisibles, 13
+protecteurs, 12 mefiants, 6 soumis, 3 aux abois.
+
+
+4. LES NOMS DES SAVOIRS
+-----------------------
+  Cueillette savante -> Cueillette ; Troupeau -> Garde des troupeaux ;
+  Grand campement -> Camp permanent ; Champs cultives -> Champs cultivés.
+  Descriptions accentuees : pièges à poissons, un lieu à soi, plutôt, un
+  tronc creusé, les hivers passés, des pieux plantés, appartient à ceux.
+  Les identifiants ne changent pas : les sauvegardes restent lisibles.
+
+
+5. EQUILIBRAGE ET VERIFICATIONS
+-------------------------------
+  Premier reglage : 27 conquerants sur 67 dans sa partie (le "grand
+  prestige" a 60 poussait presque tous les chefs a la conquete, et une
+  egalite allait au conquerant). Corrige : le prestige (70) compte pour la
+  conquete ET la protection, peuple guerrier +1 (au lieu de 1,5), Festins
+  et Biens de prestige vers la protection, egalite -> la voie la plus
+  paisible. Resultat ci-dessus (section 3).
+  Essais (robot joueur, IA seules), avant / apres :
+    SA partie, 30 ans (an 45 -> 75) : tributaires 11 -> 25 ; plus gros
+      suzerain 3 -> 5 tributaires ; raids 96 -> 103 ; population 17 800 ->
+      19 800 (Araire, Lait et laine) ; les 7 savoirs du palier 6 appris (61
+      peuples ont Festins, 18 Chef des chefs).
+    Partie neuve, 50 ans : tributaires 4 -> 15 ; plus gros suzerain 2 -> 6.
+    Population sur 3 graines a l'an 41 : 7 900 -> 8 100 en moyenne (une
+      graine a 27 % de moins : le hasard, pas le systeme).
+  Pas d'empire qui avale tout : un chef tient 3 tributaires (+1 par 40 de
+  prestige, +2 avec Chef des chefs).

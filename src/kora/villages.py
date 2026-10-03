@@ -585,6 +585,9 @@ def defense_parts(state, band) -> list[tuple[str, float]]:
         out.append(("Tour de guet", 1.15))
     if oath_of(site) == "pieux":
         out.append(("Serment des pieux", 1.15))
+    wall = _bonus(state, band.tribe_id).village_defense
+    if wall != 1.0:
+        out.append(("Enceintes et fossés", wall))
     return out
 
 

@@ -82,6 +82,13 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   montagne. Avec les villages, le **savoir-faire** (chasse, agriculture, pêche, chaque métier) grandit doucement
   quand il faut produire plus ; trop produire sans acheteurs mène à la **surproduction**, puis à l'effondrement du
   commerce chez vos partenaires.
+- Les **chefs des autres peuples** ont chacun leur **approche** : conquérant, protecteur, marchand, paisible,
+  méfiant, aux abois (ou, s'ils sont tributaires, soumis ou rétifs). Elle vient de leur caractère et de la situation
+  de leur pays, change avec elle, et décide de leurs raids, de leurs tributs, de leurs dons, et de ce qu'ils
+  répondent à vos propositions (écran *Peuples*, au survol de leur approche).
+- À la fin du néolithique, les **grandes chefferies** : enceintes, festins de prestige, biens de prestige, chef des
+  chefs, otages et serments pour gagner ou tenir des tributaires ; ou l'araire, le lait et la laine pour prospérer
+  sans eux.
 - Les **nombres** : le comptage par bâtons (l'addition), puis les nombres additifs, où vous **choisissez la base**
   de vos nombres (10 : on apprend mieux ; 12 : on vend mieux ; 20 : on compte les gens ; 60 : on mesure le grain),
   presque pour toujours. Des **calculateurs**, un métier du village, trouvent les opérations suivantes (−, ×, ÷,

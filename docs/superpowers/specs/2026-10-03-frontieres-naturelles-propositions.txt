@@ -1,0 +1,108 @@
+Kora - Briser l'hexagone : des frontieres naturelles (PROPOSITIONS)
+=================================================================
+Date : 2026-10-03. Statut : PROPOSE, en attente de son choix.
+
+Sa demande : "Etudie comment briser l'hexagonalite du jeu : j'ai une base
+hexagonale, je peux comprendre, mais j'aimerais des frontieres plus
+naturelles, peut-etre pour les zones d'influence des villes. J'ai deja
+pre-travaille dessus (la projection de l'influence selon le sol), propose
+des solutions."
+
+Maquettes faites sur SA partie (an 45, autour de son village), hors du jeu :
+docs/maquettes/frontieres/ (jeu_aujourdhui, A, D, E, F, T0, T1, G).
+
+
+1. CE QUI FAIT L'HEXAGONE AUJOURD'HUI (trois causes, pas une)
+------------------------------------------------------------
+  a) Le DESSIN des zones : chaque case est teintee d'un bloc, et la
+     frontiere est un anneau de cases plus teintees (globe_draw.sync_zones :
+     alpha 0,36 sur les cases du bord) -> un escalier (maquette A).
+  b) La FORME des zones : l'influence se propage de voisin en voisin (6
+     directions) dans un disque de cases (hexes_in_radius, lui-meme
+     hexagonal) ; en terrain egal, la "distance" est hexagonale et la zone
+     d'un village est un HEXAGONE GEANT. Lisser le dessin ne suffit pas :
+     on voit des hexagones aux bords lisses (maquette E).
+  c) Le TERRAIN : chaque case est un hexagone plein de la couleur de son
+     biome ; cotes, forets, montagnes dessinent un nid d'abeille (T0).
+
+Ce qui est deja bon : l'influence n'est pas une case possedee mais un
+CHAMP CONTINU (une valeur par case et par peuple) qui suit le sol (son
+travail : PROJECTION). Un champ continu se dessine en courbes. La
+simulation peut rester hexagonale (calculs, chemins, sauvegarde) : c'est
+ce que font les jeux Paradox (provinces calculees, frontieres dessinees).
+
+
+2. LES SOLUTIONS
+----------------
+  S1  FRONTIERES EN COURBES (dessin seul ; la partie ne change pas)
+      - Le champ d'influence est interpole entre les centres des cases
+        (les centres forment un reseau de triangles : interpolation
+        lineaire exacte), la frontiere est la courbe ou il passe le seuil
+        ZONE_MIN ; entre deux peuples qui se touchent, UNE ligne commune, la
+        ou leurs influences s'egalent (pas deux contours qui se doublent).
+      - Calcul : une fois par mois (quand l'influence change), en
+        "marching triangles", puis lissage (Chaikin, 2 passes) ; les
+        courbes sont gardees en 3D sur la sphere, projetees a chaque image,
+        tracees en traits anticreneles. Vue lointaine : la teinte aussi est
+        interpolee par pixel (deja un rendu par pixel).
+      - A la charte : trait sombre + lisere de la couleur du peuple + fondu
+        vers l'interieur ; frontiere DISPUTEE (deux influences presque
+        egales) en pointilles ; coeur de zone (CORE_MIN) plus soutenu.
+      Maquettes : B, D. Effort : moyen (globe_draw, render). Risque : nul
+      pour la partie (empreinte inchangee).
+
+  S2  DES ZONES RONDES QUI SUIVENT LE SOL (la simulation change un peu)
+      - Propagation en 12 directions (les 6 voisins + les 6 "diagonales"
+        a distance racine de 3) : la distance devient presque ronde
+        (dodecagone, ecart < 4 %) ;
+      - un disque ROND au lieu d'un disque de cases ;
+      - un RELIEF DOUX et fixe (+-20 % de cout, tire de la position comme
+        les filons d'argent) : les bords ondulent au lieu d'etre des
+        arcs parfaits, et restent les memes d'une partie a l'autre.
+      - Le terrain garde son role (plaine loin, montagne pres) : les zones
+        s'etirent dans les vallees et butent sur les montagnes.
+      A regler : un disque rond de meme rayon couvre ~20 % de cases en plus
+      -> ajuster le rayon (ou le seuil) pour garder la meme surface ;
+      re-enregistrer l'empreinte ; verifier l'equilibrage (essai 30 ans,
+      sa partie). Maquettes : E (aujourd'hui) / F. Effort : petit (influence
+      .projection), cout de calcul x1,5 sur les projections (en cache).
+
+  S3  UN TERRAIN SANS NID D'ABEILLE (dessin seul)
+      - Les coordonnees sont deformees par un bruit doux (deux echelles :
+        des ondulations larges et une dentelure fine) avant de chercher la
+        case : chaque point montre la case "la plus proche apres
+        deformation". Cotes, lisieres de foret et cretes deviennent
+        organiques (T1). Option : un fondu des couleurs entre voisins.
+      - Vue lointaine : la deformation se fait dans le lancer de rayons
+        (quelques operations par pixel). Vue proche (polygones) : coins des
+        hexagones deplaces (le meme deplacement pour les 3 cases qui se
+        partagent un coin : pas de trou) et bords subdivises (3 segments
+        par bord).
+      - Le clic doit viser ce qu'on voit : la meme deformation dans
+        pixel_to_hex (deplacement <= 0,35 case : on clique toujours sur la
+        case voulue ou sa voisine).
+      Maquettes : T0 / T1. Effort : moyen (globe_draw : deux modes de
+      rendu). Risque : nul pour la partie ; perf a mesurer en vue proche.
+
+  S4  (option de jeu, plus tard) DES FRONTIERES QUI ACCROCHENT LA GEOGRAPHIE
+      - Rivieres et cretes comme seuils : traverser une grande riviere ou
+        une ligne de crete coute plus a l'influence -> les frontieres s'y
+        posent, comme dans l'histoire. Les cretes : tirees du relief deja
+        connu ; les rivieres : il faut les garder de la cuisson de la carte
+        (mapgen a le debit, le jeu ne le garde pas) -> une couche tiree a
+        la cuisson ou derivee comme l'argent. C'est aussi un futur sujet de
+        jeu (gues, ponts, peages aux passages).
+      Effort : moyen a grand (carte + simulation + equilibrage).
+
+
+3. RECOMMANDATION
+-----------------
+  Ensemble, S1 + S2 + S3 (maquette G) : la carte ne montre plus
+  d'hexagones, ni dans les zones ni dans le terrain, et les zones ont des
+  formes de pays. Dans cet ordre :
+    1. S1 (ce qu'il demande, sans toucher la partie) ;
+    2. S2 (les zones rondes ; changement voulu de la partie, empreinte) ;
+    3. S3 (le terrain) ;
+    S4 quand on fera les rivieres (gues, ponts).
+  La simulation reste sur sa grille : chemins, nourriture, sauvegarde,
+  multijoueur ne bougent pas (sauf S2, deterministe aussi).

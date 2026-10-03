@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import battle, chiefdom, chiefs, events, goods, influence, tech
+from src.kora import approach, battle, chiefdom, chiefs, events, goods, influence, tech
 from src.kora.log import LogKind
 # Les donnees (contacts, relations, pactes, routes) : types.py.
 from src.kora.types import Diplomacy, Mod, Pact, TradeRoute  # noqa: F401
@@ -78,6 +78,9 @@ MOD_TEXT = {
     "soumis": ("Vous les avez soumis", "Ils vous ont soumis", 0.2),
     "revolte": ("Ils se sont révoltés", "Vous vous êtes révoltés", 0.3),
     "protection": ("Ils sont sous votre protection", "Vous êtes sous leur protection", 0.2),
+    # Les grandes chefferies.
+    "festin": ("Ils ont mangé à votre table", "Vous avez mangé à leur table", 0.4),
+    "oblige": ("Vos dons les obligent", "Leurs dons vous obligent", 0.5),
     "freres": ("Un village né du vôtre", "Votre village est né du leur", 0.1),
 }
 
@@ -258,6 +261,8 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
             out.append(("Chef querelleur", -5.0))
         if "genereux" in chief:
             out.append(("Chef généreux", 3.0))
+        if approach.of(state, t) == "conquerant":
+            out.append(("Chef conquérant", -4.0))
     return out
 
 
@@ -659,6 +664,11 @@ def _other_enemy(state, tid: int, but: int) -> bool:
     return any(t != but and relation(state, tid, t) <= -40 for t in contacts_of(state, tid))
 
 
+def _obliged(state, actor: int, target: int) -> bool:
+    """`target` a recu des dons de `actor` (Biens de prestige) : il lui doit."""
+    return any(m.key == "oblige" and m.actor == actor and m.value > 0 for m in _d(state).mods.get(pair(actor, target), []))
+
+
 def _betrayer(state, tid: int, weeks: int = 156) -> bool:
     last = _d(state).betrayed.get(tid)
     return last is not None and state.tick_count - last <= weeks
@@ -762,6 +772,8 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         out.append(("Relation", round(rel * 0.2)))
         if state.tribes[target].prestige >= 50:
             out.append(("Trop fiers pour payer", -10))
+        if _obliged(state, actor, target):
+            out.append(("Vos dons les obligent", 8))
     elif action == "proteger":
         if not chiefdom.has_chiefdom(state, actor):
             return Verdict(blocked="Il vous faut un village")
@@ -773,12 +785,18 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
             return Verdict(blocked="Ils sont déjà tributaires d'un autre peuple")
         if chiefdom.overlord_of(state, actor) == target:
             return Verdict(blocked="Vous êtes leurs tributaires")
-        if ratio < 2.5:
-            return Verdict(blocked="Vous n'êtes pas assez puissants (il faut deux fois et demie leur force)")
-        if len(chiefdom.vassals_of(state, actor)) >= 3 + state.tribes[actor].prestige // 40:
+        need = chiefdom.protect_ratio(state, actor)
+        if ratio < need:
+            times = "deux fois et demie" if need >= 2.45 else "deux fois"
+            return Verdict(blocked=f"Vous n'êtes pas assez puissants (il faut {times} leur force)")
+        if len(chiefdom.vassals_of(state, actor)) >= chiefdom.vassal_cap(state, actor):
             return Verdict(blocked="Vous avez déjà autant de tributaires que vous pouvez en tenir")
         out.append(("Base", -60))
-        out.append(("Rapport de forces", max(-20, min(30, round((ratio - 2.5) * 10)))))
+        out.append(("Rapport de forces", max(-20, min(30, round((ratio - need) * 10)))))
+        if chiefdom.feasted(state, actor, target):
+            out.append(("Ils ont mangé à votre table", 10))
+        if _obliged(state, actor, target):
+            out.append(("Vos dons les obligent", 12))
         out.append(("Relation", round(rel * 0.3)))
         gap_p = state.tribes[actor].prestige - state.tribes[target].prestige
         out.append(("Votre prestige", max(-15, min(20, round(gap_p * 0.3)))))
@@ -806,6 +824,9 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
             out.append(("Petit peuple", 10))
     else:
         return Verdict(blocked="?")
+    seen = approach.accept(state, target, action)
+    if seen is not None:
+        out.append(seen)
     if bonus.diplo:
         out.append(("Dons et palabres", bonus.diplo))
     if _betrayer(state, actor):
@@ -865,6 +886,9 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         carrier.stock -= amount
         receiver.stock = min(stock_max(receiver, state), receiver.stock + amount)
         add_mod(state, actor, target, "cadeau", gift_value(state, actor, target, amount), actor=actor)
+        if tech.bonuses(state.tribes[actor]).obligations:
+            # Biens de prestige : qui recoit doit.
+            add_mod(state, actor, target, "oblige", 6.0, actor=actor)
         if human:
             _note(state, LogKind.POLITIQUE, f"Les {state.tribes[actor].name} vous offrent {amount:.0f} vivres.", receiver.position, to=target)
         return f"Les {names} acceptent vos {amount:.0f} vivres."
@@ -1034,11 +1058,11 @@ def ai_monthly(state) -> None:
                 if evaluate(state, tid, other, "treve").accepted:
                     perform(state, tid, other, "treve")
                     continue
-            if rel >= 45 and not allied(state, tid, other) and tech.bonuses(tribe).alliance:
+            if rel >= 45 + approach.factor(state, tid, "alliance_rel") and not allied(state, tid, other) and tech.bonuses(tribe).alliance:
                 if evaluate(state, tid, other, "alliance").accepted:
                     perform(state, tid, other, "alliance")
                     continue
-            if rel >= 10 and tech.bonuses(tribe).commerce and not has_pact(state, tid, other, "commerce"):
+            if rel >= 10 + approach.factor(state, tid, "commerce_rel") and tech.bonuses(tribe).commerce and not has_pact(state, tid, other, "commerce"):
                 if not on_cooldown(state, tid, other, "commerce") and evaluate(state, tid, other, "commerce").accepted:
                     perform(state, tid, other, "commerce")
                     continue
@@ -1047,8 +1071,8 @@ def ai_monthly(state) -> None:
                 rel >= 0
                 and gap(state, tid, other) <= 30
                 and not on_cooldown(state, tid, other, "proteger")
-                and power(state, tid) > 2.5 * max(1.0, power(state, other))
-                and state.story_rng.random() < 0.1
+                and power(state, tid) > chiefdom.protect_ratio(state, tid) * max(1.0, power(state, other))
+                and state.story_rng.random() < 0.1 * approach.factor(state, tid, "protect")
                 and evaluate(state, tid, other, "proteger").accepted
             ):
                 perform(state, tid, other, "proteger")
@@ -1057,9 +1081,26 @@ def ai_monthly(state) -> None:
                 not has_pact(state, tid, other)
                 and power(state, tid) > 2.5 * max(1.0, power(state, other))
                 and rel <= 10
-                and state.story_rng.random() < 0.15
+                and state.story_rng.random() < 0.15 * approach.factor(state, tid, "tribute")
             ):
                 perform(state, tid, other, "tribut")
+                continue
+            # Un chef protecteur (ou genereux) fait des dons a ses voisins plus
+            # faibles : ils lui seront obliges (Biens de prestige).
+            if (
+                rel < 60
+                and approach.factor(state, tid, "gift") > 1.0
+                and power(state, tid) > 1.5 * max(1.0, power(state, other))
+                and not on_cooldown(state, tid, other, "cadeau")
+                and state.story_rng.random() < 0.05 * approach.factor(state, tid, "gift")
+                and gift_carrier(state, tid, other) is not None
+            ):
+                carrier, _receiver = gift_carrier(state, tid, other)
+                spare = carrier.stock - 8 * carrier.population
+                if spare >= 60:
+                    perform(state, tid, other, "cadeau", min(150.0, spare / 2))
+                    d_ = _d(state)
+                    d_.cooldown[f"cadeau:{tid}:{other}"] = state.tick_count
 
 
 PROPOSE_EVERY = 52
@@ -1077,11 +1118,11 @@ def _propose_to_player(state, ai: int, player: int) -> None:
     kind = ""
     if not at_peace(state, ai, player) and fought and rel > -60 and evaluate(state, player, ai, "treve").accepted:
         kind = "offre_treve"
-    elif rel >= 45 and not allied(state, ai, player) and tech.bonuses(state.tribes[ai]).alliance:
+    elif rel >= 45 + approach.factor(state, ai, "alliance_rel") and not allied(state, ai, player) and tech.bonuses(state.tribes[ai]).alliance:
         if evaluate(state, player, ai, "alliance").accepted or rel >= 60:
             kind = "offre_alliance"
     elif (
-        rel >= 10
+        rel >= 10 + approach.factor(state, ai, "commerce_rel")
         and tech.bonuses(state.tribes[ai]).commerce
         and not has_pact(state, ai, player, "commerce")
         and not evaluate(state, ai, player, "commerce").blocked
@@ -1093,7 +1134,7 @@ def _propose_to_player(state, ai: int, player: int) -> None:
         and power(state, ai) > 2.0 * max(1.0, power(state, player))
         and not evaluate(state, ai, player, "proteger").blocked
         and gap(state, ai, player) <= 30
-        and state.story_rng.random() < 0.15
+        and state.story_rng.random() < 0.15 * approach.factor(state, ai, "protect")
     ):
         kind = "offre_protection"
     elif (
@@ -1101,10 +1142,10 @@ def _propose_to_player(state, ai: int, player: int) -> None:
         and power(state, ai) > 2.5 * max(1.0, power(state, player))
         and rel <= 10
         and gap(state, ai, player) <= 30
-        and state.story_rng.random() < 0.2
+        and state.story_rng.random() < 0.2 * approach.factor(state, ai, "tribute")
     ):
         kind = "exige_tribut"
-    elif rel >= 25 and state.story_rng.random() < 0.08 and gift_carrier(state, ai, player) is not None:
+    elif rel >= 25 and state.story_rng.random() < 0.08 * approach.factor(state, ai, "gift") and gift_carrier(state, ai, player) is not None:
         carrier, receiver = gift_carrier(state, ai, player)
         spare = carrier.stock - 6 * carrier.population
         if spare >= 40:

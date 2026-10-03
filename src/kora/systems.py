@@ -44,6 +44,8 @@ MONTHLY = (
     "numbers.monthly",
     "money.monthly",
     "chiefs.monthly",
+    # L'approche de chaque chef (apres les successions, avant ses decisions).
+    "approach.monthly",
     "diplo.ai_monthly",
     "events.monthly",
     "situations.monthly",

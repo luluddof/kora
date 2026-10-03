@@ -290,7 +290,7 @@ def monthly(state) -> None:
         for v in chiefdom.vassals_of(state, tid):
             vt = state.tribes.get(v)
             if vt is not None and getattr(vt, "money", 0.0) > 1.0:
-                part = vt.money * VASSAL_SHARE
+                part = vt.money * VASSAL_SHARE * tech.bonuses(tribe).vassal_tribute
                 vt.money -= part
                 book(state, v, "tribut", -part)
                 earn(state, tid, "tribut", part)

@@ -405,6 +405,37 @@ lente, bandes dessinees petites a taille fixe.
     (une bande se scinde, un clan s'emancipe, la reserve d'un village...)
     par systems.py. Reste (note dans ajouter-un-systeme.txt) : decouper les
     plus gros modules quand un chantier y touche.
+  - "Etudie comment briser l'hexagonalite du jeu : des frontieres plus
+    naturelles, peut-etre pour les zones d'influence des villes ; j'ai deja
+    pre-travaille dessus, propose des solutions." PROPOSE (en attente de son
+    choix) : 2026-10-03-frontieres-naturelles-propositions.txt et les
+    maquettes de docs/maquettes/frontieres/ (sur sa partie). Trois causes :
+    le dessin des zones (escalier), leur forme (propagation en 6 directions
+    -> hexagones geants), le terrain (nid d'abeille). Solutions : S1
+    frontieres en courbes (dessin seul), S2 zones rondes qui suivent le sol
+    (12 directions, disque rond, relief doux), S3 terrain deforme, S4
+    rivieres et cretes comme frontieres (plus tard).
+    Sa reponse : "non, au pire on verra plus tard." EN ATTENTE.
+  - "Les zones d'influence ne restent pas eternellement : a l'ere tribale,
+    quand on part d'un endroit, l'influence decroit progressivement."
+    VERIFIE (deja le cas) : x0,94 par mois ; partie apres un an sur place,
+    une case sort de la zone en 30 mois ; dans sa partie, 2 % des cases en
+    zone sont des traces loin de tout, en train de s'effacer.
+  - "Durant l'ere actuelle, des techs en plus, sans passer a la suivante,
+    qui encouragent l'expansion par la vassalisation, bien que pas
+    forcement." FAIT (0.8.0) : un palier 6 du neolithique, "Grandes
+    chefferies" (Enceintes et fossés, Festins de prestige, Biens de
+    prestige, Chef des chefs, Otages et serments ; et l'autre voie : Araire,
+    Lait et laine), tous de la fin du neolithique : pas d'age suivant.
+  - "Les dirigeants des proto-pays, selon la situation de leur pays et leur
+    personnalite, auront differentes approches avec les autres pays." FAIT
+    (0.8.0) : approach.py (conquerant, protecteur, marchand, paisible,
+    mefiant, aux abois ; soumis, retif) : raids, tributs, protection, dons,
+    reponses aux propositions ; ecran Peuples, journal.
+  - "Retravaille les noms de recherche (Cueillette savante -> Cueillette)."
+    FAIT : Cueillette, Garde des troupeaux, Camp permanent, Champs cultivés
+    et les accents des descriptions.
+    Spec : 2026-10-03-chefs-et-grandes-chefferies.txt.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -495,6 +526,13 @@ lente, bandes dessinees petites a taille fixe.
   de village nouveau = un champ type de VillageData ; une touche ou un clic
   = une methode de app.Play ; une condition ou un effet d'evenement = une
   fonction dans une table (moteur) ou dans le vocabulaire de son systeme.
+  Fait le 2026-10-03 (0.8.0) : approches des chefs, grandes chefferies
+  (palier 6), noms des savoirs. REGLES NOUVELLES : une decision de l'IA
+  envers un autre peuple passe par l'approche de son chef
+  (approach.factor ; une reponse : approach.accept) ; un savoir nouveau du
+  neolithique va au palier 6 tant qu'il y a des cases libres (une case par
+  colonne et par palier) ; un age suivant seulement si l'histoire l'exige.
+  EN ATTENTE (sa demande) : les frontieres naturelles (propositions S1-S4).
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes

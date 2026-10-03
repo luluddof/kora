@@ -7,7 +7,7 @@ from src.kora.ai_war import (
     start_plan,
     unsafe_spots,
 )
-from src.kora import chiefs, diplo, goods, places, sites, units, villages
+from src.kora import approach, chiefs, diplo, goods, places, sites, units, villages
 from src.kora.peoples import culture_of
 from src.kora.battle import band_force, band_quality, defense_force
 from src.kora.bands import (
@@ -422,7 +422,7 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     if site is not None and not villages.army_block(state, band.id):
         foe, foe_f = _threat(state, band, AI_THREAT_RANGE)
         raise_it = foe is not None and foe_f >= AI_THREAT * band_force(state, band)
-        if not raise_it and weeks >= 8 and band.population >= AI_ARMY_POP and state.rng.random() < AI_ARMY_WHIM:
+        if not raise_it and weeks >= 8 and band.population >= AI_ARMY_POP and state.rng.random() < AI_ARMY_WHIM * approach.factor(state, band.tribe_id, "army"):
             tribe = state.tribes[band.tribe_id]
             culture = culture_of(tribe)
             if tribe.prestige >= culture.raid_prestige - 10:
@@ -639,7 +639,9 @@ def _decide(state: GameState) -> None:
         if tribe.is_player:
             skip_raid = True
         hungry = weeks < 4
-        bold = tribe.prestige >= p_thr and state.rng.random() < AI_RAID_WHIM
+        # L'approche du chef (approach.py) : un conquerant raide plus, un
+        # paisible bien moins.
+        bold = tribe.prestige >= p_thr and state.rng.random() < AI_RAID_WHIM * approach.factor(state, tribe.id, "raid")
         if not skip_raid and (hungry or bold):
             plan = plan_raid(state, band, r_weeks, hungry=hungry)
             if plan is not None:

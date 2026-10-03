@@ -10,6 +10,7 @@ from __future__ import annotations
 import pygame
 
 from src.kora import (
+    approach,
     chiefs,
     diplo,
     diplo as _diplo,
@@ -67,6 +68,11 @@ GOLD = C.ocre_jaune
 GOOD = C.bon
 BAD = C.mauvais
 WARN = C.alerte
+# La couleur de chaque approche des chefs (approach.py).
+APPROACH_COLORS = {
+    "conquerant": C.mauvais, "protecteur": C.ocre_jaune, "marchand": C.bon, "paisible": C.lin,
+    "mefiant": C.alerte, "affame": C.braise, "soumis": C.cendre, "retif": C.alerte,
+}
 
 
 def _fonts(r):
@@ -617,8 +623,9 @@ def draw_peoples(r, state, layout, ui) -> None:
     t = state.tribes[pick]
     cy = by + 46
     color = color_of(t)
-    _box(r, (cx, cy, cw, 74), fill=(35, 26, 20), edge=(85, 64, 45), radius=8)
-    pygame.draw.rect(r.screen, color, (cx, cy, 8, 74), border_top_left_radius=8, border_bottom_left_radius=8)
+    head_h = 92
+    _box(r, (cx, cy, cw, head_h), fill=(35, 26, 20), edge=(85, 64, 45), radius=8)
+    pygame.draw.rect(r.screen, color, (cx, cy, 8, head_h), border_top_left_radius=8, border_bottom_left_radius=8)
     _text(r, title_font, t.name, TEXT, cx + 20, cy + 6)
     nb = sum(1 for b in state.bands.values() if b.tribe_id == pick and b.population > 0)
     pop = diplo.pop_of(state, pick)
@@ -642,11 +649,35 @@ def draw_peoples(r, state, layout, ui) -> None:
     lead = chiefs.chief_of(state, pick)
     if lead is not None:
         _text(r, r.tiny, r._fit(r.tiny, "Chef : " + chiefs.describe(state, lead), cw - 40), GOLD, cx + 22, cy + 52)
+    # L'approche de son chef envers les autres peuples (approach.py).
+    approach_tip = None
+    way = approach.of(state, pick)
+    if way:
+        label, about = approach.APPROACHES[way]
+        tint = APPROACH_COLORS.get(way, SOFT)
+        head = f"Approche : {label}"
+        hw = r.small.size(head)[0]
+        _text(r, r.small, head, tint, cx + 22, cy + 68)
+        _text(r, r.tiny, r._fit(r.tiny, about, cw - 60 - hw), SOFT, cx + 30 + hw, cy + 71)
+        arect = (cx + 22, cy + 66, cw - 40, 22)
+        items["people_approach"] = arect
+        if _hover(arect):
+            rows = [(f"{label} : {about}", TEXT, "petit_gras")]
+            why = approach.reasons(state, pick)
+            if why:
+                rows.append(("Pourquoi :", NOTE))
+                rows += [(f"  {text}", SOFT) for text, _v in why[:5]]
+            rows.append(("Ce que cela change :", NOTE))
+            rows += [(f"  {line}", tint) for line in approach.BEHAVIOR.get(way, ())]
+            rows.append(("Elle change avec sa situation, et avec un nouveau chef.", NOTE))
+            approach_tip = (rows, arect[0], arect[1] + arect[3], arect)
+    elif t.is_player and pick != state.viewer:
+        _text(r, r.tiny, "Mené par un joueur : il décide lui-même de son approche.", NOTE, cx + 22, cy + 70)
     see = (cx + cw - 96, cy + 8, 84, 22)
     items["people_see"] = see
     _button(r, see, "Voir")
     # Relation.
-    cy += 86
+    cy += head_h + 12
     rel = diplo.relation(state, state.viewer, pick)
     lvl = diplo.level(state, state.viewer, pick)
     _text(r, head_font, f"Relation : {_signed(rel)}  ·  {lvl}", _rel_color(rel), cx + 4, cy)
@@ -713,6 +744,8 @@ def draw_peoples(r, state, layout, ui) -> None:
         cy += 22
     # Actions : les vivres sur une ligne, puis les propositions.
     tips = []
+    if approach_tip is not None:
+        tips.append(approach_tip)
     verdict = diplo.evaluate(state, state.viewer, pick, "cadeau")
     _text(r, r.small, diplo.ACTION_LABELS["cadeau"], TEXT if not verdict.blocked else NOTE, cx + 4, cy + 3)
     sizes = diplo.gift_sizes(state, state.viewer, pick) if not verdict.blocked else []

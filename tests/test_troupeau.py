@@ -180,7 +180,7 @@ def test_player_learning_logs_ai_does_not():
     st, _band, _tribe = _tribe_on_steppe(is_player=True)
     learning.choose(st, 1, "troupeau")
     _learn(st)
-    assert any("Troupeau" in e.text and "Nouveau savoir" in e.text for e in st.log.entries)
+    assert any("Garde des troupeaux" in e.text and "Nouveau savoir" in e.text for e in st.log.entries)
     st2, _b, _t = _tribe_on_steppe(is_player=False)
     _learn(st2)
     assert st2.log.entries == []

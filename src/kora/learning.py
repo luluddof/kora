@@ -126,6 +126,9 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
             "allies": _plural(cond.need, "allié"),
         }[kind]
         return have, cond.need, label
+    if kind == "vassals":
+        n = len(chiefdom.vassals_of(state, tribe.id))
+        return n, cond.need, f"{_plural(cond.need, 'tributaire')}"
     if kind == "kin_villages":
         return chiefdom.kin_villages(state, tribe.id), cond.need, f"{_plural(cond.need, 'village frère')} (de votre civilisation, ou tributaire)"
     if kind in ("villages", "village_years"):
