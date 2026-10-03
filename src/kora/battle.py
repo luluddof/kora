@@ -1053,18 +1053,16 @@ def side_force(state: GameState, band: Band) -> float:
 
 def defense_force(state: GameState, band: Band) -> float:
     """Force estimee d'une bande attaquee chez elle (pour l'IA) : renforts,
-    abri (terrain, palissade, pays connu) et moral (battle.py)."""
-    from src.kora import battle
-
+    abri (terrain, palissade, pays connu) et moral."""
     force = side_force(state, band)
     if band.village and band.kind != "armee":
-        # Au mur : les hommes valides, et une part des femmes (battle.WALL_WOMEN).
-        force += battle.WALL_WOMEN * population.women_force(band) * band_quality(state, band)
+        # Au mur : les hommes valides, et une part des femmes (WALL_WOMEN).
+        force += WALL_WOMEN * population.women_force(band) * band_quality(state, band)
     cover = 1.0
-    for _label, mult in battle.cover_parts(state, band, band.position):
+    for _label, mult in cover_parts(state, band, band.position):
         cover *= mult
-    morale, _parts = battle.start_morale(state, band, attacker=False, h=band.position)
-    return force * cover * morale / (battle.MORALE_BASE + battle.KIN_MORALE)
+    morale, _parts = start_morale(state, band, attacker=False, h=band.position)
+    return force * cover * morale / (MORALE_BASE + KIN_MORALE)
 
 
 def _retreat_sites(state: GameState, band: Band, winner: Band) -> list[Hex]:
@@ -1106,7 +1104,7 @@ def _retreat_sites(state: GameState, band: Band, winner: Band) -> list[Hex]:
 
 def _retreat(state: GameState, loser: Band, winner: Band) -> bool:
     """Le vaincu part a pied vers ses soeurs, un de ses lieux, sinon une case
-    sure. Rend False s'il n'a nulle part ou aller (encercle, battle.py)."""
+    sure. Rend False s'il n'a nulle part ou aller (encercle)."""
     loser.order = stay_order()
     loser.path = []
     loser.shield_until = state.tick_count + RETREAT_MIN_SHIELD
@@ -1201,21 +1199,18 @@ def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band, m
 
 def resolve_raids(state: GameState) -> None:
     """Combats de la semaine : deux bandes ennemies sur la meme case
-    COMMENCENT une bataille (battle.py), qui dure des jours. Les bandes d'un
+    COMMENCENT une bataille, qui dure des jours. Les bandes d'un
     camp (ou de ses allies) qui arrivent sur la case d'une bataille en cours
     la rejoignent. Une bande ne livre qu'une bataille a la fois."""
     from collections import defaultdict
-
-    from src.kora import battle
-
     by_hex: dict[Hex, list[Band]] = defaultdict(list)
     for band in state.bands.values():
         if band.population <= 0:
             continue
         by_hex[band.position].append(band)
-    busy = {b for bt in battle.battles(state) if not bt.outcome for b in bt.attackers + bt.defenders}
+    busy = {b for bt in battles(state) if not bt.outcome for b in bt.attackers + bt.defenders}
     # Les renforts.
-    for bt in sorted(battle.battles(state), key=lambda b: b.uid):
+    for bt in sorted(battles(state), key=lambda b: b.uid):
         if bt.outcome:
             continue
         a_tribes = {state.bands[b].tribe_id for b in bt.attackers if b in state.bands}
@@ -1224,10 +1219,10 @@ def resolve_raids(state: GameState) -> None:
             if band.id in busy or is_shielded(state, band) or band.retreating:
                 continue
             if band.tribe_id in a_tribes or any(diplo.allied(state, band.tribe_id, t) for t in a_tribes):
-                battle.join(state, bt, band, True)
+                join(state, bt, band, True)
                 busy.add(band.id)
             elif band.tribe_id in d_tribes or any(diplo.allied(state, band.tribe_id, t) for t in d_tribes):
-                battle.join(state, bt, band, False)
+                join(state, bt, band, False)
                 busy.add(band.id)
     for h, group in by_hex.items():
         while True:
@@ -1254,7 +1249,7 @@ def resolve_raids(state: GameState) -> None:
                 break
             a, foe = pair
             attacker, defender = _raid_sides(a, foe)
-            bt = battle.start(state, attacker, defender, h, _hunts(attacker, defender))
+            bt = start(state, attacker, defender, h, _hunts(attacker, defender))
             busy.update(bt.attackers)
             busy.update(bt.defenders)
             for me in humans(state):
@@ -1265,15 +1260,13 @@ def resolve_raids(state: GameState) -> None:
 
 
 def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, hunted: bool) -> None:
-    """La fin d'une bataille (battle._end) : le journal des joueurs, le
+    """La fin d'une bataille (_end) : le journal des joueurs, le
     prestige, les relations, la marque sur la carte."""
-    from src.kora import battle
-
     a_t, d_t = attacker.tribe_id, defender.tribe_id
     told = [t for t in humans(state) if t in (a_t, d_t) or is_visible(state, h, t)]
     winner, loser = res.winner, res.loser
     for me in told:
-        note(state, LogKind.COMBAT, _raid_text(state, attacker, defender, winner, me, hunted) + battle.log_suffix(state, res, me), where=h, to=me)
+        note(state, LogKind.COMBAT, _raid_text(state, attacker, defender, winner, me, hunted) + log_suffix(state, res, me), where=h, to=me)
     wt = state.tribes[winner.tribe_id]
     lt = state.tribes[loser.tribe_id]
     gain_prestige(state, wt, 10 if res.wiped else 5)

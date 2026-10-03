@@ -198,3 +198,82 @@ def main(argv) -> int:
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
+
+
+# --- les regles (tests/test_architecture.py) ------------------------------------------
+
+
+def top_edges() -> tuple[dict, set]:
+    """Le graphe des imports de TETE, et ses aretes qui importent un NOM
+    (from src.kora.x import nom) plutot qu'un module."""
+    mods = modules()
+    g = collections.defaultdict(set)
+    names = set()
+    for path in SRC.glob("*.py"):
+        m = path.stem
+        for node in ast.parse(path.read_text(encoding="utf-8")).body:
+            if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("src.kora"):
+                ts = [node.module.split(".")[-1]] if node.module != "src.kora" else [a.name for a in node.names]
+                for t in ts:
+                    if t in mods and t != m:
+                        g[m].add(t)
+                        if node.module != "src.kora":
+                            names.add((m, t))
+    return g, names
+
+
+def _reach(g, a) -> set:
+    seen, stack = set(), [a]
+    while stack:
+        v = stack.pop()
+        if v not in seen:
+            seen.add(v)
+            stack.extend(g.get(v, ()))
+    return seen
+
+
+def needless_hidden() -> list:
+    """Les imports caches qui pourraient etre en tete : (module, ligne,
+    cible). Un import cache n'est permis que s'il ne peut pas etre en tete
+    (le module vise importe deja, en tete, celui-ci, par un chemin qui importe
+    un nom), ou s'il porte le commentaire "# paresseux : raison"."""
+    lay = layer_of()
+    g, names = top_edges()
+    rev = collections.defaultdict(set)
+    for u, vs in g.items():
+        for v in vs:
+            rev[v].add(u)
+    out = []
+    for path in sorted(SRC.glob("*.py")):
+        m = path.stem
+        src = path.read_text(encoding="utf-8")
+        lines = src.split("\n")
+        tree = ast.parse(src)
+        for f in ast.walk(tree):
+            if not isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            for node in ast.walk(f):
+                if not (isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("src.kora")):
+                    continue
+                if "paresseux" in lines[node.lineno - 1]:
+                    continue
+                module_form = node.module == "src.kora"
+                ts = [a.name for a in node.names] if module_form else [node.module.split(".")[-1]]
+                for t in ts:
+                    if t not in lay or lay[t] > lay.get(m, 0):
+                        continue  # vers le haut : une autre regle
+                    if m in _reach(g, t):
+                        if not module_form:
+                            continue  # un nom d'un module en cercle : il doit rester cache
+                        to_m = _reach(rev, m)
+                        from_t = _reach(g, t)
+                        if any(u in from_t and v in to_m for u, v in names):
+                            continue
+                    out.append((m, node.lineno, t))
+    return out
+
+
+def upward() -> list:
+    """Les imports (en tete ou caches) vers un etage plus haut."""
+    lay = layer_of()
+    return sorted({(a, b) for (a, b) in edges() if lay.get(b, 0) > lay.get(a, 0)})

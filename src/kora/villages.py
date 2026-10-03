@@ -845,7 +845,7 @@ def hands_mult(band, fields: int, busy: int = 0) -> float:
 
 def field_hands_mult(site, band, state=None) -> float:
     """Assez de bras aux champs ? Les adultes valides qui ne sont pas aux
-    metiers (villages.occupations) ; les hommes partis a la guerre manquent."""
+    metiers (occupations) ; les hommes partis a la guerre manquent."""
     from src.kora import goods
 
     fields = len(site.data.fields)
@@ -1850,9 +1850,9 @@ def occupations(state, band) -> dict:
         out["soldats"] = men
         return out
     if band.village:
-        from src.kora import goods, villages
+        from src.kora import goods
 
-        site = villages.site_of(state, band)
+        site = site_of(state, band)
         if site is not None:
             for cid, n in sorted(goods.teams(site).items()):
                 if n <= 0 or cid not in goods.CRAFTS:
@@ -1862,7 +1862,7 @@ def occupations(state, band) -> dict:
                 women -= w
                 out["metiers"][cid] = m + w
             fields = len(site.data.fields)
-            need = int(round(fields * villages.FIELD_HANDS * ACTIVE_NORM))
+            need = int(round(fields * FIELD_HANDS * ACTIVE_NORM))
             free = men + women
             take = min(need, free)
             if take > 0 and free > 0:
@@ -1881,10 +1881,10 @@ def occupations(state, band) -> dict:
 
 def free_for_craft(state, band, cid: str) -> int:
     """Combien de gens du bon sexe pourraient encore entrer a ce metier."""
-    from src.kora import goods, villages
+    from src.kora import goods
 
     men, women = fit_men(band), fit_women(band)
-    site = villages.site_of(state, band)
+    site = site_of(state, band)
     if site is not None:
         for other, n in sorted(goods.teams(site).items()):
             if n <= 0 or other not in goods.CRAFTS:
