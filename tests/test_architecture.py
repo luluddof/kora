@@ -7,6 +7,7 @@ un texte sans accents, une icone absente..."""
 import ast
 import dataclasses
 import importlib
+import os
 import pathlib
 import subprocess
 import sys
@@ -18,11 +19,12 @@ from src.kora.types import Band, Hex, Order, OrderKind, Person, Tribe
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "kora"
+sys.path.insert(0, str(ROOT / "tools"))
+import dependances  # noqa: E402
+
 # La presentation (pygame permis) ; tout le reste est la simulation et ses
-# outils, en python pur.
-PRESENTATION = {
-    "app", "render", "theme", "look", "globe", "globe_draw", "screens", "layout",
-} | {p.stem for p in SRC.glob("render_*.py")}
+# outils, en python pur (tools/dependances.py).
+PRESENTATION = dependances.presentation()
 
 
 def _imports(path: pathlib.Path) -> set:
@@ -44,6 +46,82 @@ def test_the_simulation_never_imports_pygame_nor_the_screens():
             continue
         bad = {m for m in _imports(path) if m.startswith("pygame") or m.split(".")[-1] in PRESENTATION}
         assert not bad, f"{path.name} (simulation) importe {sorted(bad)}"
+
+
+# --- les etages : qui peut importer qui (tools/dependances.py) -----------------------
+
+# Les imports caches (dans une fonction) qui restent, tous justifies par un
+# commentaire "# paresseux : raison". Ce nombre ne doit pas monter.
+HIDDEN_BUDGET = 1
+
+
+def test_every_module_has_its_floor():
+    lay = dependances.layer_of()
+    missing = sorted(m for m in dependances.modules() if m not in lay)
+    assert not missing, f"modules sans étage : ajoutez-les à tools/dependances.LAYERS : {missing}"
+
+
+def test_nobody_imports_a_higher_floor():
+    """Un module n'importe que son etage ou plus bas (les etages : la base,
+    la planete, l'etat de la partie, les savoirs, les systemes, l'IA, la
+    semaine, les ordres, la sauvegarde, l'interface). Un systeme qui doit
+    reagir a un etage plus haut passe par systems.py."""
+    up = dependances.upward()
+    assert not up, f"imports vers un étage plus haut : {up}"
+
+
+def test_imports_stay_at_the_top_of_the_file():
+    """Un import dans une fonction cache une dependance : seulement quand on
+    ne peut pas faire autrement, et commente "# paresseux : raison"."""
+    needless = dependances.needless_hidden()
+    assert not needless, f"imports cachés qui pourraient être en tête du module : {needless}"
+    hidden = []
+    for path in sorted(SRC.glob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        for f in ast.walk(ast.parse(text)):
+            if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for node in ast.walk(f):
+                    if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("src.kora"):
+                        hidden.append((path.stem, node.lineno))
+                        before = lines[node.lineno - 2] if node.lineno >= 2 else ""
+                        assert "paresseux" in lines[node.lineno - 1] + before, (
+                            f"{path.name}:{node.lineno} : import caché sans raison (# paresseux : ...)"
+                        )
+    assert len(hidden) <= HIDDEN_BUDGET, f"imports cachés : {len(hidden)} > {HIDDEN_BUDGET} : {hidden}"
+
+
+def test_modules_in_a_circle_import_each_other_whole():
+    """Des systemes qui s'appellent l'un l'autre (un cercle) s'importent en
+    entier ("from src.kora import goods", puis goods.xxx) : un nom importe
+    ("from src.kora.goods import xxx") d'un module encore en chargement
+    casserait le demarrage."""
+    sim = dependances.modules()
+    g, names = dependances.top_edges()
+    circles = dependances.cycles({k: v & sim for k, v in g.items()})
+    inside = {m: c for c in circles for m in c}
+    bad = sorted((a, b) for a, b in names if a in inside and b in inside.get(a, ()))
+    assert not bad, f"noms importés à l'intérieur d'un cercle : {bad}"
+
+
+def test_every_module_loads_on_its_own():
+    """Chaque module se charge seul, en premier (aucun ordre d'import cache)."""
+    code = """
+import importlib, sys, pathlib
+mods = sorted(p.stem for p in pathlib.Path('src/kora').glob('*.py') if p.stem != '__init__')
+bad = []
+for m in mods:
+    for k in [k for k in sys.modules if k.startswith('src.kora')]:
+        del sys.modules[k]
+    try:
+        importlib.import_module('src.kora.' + m)
+    except Exception as e:
+        bad.append((m, repr(e)))
+print(bad)
+"""
+    env = {**os.environ, "SDL_VIDEODRIVER": "dummy"}
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=ROOT, env=env)
+    assert out.stdout.strip().splitlines()[-1] == "[]", out.stdout[-3000:] + out.stderr[-3000:]
 
 
 # --- les fiches : chaque champ se sauve, se relit et se copie ---------------------
