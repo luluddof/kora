@@ -17,14 +17,15 @@ from src.kora.globe_draw import (
 from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
-from src.kora import chiefs, orders, tech, theme
+from src.kora import battle as _battle, chiefs, goods, money, money as _money, orders, tech, theme
 from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
 from src.kora.gamestate import GameState, human_dead, log_of
 from src.kora.types import Hex, Season
-from src.kora.vision import enemy_band_visible
+from src.kora.vision import enemy_band_visible, is_explored, is_visible
 from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.theme import C
 from src.kora.resources import COLORS, LABELS, NAMES
+from src.kora.villages import palisade_state
 
 # Le rail des onglets (a droite) : une pastille par onglet, icone et nom.
 TAB_W = 62
@@ -1115,10 +1116,7 @@ class Renderer:
         a en reserve (pastilles ; plus grosses quand il en a de trop) ; vos
         partenaires entoures d'or ; la portee de vos porteurs autour de vos
         villages."""
-        from src.kora import goods
         from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
-        from src.kora.vision import is_explored
-
         world = state.world
         w, h = self.screen.get_size()
         partners = set(goods.partners(state, state.viewer))
@@ -1184,8 +1182,6 @@ class Renderer:
         if dist > 2.9:
             return
         from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
-        from src.kora.vision import is_explored
-
         world = state.world
         homes: dict = {}
         for site in sorted(state.sites.values(), key=lambda s: s.id):
@@ -1221,10 +1217,7 @@ class Renderer:
         d = getattr(state, "diplo", None)
         if d is None or not getattr(d, "routes", None):
             return
-        from src.kora import goods
         from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
-        from src.kora.vision import is_explored
-
         world = state.world
         homes: dict = {}
         for site in state.sites.values():
@@ -1287,8 +1280,6 @@ class Renderer:
     def draw_sites(self, state: GameState, yaw, pitch, gcx, gcy, focal, dist) -> None:
         """Campements et caches : les siens partout ou l'on est alle, ceux des
         autres seulement sous les yeux de vos bandes."""
-        from src.kora.vision import is_explored, is_visible
-
         w, h = self.screen.get_size()
         size = 7 if dist <= LABEL_DIST else 4
         for site in sorted(state.sites.values(), key=lambda s: s.id):
@@ -1314,8 +1305,6 @@ class Renderer:
     def draw_village_icon(self, site, x: int, y: int, color, size: int) -> None:
         """Un village : un carre a la couleur du peuple, bord sombre ; une
         palissade l'entoure d'un second cadre de bois."""
-        from src.kora.villages import palisade_state
-
         half = max(4, size)
         rect = pygame.Rect(x - half, y - half, 2 * half, 2 * half)
         if palisade_state(site) == "built":
@@ -1372,8 +1361,6 @@ class Renderer:
     def _draw_trade_legend(self, layout, w) -> None:
         """Legende du mode Commerce : les biens, ce que disent les traits,
         et le commerce du mois."""
-        from src.kora import goods
-
         state = getattr(self, "_legend_state", None)
         x0 = layout["relief"][0]
         y = layout["relief"][1] + 36
@@ -1417,8 +1404,6 @@ class Renderer:
     ) -> None:
         w, h = self.screen.get_size()
         gcx, gcy, focal, dist = view_params(zoom, w, h, HUD_HEIGHT)
-        from src.kora.vision import is_explored
-
         me = state.viewer
         for mark in state.fights:
             # Multijoueur : les combats des autres, seulement la ou on est alle.
@@ -1559,8 +1544,6 @@ class Renderer:
 
         army = render_panels.army_ready(state)
         commerce = render_panels.commerce_ready(state)
-        from src.kora import money
-
         treasury = money.has_money(state, state.viewer)
         if panel == "savoirs" and ui.get("tech_cam") is None:
             # Premiere ouverture : la vue se pose sur la recherche en cours.
@@ -1769,8 +1752,6 @@ class Renderer:
         self.screen.blit(theme.medallion(SEASON_ICONS.get(season, "printemps"), 18, "normal", C.froid if season is Season.HIVER else None), (8, (HUD_HEIGHT - 40) // 2))
         theme.text(self.screen, SEASON_FR[season], "h2", C.os, (56, 4), shadow=True)
         day = getattr(state, "day", 0)
-        from src.kora import battle as _battle
-
         if _battle.slow(state):
             # Une bataille : le temps passe en jours.
             theme.text(self.screen, f"an {clock.year}  ·  semaine {clock.week}  ·  jour {day + 1}", "petit", C.braise, (57, 28))
@@ -1788,8 +1769,6 @@ class Renderer:
         x = width - 16
         num = theme.font("chiffre")
         chips = [("vivres", f"{stock:.0f}", C.lin), ("gens", str(pop), C.os)]
-        from src.kora import money as _money
-
         if _money.has_money(state, state.viewer):
             # Le tresor (sicles) : un clic ou [G] ouvre l'ecran du tresor.
             chips.append(("pieces", f"{tribe.money:.0f}", (196, 204, 222)))

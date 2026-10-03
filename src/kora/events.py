@@ -29,6 +29,8 @@ from src.kora.log import LogKind
 from src.kora.world import axial_to_offset, enter_cost_for, food_production, offset_to_axial
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.types import stay_order
+from src.kora.vision import vision_of
+from src.kora import chiefs, sites, systems, tech
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
 PLAYER_GAP = 16
@@ -184,8 +186,6 @@ def _alive(state, tid: int) -> bool:
 
 
 def names(state, inst) -> dict:
-    from src.kora import chiefs
-
     tribe = state.tribes.get(inst.tribe_id)
     band = _band(state, inst)
     chief = chiefs.chief_of(state, inst.tribe_id)
@@ -232,7 +232,6 @@ def _fmt(state, inst, text: str) -> str:
 
 def check(state, inst, cond) -> bool:
     """Une condition (nom, arguments...) sur la portee de l'evenement."""
-    from src.kora import chiefs, sites
     from src.kora.sim import local_winter_weeks, max_bands_of, tribe_band_count
 
     kind, *args = cond
@@ -375,8 +374,6 @@ def check(state, inst, cond) -> bool:
 
 
 def _rival_band(state, tid: int):
-    from src.kora import chiefs
-
     chief = chiefs.chief_of(state, tid)
     if chief is None:
         return None
@@ -641,8 +638,6 @@ def _warm_spot(state, band, reach: int):
 
 
 def _reveal(state, inst, radius: int) -> None:
-    from src.kora.vision import vision_of
-
     tribe = state.tribes.get(inst.tribe_id)
     vision = vision_of(state, inst.tribe_id) if tribe is not None and tribe.is_player else None
     if vision is None:
@@ -793,8 +788,6 @@ def vocabulary() -> tuple[dict, dict, dict]:
     if not _VOCAB:
         import importlib
 
-        from src.kora import systems
-
         conds, effects, texts = {}, {}, {}
         for name in systems.EVENT_VOCABULARY:
             mod = importlib.import_module(f"src.kora.{name}")
@@ -823,15 +816,11 @@ def _good_name(good: str) -> str:
 
 
 def _tech_name(tid: str) -> str:
-    from src.kora import tech
-
     t = tech.TECHS.get(tid)
     return t.name if t else tid
 
 
 def _trait_name(tid: str) -> str:
-    from src.kora import chiefs
-
     t = chiefs.TRAITS.get(tid)
     return t.name if t else tid
 
@@ -900,8 +889,6 @@ def _mod_text(cond) -> str:
 
 
 def _succession_options(state, inst) -> list[dict]:
-    from src.kora import chiefs
-
     out = []
     for bid in inst.data.get("candidates", []):
         band = state.bands.get(bid)
@@ -1012,8 +999,6 @@ def resolve(state, inst: Instance, index: int) -> str:
         if tribe.is_player and text:
             _log(state, tribe.id, LogKind.POLITIQUE, text)
         # Un ambitieux ecarte peut contester.
-        from src.kora import chiefs
-
         for other in inst.data.get("candidates", []):
             ob = state.bands.get(other)
             if ob is None or other == bid or ob.leader is None:
@@ -1157,8 +1142,6 @@ def hook(state, name: str, **scope) -> bool:
             continue
         if name == "succession":
             scope = dict(scope)
-            from src.kora import chiefs
-
             ranked = chiefs.candidates(state, tid)
             scope["data"] = {
                 "dead": scope.get("dead", "Le chef"),

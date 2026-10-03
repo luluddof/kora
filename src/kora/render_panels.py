@@ -9,9 +9,23 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import chiefs, diplo, influence, sites, tech, theme
-from src.kora.peoples import color_of, label_of
-from src.kora.sim import max_bands_of
+from src.kora import (
+    chiefs,
+    diplo as _diplo,
+    diplo,
+    events,
+    goods,
+    influence,
+    money,
+    sites,
+    tech,
+    theme,
+    units,
+    villages as _v,
+    villages,
+)
+from src.kora.peoples import civ_name, civ_of, color_of, label_of, living_tribe_ids
+from src.kora.sim import civ_band_cap, civ_band_count, max_bands_of, tribe_band_count
 
 from src.kora.theme import C
 # L'icone d'un evenement : un mot de son nom, sinon son humeur.
@@ -126,8 +140,6 @@ def tribe_alert(state) -> bool:
     """L'onglet Tribu s'allume quand un clan n'obeit plus ; l'onglet des
     villages, quand un village est agite."""
     if not has_nomads(state):
-        from src.kora import villages
-
         return any(
             villages.stability(state, s) < villages.UNREST
             for s in state.sites.values()
@@ -215,9 +227,6 @@ def draw_tribe(r, state, layout, ui) -> None:
     know = tech.bonuses(tribe)
     camps = len(sites.of_tribe(state, state.viewer, "camp"))
     caches = len(sites.of_tribe(state, state.viewer, "cache"))
-    from src.kora.peoples import civ_of
-    from src.kora.sim import civ_band_cap, civ_band_count, tribe_band_count
-
     civ = civ_of(state, tribe)
     stats = (
         f"Prestige {tribe.prestige}  ·  {pop} personnes  ·  {tribe_band_count(state, state.viewer)}/{max_bands_of(state, state.viewer)} bandes"
@@ -289,8 +298,6 @@ def draw_tribe(r, state, layout, ui) -> None:
         pygame.draw.circle(r.screen, color, (cols["clan"] + 5, y + 12), 5)
         name = band.leader.name if band.leader is not None else f"Bande {band.id}"
         if band.village:
-            from src.kora import villages as _v
-
             site = _v.site_of(state, band)
             place = _v.name(site) if site is not None else "village"
             label = f"{place} ({name}, chef)" if is_heart else f"Village de {place}"
@@ -408,8 +415,6 @@ def _chief_card(r, state, tribe, rect, head_font) -> None:
     lead = heart.leader
     where = ""
     if heart.village:
-        from src.kora import villages
-
         site = villages.site_of(state, heart)
         where = f", gouverne {villages.name(site)}" if site is not None else ""
     _text(r, head_font, r._fit(head_font, f"{lead.name}, chef du peuple ({chiefs.age(state, lead)} ans){where}", w - 44), TEXT, x + 32, y + 6)
@@ -433,9 +438,6 @@ def _chief_card(r, state, tribe, rect, head_font) -> None:
 def draw_villages(r, state, layout, ui) -> None:
     """Le peuple n'a plus de nomades : ses villages, leur stabilite, leurs
     greniers, leurs metiers ; la reserve du peuple et ses echanges."""
-    from src.kora import diplo as _diplo
-    from src.kora import goods, villages
-
     title_font, head_font = _fonts(r)
     items = layout["items"]
     bx, by, bw, bh = layout["box"]
@@ -532,8 +534,6 @@ def draw_villages(r, state, layout, ui) -> None:
 
 
 def known_peoples(state) -> list[int]:
-    from src.kora.peoples import living_tribe_ids
-
     alive = living_tribe_ids(state)
     out = [t for t in diplo.contacts_of(state, state.viewer) if t in alive]
     out.sort(key=lambda t: (not diplo.allied(state, state.viewer, t), -diplo.relation(state, state.viewer, t), t))
@@ -637,8 +637,6 @@ def draw_peoples(r, state, layout, ui) -> None:
     origin = ""
     if t.origin and t.origin in state.tribes:
         origin = f"  ·  issus des {state.tribes[t.origin].name}" if t.origin != state.viewer else "  ·  issus de votre peuple"
-    from src.kora.peoples import civ_name, civ_of
-
     civ = civ_of(state, t)
     if civ == civ_of(state, state.tribes[state.viewer]):
         culture += "  ·  votre civilisation"
@@ -713,8 +711,6 @@ def draw_peoples(r, state, layout, ui) -> None:
         _text(r, r.tiny, r._fit(r.tiny, "Avec les autres : " + ", ".join(ties), cw - 8), SOFT, cx + 4, cy)
         cy += 20
     if diplo.has_pact(state, state.viewer, pick, "commerce"):
-        from src.kora import goods
-
         n = sum(1 for rt in goods.routes_of(state, state.viewer) if pick in (rt.exporter, rt.importer))
         done = goods.summary(state, state.viewer, pick)
         line = f"Routes : {n}" + (" · le mois dernier : " + done if done else " · rien porte le mois dernier")
@@ -800,7 +796,6 @@ def draw_event_cards(r, state, ui) -> None:
     """Cartes "A decider" a gauche (voir events.py) ; rien s'il n'y en a pas.
     Elles respirent : elles attendent une decision."""
     r.event_hits = {}
-    from src.kora import events
     from src.kora.render import HUD_HEIGHT
 
     # Multijoueur : une carte repondue attend que l'hote applique la reponse.
@@ -842,8 +837,6 @@ def event_modal_layout(width: int, height: int, n_options: int, text_lines: int 
 def draw_event_modal(r, state, ui) -> None:
     """La dalle d'un evenement : son illustration dans un grand medaillon,
     le recit en italique, les choix en larges cartes (detail au survol)."""
-    from src.kora import events
-
     uid = ui.get("event_open")
     inst = events.find(state, uid)
     if inst is None:
@@ -914,8 +907,6 @@ def commerce_ready(state) -> bool:
 
 def treasury_alert(state) -> bool:
     """L'onglet Tresor s'allume quand la solde ou les gages ne sont pas payes."""
-    from src.kora import money
-
     tribe = state.tribes.get(state.viewer)
     if tribe is None or not money.has_money(state, state.viewer):
         return False
@@ -926,8 +917,6 @@ def treasury_alert(state) -> bool:
 def commerce_alert(state) -> bool:
     """L'onglet s'allume quand une route du joueur, ouverte par lui, ne porte
     plus rien."""
-    from src.kora import goods
-
     return any(r.by == state.viewer and r.idle >= 2 for r in goods.routes_of(state, state.viewer))
 
 
@@ -941,8 +930,6 @@ def army_ready(state) -> bool:
 
 
 def draw_army(r, state, layout, ui) -> None:
-    from src.kora import units, villages
-
     title_font, head_font = _fonts(r)
     items = layout["items"]
     bx, by, bw, bh = layout["box"]

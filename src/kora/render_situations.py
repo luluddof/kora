@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import situations, tech, theme
+from src.kora import diplo, situations, tech, theme
 from src.kora.peoples import color_of
 from src.kora.situations import CRISE, SPECS
 from src.kora.theme import C
@@ -63,7 +63,6 @@ def banner_layout(width: int, n: int) -> dict:
 
 
 def people_name(state, tid: int) -> str:
-    from src.kora import diplo
     me = state.viewer
     tribe = state.tribes.get(tid)
     if tid == me:

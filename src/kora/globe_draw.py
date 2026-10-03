@@ -20,6 +20,8 @@ from src.kora.types import Season, Terrain
 from src.kora.vision import vision_of
 from src.kora.world import NEIGHBOR_DELTAS, axial_to_offset
 from src.kora.resources import COLORS, NAMES
+from src.kora.influence import CORE_MIN, ZONE_MIN
+from src.kora.peoples import color_of
 
 FOG_UNEXPLORED = (8, 8, 10)
 TERRAINS = tuple(Terrain)
@@ -176,9 +178,6 @@ class Planet:
 
     def sync_zones(self, state) -> tuple:
         """Refait le calque quand l'influence a change (une fois par mois)."""
-        from src.kora.influence import CORE_MIN, ZONE_MIN
-        from src.kora.peoples import color_of
-
         world = self.world
         tids = sorted(state.tribes)
         key = (getattr(world, "_influence_gen", 0), len(world._influence), tuple(tids))

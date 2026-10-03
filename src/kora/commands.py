@@ -14,8 +14,22 @@ N'importe ni pygame ni render.
 
 from __future__ import annotations
 
-from src.kora import chiefs, diplo, events, goods, orders, tech, villages
+from src.kora import (
+    battle,
+    chiefdom,
+    chiefs,
+    diplo,
+    events,
+    goods,
+    money,
+    numbers,
+    orders,
+    situations,
+    tech,
+    villages,
+)
 from src.kora.types import Hex
+from src.kora.sim import set_goto, set_march_to_band
 
 KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
@@ -76,8 +90,6 @@ def apply(state, cmd) -> dict:
 
 
 def _goto(state, tid, band_id, q, r):
-    from src.kora.sim import set_goto
-
     band, why = _own_band(state, tid, band_id)
     if band is None:
         return _out(why)
@@ -87,8 +99,6 @@ def _goto(state, tid, band_id, q, r):
         return _out("Un village ne bouge pas : formez une bande [S] pour partir.")
     if band.homebound:
         return _out(orders.HOMEBOUND + ".")
-    from src.kora import battle
-
     if battle.in_battle(state, band):
         return _out(IN_BATTLE + ".")
     set_goto(state, band.id, Hex(int(q), int(r)))
@@ -96,8 +106,6 @@ def _goto(state, tid, band_id, q, r):
 
 
 def _march(state, tid, band_id, target_id):
-    from src.kora.sim import set_march_to_band
-
     band, why = _own_band(state, tid, band_id)
     if band is None:
         return _out(why)
@@ -314,14 +322,10 @@ def _event(state, tid, uid, index):
 
 
 def _situation(state, tid, uid, action):
-    from src.kora import situations
-
     return _out(situations.act(state, int(uid), tid, str(action)))
 
 
 def _battle_retreat(state, tid, band_id):
-    from src.kora import battle
-
     band, why = _own_band(state, tid, band_id)
     if band is None:
         return _out(why)
@@ -329,32 +333,22 @@ def _battle_retreat(state, tid, band_id):
 
 
 def _levy_rate(state, tid, rate):
-    from src.kora import chiefdom
-
     return _out(chiefdom.set_rate(state, tid, int(rate)))
 
 
 def _feast(state, tid):
-    from src.kora import chiefdom
-
     return _out(chiefdom.feast(state, tid))
 
 
 def _charge(state, tid, fam_id, charge):
-    from src.kora import chiefdom
-
     return _out(chiefdom.set_charge(state, tid, int(fam_id), str(charge)))
 
 
 def _base(state, tid, base):
-    from src.kora import numbers
-
     return _out(numbers.choose(state, tid, int(base)))
 
 
 def _budget(state, tid, key, value):
-    from src.kora import money
-
     return _out(money.set_budget(state, tid, str(key), value))
 
 

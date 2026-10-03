@@ -10,8 +10,21 @@ N'importe ni pygame ni render.
 
 from __future__ import annotations
 
-from src.kora import chiefs, sites
-from src.kora.sim import can_split, merge_bands, split_band
+from src.kora import battle, chiefs, sites, villages
+from src.kora.sim import (
+    SPLIT_MIN_POP,
+    can_split,
+    civ_band_cap,
+    civ_band_count,
+    max_bands_of,
+    merge_bands,
+    merge_mates,
+    split_band,
+    stock_max,
+    tribe_band_count,
+    welded_left,
+)
+from src.kora.peoples import civ_of
 
 ACTIONS = ("split", "merge", "next", "chief", "village", "camp", "deposit", "withdraw", "honor", "army")
 INDOCILE = "Ce clan n'obéit plus (attachement trop bas)"
@@ -25,8 +38,6 @@ def obeys(state, band) -> bool:
 
 def _mates(state, band) -> int:
     """Bandes a regrouper avec celle-ci (proches, meme genre ; merge_bands)."""
-    from src.kora.sim import merge_mates
-
     return len(merge_mates(state, band))
 
 
@@ -34,8 +45,6 @@ HOMEBOUND = "Dissoute, la troupe rentre au village"
 
 
 def _army_actions(state, band) -> dict[str, str]:
-    from src.kora import villages
-
     own = sum(1 for b in state.bands.values() if b.tribe_id == band.tribe_id and b.population > 0)
     out = {
         "split": villages.detach_block(state, band.id),
@@ -65,8 +74,6 @@ def band_actions(state, band_id: int) -> dict[str, str]:
     band = state.bands.get(band_id)
     if band is None:
         return {k: "Pas de bande" for k in ACTIONS}
-    from src.kora import battle
-
     if battle.in_battle(state, band):
         # En bataille : rien d'autre que le repli (fenetre de la bataille).
         out = {k: "En bataille : ordonnez le repli d'abord" for k in ACTIONS}
@@ -85,16 +92,11 @@ def band_actions(state, band_id: int) -> dict[str, str]:
     elif can_split(state, band_id):
         out["split"] = ""
     else:
-        from src.kora.sim import SPLIT_MIN_POP, max_bands_of, tribe_band_count, welded_left
-
         if welded_left(state, band):
             out["split"] = f"Le groupe vient d'être réuni (encore {welded_left(state, band)} sem.)"
         elif band.population < SPLIT_MIN_POP:
             out["split"] = f"Il faut {SPLIT_MIN_POP} personnes"
         else:
-            from src.kora.peoples import civ_of
-            from src.kora.sim import civ_band_cap, civ_band_count
-
             civ = civ_of(state, state.tribes[band.tribe_id])
             out["split"] = (
                 f"Votre civilisation est au complet : {civ_band_count(state, civ)}/{civ_band_cap(state, civ)} "
@@ -107,8 +109,6 @@ def band_actions(state, band_id: int) -> dict[str, str]:
         out["merge"] = "Les malades sont isolés : pas de réunion pour l'instant"
     out["next"] = "" if own > 1 else "Une seule bande"
     out["chief"] = chiefs.can_move_chief(state, band_id)
-    from src.kora import villages
-
     if not listens:
         out["village"] = INDOCILE
     elif band.village:
@@ -156,8 +156,6 @@ def labels(state, band_id: int) -> dict:
         out["village"] = "Gérer [V]"
         out["army"] = "Lever [L]"
     elif band is not None and band.kind == "armee":
-        from src.kora import villages
-
         out["split"] = "Détacher [S]"
         at_home = villages.disband_block(state, band_id) == "" and not _mates(state, band)
         out["merge"] = "Rentrer [F]" if at_home else "Réunir [F]"
@@ -167,8 +165,6 @@ def labels(state, band_id: int) -> dict:
 
 def perform(state, band_id: int, key: str):
     """Execute l'action ; rend (bande a selectionner, message ou "")."""
-    from src.kora import villages
-
     if key == "leave":
         # Quitter le village (ecran du village), a confirmer dans l'app.
         band = state.bands.get(band_id)
@@ -201,8 +197,6 @@ def perform(state, band_id: int, key: str):
     if key == "camp":
         here = sites.own_site_at(state, band)
         if here is not None and here.kind == "camp":
-            from src.kora.sim import stock_max
-
             back = min(here.store, max(0.0, stock_max(band, state) - band.stock))
             band.stock += back
             sites.abandon(state, here.id)

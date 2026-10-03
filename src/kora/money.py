@@ -34,6 +34,7 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.types import Hex
 from src.kora.gamestate import is_human, note
+from src.kora import chiefs, tech
 
 # Vivres pour un sicle (payer une route en argent, convertir un peage).
 VPS = 20.0
@@ -58,8 +59,6 @@ TOGGLE_KEYS = ("solde", "gages", "commerce", "dons")
 
 
 def has_money(state, tid: int) -> bool:
-    from src.kora import tech
-
     tribe = state.tribes.get(tid)
     return tribe is not None and tech.bonuses(tribe).money
 
@@ -91,8 +90,6 @@ def set_budget(state, tid: int, key: str, value) -> str:
     else:
         return "?"
     tribe.budget = b
-    from src.kora import tech
-
     tech.invalidate()
     return msg
 
@@ -121,8 +118,6 @@ def specialists(state, tid: int) -> int:
 
 
 def tax_income(state, tid: int) -> float:
-    from src.kora import tech
-
     tribe = state.tribes.get(tid)
     if tribe is None or not has_money(state, tid):
         return 0.0
@@ -347,8 +342,6 @@ def _ai(state, tribe) -> None:
     n'a pas besoin d'impot), la solde quand elle a des troupes, les gages
     quand le tresor le permet, les presents quand il deborde, le commerce en
     argent toujours."""
-    from src.kora import chiefs
-
     b = budget(tribe)
     chief = chiefs.chief_of(state, tribe.id)
     traits = chief.traits if chief is not None else ()

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import numbers, tech, theme
+from src.kora import money, numbers, tech, theme
 from src.kora.theme import C
 
 GREEN = (178, 205, 140)
@@ -137,8 +137,6 @@ def draw(r, state, lay: dict, ui: dict | None) -> None:
     if not data["numbers"]:
         rows = [("Un métier du village, avec Nombres additifs.", C.cendre)]
     else:
-        from src.kora import money
-
         n, pts = data["teams"], data["points"]
         rows = [
             (f"{n} équipe{'s' if n > 1 else ''} au travail · {_num(pts)} points de calcul par mois", C.lin if n else C.alerte),

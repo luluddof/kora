@@ -21,12 +21,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import tech
+from src.kora import chiefs, influence, tech
 from src.kora.log import LogKind
 # Les donnees (contacts, relations, pactes, routes) : types.py.
 from src.kora.types import Diplomacy, Mod, Pact, TradeRoute  # noqa: F401
 from src.kora.types import stay_order
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
+from src.kora.peoples import culture_of, living_tribe_ids
+from src.kora.vision import is_visible
 
 CONTACT_RANGE = 16
 NEIGHBOR_RANGE = 40
@@ -136,8 +138,6 @@ def ally_count(state, tid: int) -> int:
 
 
 def _living(state) -> set[int]:
-    from src.kora.peoples import living_tribe_ids
-
     return living_tribe_ids(state)
 
 
@@ -265,8 +265,6 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
 
 
 def _chief_traits(state, tid: int) -> tuple:
-    from src.kora import chiefs
-
     person = chiefs.chief_of(state, tid)
     return person.traits if person is not None else ()
 
@@ -654,8 +652,6 @@ class Verdict:
 
 
 def _warlike(state, tid: int) -> bool:
-    from src.kora.peoples import culture_of
-
     return culture_of(state.tribes[tid]).raid_prestige <= 30
 
 
@@ -916,8 +912,6 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
     if action == "alliance":
         add_pact(state, actor, target, "alliance")
         add_mod(state, actor, target, "mariage", 15)
-        from src.kora import chiefs
-
         chiefs.marriage_note(state, actor, target)
         return f"Alliance scellée avec les {names} par des mariages."
     if action == "tribut":
@@ -945,9 +939,6 @@ INVITE_RANGE = 12
 def invitable(state, actor: int, target: int) -> list:
     """Clans du peuple `target` qui se detachent de leur chef, assez pres de
     chez vous pour qu'on sache leur mecontentement."""
-    from src.kora import chiefs, influence
-    from src.kora.vision import is_visible
-
     mine = [b.position for b in state.bands.values() if b.tribe_id == actor and b.population > 0]
     out = []
     for band in sorted(state.bands.values(), key=lambda b: b.id):
@@ -973,7 +964,6 @@ def invite_chance(state, actor: int, band) -> float:
 
 def invite(state, actor: int, band_id: int) -> str:
     """Debaucher un clan indocile : il quitte son peuple pour le votre."""
-    from src.kora import chiefs
     band = state.bands.get(band_id)
     if band is None or band not in invitable(state, actor, band.tribe_id):
         return "Ce clan ne peut pas être invite"
@@ -1009,7 +999,6 @@ def on_cooldown(state, actor: int, target: int, action: str) -> int:
 def absorb(state, actor: int, target: int) -> None:
     """Un petit peuple se fond dans un autre : ses bandes, ses lieux, une
     partie de ses savoirs."""
-    from src.kora import chiefs
     for band in state.bands.values():
         if band.tribe_id == target:
             band.tribe_id = actor

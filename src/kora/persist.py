@@ -7,13 +7,16 @@ import sys
 import time
 from pathlib import Path
 
-from src.kora import battle, chiefs, diplo, events, records, sites, situations
+from src.kora import battle, chiefs, diplo, events, records, sites, situations, tech, villages
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LOG_CAP, LogEntry, LogKind
 from src.kora.gamestate import GameState, Pov
 from src.kora.types import Band, FightMark, Hex, Season, Tribe
 from src.kora.vision import PlayerVision, recompute_vision
 from src.kora.world import World, offset_to_axial
+from src.kora.francais import convert
+from src.kora.peoples import LEGACY_COLOR, LEGACY_CULTURE, MINOR_START, free_color
+from src.kora.sim import add_minor_peoples
 
 SAVE_VERSION = 1
 
@@ -119,8 +122,6 @@ def _log_to_json(log: GameLog) -> dict:
 def _accents(text: str) -> str:
     """Les journaux d'avant les accents (version 0.2) : on les leur rend."""
     if text.isascii():
-        from src.kora.francais import convert
-
         return convert(text)
     return text
 
@@ -335,8 +336,6 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
             if "knowledge" not in raw:
                 # Sauvegarde d'avant les savoirs : feu, outils, et ce que les
                 # anciens drapeaux disaient.
-                from src.kora import tech
-
                 tech.start_knowledge(tribe)
                 if tribe.cabotage:
                     tribe.knowledge.update(("peche", "pirogue"))
@@ -377,8 +376,6 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         state.day = int(data.get("day", 0))
         state.step = int(data.get("step", data.get("tick_count", 0)))
         state.situation_last = {str(k): int(v) for k, v in data.get("situation_last", {}).items()}
-        from src.kora.peoples import LEGACY_COLOR, LEGACY_CULTURE, free_color
-
         for tribe in tribes.values():
             # Sauvegarde d'avant les peuples en donnees.
             if not tribe.culture:
@@ -408,8 +405,6 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         if not data.get("chief_seats"):
             # Sauvegarde d'avant la scission du village (2026-09-25) : le chef
             # d'un peuple qui a deja un village vient y gouverner.
-            from src.kora import villages
-
             villages.seat_chiefs(state)
         world._exhaustion = [[1.0 for _ in range(world.width)] for _ in range(world.height)]
         world._recovering = set()
@@ -457,9 +452,6 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         if "diplo" not in data and world.width >= 300 and len(tribes) <= 4:
             # Partie d'avant les petits peuples : ils naissent hors de ce que
             # le joueur a deja explore (ils etaient la, on ne les voyait pas).
-            from src.kora.peoples import MINOR_START
-            from src.kora.sim import add_minor_peoples
-
             add_minor_peoples(state, MINOR_START, avoid=vis.explored if isinstance(vis, PlayerVision) else None)
         view = _view_to_json(data.get("view"))
         return state, view

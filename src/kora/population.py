@@ -27,6 +27,7 @@ N'importe pas pygame.
 """
 
 from __future__ import annotations
+from src.kora import units
 
 CLASSES = ("enfants", "hommes", "femmes", "anciens")
 NAMES = {"enfants": "Enfants", "hommes": "Hommes", "femmes": "Femmes", "anciens": "Anciens", "blesses": "Blessés"}
@@ -216,8 +217,6 @@ def lose_wounded(band, n: int) -> int:
     band.wounded -= n
     if band.kind == "armee":
         if band.units:
-            from src.kora import units
-
             units.remove(band, n)
         else:
             band.population -= n

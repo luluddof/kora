@@ -15,10 +15,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import tech
+from src.kora import peoples, tech
 from src.kora.log import LogKind
 from src.kora.types import Person, Tribe, stay_order
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
+from src.kora.peoples import (
+    CULTURES,
+    civ_of,
+    culture_for_place,
+    culture_of,
+    free_color,
+    kin_color,
+    living_tribe_ids,
+    make_name,
+)
 
 OBEY = 40.0
 LEAVE = 20.0
@@ -118,8 +128,6 @@ def _new_pid(state) -> int:
 
 
 def new_person(state, tribe, age: int | None = None, traits: tuple | None = None, renown: int | None = None) -> Person:
-    from src.kora.peoples import culture_of, make_name
-
     rng = state.story_rng
     taken = [b.leader.name for b in state.bands.values() if b.leader is not None and b.tribe_id == tribe.id]
     name = make_name(rng, culture_of(tribe), taken)
@@ -604,7 +612,6 @@ def secede(state, band_id: int, hostile: bool = False, independence: bool = Fals
     rejoint pas un peuple etranger, il fonde le sien, de la meme
     civilisation (le monde plein : il attend)."""
     from src.kora import diplo, influence
-    from src.kora.peoples import MAX_LIVING_TRIBES, civ_of, culture_for_place, free_color, kin_color, living_tribe_ids
     band = state.bands.get(band_id)
     if band is None or is_chief_band(state, band):
         # Le chef ne quitte pas son peuple (une carte "le clan veut partir"
@@ -633,9 +640,7 @@ def secede(state, band_id: int, hostile: bool = False, independence: bool = Fals
         band.loyalty = 60.0
         diplo.add_mod(state, host, parent.id, "debauchage", -20, actor=host)
         text = f"Le clan de {_name(band)} a rejoint les {state.tribes[host].name} !"
-    elif len(living_tribe_ids(state)) < MAX_LIVING_TRIBES:
-        from src.kora.peoples import CULTURES, make_name
-
+    elif len(living_tribe_ids(state)) < peoples.MAX_LIVING_TRIBES:
         tid = max(state.next_tribe_id, max(state.tribes) + 1)
         state.next_tribe_id = tid + 1
         if parent.culture == "joueur":

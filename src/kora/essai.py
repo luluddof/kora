@@ -17,14 +17,14 @@ import os
 import random
 import time
 from pathlib import Path
+from src.kora.commands import make
+from src.kora.sim import _default_world
+from src.kora import chiefs, money, orders, situations, tech, villages
 
 
 def robot(state, issue, me: int, rng: random.Random) -> None:
     """Un joueur presse : des ordres a ses bandes, par le canal des ordres.
     Ne touche JAMAIS la partie directement (sinon les machines divergent)."""
-    from src.kora import chiefs, orders, tech, villages
-    from src.kora.commands import make
-
     mine = sorted((b for b in state.bands.values() if b.tribe_id == me and b.population > 0), key=lambda b: b.id)
     if not mine:
         return
@@ -34,8 +34,6 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
         if ready:
             issue(make(me, "learn", ready[0]))
     # Les nombres et l'argent : une base, un budget (ordres "base", "budget").
-    from src.kora import money
-
     b = tech.bonuses(tribe)
     if b.numbers and not tribe.base:
         issue(make(me, "base", (10, 12, 20, 60)[me % 4]))
@@ -43,8 +41,6 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
         issue(make(me, "budget", "tax", rng.randrange(4)))
         issue(make(me, "budget", rng.choice(money.TOGGLE_KEYS), rng.random() < 0.5))
     # Les situations : une action permise, de temps en temps (ordre "situation").
-    from src.kora import situations
-
     for inst in situations.of_tribe(state, me):
         if rng.random() < 0.25:
             ok = [a.id for a in situations.SPECS[inst.sid].actions if not situations.action_block(state, inst, me, a.id)]
@@ -80,8 +76,6 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
 
 def host_run(port: int, years: int) -> dict:
     from src.kora import session
-    from src.kora.sim import _default_world
-
     host = session.HostSession({"name": "Aroha", "color": (220, 70, 70), "bonuses": ["bonus:conteurs", "bonus:froid"]}, port=port)
     end = time.time() + 90
     while time.time() < end and host.can_start():
@@ -128,8 +122,6 @@ def host_run(port: int, years: int) -> dict:
 
 def client_run(port: int, years: int) -> dict:
     from src.kora import net, session
-    from src.kora.sim import _default_world
-
     conn = None
     for _ in range(300):
         try:

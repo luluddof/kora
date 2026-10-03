@@ -9,7 +9,21 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.kora import chiefs, diplo, events, influence, population, records, sites, systems, tech
+from src.kora import (
+    chiefdom,
+    chiefs,
+    diplo,
+    events,
+    influence,
+    population,
+    records,
+    sites,
+    situations,
+    systems,
+    tech,
+    units,
+    villages,
+)
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LogKind, season_fr, terrain_fr
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
@@ -43,6 +57,22 @@ from src.kora.gamestate import (  # noqa: F401
     pov_of,
     seen_of,
 )
+from src.kora.vision import enemy_band_visible, is_explored, is_visible, recompute_vision
+from src.kora.peoples import (
+    CULTURES,
+    LEGACY_COLOR,
+    MINOR_BAND_CUT,
+    MINOR_POP,
+    MINOR_START,
+    civ_of,
+    civ_villages,
+    culture_for_place,
+    free_color,
+    make_name,
+    pick_minor_spots,
+)
+from src.kora.mapgen import generate_world
+from src.kora.villages import food_mult, growth_mult, note_forage, site_of, store_weeks, winter_famine_mult
 
 FORAGE_RADIUS = 2
 STOCK_MAX_FACTOR = 10
@@ -128,8 +158,6 @@ def is_shielded(state: GameState, band: Band) -> bool:
 
 def hex_inspect(state: GameState, h: Hex) -> dict | None:
     """Ce que le joueur de cet ecran (state.viewer) sait d'une case."""
-    from src.kora.vision import enemy_band_visible, is_explored, is_visible
-
     me = state.viewer
     placed = state.world.canonicalize(h)
     if placed is None or not is_explored(state, placed, me):
@@ -169,8 +197,6 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
     if site is not None and (visible or site.tribe_id == me):
         site_info = sites.site_lines(state, site)
     elif site is None:
-        from src.kora import villages
-
         owner = villages.field_site(state, placed)
         if owner is not None and (visible or owner.tribe_id == me):
             site_info = [f"Champ de {villages.name(owner)}"]
@@ -270,16 +296,12 @@ def band_summary(state: GameState, band_id: int) -> dict | None:
 def _village_lines(state: GameState, band: Band) -> list[str]:
     if not band.village:
         return []
-    from src.kora import villages
-
     return villages.lines(state, band)
 
 
 def _army_lines(state: GameState, band: Band) -> list[str]:
     if band.kind != "armee":
         return []
-    from src.kora import villages
-
     return villages.army_lines(state, band)
 
 
@@ -366,8 +388,6 @@ def inspect_lines(info: dict) -> list[str]:
 
 
 def _note_spotted_enemies(state: GameState) -> None:
-    from src.kora.vision import is_visible
-
     for me in humans(state):
         seen = seen_of(state, me)
         for band in state.bands.values():
@@ -432,8 +452,6 @@ def stock_max(band: Band, state: GameState | None = None) -> float:
     know = bonus_of(state, band.tribe_id)
     weeks = know.stock_weeks
     if band.village:
-        from src.kora.villages import store_weeks
-
         weeks += store_weeks(state, band)
     return weeks * band.population
 
@@ -484,8 +502,6 @@ def collect_food(state: GameState) -> None:
             gained[band.id] *= chiefs.band_food(band)
         if band.village and band.id in gained:
             # Chevres, boeufs, enclos : les troupeaux du village nourrissent aussi.
-            from src.kora.villages import food_mult, note_forage, site_of
-
             gained[band.id] *= food_mult(state, band)
             site = site_of(state, band)
             if site is not None:
@@ -507,8 +523,6 @@ def collect_food(state: GameState) -> None:
                 if know.camp_shelter != 1.0 and sites.sheltered(state, band):
                     cut *= know.camp_shelter
                 if band.village:
-                    from src.kora.villages import winter_famine_mult
-
                     cut *= winter_famine_mult(state, band)
             else:
                 cut = 1.0
@@ -569,8 +583,6 @@ def update_exhaustion(state: GameState) -> None:
 
 
 def remove_dead_bands(state: GameState) -> None:
-    from src.kora.vision import is_visible
-
     dead = [bid for bid, b in state.bands.items() if b.population <= 0]
     for bid in dead:
         band = state.bands[bid]
@@ -584,8 +596,6 @@ def remove_dead_bands(state: GameState) -> None:
                 note(state, LogKind.COMBAT, f"Une {what} {name} a été détruite.", where=band.position, to=me)
         del state.bands[bid]
         if band.village:
-            from src.kora import villages
-
             villages.lost(state, band)
         chiefs.on_band_lost(state, band)
     if not any(b.tribe_id == PLAYER_TRIBE_ID for b in state.bands.values()):
@@ -687,8 +697,6 @@ def civ_band_cap(state: GameState, civ: int) -> int:
     peuples, le joueur compris) : celui de son peuple d'origine, selon ses
     savoirs (8, 12 avec la Chefferie ; un petit peuple 4 de moins). Le
     peuple d'origine disparu : le mieux loti de ses peuples."""
-    from src.kora.peoples import MINOR_BAND_CUT, civ_of
-
     def cap_of(t) -> int:
         cut = MINOR_BAND_CUT if t.minor and not t.origin else 0
         return bonus_of(state, t.id).max_bands - cut
@@ -704,8 +712,6 @@ def civ_band_cap(state: GameState, civ: int) -> int:
 def civ_band_count(state: GameState, civ: int) -> int:
     """Bandes (clans et villages, pas les troupes) de tous les peuples d'une
     civilisation."""
-    from src.kora.peoples import civ_of
-
     civs: dict = {}
     n = 0
     for b in state.bands.values():
@@ -732,8 +738,6 @@ def max_bands_of(state: GameState, tribe_id: int) -> int:
         # Ne d'une civilisation qui a des villages, sans village a lui : il
         # n'a qu'a fonder le sien, il ne se divise plus en tribus.
         return max(1, own)
-    from src.kora.peoples import civ_of
-
     civ = civ_of(state, tribe)
     free = civ_band_cap(state, civ) - civ_band_count(state, civ)
     return max(1, own + max(0, free))
@@ -744,8 +748,6 @@ def settler_people(state: GameState, tribe) -> bool:
     civilisation a des villages, et qui n'a pas encore le sien."""
     if not tribe.origin or tribe.is_player:
         return False
-    from src.kora.peoples import civ_of, civ_villages
-
     if civ_villages(state, civ_of(state, tribe)) <= 0:
         return False
     return not any(s.kind == "village" and s.tribe_id == tribe.id for s in state.sites.values())
@@ -800,8 +802,6 @@ def welded_left(state: GameState, band: Band) -> int:
 def _absorb(state: GameState, keep: Band, gone: Band) -> None:
     if keep.kind == "armee" and gone.kind == "armee":
         # Deux troupes : une seule pile de compagnies (units.py).
-        from src.kora import units
-
         units.normalize(keep)
         for type_id, men, home in units.normalize(gone):
             units.add(keep, type_id, men, home)
@@ -919,8 +919,6 @@ def resolve_joins(state: GameState) -> None:
             band.path = []
             continue
         if band.kind == "armee" and target.village:
-            from src.kora import villages
-
             if villages.disband(state, band.id):
                 continue
         names = [band.leader.name] if band.leader is not None and band.kind == target.kind else []
@@ -1002,8 +1000,6 @@ def update_population(state: GameState) -> None:
         know = bonus_of(state, band.tribe_id)
         rate = GROWTH_RATE * know.growth
         if band.village:
-            from src.kora.villages import growth_mult
-
             rate *= growth_mult(state, band)
         elif know.camp_growth != 1.0 and sites.sheltered(state, band):
             rate *= know.camp_growth
@@ -1046,8 +1042,6 @@ def band_quality(state: GameState, band: Band) -> float:
     if band.leader is not None:
         q *= chiefs.band_combat(band)
     if band.kind == "armee":
-        from src.kora import villages
-
         q *= villages.army_quality(state, band)
     return q
 
@@ -1056,8 +1050,6 @@ def band_force(state: GameState, band: Band) -> float:
     force = fighters(band) * band_quality(state, band)
     if band.kind == "armee":
         # Estimation d'une pile (units.py) : attaque, tenue, volee.
-        from src.kora import units
-
         p = units.profile(band)
         force *= p["attack"] * math.sqrt(p["defense"]) + 0.3 * p["ranged"]
     return force
@@ -1075,8 +1067,6 @@ def helpers_of(state: GameState, band: Band) -> list[Band]:
             friends.add(b if a == tid else a)
     # Les tributaires suivent leur suzerain a la guerre ; avec Villages
     # freres, les villages de sa civilisation viennent aussi.
-    from src.kora import chiefdom
-
     friends.update(chiefdom.vassals_of(state, tid))
     friends.update(chiefdom.kin_of(state, tid))
     world = state.world
@@ -1127,8 +1117,6 @@ def defense_force(state: GameState, band: Band) -> float:
 def _retreat_sites(state: GameState, band: Band, winner: Band) -> list[Hex]:
     # Cases candidates, meilleures d'abord : loin des autres tribus ET
     # nourricieres. Le joueur ne se replie que sur des cases explorees.
-    from src.kora.vision import is_explored
-
     world = state.world
     herd = _herd_ok(state, band.tribe_id)
     bonus = bonus_of(state, band.tribe_id)
@@ -1369,8 +1357,6 @@ def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, 
     """La fin d'une bataille (battle._end) : le journal des joueurs, le
     prestige, les relations, la marque sur la carte."""
     from src.kora import battle
-    from src.kora.vision import is_visible
-
     a_t, d_t = attacker.tribe_id, defender.tribe_id
     told = [t for t in humans(state) if t in (a_t, d_t) or is_visible(state, h, t)]
     winner, loser = res.winner, res.loser
@@ -1435,8 +1421,6 @@ def update_prestige(state: GameState) -> None:
             if tribe.famine_during_winter:
                 tribe.prestige = max(0, tribe.prestige + b.famine_prestige)
             else:
-                from src.kora import villages
-
                 gain = b.winter_prestige + chiefs.winter_prestige(state, tid) + villages.winter_prestige(state, tid)
                 gain_prestige(state, tribe, gain)
             tribe.famine_during_winter = False
@@ -1543,8 +1527,6 @@ def snapshot(state: GameState) -> _Snap:
 def _copy_situations(items) -> list:
     if not items:
         return []
-    from src.kora import situations
-
     return situations.copy_all(items)
 
 
@@ -1584,8 +1566,6 @@ def _restore(state: GameState, saved: _Snap) -> None:
     state.next_battle_uid = saved.next_battle_uid
     state.day = saved.day
     state.step = saved.step
-    from src.kora.vision import recompute_vision
-
     recompute_vision(state)
 
 
@@ -1612,8 +1592,6 @@ def _default_world() -> World:
         if loaded.wrap_x and loaded.width >= 300:
             return loaded
     # Pas de carte cuite : on la genere (numpy, lent ; seulement dans ce cas).
-    from src.kora.mapgen import generate_world  # paresseux : numpy, carte absente
-
     world = generate_world(seed=42)
     if not getattr(sys, "frozen", False):
         try:
@@ -1633,9 +1611,6 @@ def new_game(
     "bonuses" (tech.START_BONUSES) de la tribu du joueur. others
     (multijoueur) : {place: setup} des autres joueurs, places 2 a 4
     (steppe, foret, cote) ; les places libres restent a l'IA."""
-    from src.kora.vision import recompute_vision
-    from src.kora.peoples import CULTURES, LEGACY_COLOR, make_name
-
     if world is None:
         world = _default_world()
     clock = Clock()
@@ -1696,8 +1671,6 @@ def new_game(
     )
     chiefs.ensure(st)
     if minor_peoples is None:
-        from src.kora.peoples import MINOR_START
-
         # Les petites cartes des tests restent a 4 peuples.
         minor_peoples = MINOR_START if world.width >= 300 else 0
     if minor_peoples:
@@ -1710,15 +1683,6 @@ def new_game(
 
 def add_minor_peoples(state: GameState, count: int, avoid=None) -> list[int]:
     """Petits peuples : une bande chacun, loin de tous les autres."""
-    from src.kora.peoples import (
-        CULTURES,
-        MINOR_POP,
-        culture_for_place,
-        free_color,
-        make_name,
-        pick_minor_spots,
-    )
-
     taken = [b.position for b in state.bands.values() if b.population > 0]
     spots = pick_minor_spots(state.world, taken, count, state.story_rng, avoid=avoid)
     made = []
@@ -1789,8 +1753,6 @@ def _week(state: GameState, battle_days: int) -> None:
     jours."""
     from src.kora import battle
     from src.kora.ai import decide_ai
-    from src.kora.vision import recompute_vision
-
     prev_season = state.clock.season()
     state.clock.advance_week()
     if state.clock.season() is not prev_season:

@@ -24,8 +24,9 @@ import json
 import time
 from dataclasses import dataclass, field
 
-from src.kora import commands
+from src.kora import commands, tech
 from src.kora.net import Listener, PORT, pack, unpack
+from src.kora.sim import new_game, tick
 
 PROTO = 1
 LAG = 6
@@ -103,8 +104,6 @@ def sync_digest(state) -> str:
 def run_step(state, cmds, me: int, callbacks: dict, results: list, do_tick: bool) -> None:
     """Les ordres de la file, dans l'ordre, puis (do_tick) une semaine. Le
     meme code chez l'hote et chez chaque joueur."""
-    from src.kora.sim import tick
-
     for tid, seq, cmd in cmds:
         cmd = [int(tid)] + list(cmd[1:])
         res = commands.apply(state, cmd)
@@ -199,8 +198,6 @@ class HostSession(_Base):
                 conn.send(obj)
 
     def _hello(self, conn, msg: dict) -> None:
-        from src.kora import tech
-
         if msg.get("proto") != PROTO or msg.get("version") != self.version:
             conn.send({"t": "refuse", "why": f"Versions différentes : l'hôte a Kora {self.version}, vous {msg.get('version', '?')}. Prenez la même version."})
             conn.close("version")
@@ -234,8 +231,6 @@ class HostSession(_Base):
         self.broadcast(self.lobby_json())
 
     def _seat_msg(self, tid: int, msg: dict) -> None:
-        from src.kora import tech
-
         seat = self.seats.get(tid)
         if seat is None or self.started:
             return
@@ -334,8 +329,6 @@ class HostSession(_Base):
         """Lance la partie : la meme pour tous (la partie en texte, rechargee
         aussi par l'hote)."""
         from src.kora.persist import dumps_game, loads_game
-        from src.kora.sim import new_game
-
         if self.resume is not None:
             base = self.resume
         else:

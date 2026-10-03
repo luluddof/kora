@@ -2,7 +2,20 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import chiefs, commands, diplo, events, orders, screens, situations
+from src.kora import (
+    battle as _battle,
+    chiefs,
+    commands,
+    diplo,
+    events,
+    goods,
+    money,
+    orders,
+    screens,
+    situations,
+    units,
+    villages,
+)
 from src.kora.globe import (
     FOCUS_ZOOM,
     clamp_pitch,
@@ -12,7 +25,16 @@ from src.kora.globe import (
     view_params,
 )
 from src.kora.log import FILTER_ALL, LogKind
-from src.kora.persist import default_save_path, load_game, multi_save_path, save_game, set_aside_save
+from src.kora.persist import (
+    default_save_path,
+    load_game,
+    load_prefs,
+    multi_save_path,
+    peek_save,
+    save_game,
+    save_prefs,
+    set_aside_save,
+)
 from src.kora.render import (
     HUD_HEIGHT,
     MAX_ZOOM,
@@ -31,6 +53,7 @@ from src.kora.render import (
 )
 from src.kora.sim import _default_world, consume_ticks, fight_at, hex_inspect, new_game, player_home_hex
 from src.kora.gamestate import human_dead, log_of, note
+from src.kora.situations import SPECS
 
 
 TOAST_LIFE = 4.0
@@ -296,8 +319,6 @@ def run() -> None:
 def _remember(setup: dict) -> None:
     """Le nom, la couleur, les bonus et la derniere adresse : proposes la
     prochaine fois (reglages.json, a cote des sauvegardes)."""
-    from src.kora.persist import load_prefs, save_prefs
-
     prefs = load_prefs()
     for key in ("name", "color", "bonuses", "address"):
         if setup.get(key):
@@ -307,8 +328,6 @@ def _remember(setup: dict) -> None:
 
 def _prefilled(setup: dict) -> dict:
     from src.kora import render_menu, tech
-    from src.kora.persist import load_prefs
-
     prefs = load_prefs()
     if isinstance(prefs.get("name"), str) and prefs["name"].strip():
         setup["name"] = prefs["name"][: render_menu.NAME_MAX]
@@ -330,8 +349,6 @@ def title_screen(renderer, clock, worlds, message: str = ""):
     import random
 
     from src.kora import render_menu
-    from src.kora.persist import multi_save_path, peek_save
-
     scene = render_menu.TitleScene(worlds.shown)
     info = peek_save(default_save_path())
     multi = peek_save(multi_save_path())
@@ -426,8 +443,6 @@ def _multiplayer(renderer, clock, worlds, choice):
     import threading
 
     from src.kora import net, render_menu, session
-    from src.kora.persist import load_game, multi_save_path
-
     scene = render_menu.TitleScene(worlds.shown)
     mp = None
     connecting = None
@@ -705,8 +720,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
 
     def treasury_click(choice) -> None:
         """Clic dans l'ecran du tresor : le budget passe par commands.py."""
-        from src.kora import money
-
         if choice == "mclose":
             screens.close_all(ui)
             return
@@ -721,8 +734,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
 
     def trade_click(choice) -> None:
         """Clic dans l'ecran du commerce."""
-        from src.kora import goods
-
         if choice == "tclose":
             screens.close_all(ui)
             return
@@ -777,8 +788,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
     def village_click(choice) -> None:
         """Clic dans l'ecran du village."""
         nonlocal selected, globe_yaw, globe_pitch
-        from src.kora import villages
-
         site = state.sites.get(ui["village_open"])
         home = villages.band_of(state, site) if site is not None and site.kind == "village" else None
         if home is None or choice == "vclose":
@@ -821,8 +830,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             screens.open(ui, "commerce")
             return
         if choice.startswith(("vteam+:", "vteam-:")):
-            from src.kora import goods
-
             cid = choice.split(":")[1]
             if not chiefs.obeys(state, home):
                 toast(orders.INDOCILE)
@@ -867,8 +874,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             ui["levy"] = choice[5:]
             return
         if choice.startswith("ltype:"):
-            from src.kora import units
-
             role = choice[6:]
             if units.best(state.tribes[home.tribe_id], role) is None:
                 toast("Aucune unité de ce rôle pour l'instant (voir les savoirs).")
@@ -876,8 +881,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                 ui["levy_role"] = role
             return
         if choice == "vraise":
-            from src.kora import units
-
             share = villages.LEVY_SHARE.get(ui["levy"], villages.LEVY_SHARE["troupe"])
             kind = units.best(state.tribes[home.tribe_id], ui.get("levy_role") or "melee")
             type_id = kind.id if kind is not None else None
@@ -913,8 +916,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
     def army_click(choice) -> None:
         """Clic dans le panneau Armee."""
         nonlocal selected, globe_yaw, globe_pitch, side_panel
-        from src.kora import units, villages
-
         kind, _sep, rest = choice.partition(":")
         if kind == "arole":
             sid, role = rest.split(":")
@@ -961,8 +962,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             issue(commands.make(me(), "dissolve", bid))
 
     def found_click(choice) -> None:
-        from src.kora import villages
-
         if choice is None:
             return
         if choice == "found_cancel":
@@ -1028,8 +1027,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         resume_after_situation = False
 
     def situation_click(hit) -> None:
-        from src.kora.situations import SPECS
-
         inst = situations.find(state, ui["situation_open"])
         if inst is None or hit is None:
             close_situation()
@@ -1322,8 +1319,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         continue
                     open_screen("commerce", toggle=True)
                 elif event.key == pygame.K_g:
-                    from src.kora import money
-
                     if not money.has_money(state, state.viewer):
                         toast("Le trésor vient avec Valeurs d'échange.")
                         continue
@@ -1479,8 +1474,6 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
 
                     bhit = render_battle.hit(renderer.battle_hits, mx, my)
                     if bhit is not None:
-                        from src.kora import battle as _battle
-
                         bt = next((x for x in _battle.battles(state) if x.uid == renderer.battle_hits.get("uid")), None)
                         if bt is not None and bhit == "retreat":
                             mine_band = next((b for b in bt.attackers + bt.defenders if b in state.bands and state.bands[b].tribe_id == me()), None)

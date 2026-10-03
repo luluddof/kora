@@ -27,6 +27,7 @@ N'importe pas pygame.
 """
 
 from __future__ import annotations
+from src.kora import tech
 
 KINDS = ("collecte", "agriculture", "peche", "potiers", "sauniers", "tisserands", "pelletiers", "tailleurs")
 KIND_NAMES = {
@@ -89,8 +90,6 @@ def adjust(tribe, kind: str, delta: float) -> None:
         tribe.efficiency.pop(kind, None)
     else:
         tribe.efficiency[kind] = new
-    from src.kora import tech
-
     tech.invalidate()
 
 

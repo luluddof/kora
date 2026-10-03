@@ -16,6 +16,8 @@ import pygame
 from src.kora import battle, theme
 from src.kora.peoples import color_of
 from src.kora.theme import C
+from src.kora.battle import fighters_now
+from src.kora.vision import is_visible
 
 PANEL_W, PANEL_H = 600, 262
 
@@ -76,8 +78,6 @@ def _sides(state, bt):
 
 
 def _column(r, state, bt, x, y, w, bands, attacker, mine_side) -> None:
-    from src.kora.battle import fighters_now
-
     main = bands[0] if bands else None
     tribe = state.tribes.get(main.tribe_id) if main is not None else None
     col = color_of(tribe) if tribe is not None else C.cendre
@@ -160,8 +160,6 @@ def draw_on_map(r, state, yaw, pitch, zoom) -> None:
     """Des epees qui battent sur chaque bataille en cours que l'on voit."""
     from src.kora.globe import hex_to_globe_screen
     from src.kora.render import HUD_HEIGHT, view_params
-    from src.kora.vision import is_visible
-
     w, h = r.screen.get_size()
     gcx, gcy, focal, dist = view_params(zoom, w, h, HUD_HEIGHT)
     t = pygame.time.get_ticks() / 1000.0

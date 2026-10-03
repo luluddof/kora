@@ -34,12 +34,13 @@ import math
 import random
 from dataclasses import dataclass
 
-from src.kora import tech
+from src.kora import chiefs, population, production, sites, systems, tech, units
 from src.kora.log import LogKind
 from src.kora.types import Band, Season, Terrain, stay_order
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.world import offset_to_axial
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
+from src.kora.peoples import CULTURES, civ_of, culture_of, make_name
 
 FIELD_WORKERS = 25
 MAX_FIELDS = 12
@@ -590,8 +591,6 @@ def food_mult(state, band) -> float:
     if has(site, "enclos"):
         mult *= 1.1
     if site is not None:
-        from src.kora import production
-
         mult *= goods.forage_mult(site, band)
         mult *= production.of(state, band.tribe_id, "collecte")
     return mult
@@ -606,8 +605,6 @@ def winter_famine_mult(state, band) -> float:
 
 def yield_mult(state, site) -> float:
     from src.kora import goods
-
-    from src.kora import production
 
     mult = _bonus(state, site.tribe_id).field_yield * goods.yield_mult(state, site.tribe_id)
     mult *= production.of(state, site.tribe_id, "agriculture")
@@ -700,8 +697,6 @@ UNREST_JOIN_RANGE = 40
 
 
 def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
-    from src.kora import chiefs
-
     band = band or band_of(state, site)
     if band is None:
         return []
@@ -721,8 +716,6 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
             parts.append((label, v))
     if oath_of(site) == "feu":
         parts.append(("Serment du feu", 10.0))
-    from src.kora import systems
-
     # Ce que chaque systeme fait a la stabilite (systems.STABILITY).
     parts.extend(systems.parts(systems.STABILITY, state, band.tribe_id))
     if chiefs.is_chief_band(state, band):
@@ -770,8 +763,6 @@ def stability_growth(state, band) -> float:
 def _unrest(state, site, band) -> None:
     """Village agite : des familles s'en vont former un clan nomade."""
     from src.kora.sim import _ai_caches_changed, new_band_id
-    from src.kora import chiefs
-
     if band.population < UNREST_MIN_POP:
         return
     value = stability(state, site, band)
@@ -779,7 +770,6 @@ def _unrest(state, site, band) -> None:
         return
     moved = max(10, int(band.population * UNREST_SHARE))
     stock = band.stock * moved / band.population
-    from src.kora.peoples import civ_of
     from src.kora.sim import civ_band_cap, civ_band_count, stock_max
 
     civ = civ_of(state, state.tribes[band.tribe_id])
@@ -897,8 +887,6 @@ def choose_fields(state, site, band) -> list:
 def hands_mult(band, fields: int, busy: int = 0) -> float:
     """Assez de bras pour rentrer la recolte ? (les troupes sont loin, les
     gens de metier a leur ouvrage)."""
-    from src.kora import population
-
     need = fields * FIELD_HANDS
     hands = population.labor_pop(band) - busy
     if need <= 0 or hands >= need:
@@ -1042,8 +1030,6 @@ def harvest(state, site, band) -> float:
 
 
 def found_block(state, band_id: int) -> str:
-    from src.kora import chiefs, sites
-
     band = state.bands.get(band_id)
     if band is None:
         return "Pas de bande"
@@ -1075,9 +1061,6 @@ def found_block(state, band_id: int) -> str:
 def propose_name(state, band_id: int) -> str:
     """Nom propose dans la fenetre de fondation : stable tant qu'elle est
     ouverte, sans toucher au hasard du recit."""
-    from src.kora import sites
-    from src.kora.peoples import CULTURES, culture_of, make_name
-
     band = state.bands[band_id]
     camp = sites.own_site_at(state, band)
     tribe = state.tribes[band.tribe_id]
@@ -1089,9 +1072,6 @@ def propose_name(state, band_id: int) -> str:
 
 def found(state, band_id: int, oath: str = "", name_: str | None = None):
     """La bande s'installe : son campement devient un village."""
-    from src.kora import sites
-    from src.kora.peoples import CULTURES, culture_of, make_name
-
     if found_block(state, band_id) or state.bands[band_id].village:
         return None
     band = state.bands[band_id]
@@ -1162,8 +1142,6 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
 
 def seat_chiefs(state) -> None:
     """Chaque peuple qui a un village : son chef gouverne le plus grand."""
-    from src.kora import chiefs
-
     for tribe in state.tribes.values():
         heart = chiefs.chief_band(state, tribe.id)
         if heart is None or heart.village:
@@ -1178,8 +1156,6 @@ def seat_chiefs(state) -> None:
 def _chief_takes_the_village(state, tribe, band, quiet: bool = False) -> None:
     """Le premier village devient le siege du chef : s'il menait une autre
     bande, il vient y gouverner (les deux chefs de bande echangent)."""
-    from src.kora import chiefs
-
     heart = chiefs.chief_band(state, tribe.id)
     if heart is None or heart.id == band.id:
         return
@@ -1193,8 +1169,6 @@ def _chief_takes_the_village(state, tribe, band, quiet: bool = False) -> None:
 
 
 def ai_oath(state, tribe_id: int) -> str:
-    from src.kora.peoples import culture_of
-
     return AI_OATH.get(culture_of(state.tribes[tribe_id]).id, "grenier")
 
 
@@ -1327,8 +1301,6 @@ def build_palisade(state, band_id: int) -> bool:
 
 
 def _companies(band) -> list:
-    from src.kora import units
-
     return units.normalize(band)
 
 
@@ -1382,8 +1354,6 @@ def army_quality(state, band) -> float:
 
 
 def army_morale(state, band) -> float:
-    from src.kora import systems
-
     # Et ce que chaque systeme y ajoute (systems.ARMY_MORALE).
     return WARRIORS_MORALE * _warrior_share(state, band) + systems.total(systems.ARMY_MORALE, state, band.tribe_id)
 
@@ -1392,14 +1362,10 @@ def levy_size(band, share: float) -> int:
     """Combien d'hommes part une levee : une part des LEVABLES (une part des
     hommes valides, population.py), jamais les enfants, les femmes, les
     anciens ni les blesses."""
-    from src.kora import population
-
     return int(population.levable(band) * share)
 
 
 def levy_type(state, tribe_id: int, type_id: str | None):
-    from src.kora import units
-
     tribe = state.tribes[tribe_id]
     u = units.UNITS.get(type_id or "")
     if u is not None and units.known(tribe, u):
@@ -1408,8 +1374,6 @@ def levy_type(state, tribe_id: int, type_id: str | None):
 
 
 def army_block(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id: str | None = None) -> str:
-    from src.kora import tech, units
-
     band = state.bands.get(band_id)
     site = site_of(state, band)
     if site is None:
@@ -1433,7 +1397,6 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     """Le village leve une compagnie : ses hommes partent avec des vivres du
     grenier. Une troupe du village est au village : la compagnie la rejoint ;
     sinon, c'est une nouvelle troupe, menee par un chef de guerre."""
-    from src.kora import chiefs, units
     from src.kora.sim import _ai_caches_changed, new_band_id, stock_max
     if army_block(state, band_id, share, type_id):
         return None
@@ -1442,8 +1405,6 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     tribe = state.tribes[band.tribe_id]
     kind = levy_type(state, band.tribe_id, type_id)
     n = levy_size(band, share)
-    from src.kora import population
-
     from src.kora import chiefdom
 
     n = population.take_men(band, n)
@@ -1495,7 +1456,6 @@ def detach_block(state, band_id: int) -> str:
 
 def _split_units(state, band, comps: list, leader=None, homebound: bool = False):
     """Une nouvelle troupe faite de ces compagnies (retirees de band)."""
-    from src.kora import chiefs
     from src.kora.sim import _ai_caches_changed, new_band_id
     men = sum(u[1] for u in comps)
     share = men / max(1, band.population)
@@ -1562,7 +1522,6 @@ def _village_near(state, band):
 
 def _join_village(state, army, site) -> None:
     """Les hommes de la troupe redeviennent villageois de ce village."""
-    from src.kora import chiefs
     from src.kora.sim import _absorb
 
     home = band_of(state, site)
@@ -1695,8 +1654,6 @@ def recall(state, band_id: int) -> bool:
 
 
 def reequip_block(state, band_id: int) -> str:
-    from src.kora import units
-
     band = state.bands.get(band_id)
     if band is None or band.kind != "armee":
         return "Pas une troupe"
@@ -1716,8 +1673,6 @@ def reequip_block(state, band_id: int) -> str:
 def reequip(state, band_id: int) -> bool:
     """Un age nouveau : les compagnies de ce village prennent les armes de leur
     temps (meilleur type de leur role)."""
-    from src.kora import units
-
     if reequip_block(state, band_id):
         return False
     band = state.bands[band_id]
@@ -1756,8 +1711,6 @@ def _update_armies(state) -> None:
         away = state.world.distance(site.hex, band.position) > 2
         if not away or state.tick_count - band.raised <= ARMY_TERM or state.tick_count % 4:
             continue
-        from src.kora import population
-
         gone = max(1, round(band.population * DESERTION))
         band.population -= gone
         band.wounded = min(band.wounded, band.population)
@@ -1944,8 +1897,6 @@ def army_lines(state, band) -> list[str]:
     """Lignes de la fiche d'une troupe."""
     if band.kind != "armee":
         return []
-    from src.kora import units
-
     site = home_of(state, band)
     home = name(site) if site is not None else "sans village"
     out = [f"Troupe de {home}  ·  {band.population} guerriers  ·  levée il y a {state.tick_count - band.raised} sem."]

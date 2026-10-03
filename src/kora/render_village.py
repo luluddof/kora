@@ -14,7 +14,22 @@ import math
 import pygame
 import pygame.gfxdraw
 
-from src.kora import battle, theme, villages
+from src.kora import (
+    battle,
+    chiefdom,
+    diplo,
+    goods,
+    numbers,
+    orders,
+    population,
+    population as _pop,
+    production,
+    tech,
+    theme,
+    units,
+    units as _units,
+    villages,
+)
 from src.kora.look import BIOME_COLORS
 from src.kora.peoples import color_of
 from src.kora.render import HUD_HEIGHT
@@ -41,6 +56,7 @@ from src.kora.render_tech import (
 )
 from src.kora.types import Hex
 from src.kora.theme import C
+from src.kora.sim import GROWTH_RATE, band_force, bonus_of, stock_max
 
 WARN = C.alerte
 CARD = {
@@ -375,8 +391,6 @@ CHARGE_ORDER = ("grenier", "guerre", "echanges", "rites", "metiers")
 
 
 def village_layout(width: int, height: int, n_armies: int = 0, page: str = "village") -> dict:
-    from src.kora import goods
-
     bx = 12
     by = HUD_HEIGHT + 6
     bw = max(760, width - 66 - 24)
@@ -419,8 +433,6 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     build = (mid[0] + half - 12 - 160, detail[1] + detail[3] - 12 - 30, 160, 30)
     today = (mid[0] + half + 16, detail_y + 10, mw - half - 28, detail[3] - 20)
     # Guerriers : le type (un par role), la taille, puis les troupes.
-    from src.kora import units as _units
-
     type_w = (rw - 8) // 2
     types = {}
     for i, role in enumerate(_units.ROLES):
@@ -612,15 +624,11 @@ def draw_village(r, state, ui) -> None:
     pygame.draw.rect(screen, (200, 110, 90), lay["leave"], 1, border_radius=6)
     ls = r.small.render(leave_label, True, INK)
     screen.blit(ls, (lx + (lw_ - ls.get_width()) // 2, ly + (lh_ - ls.get_height()) // 2))
-    from src.kora import orders
-
     why_split = orders.band_actions(state, band.id).get("split", "?")
     _button(screen, r.small, lay["split"], "Former une bande [S]", not why_split, not why_split and _hover(lay["split"], mx, my))
     if why_split and _hover(lay["split"], mx, my):
         ui.setdefault("_vtips", []).append(([(why_split, WARN)], mx, my))
     # Tuiles.
-    from src.kora.sim import band_force, stock_max
-
     cap = stock_max(band, state)
     weeks = band.stock / max(1, band.population)
     crop = villages.expected_harvest(state, site, band)
@@ -679,8 +687,6 @@ def _draw_chef(r, state, site, band, lay, ui, mx, my) -> None:
     """La chefferie (chiefdom.py) : le prelevement et le grenier du chef, la
     fete, les gens du village, les tributaires ; les familles et leurs
     charges."""
-    from src.kora import chiefdom, population
-
     tid = band.tribe_id
     tribe = state.tribes[tid]
     lx, ly, lw, lh = lay["chef_left"]
@@ -788,15 +794,11 @@ CRAFT_CARD = {
 
 def numbers_mult(state, tid: int) -> float:
     """Ce qu'une equipe de calculateurs rapporte en points (numbers.points)."""
-    from src.kora import numbers, tech
-
     tribe = state.tribes.get(tid)
     return numbers.TEAM_POINTS * (tech.bonuses(tribe).learn if tribe is not None else 1.0)
 
 
 def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
-    from src.kora import diplo, goods, tech
-
     screen = r.screen
     first = lay["crafts"][goods.CRAFT_ORDER[0]]["card"]
     x0, cw = first[0], first[2]
@@ -817,8 +819,6 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         n = goods.teams_of(site, cid)
         what = ""
         if n:
-            from src.kora import production
-
             out = goods.output(state, site, cid)
             if craft.special == "calcul":
                 what = f"+{_num(out * numbers_mult(state, site.tribe_id))} points de calcul / mois"
@@ -845,8 +845,6 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         else:
             src = goods.wild_source(state, site, cid) or "vos troupeaux"
             word = "riche" if best >= 0.7 else "correct" if best >= 0.55 else "maigre"
-            from src.kora import population as _pop
-
             info = f"{src.capitalize()} : {count} gisement{'s' if count > 1 else ''}, {word} · {_pop.SEX_WORD[_pop.CRAFT_SEX.get(cid, '')]}"
             tint = SOFT
         screen.blit(r.tiny.render(_fit(r.tiny, info, right - cx - 52), True, tint), (cx + 50, cy + (28 if ch >= 74 else 20)))
@@ -890,8 +888,6 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         yy += 40
     yy = _section(r, sx, yy + 4, sw, "BRAS")
     hands = villages.field_hands_mult(site, band)
-    from src.kora import population as _pop
-
     occ = _pop.occupation_lines(state, band)
     rows = [
         ((occ[0] if occ else f"{busy} aux métiers"), SOFT),
@@ -902,8 +898,6 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
         screen.blit(r.tiny.render(_fit(r.tiny, text, sw), True, color), (sx, yy))
         yy += 15
     # Le savoir-faire (production.py) : il monte quand il faut produire plus.
-    from src.kora import production
-
     yy = _section(r, sx, yy + 8, sw, "SAVOIR-FAIRE  ·  il grandit quand il faut produire plus")
     for name_, eff, why in production.lines(state, tid):
         pct = round(100 * (eff - 1.0))
@@ -1065,8 +1059,6 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     screen.blit(r.tiny.render(_fit(r.tiny, meta, half - 60), True, NOTE), (dx + 52, dy + 30))
     yy = dy + 50
     if b.needs:
-        from src.kora import tech
-
         known = b.needs in state.tribes[site.tribe_id].knowledge
         need = f"Savoir : {tech.TECHS[b.needs].name}"
         if known:
@@ -1100,8 +1092,6 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
 
 def _today(r, state, site, band, rect) -> None:
     """Ce que le village a deja : ses effets, en un coup d'oeil."""
-    from src.kora.sim import GROWTH_RATE, bonus_of
-
     screen = r.screen
     x, y, w, h = rect
     screen.blit(r.tiny.render("LE VILLAGE AUJOURD'HUI", True, GOLD), (x, y))
@@ -1133,8 +1123,6 @@ def _today(r, state, site, band, rect) -> None:
 
 
 def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
-    from src.kora import units
-
     screen = r.screen
     x, y, w, _h = lay["right"]
     tribe = state.tribes[band.tribe_id]
@@ -1152,8 +1140,6 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
             label = f"{units.ROLE_LABEL[rl]} : verrouillé"
             _chip_off(r, rect, label)
             if _hover(rect, mx, my):
-                from src.kora import tech
-
                 need = tech.TECHS[first.needs].name if first.needs else "?"
                 ui.setdefault("_vtips", []).append(([(first.name, INK), (f"Il faut connaître {need}", BAD)], mx, my))
             continue

@@ -7,7 +7,7 @@ from src.kora.ai_war import (
     start_plan,
     unsafe_spots,
 )
-from src.kora import chiefs, diplo, sites
+from src.kora import chiefs, diplo, goods, sites, units, villages
 from src.kora.peoples import culture_of
 from src.kora.sim import (
     band_force,
@@ -228,8 +228,6 @@ def _threat(state: GameState, band: Band, radius: int):
 def _ai_levy_type(state: GameState, band: Band, site) -> str:
     """Premiere compagnie : la melee ; la suivante : des tireurs s'il y en a,
     sinon une garde."""
-    from src.kora import units, villages
-
     tribe = state.tribes[band.tribe_id]
     if villages.companies_of(state, site) == 0:
         return units.best(tribe, "melee").id
@@ -291,8 +289,6 @@ FOUND_GOOD_HEXES = 2
 def _good_count(state: GameState, tribe_id: int, h) -> int:
     """Bonnes terres (fertilite 0,6) a portee d'un village fonde ici. Ne
     depend que de la carte et du defrichage : memorise."""
-    from src.kora import villages
-
     world = state.world
     clearing = bool(bonus_of(state, tribe_id).clearing)
     memo = getattr(world, "_lands", None)
@@ -386,8 +382,6 @@ def head_for_new_land(state: GameState, band: Band) -> None:
 def _settle_ai(state: GameState, band: Band) -> bool:
     """Un peuple qui sait semer et n'a pas encore de village (un clan parti,
     un petit peuple) : il campe sur une bonne terre pour s'y fixer."""
-    from src.kora import villages
-
     know = bonus_of(state, band.tribe_id)
     if know.villages <= 0 or know.camps <= 0 or band.population < AI_SETTLE_POP:
         return False
@@ -412,12 +406,8 @@ def _settle_ai(state: GameState, band: Band) -> bool:
 def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     """Un village IA : batit (palissade d'abord), leve une troupe s'il est
     menace ou s'il voit une proie, envoie des colons quand il deborde."""
-    from src.kora import villages
-
     site = villages.site_of(state, band)
     if site is not None:
-        from src.kora import goods
-
         goods.ai_crafts(state, site, band, weeks)
     warm = state.world.hex_season(band.position).value in ("printemps", "ete")
     if site is not None and warm and villages.works(site) is None:
@@ -472,8 +462,6 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
 def _try_found_village(state: GameState, band: Band) -> bool:
     """Une bande IA sur son campement, au printemps ou en ete, sur une
     bonne terre : elle s'installe."""
-    from src.kora import villages
-
     first = not sites.of_tribe(state, band.tribe_id, "village")
     if bonus_of(state, band.tribe_id).villages <= 0 or band.population < (AI_SETTLE_POP if first else 25):
         return False
@@ -499,8 +487,6 @@ def _try_found_village(state: GameState, band: Band) -> bool:
 def _army_ai(state: GameState, band: Band, weeks: float) -> None:
     """Une troupe IA : defendre son village, raider une proie qu'elle bat,
     sinon rentrer et redevenir villageois."""
-    from src.kora import villages
-
     if band.path or band.homebound:
         return
     home = villages.home_of(state, band)

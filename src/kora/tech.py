@@ -18,10 +18,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from src.kora.log import LogKind
-from src.kora.peoples import culture_of
+from src.kora.peoples import children_alive, culture_of
 from src.kora.types import Season, Terrain
 from src.kora.world import MOVE_COST, is_inshore
 from src.kora.gamestate import note
+from src.kora import systems
 
 BASE_STOCK_WEEKS = 10
 BASE_MAX_BANDS = 8
@@ -590,8 +591,6 @@ def spec_effect(eid: str):
     (systems.EFFECT_SPECS). None : ce n'en est pas un."""
     if eid in _SPECS:
         return _SPECS[eid]
-    from src.kora import systems
-
     prefix = next((p for p in systems.EFFECT_SPECS if eid.startswith(p)), None)
     if prefix is not None:
         for k, (name, effects) in systems.fn(systems.EFFECT_SPECS[prefix])().items():
@@ -802,8 +801,6 @@ def bonuses(tribe) -> Bonuses:
         if hit is not None and hit[0] is tribe:
             return hit[1]
     known = getattr(tribe, "knowledge", None)
-    from src.kora import systems
-
     for path in systems.EFFECT_FIELDS:
         # Ce qui compte comme des savoirs : bonus de depart, situations,
         # nombres... (systems.EFFECT_FIELDS).
@@ -1070,8 +1067,6 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
     if kind == "bands":
         # Les bandes qu'on a eues comptent : un peuple fixe n'en forme plus,
         # et ses clans partis etaient les siens.
-        from src.kora.peoples import children_alive
-
         have = max(tribe.practice.get("bandes", 0), _bands(state, tribe.id) + children_alive(state, tribe.id))
         return have, cond.need, f"Avoir eu {_plural(cond.need, 'bande')}"
     if kind == "seen":

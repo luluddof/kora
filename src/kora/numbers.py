@@ -27,6 +27,8 @@ from __future__ import annotations
 
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
+from src.kora.peoples import culture_of
+from src.kora import tech
 
 BASES = {
     10: ("Base dix", "On compte sur ses doigts : les nombres s'apprennent vite.", {"learn": 1.05}),
@@ -82,8 +84,6 @@ def next_op(tribe):
 def _sync(state, tribe) -> None:
     """Les effets en vigueur : la base (sauf pendant une reforme) et les
     operations connues."""
-    from src.kora import tech
-
     ids = [f"op:{o}" for o in (tribe.operations or [])]
     if tribe.base and state.tick_count >= getattr(tribe, "base_reform_until", -1):
         ids.append(f"base:{tribe.base}")
@@ -94,8 +94,6 @@ def _sync(state, tribe) -> None:
 
 def choose_block(state, tid: int, base: int) -> str:
     tribe = state.tribes.get(tid)
-    from src.kora import tech
-
     if tribe is None or base not in BASES:
         return "?"
     if not tech.bonuses(tribe).numbers:
@@ -137,8 +135,6 @@ def choose(state, tid: int, base: int) -> str:
 
 def ai_base(state, tribe) -> int:
     """L'IA : sa base selon son pays (le commerce, le grain, les gens)."""
-    from src.kora.peoples import culture_of
-
     label = culture_of(tribe).label.lower()
     if "steppe" in label or "côte" in label or "cote" in label:
         return 12
@@ -166,8 +162,6 @@ def points(state, tid: int) -> float:
 
 
 def monthly(state) -> None:
-    from src.kora import tech
-
     for tid in sorted(state.tribes):
         tribe = state.tribes[tid]
         b = tech.bonuses(tribe)
@@ -212,8 +206,6 @@ def teams(state, tid: int) -> int:
 
 def page(state, tid: int) -> dict:
     """Ce que montre l'onglet des nombres (render_numbers.py)."""
-    from src.kora import tech
-
     tribe = state.tribes.get(tid)
     if tribe is None:
         return {}

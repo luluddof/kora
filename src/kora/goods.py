@@ -44,7 +44,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.kora import tech
+from src.kora import population, tech
 from src.kora.log import LogKind
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.types import TradeRoute
@@ -293,8 +293,6 @@ def team_cap(band) -> int:
     """Equipes qu'un village peut nourrir de ses bras."""
     if band is None:
         return 0
-    from src.kora import population
-
     # Les bras du village (les adultes valides : population.py).
     return max(0, int(population.labor_pop(band)) // TEAM_POP)
 
@@ -340,8 +338,6 @@ def add_block(state, site, cid: str) -> str:
         return f"Tous les gisements sont pris ({top})"
     if total_teams(site) >= team_cap(band):
         return f"Plus de bras (une équipe par {TEAM_POP} habitants)"
-    from src.kora import population
-
     # Chaque metier ses gens : les potieres et les tisserandes sont des femmes,
     # les tailleurs de silex et les pecheurs des hommes.
     if population.free_for_craft(state, band, cid) < TEAM:

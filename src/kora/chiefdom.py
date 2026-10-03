@@ -32,6 +32,8 @@ from __future__ import annotations
 
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
+from src.kora.peoples import civ_of, culture_of, make_name
+from src.kora import chiefs, tech
 
 RATES = (0, 10, 20, 30)
 DEFAULT_RATE = 10
@@ -77,8 +79,6 @@ CHARGE_TEXT = {
 def kin_villages(state, tid: int) -> int:
     """Villages freres : ceux des autres peuples de sa civilisation, et ceux
     de ses tributaires."""
-    from src.kora.peoples import civ_of
-
     tribe = state.tribes.get(tid)
     if tribe is None:
         return 0
@@ -98,8 +98,6 @@ def kin_of(state, tid: int) -> set:
     sa civilisation qui ne se sont pas razzies l'un l'autre depuis un an, et
     ses tributaires. (Pas la relation : elle compte deja les freres.)"""
     from src.kora import diplo, tech
-    from src.kora.peoples import civ_of
-
     tribe = state.tribes.get(tid)
     if tribe is None or not tech.bonuses(tribe).kin:
         return set()
@@ -214,8 +212,6 @@ def craft_output(state, site, craft) -> float:
 def _make_families(state, tribe) -> None:
     """Les familles qui comptent naissent avec les villages (2, puis une de
     plus tous les deux villages, 4 au plus)."""
-    from src.kora.peoples import culture_of, make_name
-
     want = min(4, 2 + len(_villages(state, tribe.id)) // 2)
     fams = list(tribe.families or [])
     if len(fams) >= want:
@@ -255,8 +251,6 @@ def set_charge(state, tid: int, fam_id: int, charge: str) -> str:
     if fam.get("charge") and not charge:
         fam["favour"] = max(0.0, fam["favour"] - 10.0)
     fam["charge"] = charge
-    from src.kora import tech
-
     tech.invalidate()
     if charge:
         return f"La famille {fam['name']} devient {CHARGES[charge].lower()}."
@@ -281,8 +275,6 @@ def set_rate(state, tid: int, rate: int) -> str:
     if tribe is None or rate not in RATES:
         return "?"
     tribe.levy_rate = rate
-    from src.kora import tech
-
     tech.invalidate()
     return f"Le chef prélèvera {rate} % des récoltes." if rate else "Le chef ne prélève plus rien."
 
@@ -683,8 +675,6 @@ def _family_leaves(state, tribe, fam) -> None:
 def _ai(state, tribe) -> None:
     """L'IA : son prelevement selon son chef, ses charges aux familles qui
     ont le trait qui va avec."""
-    from src.kora import chiefs
-
     chief = chiefs.chief_of(state, tribe.id)
     traits = chief.traits if chief is not None else ()
     want = 20 if "ambitieux" in traits else 0 if "genereux" in traits else 10

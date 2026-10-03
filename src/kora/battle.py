@@ -26,7 +26,7 @@ import math
 import random
 from dataclasses import dataclass, field
 
-from src.kora import chiefs, influence, sim
+from src.kora import chiefs, influence, population, sim, sites, systems, units
 from src.kora.log import terrain_fr
 from src.kora.types import Band, Hex, OrderKind, Terrain, stay_order
 
@@ -196,8 +196,6 @@ def start_morale(state, band: Band, attacker: bool, h) -> tuple[float, list[tupl
     if band.leader is not None and "guerrier" in band.leader.traits:
         parts.append(("Chef guerrier", LEADER_MORALE))
     if band.kind == "armee":
-        from src.kora import units
-
         m = units.profile(band)["morale"]
         if m >= 1:
             parts.append(("Boucliers", round(m)))
@@ -227,8 +225,6 @@ def _side(state, main: Band, attacker: bool, h) -> Side:
     helpers = len(bands) - 1
     if helpers:
         mods.append((f"Renforts : {helpers} bande{'s' if helpers > 1 else ''}", "+"))
-    from src.kora import units
-
     terrain = state.world.terrain(h)
     attack, guard, ranged = {}, {}, {}
     for b in bands:
@@ -265,8 +261,6 @@ def _spread(side: Side, hit: float, lost: dict) -> None:
 
 
 def pursuit_rate(state, winner: Side, loser: Side, h, outcome: str, encircled: bool) -> float:
-    from src.kora import units
-
     esc = ESCAPE.get(state.world.terrain(h), 1.0)
     chase = ARMY_PURSUIT * units.profile(winner.main)["pursuit"] if winner.main.kind == "armee" else CLAN_PURSUIT
     ratio = max(0.5, min(9.0, winner.power() / max(0.1, loser.power())))
@@ -393,8 +387,6 @@ def general(state, bands) -> tuple[str, int]:
 def fighters_now(band: Band, attacker: bool) -> float:
     """Combattants d'une bande : ses hommes valides ; au mur de son village,
     une part des femmes aussi."""
-    from src.kora import population
-
     men = population.men_force(band)
     if band.village and not attacker and band.kind != "armee":
         return men + WALL_WOMEN * population.women_force(band)
@@ -407,8 +399,6 @@ def _alive(state, ids) -> list:
 
 def _now(state, bt, attacker: bool) -> Side:
     """Un camp tel qu'il est ce jour-la (ses bandes vivantes)."""
-    from src.kora import units
-
     bands = _alive(state, bt.attackers if attacker else bt.defenders)
     h = bt.hex
     terrain = state.world.terrain(h)
@@ -490,8 +480,6 @@ def _seed_day(state, bt) -> int:
 def _hits(state, bt, side: Side, hit: float, prudent: bool) -> tuple[int, int]:
     """Les coups recus par un camp : morts et blesses, repartis entre ses
     bandes selon leur part du combat."""
-    from src.kora import population
-
     if prudent:
         hit *= 0.9
     weights = {b.id: side.now[b.id] * side.quality[b.id] for b in side.bands}
@@ -519,8 +507,6 @@ def _hits(state, bt, side: Side, hit: float, prudent: bool) -> tuple[int, int]:
 
 def day(state, bt) -> bool:
     """Un jour de bataille. Rend True si elle est finie."""
-    from src.kora import units
-
     if bt.outcome:
         return True
     a, d = _now(state, bt, True), _now(state, bt, False)
@@ -572,8 +558,6 @@ def _flee(state, bt, side: Side, morale: float, rng) -> int:
         return 0
     share = FLEE_RATE * (FLEE_MORALE - morale) / FLEE_MORALE * (0.5 + rng.random())
     gone = 0
-    from src.kora import systems
-
     for b in side.bands:
         # Ce qui retient les hommes, ou les fait partir (systems.FLEE).
         n = int(math.floor(systems.apply_mult(side.now[b.id] * share, systems.FLEE, state, b.tribe_id)))
@@ -603,8 +587,6 @@ def _ai_retreat(state, bt, a: Side, d: Side) -> None:
     """L'IA se replie quand elle perd et n'a rien a perdre : elle n'est pas
     au mur de son village, et elle est loin de chez elle, ou interceptee,
     ou c'est une troupe ; ou son moral s'effondre."""
-    from src.kora import sites
-
     if bt.retreat or bt.outcome:
         return
     for side, key, ids in ((a, "a", bt.attackers), (d, "d", bt.defenders)):
@@ -775,8 +757,6 @@ def _kill(band: Band, dead: int) -> None:
     if dead <= 0:
         return
     if band.kind == "armee":
-        from src.kora import units
-
         units.remove(band, dead)
     else:
         band.population = max(0, band.population - dead)
@@ -820,8 +800,6 @@ def place_of(state, h) -> str:
 
 
 def _side_report(state, bt, side: Side, ids: list, before: dict, pursuit: int, key: str) -> dict:
-    from src.kora import units
-
     first = next((state.bands[b] for b in ids if b in state.bands), None)
     main = side.main or first
     tid = main.tribe_id if main is not None else 0

@@ -14,7 +14,7 @@ Un raid en cours est annule si la cible s'est renforcee entre-temps.
 
 from __future__ import annotations
 
-from src.kora import chiefs, diplo
+from src.kora import battle, chiefs, diplo
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
 from src.kora.sim import (
@@ -30,6 +30,7 @@ from src.kora.sim import (
 )
 from src.kora.gamestate import GameState, humans, note
 from src.kora.types import Band, OrderKind, stay_order
+from src.kora.vision import is_visible
 
 AI_RAID_REST = 12
 AI_RAID_EDGE = 1.25
@@ -62,8 +63,6 @@ def force_at(state: GameState, bands: list[Band], spot) -> float:
 def wins(state: GameState, bands: list[Band], prey: Band, edge: float = AI_RAID_EDGE) -> bool:
     # Moral de l'attaquant (battle.py) : des affames ou des etrangers au
     # pays se battent moins bien ; une troupe, mieux.
-    from src.kora import battle
-
     morale, _parts = battle.start_morale(state, bands[0], attacker=True, h=prey.position)
     # Prudente : un bon moral ne lui fait pas oublier sa marge.
     mine = force_at(state, bands, prey.position) * min(1.1, morale / battle.MORALE_BASE)
@@ -168,8 +167,6 @@ def plan_raid(state: GameState, band: Band, max_weeks: int, hungry: bool = True)
 
 
 def start_plan(state: GameState, band: Band, plan) -> None:
-    from src.kora.vision import is_visible
-
     if plan[0] == "attack":
         set_march_to_band(state, band.id, plan[1].id)
         return

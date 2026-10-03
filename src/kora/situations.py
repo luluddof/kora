@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import tech
+from src.kora import chiefs, population, tech
 from src.kora.log import LogKind
 from src.kora.types import Hex, Season, Terrain
 from src.kora.gamestate import humans, is_human, note
@@ -407,8 +407,6 @@ class GibierEpuise(Spec):
     natural = 4.0
 
     def candidates(self, state):
-        from src.kora import chiefs
-
         out = []
         for tid in sorted(state.tribes):
             if _has_village(state, tid):
@@ -1319,8 +1317,6 @@ class Revolte(Spec):
             _note(state, tid, LogKind.POLITIQUE, "La révolte éclate : des villages refusent de payer le chef.")
 
     def act(self, state, inst, tid, action):
-        from src.kora import population
-
         tribe = state.tribes[tid]
         if action == "baisser":
             tribe.levy_rate = min(tribe.levy_rate, 10)
@@ -1473,8 +1469,6 @@ def _risk_mal(self, state, tid):
 
 
 def _risk_gibier(self, state, tid):
-    from src.kora import chiefs
-
     if _has_village(state, tid):
         return ""
     heart = chiefs.chief_band(state, tid)

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import tech, theme
+from src.kora import net, session, tech, theme
 from src.kora.render_tech import (
     GOLD,
     GOLD_DEEP,
@@ -33,6 +33,7 @@ from src.kora.render_tech import (
 from src.kora.render_village import _frame, _hover, _plain_button
 from src.kora.theme import C
 from src.kora.gamestate import human_dead
+from src.kora.peoples import CULTURES, make_name
 
 # Couleurs proposees au joueur (le bleu et le vert sont ceux des grands peuples IA).
 PALETTE = (
@@ -317,8 +318,6 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
 
 
 def random_name(rng, taken=()) -> str:
-    from src.kora.peoples import CULTURES, make_name
-
     return make_name(rng, CULTURES["joueur"], taken)
 
 
@@ -533,8 +532,6 @@ def lobby_hit(lay: dict, mx: int, my: int, role: str):
 
 def _addresses(mp) -> tuple[str, str]:
     """L'adresse a donner (celle du reseau principal) et les autres."""
-    from src.kora import net
-
     ips = net.local_addresses()
     port = getattr(mp, "port", net.PORT)
     suffix = "" if port == net.PORT else f":{port}"
@@ -544,7 +541,6 @@ def _addresses(mp) -> tuple[str, str]:
 def draw_lobby(r, mp, t: float, chat_text, hint: str = "", status: str = "") -> None:
     """Le salon : les quatre places (vallee, steppe, foret, cote), qui est
     pret, la discussion. mp : session.HostSession ou ClientSession."""
-    from src.kora import session
     from src.kora.render_tech import _fonts
 
     title_font, head_font, _era, _num = _fonts(r)

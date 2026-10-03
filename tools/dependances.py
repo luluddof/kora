@@ -21,6 +21,41 @@ SRC = ROOT / "src" / "kora"
 # La presentation (pygame) ; le reste est la simulation et ses outils.
 PRESENTATION = {"app", "render", "theme", "look", "globe", "globe_draw", "screens"}
 
+# LES ETAGES, du plus bas au plus haut. Un module n'importe en tete que des
+# etages plus bas ; un import cache (dans une fonction) ne vise que le meme
+# etage ou plus bas, jamais plus haut (tests/test_architecture.py).
+LAYERS = (
+    # 0. les briques : les types du jeu, le francais, le reseau, le tableau
+    ("types", "francais", "net", "systems"),
+    # 1. le temps, le journal, les ressources, les fiches
+    ("clock", "log", "resources", "records"),
+    # 2. la planete
+    ("world",),
+    # 3. ce qui se pose dessus : chemins, atlas, cuisson, etat de la partie, peuples
+    ("path", "atlas", "mapgen", "gamestate", "peoples"),
+    # 4. les savoirs, les unites, la vue
+    ("tech", "units", "vision"),
+    # 5. les gens et les lieux : population, savoir-faire, lieux, chefs, influence
+    ("population", "production", "sites", "chiefs", "influence"),
+    # 6. les systemes (ils se parlent entre eux, de preference par systems.py)
+    ("diplo", "goods", "money", "numbers", "chiefdom", "villages", "battle", "situations", "events"),
+    # 7. les donnees des evenements ; la semaine du monde (sim)
+    ("events_data", "sim"),
+    # 8. ce qui la mene : l'IA, les ordres des bandes, les ordres des joueurs
+    ("ai_war", "orders"),
+    ("ai", "commands"),
+    # 9. la sauvegarde, le multijoueur, les essais
+    ("persist", "session", "essai"),
+)
+PRESENTATION_LAYER = len(LAYERS)
+
+
+def layer_of() -> dict:
+    out = {m: i for i, ms in enumerate(LAYERS) for m in ms}
+    for m in presentation():
+        out[m] = PRESENTATION_LAYER
+    return out
+
 
 def modules() -> set:
     return {p.stem for p in SRC.glob("*.py")} - {"__init__"}
