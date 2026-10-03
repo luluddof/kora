@@ -2,7 +2,8 @@
 l'effondrement du commerce (situations.py), les crises que l'on voit venir."""
 
 from src.kora import diplo, goods, persist, production, sites, situations, tech, villages
-from src.kora.sim import PLAYER_TRIBE_ID, new_game
+from src.kora.sim import new_game
+from src.kora.gamestate import PLAYER_TRIBE_ID
 from src.kora.situations import SPECS
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world

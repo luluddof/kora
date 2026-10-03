@@ -13,7 +13,8 @@ import pygame
 from src.kora import events, session
 from src.kora.app import _fresh_ui, _start_view, _first_player_band
 from src.kora.render import Renderer
-from src.kora.sim import PLAYER_TRIBE_ID, _default_world, hex_inspect, new_game, tick
+from src.kora.sim import _default_world, hex_inspect, new_game, tick
+from src.kora.gamestate import PLAYER_TRIBE_ID
 from test_balance import _robot
 
 

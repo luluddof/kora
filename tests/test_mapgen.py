@@ -5,7 +5,7 @@ import numpy as np
 
 from src.kora.mapgen import Noise3, continent_sizes, fbm, sphere_points
 from src.kora.types import Terrain
-from src.kora.world import generate_world as _generate_world
+from src.kora.mapgen import generate_world as _generate_world
 from src.kora.world import offset_to_axial
 
 
@@ -13,7 +13,8 @@ from src.kora.world import offset_to_axial
 def generate_world(seed=42, width=None, height=None):
     # Une planete pleine taille prend ~15 s : chaque graine n'est generee
     # qu'une fois pour tout le fichier (les tests ne la modifient pas).
-    return _generate_world(seed=seed, width=width, height=height)
+    size = {k: v for k, v in (("width", width), ("height", height)) if v is not None}
+    return _generate_world(seed=seed, **size)
 
 
 def test_two_seeds_produce_different_land():

@@ -13,16 +13,8 @@ import random
 
 import pytest
 
-from src.kora.sim import (
-    PLAYER_TRIBE_ID,
-    _default_world,
-    _herd_ok,
-    new_game,
-    set_goto,
-    side_force,
-    split_band,
-    tick,
-)
+from src.kora.sim import _default_world, _herd_ok, new_game, set_goto, side_force, split_band, tick
+from src.kora.gamestate import PLAYER_TRIBE_ID
 from src.kora import tech
 from src.kora.types import Season
 from src.kora.world import axial_to_offset, enter_cost_for, food_production

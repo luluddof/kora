@@ -63,7 +63,7 @@ def banner_layout(width: int, n: int) -> dict:
 
 def people_name(state, tid: int) -> str:
     from src.kora import diplo
-    from src.kora.sim import seen_of
+    from src.kora.gamestate import seen_of
 
     me = state.viewer
     tribe = state.tribes.get(tid)

@@ -5,7 +5,8 @@ import functools
 from src.kora import resources, tech
 from src.kora.clock import Clock
 from src.kora.mapgen import generate_world
-from src.kora.sim import GameState, _default_world
+from src.kora.sim import _default_world
+from src.kora.gamestate import GameState
 from src.kora.types import Band, Season, Terrain, Tribe
 from src.kora.world import food_production, make_filled_world, offset_to_axial
 

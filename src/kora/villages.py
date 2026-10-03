@@ -1973,6 +1973,6 @@ def army_lines(state, band) -> list[str]:
 
 def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
     """Au journal du joueur `to` (par defaut le joueur solo)."""
-    from src.kora.sim import PLAYER_TRIBE_ID, note
+    from src.kora.gamestate import PLAYER_TRIBE_ID, note
 
     note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

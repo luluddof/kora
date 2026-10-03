@@ -13,7 +13,6 @@ succede. N'importe ni pygame ni render.
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass, field
 
 from src.kora import tech
@@ -951,24 +950,8 @@ def band_lines_extra(state, band) -> list[str]:
     return out
 
 
-def copy_person(p: Person | None) -> Person | None:
-    return copy.copy(p) if p is not None else None
-
-
-def person_to_json(p: Person | None):
-    if p is None:
-        return None
-    return [p.pid, p.name, p.born, list(p.traits), p.renown]
-
-
-def person_from_json(data) -> Person | None:
-    if not data:
-        return None
-    return Person(int(data[0]), str(data[1]), int(data[2]), tuple(str(t) for t in data[3]), int(data[4]))
-
-
 def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
     """Au journal du joueur `to` (par defaut le joueur solo)."""
-    from src.kora.sim import PLAYER_TRIBE_ID, note
+    from src.kora.gamestate import PLAYER_TRIBE_ID, note
 
     note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

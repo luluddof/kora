@@ -1,5 +1,6 @@
 from src.kora.persist import load_game, save_game
-from src.kora.sim import GameState, new_game
+from src.kora.sim import new_game
+from src.kora.gamestate import GameState
 from src.kora.types import Order, OrderKind, Terrain
 from src.kora.vision import recompute_vision
 from src.kora.world import make_filled_world, offset_to_axial

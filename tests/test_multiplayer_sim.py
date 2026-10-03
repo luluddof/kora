@@ -6,17 +6,8 @@ import random
 
 from src.kora import diplo, events, tech
 from src.kora.persist import dumps_game, loads_game
-from src.kora.sim import (
-    PLAYER_TRIBE_ID,
-    human_dead,
-    humans,
-    is_human,
-    log_of,
-    new_game,
-    seen_of,
-    split_band,
-    tick,
-)
+from src.kora.sim import new_game, split_band, tick
+from src.kora.gamestate import PLAYER_TRIBE_ID, human_dead, humans, is_human, log_of, seen_of
 from src.kora.types import Terrain
 from src.kora.vision import is_explored, is_visible, vision_of
 from src.kora.world import make_filled_world

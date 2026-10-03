@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 
 from src.kora import tech
 from src.kora.log import LogKind
+# Les donnees (contacts, relations, pactes, routes) : types.py.
+from src.kora.types import Diplomacy, Mod, Pact, TradeRoute  # noqa: F401
 
 CONTACT_RANGE = 16
 NEIGHBOR_RANGE = 40
@@ -73,59 +75,6 @@ MOD_TEXT = {
     "protection": ("Ils sont sous votre protection", "Vous êtes sous leur protection", 0.2),
     "freres": ("Un village né du vôtre", "Votre village est né du leur", 0.1),
 }
-
-
-@dataclass
-class Mod:
-    key: str
-    value: float
-    actor: int = 0
-    year: int = 0
-
-
-@dataclass
-class Pact:
-    kind: str  # "treve", "alliance", "tribut", "commerce"
-    since: int
-    until: int = 0  # 0 = sans fin
-    payer: int = 0
-    paid: int = 0
-
-
-@dataclass
-class TradeRoute:
-    """Une route commerciale (goods.py) : `exporter` envoie chaque mois un
-    bien a `importer`, qui le paie en vivres. level : nombre de convois de
-    porteurs (1 a 3). by : le peuple qui l'a ouverte. Le reste : ce que la
-    route a fait le dernier mois."""
-
-    exporter: int
-    importer: int
-    good: str
-    level: int = 1
-    by: int = 0
-    since: int = 0
-    units: float = 0.0
-    paid: float = 0.0
-    status: str = ""
-    idle: int = 0
-
-
-@dataclass
-class Diplomacy:
-    contacts: set = field(default_factory=set)
-    mods: dict = field(default_factory=dict)
-    pacts: dict = field(default_factory=dict)
-    cooldown: dict = field(default_factory=dict)
-    # (qui, contre qui) -> semaine limite : raider sans trahir (tribut refuse).
-    casus: dict = field(default_factory=dict)
-    betrayed: dict = field(default_factory=dict)
-    # (attaquant, defenseur) -> (semaine, l'attaquant a gagne)
-    raids: dict = field(default_factory=dict)
-    # Voisins qui peuvent enseigner, recalcule chaque mois : tid -> [tid]
-    neighbors: dict = field(default_factory=dict)
-    # Routes commerciales (goods.py).
-    routes: list = field(default_factory=list)
 
 
 def pair(a: int, b: int) -> tuple[int, int]:
@@ -1259,6 +1208,6 @@ def from_json(data) -> Diplomacy:
 
 def _note(state, kind, text: str, where=None, to: int | None = None) -> None:
     """Au journal du joueur `to` (par defaut le joueur solo)."""
-    from src.kora.sim import PLAYER_TRIBE_ID, note
+    from src.kora.gamestate import PLAYER_TRIBE_ID, note
 
     note(state, kind, text, where, to=PLAYER_TRIBE_ID if to is None else to)

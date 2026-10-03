@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 
 from src.kora.types import Terrain
-from src.kora.world import World, axial_to_offset, offset_to_axial
+from src.kora.world import AtlasLabel, World, axial_to_offset, offset_to_axial  # noqa: F401
 
 LAND_NAMES = (
     "Kora",
@@ -41,14 +40,6 @@ INLAND_NAMES = (
     "Mer Douce",
     "Grand Lac",
 )
-
-
-@dataclass(frozen=True)
-class AtlasLabel:
-    name: str
-    col: float
-    row: float
-    kind: str
 
 
 def _is_water(terrain: Terrain) -> bool:

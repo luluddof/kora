@@ -18,16 +18,8 @@ from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
 from src.kora import chiefs, orders
-from src.kora.sim import (
-    GameState,
-    human_dead,
-    log_of,
-    band_lines,
-    band_summary,
-    band_warn_from,
-    fight_lines,
-    inspect_lines,
-)
+from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
+from src.kora.gamestate import GameState, human_dead, log_of
 from src.kora import tech
 from src.kora.types import Hex, Season
 from src.kora.vision import enemy_band_visible

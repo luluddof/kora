@@ -5,7 +5,8 @@ multijoueur, une action est un ordre (commands)."""
 
 from src.kora import commands, diplo, situations, tech, villages
 from src.kora.persist import dumps_game, loads_game
-from src.kora.sim import PLAYER_TRIBE_ID, new_game, tick
+from src.kora.sim import new_game, tick
+from src.kora.gamestate import PLAYER_TRIBE_ID
 from src.kora.situations import SPECS
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world, offset_to_axial

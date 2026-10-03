@@ -1,5 +1,6 @@
 from src.kora.clock import Clock
-from src.kora.sim import GameState, hex_inspect, inspect_lines
+from src.kora.sim import hex_inspect, inspect_lines
+from src.kora.gamestate import GameState
 from src.kora.types import Band, Season, Terrain, Tribe
 from src.kora.vision import recompute_vision
 from src.kora.world import make_filled_world, offset_to_axial

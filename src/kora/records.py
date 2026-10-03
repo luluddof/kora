@@ -32,6 +32,8 @@ import dataclasses
 import typing
 from typing import Any
 
+from src.kora.types import Hex, Order, OrderKind, Person, copy_person, person_from_json, person_to_json
+
 _CODECS: dict = {}
 _PLANS: dict = {}
 
@@ -245,9 +247,6 @@ def _setup() -> None:
     if _READY:
         return
     _READY = True
-    from src.kora import chiefs
-    from src.kora.types import Hex, Order, OrderKind, Person
-
     register(Hex, lambda h: [h.q, h.r], lambda v: Hex(int(v[0]), int(v[1])))
     register(
         Order,
@@ -263,4 +262,4 @@ def _setup() -> None:
         ),
         _copy.copy,
     )
-    register(Person, chiefs.person_to_json, chiefs.person_from_json, chiefs.copy_person)
+    register(Person, person_to_json, person_from_json, copy_person)

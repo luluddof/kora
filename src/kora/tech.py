@@ -636,7 +636,7 @@ def update_start_bonuses(state) -> None:
             tribe.start_bonus_until = -1
             invalidate()
             if tribe.is_player:
-                from src.kora.sim import note
+                from src.kora.gamestate import note
 
                 note(state, LogKind.DECOUVERTE, f"Les bonus de départ s'éteignent ({names}) : votre peuple vole de ses propres ailes.", to=tribe.id)
 
@@ -1367,7 +1367,7 @@ def _update_learning(state) -> None:
         if tribe.progress[tid] >= TECHS[tid].cost:
             grant(tribe, tid)
             if tribe.is_player:
-                from src.kora.sim import note
+                from src.kora.gamestate import note
 
                 tech = TECHS[tid]
                 note(state, LogKind.DECOUVERTE, f"Nouveau savoir : {tech.name}. {summary(tech)}", to=tribe.id)

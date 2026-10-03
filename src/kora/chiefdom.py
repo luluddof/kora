@@ -439,7 +439,7 @@ def village_taken(state, winner, loser, site_id: int) -> str:
     choisit (carte : soumettre ou piller) ; l'IA decide. Rend le batiment
     perdu (pillage tout de suite)."""
     from src.kora import events
-    from src.kora.sim import is_human
+    from src.kora.gamestate import is_human
 
     w, l = winner.tribe_id, loser.tribe_id
     if overlord_of(state, l) == w:
@@ -555,7 +555,8 @@ def _revolt(state, vassal: int, lord: int) -> None:
 
 def monthly(state) -> None:
     from src.kora import diplo, villages
-    from src.kora.sim import gain_prestige, is_human
+    from src.kora.sim import gain_prestige
+    from src.kora.gamestate import is_human
 
     split_extra_villages(state)
     for tid in sorted(state.tribes):
@@ -706,7 +707,7 @@ def _ai(state, tribe) -> None:
 
 
 def _note(state, tid: int, kind, text: str, where=None) -> None:
-    from src.kora.sim import is_human, note
+    from src.kora.gamestate import is_human, note
 
     if tid in state.tribes and is_human(state, tid):
         note(state, kind, text, where, to=tid)

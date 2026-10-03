@@ -1,16 +1,6 @@
 from src.kora.clock import Clock
-from src.kora.sim import (
-    COMBAT_MARK_MAX,
-    COMBAT_MARK_WEEKS,
-    GameState,
-    band_force,
-    apply_movement,
-    consume_ticks,
-    fight_at,
-    fight_lines,
-    prune_fight_marks,
-    fight_out,
-)
+from src.kora.sim import COMBAT_MARK_MAX, COMBAT_MARK_WEEKS, band_force, apply_movement, consume_ticks, fight_at, fight_lines, prune_fight_marks, fight_out
+from src.kora.gamestate import GameState
 from src.kora.types import Band, FightMark, Terrain, Tribe
 from src.kora.world import hex_distance, make_filled_world, offset_to_axial
 

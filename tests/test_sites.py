@@ -3,7 +3,8 @@
 from src.kora import orders, sites, tech
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import GameState, collect_food, new_game, stock_max
+from src.kora.sim import collect_food, new_game, stock_max
+from src.kora.gamestate import GameState
 from src.kora.types import Band, Season, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 

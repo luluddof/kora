@@ -10,7 +10,7 @@ from pathlib import Path
 from src.kora import battle, chiefs, diplo, events, records, sites, situations
 from src.kora.clock import Clock
 from src.kora.log import LOG_CAP, GameLog, LogEntry, LogKind
-from src.kora.sim import GameState
+from src.kora.gamestate import GameState
 from src.kora.types import Band, FightMark, Hex, Season, Tribe
 from src.kora.vision import PlayerVision, recompute_vision
 from src.kora.world import World, offset_to_axial
@@ -440,7 +440,7 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
             world._season_gen += 1
         else:
             world.fill_season(clock.season())
-        from src.kora.sim import Pov
+        from src.kora.gamestate import Pov
 
         explored_of = {}
         for tid, raw in data.get("povs", []):

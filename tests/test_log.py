@@ -2,7 +2,8 @@ from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.globe import land_draw_stride
 from src.kora.clock import Clock
 from src.kora import tech
-from src.kora.sim import GameState, collect_food, tick
+from src.kora.sim import collect_food, tick
+from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 from src.kora.persist import load_game, save_game

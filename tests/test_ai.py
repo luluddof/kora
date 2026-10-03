@@ -1,6 +1,6 @@
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
-from src.kora.sim import AI_STEPPE_ID, GameState
+from src.kora.gamestate import AI_STEPPE_ID, GameState
 from src.kora.types import Band, Order, OrderKind, Terrain, Tribe, stay_order
 from src.kora.world import axial_to_offset, make_filled_world, offset_to_axial
 

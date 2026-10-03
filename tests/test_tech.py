@@ -4,21 +4,8 @@ from src.kora import tech
 from src.kora.clock import Clock
 from src.kora.path import astar
 from src.kora.persist import load_game, save_game
-from src.kora.sim import (
-    GameState,
-    _restore,
-    band_force,
-    can_split,
-    collect_food,
-    new_game,
-    side_force,
-    snapshot,
-    split_band,
-    stock_max,
-    update_exhaustion,
-    update_population,
-    update_prestige,
-)
+from src.kora.sim import _restore, band_force, can_split, collect_food, new_game, side_force, snapshot, split_band, stock_max, update_exhaustion, update_population, update_prestige
+from src.kora.gamestate import GameState
 from src.kora.types import Band, Season, Terrain, Tribe
 from src.kora.vision import recompute_vision
 from src.kora.world import food_production, make_filled_world, offset_to_axial

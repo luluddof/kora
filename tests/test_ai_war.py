@@ -2,7 +2,8 @@ from src.kora.ai import decide_ai
 from src.kora.ai_war import advance_plans, plan_raid, recheck_hunts, start_plan
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import GameState, new_game, set_march_to_band, tick
+from src.kora.sim import new_game, set_march_to_band, tick
+from src.kora.gamestate import GameState
 from src.kora.types import Band, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 

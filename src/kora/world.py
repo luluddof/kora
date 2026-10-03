@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from dataclasses import dataclass
+
 from src.kora import resources as _res
 from src.kora.types import Hex, Season, Terrain
 
@@ -54,6 +56,15 @@ CHAR_TO_TERRAIN = {
     "D": Terrain.DESERT,
 }
 TERRAIN_TO_CHAR = {v: k for k, v in CHAR_TO_TERRAIN.items()}
+
+
+# Un nom de l'atlas (continent, mer) pose sur la carte (atlas.py les calcule).
+@dataclass(frozen=True)
+class AtlasLabel:
+    name: str
+    col: float
+    row: float
+    kind: str
 
 
 # Deux caches de disques : petits rayons (collecte, rayon 2) et grands
@@ -539,21 +550,6 @@ def make_filled_world(
     return World(grid, wrap_x=wrap_x)
 
 
-def generate_world(seed: int = 42, width: int | None = None, height: int | None = None) -> World:
-    from src.kora.mapgen import PLANET_HEIGHT, PLANET_WIDTH
-    from src.kora.mapgen import generate_world as _gen
-
-    return _gen(
-        seed,
-        PLANET_WIDTH if width is None else width,
-        PLANET_HEIGHT if height is None else height,
-    )
-
-
-def paint_kora() -> World:
-    return generate_world(seed=42)
-
-
 def _polar_ice(world: World, col: int, row: int) -> bool:
     if world.height <= 1:
         return False
@@ -757,8 +753,6 @@ def load_world(path: Path) -> World:
         rich = _res.decode(data["richness"]) if data.get("richness") else None
         world.set_resources(layers, rich)
     if data.get("labels"):
-        from src.kora.atlas import AtlasLabel
-
         world.atlas = [
             AtlasLabel(str(n), float(c), float(r), str(k)) for n, c, r, k in data["labels"]
         ]

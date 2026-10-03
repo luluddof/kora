@@ -740,7 +740,7 @@ def open_block(state, tribe_id: int, partner: int, good: str, sell: bool, level:
 
 
 def open_route(state, tribe_id: int, partner: int, good: str, sell: bool, level: int = 1, quiet: bool = False):
-    from src.kora.diplo import TradeRoute
+    from src.kora.types import TradeRoute
 
     if open_block(state, tribe_id, partner, good, sell, level):
         return None
@@ -824,7 +824,7 @@ def _flow(state, route) -> tuple[float, str]:
 
 def preview(state, tribe_id: int, partner: int, good: str, sell: bool, level: int = 1) -> dict:
     """Ce que rapporterait (ou couterait) cette route le mois prochain."""
-    from src.kora.diplo import TradeRoute
+    from src.kora.types import TradeRoute
 
     exporter, importer = (tribe_id, partner) if sell else (partner, tribe_id)
     route = find_route(state, exporter, importer, good) or TradeRoute(exporter, importer, good, level, tribe_id, state.tick_count)
@@ -1073,7 +1073,7 @@ def route_text(state, me: int, route) -> str:
 
 def _note_opened(state, route) -> None:
     """Un autre peuple (IA, ou un autre joueur) ouvre une route avec un joueur."""
-    from src.kora.sim import note
+    from src.kora.gamestate import note
 
     by = state.tribes.get(route.by)
     if by is None:
@@ -1098,7 +1098,7 @@ def _note_player(state) -> None:
             continue
         month = last_month(state, tribe.id)
         if month["sold"] >= 1 or month["bought"] >= 1:
-            from src.kora.sim import note
+            from src.kora.gamestate import note
 
             note(state, LogKind.POLITIQUE, f"Commerce du mois : ventes +{month['sold']:.0f} vivres, achats -{month['bought']:.0f} vivres.", to=tribe.id)
 

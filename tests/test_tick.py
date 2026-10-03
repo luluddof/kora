@@ -2,7 +2,8 @@ import time
 
 from src.kora.globe import FOCUS_ZOOM, hex_to_globe_screen, look_at_hex, view_params
 from src.kora.path import astar, travel_weeks
-from src.kora.sim import PLAYER_TRIBE_ID, _restore, new_game, player_home_hex, snapshot, tick
+from src.kora.sim import _restore, new_game, player_home_hex, snapshot, tick
+from src.kora.gamestate import PLAYER_TRIBE_ID
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world, offset_to_axial
 

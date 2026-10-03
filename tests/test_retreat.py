@@ -1,19 +1,8 @@
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import (
-    GameState,
-    apply_movement,
-    band_lines,
-    band_summary,
-    can_split,
-    is_shielded,
-    new_game,
-    fight_out,
-    set_goto,
-    set_march_to_band,
-    tick,
-)
+from src.kora.sim import apply_movement, band_lines, band_summary, can_split, is_shielded, new_game, fight_out, set_goto, set_march_to_band, tick
+from src.kora.gamestate import GameState
 from src.kora.types import Band, Order, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 

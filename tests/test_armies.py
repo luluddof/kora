@@ -4,16 +4,8 @@ from src.kora import chiefs, orders, sites, tech, villages
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import (
-    GameState,
-    can_split,
-    merge_bands,
-    new_game,
-    resolve_joins,
-    set_march_to_band,
-    tribe_band_count,
-    update_population,
-)
+from src.kora.sim import can_split, merge_bands, new_game, resolve_joins, set_march_to_band, tribe_band_count, update_population
+from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 

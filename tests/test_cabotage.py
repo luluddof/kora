@@ -1,7 +1,8 @@
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
 from src.kora import tech
-from src.kora.sim import GameState, apply_movement, set_goto, tick
+from src.kora.sim import apply_movement, set_goto, tick
+from src.kora.gamestate import GameState
 from src.kora.types import Band, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 

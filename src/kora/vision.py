@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
-from src.kora.sim import PLAYER_TRIBE_ID, GameState
+from src.kora.gamestate import PLAYER_TRIBE_ID, GameState, humans, note
+from src.kora.log import LogKind
 from src.kora.types import Hex
 
 VISION_RADIUS = 8
@@ -65,7 +66,7 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
 
 def recompute_vision(state: GameState) -> PlayerVision:
     """La vue de chaque peuple joueur ; rend celle du joueur solo."""
-    from src.kora.sim import humans, pov_of
+    from src.kora.gamestate import humans, pov_of
 
     vis = _recompute_for(state, PLAYER_TRIBE_ID, state.vision)
     state.vision = vis
@@ -93,3 +94,12 @@ def enemy_band_visible(state: GameState, band, tid: int = PLAYER_TRIBE_ID) -> bo
     if band.tribe_id == tid:
         return True
     return is_visible(state, band.position, tid)
+
+
+def note_seen(state: GameState, kind: LogKind, text, where: Hex, but=()) -> None:
+    """A chaque joueur qui voit cette case (sauf `but`). text : une chaine,
+    ou une fonction du joueur qui lit (tid -> chaine)."""
+    for tid in humans(state):
+        if tid in but or not is_visible(state, where, tid):
+            continue
+        note(state, kind, text(tid) if callable(text) else text, where, to=tid)

@@ -197,7 +197,7 @@ def lines(state, tid: int) -> list[str]:
 
 
 def _note(state, tid: int, text: str) -> None:
-    from src.kora.sim import is_human, note
+    from src.kora.gamestate import is_human, note
 
     if is_human(state, tid):
         note(state, LogKind.DECOUVERTE, text, to=tid)

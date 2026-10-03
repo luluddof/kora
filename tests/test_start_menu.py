@@ -9,7 +9,8 @@ import pygame
 
 from src.kora import tech
 from src.kora.persist import load_game, peek_save, save_game
-from src.kora.sim import PLAYER_TRIBE_ID, new_game, tick
+from src.kora.sim import new_game, tick
+from src.kora.gamestate import PLAYER_TRIBE_ID
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world
 

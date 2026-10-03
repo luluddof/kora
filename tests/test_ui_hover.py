@@ -11,7 +11,7 @@ import pygame
 from src.kora import battle, session, situations
 from src.kora.app import _fresh_ui, _start_view, _first_player_band
 from src.kora.render import Renderer
-from src.kora.sim import PLAYER_TRIBE_ID
+from src.kora.gamestate import PLAYER_TRIBE_ID
 from test_ui_pure import _advanced
 
 W, H = 1280, 720

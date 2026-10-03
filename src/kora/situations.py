@@ -171,7 +171,7 @@ def zone_bands(state, inst, tid: int, village=None) -> list:
 
 
 def _note(state, tid: int, kind, text: str, where=None) -> None:
-    from src.kora.sim import is_human, note
+    from src.kora.gamestate import is_human, note
 
     if is_human(state, tid):
         note(state, kind, text, where, to=tid)
@@ -1663,7 +1663,7 @@ def _risks(state) -> None:
     """Les crises qui menacent chaque joueur (Spec.risk) : au bandeau
     (state.situation_risks), et une fois au journal (pas plus d'une fois
     tous les deux ans pour la meme). Les conjonctures ne previennent pas."""
-    from src.kora.sim import humans
+    from src.kora.gamestate import humans
 
     out = {}
     last = state.situation_last

@@ -1,3 +1,4 @@
+import copy as _copy
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, NamedTuple, Optional
@@ -64,8 +65,6 @@ def _families(v) -> list:
 
 
 def _people(v) -> list:
-    from src.kora.chiefs import person_from_json
-
     return [p for p in (person_from_json(x) for x in v) if p is not None]
 
 
@@ -134,6 +133,23 @@ class Person:
     born: int
     traits: tuple[str, ...] = ()
     renown: int = 0
+
+
+# Un chef dans la sauvegarde : [pid, nom, naissance, traits, renommee].
+def copy_person(p: Person | None) -> Person | None:
+    return _copy.copy(p) if p is not None else None
+
+
+def person_to_json(p: Person | None):
+    if p is None:
+        return None
+    return [p.pid, p.name, p.born, list(p.traits), p.renown]
+
+
+def person_from_json(data) -> Person | None:
+    if not data:
+        return None
+    return Person(int(data[0]), str(data[1]), int(data[2]), tuple(str(t) for t in data[3]), int(data[4]))
 
 
 @dataclass
@@ -225,3 +241,59 @@ class FightMark:
     loot: float
     # Rapport de bataille (battle.py) : camps, passes d'armes, issue.
     report: Optional[dict] = None
+
+
+# --- la diplomatie (diplo.py : les regles ; ici, les donnees) -----------------------
+
+
+@dataclass
+class Mod:
+    key: str
+    value: float
+    actor: int = 0
+    year: int = 0
+
+
+@dataclass
+class Pact:
+    kind: str  # "treve", "alliance", "tribut", "commerce"
+    since: int
+    until: int = 0  # 0 = sans fin
+    payer: int = 0
+    paid: int = 0
+
+
+@dataclass
+class TradeRoute:
+    """Une route commerciale (goods.py) : `exporter` envoie chaque mois un
+    bien a `importer`, qui le paie en vivres. level : nombre de convois de
+    porteurs (1 a 3). by : le peuple qui l'a ouverte. Le reste : ce que la
+    route a fait le dernier mois."""
+
+    exporter: int
+    importer: int
+    good: str
+    level: int = 1
+    by: int = 0
+    since: int = 0
+    units: float = 0.0
+    paid: float = 0.0
+    status: str = ""
+    idle: int = 0
+
+
+@dataclass
+class Diplomacy:
+    contacts: set = field(default_factory=set)
+    mods: dict = field(default_factory=dict)
+    pacts: dict = field(default_factory=dict)
+    cooldown: dict = field(default_factory=dict)
+    # (qui, contre qui) -> semaine limite : raider sans trahir (tribut refuse).
+    casus: dict = field(default_factory=dict)
+    betrayed: dict = field(default_factory=dict)
+    # (attaquant, defenseur) -> (semaine, l'attaquant a gagne)
+    raids: dict = field(default_factory=dict)
+    # Voisins qui peuvent enseigner, recalcule chaque mois : tid -> [tid]
+    neighbors: dict = field(default_factory=dict)
+    # Routes commerciales (goods.py).
+    routes: list = field(default_factory=list)

@@ -1065,7 +1065,7 @@ OFFERS = ("offre_treve", "offre_alliance", "offre_commerce", "exige_tribut")
 
 
 def _log(state, tid: int, kind, text: str, where=None) -> None:
-    from src.kora.sim import note
+    from src.kora.gamestate import note
 
     note(state, kind, text, where, to=tid)
 
@@ -1134,7 +1134,7 @@ def pending(state, tid: int | None = None) -> list:
     if not isinstance(state.events, Book):
         return []
     if tid is None:
-        from src.kora.sim import PLAYER_TRIBE_ID
+        from src.kora.gamestate import PLAYER_TRIBE_ID
 
         tid = PLAYER_TRIBE_ID
     return [p for p in state.events.pending if p.tribe_id == tid]

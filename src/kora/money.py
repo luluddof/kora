@@ -372,7 +372,7 @@ def last_month(tribe) -> dict:
 
 
 def _note(state, tid: int, text: str) -> None:
-    from src.kora.sim import is_human, note
+    from src.kora.gamestate import is_human, note
 
     if is_human(state, tid):
         note(state, LogKind.POLITIQUE, text, to=tid)

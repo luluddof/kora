@@ -1,17 +1,7 @@
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import (
-    MAX_BANDS_PER_TRIBE,
-    SPLIT_MIN_POP,
-    GameState,
-    can_split,
-    merge_bands,
-    new_game,
-    resolve_joins,
-    set_march_to_band,
-    split_band,
-    tick,
-)
+from src.kora.sim import MAX_BANDS_PER_TRIBE, SPLIT_MIN_POP, can_split, merge_bands, new_game, resolve_joins, set_march_to_band, split_band, tick
+from src.kora.gamestate import GameState
 from src.kora.types import Band, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 

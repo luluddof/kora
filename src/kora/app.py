@@ -29,17 +29,8 @@ from src.kora.render import (
     min_zoom_for,
     side_hit,
 )
-from src.kora.sim import (
-    human_dead,
-    log_of,
-    _default_world,
-    consume_ticks,
-    fight_at,
-    hex_inspect,
-    new_game,
-    note,
-    player_home_hex,
-)
+from src.kora.sim import _default_world, consume_ticks, fight_at, hex_inspect, new_game, player_home_hex
+from src.kora.gamestate import human_dead, log_of, note
 
 
 TOAST_LIFE = 4.0
