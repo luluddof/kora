@@ -11,15 +11,10 @@ from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
-EFFECTS = events.effect_kinds() | {"trait", "chief_trait", "flag", "unflag"}
-CONDS = {
-    "chance", "knows", "not_knows", "flag", "no_flag", "prestige_ge", "prestige_lt", "week_between",
-    "bands_ge", "can_split", "other_alive", "other_teaches", "has_rival", "chief_trait", "learning",
-    "season", "terrain", "stock_lt", "stock_ge", "pop_ge", "pop_lt", "winter_long", "chief_band",
-    "not_chief_band", "at_camp", "crowded", "leader_trait", "leader_not_trait", "loyalty_lt",
-    "near_chief", "chief_stronger", "site_alive", "is_rival", "village", "not_village", "foreign_near",
-    "crafts", "no_trade", "trade_partner", "army_moving",
-} | events.condition_kinds()
+# Les conditions et effets connus : les tables du moteur et le vocabulaire
+# des systemes (events.condition_kinds / effect_kinds).
+EFFECTS = events.effect_kinds()
+CONDS = events.condition_kinds()
 
 
 def _state(player=True):

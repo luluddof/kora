@@ -238,136 +238,275 @@ def _fmt(state, inst, text: str) -> str:
 # --- conditions -------------------------------------------------------------------
 
 
+# --- les conditions (events.check) --------------------------------------------------
+
+
+def _cond_chance(state, inst, tribe, band, *args) -> bool:
+    return state.story_rng.random() < args[0]
+
+
+def _cond_knows(state, inst, tribe, band, *args) -> bool:
+    return args[0] in tribe.knowledge
+
+
+def _cond_not_knows(state, inst, tribe, band, *args) -> bool:
+    return args[0] not in tribe.knowledge
+
+
+def _cond_flag(state, inst, tribe, band, *args) -> bool:
+    return args[0] in tribe.flags
+
+
+def _cond_no_flag(state, inst, tribe, band, *args) -> bool:
+    return args[0] not in tribe.flags
+
+
+def _cond_prestige_ge(state, inst, tribe, band, *args) -> bool:
+    return tribe.prestige >= args[0]
+
+
+def _cond_prestige_lt(state, inst, tribe, band, *args) -> bool:
+    return tribe.prestige < args[0]
+
+
+def _cond_week_between(state, inst, tribe, band, *args) -> bool:
+    return args[0] <= state.clock.week <= args[1]
+
+
+def _cond_bands_ge(state, inst, tribe, band, *args) -> bool:
+    return tribe_band_count(state, tribe.id) >= args[0]
+
+
+def _cond_can_split(state, inst, tribe, band, *args) -> bool:
+    return band is not None and tribe_band_count(state, tribe.id) < max_bands_of(state, tribe.id)
+
+
+def _cond_other_alive(state, inst, tribe, band, *args) -> bool:
+    return inst.other in state.tribes and _alive(state, inst.other)
+
+
+def _cond_other_teaches(state, inst, tribe, band, *args) -> bool:
+    other = state.tribes.get(inst.other)
+    return other is not None and bool(other.knowledge - tribe.knowledge)
+
+
+def _cond_has_rival(state, inst, tribe, band, *args) -> bool:
+    return _rival_band(state, inst.tribe_id) is not None
+
+
+def _cond_chief_trait(state, inst, tribe, band, *args) -> bool:
+    chief = chiefs.chief_of(state, tribe.id)
+    return chief is not None and args[0] in chief.traits
+
+
+def _cond_learning(state, inst, tribe, band, *args) -> bool:
+    return bool(tribe.learning)
+
+
+def _cond_season(state, inst, tribe, band, *args) -> bool:
+    world = state.world
+    return world.hex_season(band.position).value in args
+
+
+def _cond_terrain(state, inst, tribe, band, *args) -> bool:
+    world = state.world
+    return world.terrain(band.position).value in args
+
+
+def _cond_stock_lt(state, inst, tribe, band, *args) -> bool:
+    return band.stock < args[0] * band.population
+
+
+def _cond_stock_ge(state, inst, tribe, band, *args) -> bool:
+    return band.stock >= args[0] * band.population
+
+
+def _cond_pop_ge(state, inst, tribe, band, *args) -> bool:
+    return band.population >= args[0]
+
+
+def _cond_pop_lt(state, inst, tribe, band, *args) -> bool:
+    return band.population < args[0]
+
+
+def _cond_winter_long(state, inst, tribe, band, *args) -> bool:
+    world = state.world
+    return local_winter_weeks(world, band.position) >= args[0]
+
+
+def _cond_chief_band(state, inst, tribe, band, *args) -> bool:
+    return chiefs.is_chief_band(state, band)
+
+
+def _cond_not_chief_band(state, inst, tribe, band, *args) -> bool:
+    return not chiefs.is_chief_band(state, band)
+
+
+def _cond_at_camp(state, inst, tribe, band, *args) -> bool:
+    return sites.camp_at(state, band) is not None
+
+
+def _cond_crowded(state, inst, tribe, band, *args) -> bool:
+    world = state.world
+    mates = [
+        b
+        for b in state.bands.values()
+        if b.id != band.id and b.tribe_id == band.tribe_id and world.distance(b.position, band.position) <= 3
+    ]
+    return len(mates) >= args[0]
+
+
+def _cond_leader_trait(state, inst, tribe, band, *args) -> bool:
+    return band.leader is not None and args[0] in band.leader.traits
+
+
+def _cond_leader_not_trait(state, inst, tribe, band, *args) -> bool:
+    return band.leader is None or args[0] not in band.leader.traits
+
+
+def _cond_loyalty_lt(state, inst, tribe, band, *args) -> bool:
+    return band.loyalty < args[0]
+
+
+def _cond_near_chief(state, inst, tribe, band, *args) -> bool:
+    world = state.world
+    heart = chiefs.chief_band(state, tribe.id)
+    return heart is not None and world.distance(heart.position, band.position) <= args[0]
+
+
+def _cond_chief_stronger(state, inst, tribe, band, *args) -> bool:
+    heart = chiefs.chief_band(state, tribe.id)
+    return heart is not None and heart.id != band.id and heart.population > band.population
+
+
+def _cond_site_alive(state, inst, tribe, band, *args) -> bool:
+    return inst.site_id in state.sites
+
+
+def _cond_is_rival(state, inst, tribe, band, *args) -> bool:
+    rival = _rival_band(state, tribe.id)
+    return rival is not None and rival.id == band.id
+
+
+def _cond_village(state, inst, tribe, band, *args) -> bool:
+    return bool(band.village)
+
+
+def _cond_not_village(state, inst, tribe, band, *args) -> bool:
+    return not band.village
+
+
+def _cond_army_moving(state, inst, tribe, band, *args) -> bool:
+    return band.kind == "armee" and bool(band.path)
+
+
+def _cond_crafts(state, inst, tribe, band, *args) -> bool:
+    return goods.total_teams(places.site_of(state, band)) > 0
+
+
+def _cond_trade_partner(state, inst, tribe, band, *args) -> bool:
+    active = sorted(
+        (r.importer if r.exporter == tribe.id else r.exporter)
+        for r in goods.routes_of(state, tribe.id)
+        if r.units > 0
+    )
+    if not active:
+        return False
+    inst.other = active[0]
+    return True
+
+
+def _cond_no_trade(state, inst, tribe, band, *args) -> bool:
+    return not any(
+        diplo.has_pact(state, tribe.id, other, "commerce") for other in state.tribes if other != tribe.id
+    )
+
+
+def _cond_foreign_near(state, inst, tribe, band, *args) -> bool:
+    world = state.world
+    near = [
+        b
+        for b in state.bands.values()
+        if b.tribe_id != tribe.id
+        and b.population > 0
+        and not diplo.at_peace(state, b.tribe_id, tribe.id)
+        and world.distance(b.position, band.position) <= args[0]
+    ]
+    if not near:
+        return False
+    near.sort(key=lambda b: (world.distance(b.position, band.position), b.id))
+    inst.other = near[0].tribe_id
+    return True
+
+
+# Les conditions qui ne regardent que le peuple.
+_TRIBE_CONDITIONS = {
+    "chance": _cond_chance,
+    "knows": _cond_knows,
+    "not_knows": _cond_not_knows,
+    "flag": _cond_flag,
+    "no_flag": _cond_no_flag,
+    "prestige_ge": _cond_prestige_ge,
+    "prestige_lt": _cond_prestige_lt,
+    "week_between": _cond_week_between,
+    "bands_ge": _cond_bands_ge,
+    "can_split": _cond_can_split,
+    "other_alive": _cond_other_alive,
+    "other_teaches": _cond_other_teaches,
+    "has_rival": _cond_has_rival,
+    "chief_trait": _cond_chief_trait,
+    "learning": _cond_learning,
+}
+
+
+# Celles qui regardent la bande de l'evenement (il en faut une).
+_BAND_CONDITIONS = {
+    "season": _cond_season,
+    "terrain": _cond_terrain,
+    "stock_lt": _cond_stock_lt,
+    "stock_ge": _cond_stock_ge,
+    "pop_ge": _cond_pop_ge,
+    "pop_lt": _cond_pop_lt,
+    "winter_long": _cond_winter_long,
+    "chief_band": _cond_chief_band,
+    "not_chief_band": _cond_not_chief_band,
+    "at_camp": _cond_at_camp,
+    "crowded": _cond_crowded,
+    "leader_trait": _cond_leader_trait,
+    "leader_not_trait": _cond_leader_not_trait,
+    "loyalty_lt": _cond_loyalty_lt,
+    "near_chief": _cond_near_chief,
+    "chief_stronger": _cond_chief_stronger,
+    "site_alive": _cond_site_alive,
+    "is_rival": _cond_is_rival,
+    "village": _cond_village,
+    "not_village": _cond_not_village,
+    "army_moving": _cond_army_moving,
+    "crafts": _cond_crafts,
+    "trade_partner": _cond_trade_partner,
+    "no_trade": _cond_no_trade,
+    "foreign_near": _cond_foreign_near,
+}
+
+
 def check(state, inst, cond) -> bool:
-    """Une condition (nom, arguments...) sur la portee de l'evenement."""
+    """Une condition (nom, arguments...) sur la portee de l'evenement.
+    Les conditions du moteur : _TRIBE_CONDITIONS (le peuple suffit), puis,
+    s'il y a une bande, _BAND_CONDITIONS et celles des systemes
+    (systems.EVENT_VOCABULARY)."""
     kind, *args = cond
     tribe = state.tribes.get(inst.tribe_id)
     if tribe is None:
         return False
     band = _band(state, inst)
-    world = state.world
-    if kind == "chance":
-        return state.story_rng.random() < args[0]
-    if kind == "knows":
-        return args[0] in tribe.knowledge
-    if kind == "not_knows":
-        return args[0] not in tribe.knowledge
-    if kind == "flag":
-        return args[0] in tribe.flags
-    if kind == "no_flag":
-        return args[0] not in tribe.flags
-    if kind == "prestige_ge":
-        return tribe.prestige >= args[0]
-    if kind == "prestige_lt":
-        return tribe.prestige < args[0]
-    if kind == "week_between":
-        return args[0] <= state.clock.week <= args[1]
-    if kind == "bands_ge":
-        return tribe_band_count(state, tribe.id) >= args[0]
-    if kind == "can_split":
-        return band is not None and tribe_band_count(state, tribe.id) < max_bands_of(state, tribe.id)
-    if kind == "other_alive":
-        return inst.other in state.tribes and _alive(state, inst.other)
-    if kind == "other_teaches":
-        other = state.tribes.get(inst.other)
-        return other is not None and bool(other.knowledge - tribe.knowledge)
-    if kind == "has_rival":
-        return _rival_band(state, inst.tribe_id) is not None
-    if kind == "chief_trait":
-        chief = chiefs.chief_of(state, tribe.id)
-        return chief is not None and args[0] in chief.traits
-    if kind == "learning":
-        return bool(tribe.learning)
+    fn = _TRIBE_CONDITIONS.get(kind)
+    if fn is not None:
+        return fn(state, inst, tribe, band, *args)
     if band is None:
         return False
-    if kind == "season":
-        return world.hex_season(band.position).value in args
-    if kind == "terrain":
-        return world.terrain(band.position).value in args
-    if kind == "stock_lt":
-        return band.stock < args[0] * band.population
-    if kind == "stock_ge":
-        return band.stock >= args[0] * band.population
-    if kind == "pop_ge":
-        return band.population >= args[0]
-    if kind == "pop_lt":
-        return band.population < args[0]
-    if kind == "winter_long":
-        return local_winter_weeks(world, band.position) >= args[0]
-    if kind == "chief_band":
-        return chiefs.is_chief_band(state, band)
-    if kind == "not_chief_band":
-        return not chiefs.is_chief_band(state, band)
-    if kind == "at_camp":
-        return sites.camp_at(state, band) is not None
-    if kind == "crowded":
-        mates = [
-            b
-            for b in state.bands.values()
-            if b.id != band.id and b.tribe_id == band.tribe_id and world.distance(b.position, band.position) <= 3
-        ]
-        return len(mates) >= args[0]
-    if kind == "leader_trait":
-        return band.leader is not None and args[0] in band.leader.traits
-    if kind == "leader_not_trait":
-        return band.leader is None or args[0] not in band.leader.traits
-    if kind == "loyalty_lt":
-        return band.loyalty < args[0]
-    if kind == "near_chief":
-        heart = chiefs.chief_band(state, tribe.id)
-        return heart is not None and world.distance(heart.position, band.position) <= args[0]
-    if kind == "chief_stronger":
-        heart = chiefs.chief_band(state, tribe.id)
-        return heart is not None and heart.id != band.id and heart.population > band.population
-    if kind == "site_alive":
-        return inst.site_id in state.sites
-    if kind == "is_rival":
-        rival = _rival_band(state, tribe.id)
-        return rival is not None and rival.id == band.id
-    if kind == "village":
-        return bool(band.village)
-    if kind == "not_village":
-        return not band.village
-    if kind == "army_moving":
-        # Une troupe en marche (les loups suivent les colonnes, l'hiver).
-        return band.kind == "armee" and bool(band.path)
-    extra = vocabulary()[0].get(kind)
-    if extra is not None:
-        # Une condition d'un systeme (systems.EVENT_VOCABULARY).
-        return extra(state, inst, tribe, band, *args)
-    if kind == "crafts":
-        # Des gens de metier au village (goods.py).
-        return goods.total_teams(places.site_of(state, band)) > 0
-    if kind == "trade_partner":
-        # Un partenaire dont une route a porte le dernier mois : "l'autre".
-        active = sorted(
-            (r.importer if r.exporter == tribe.id else r.exporter)
-            for r in goods.routes_of(state, tribe.id)
-            if r.units > 0
-        )
-        if not active:
-            return False
-        inst.other = active[0]
-        return True
-    if kind == "no_trade":
-        return not any(
-            diplo.has_pact(state, tribe.id, other, "commerce") for other in state.tribes if other != tribe.id
-        )
-    if kind == "foreign_near":
-        # Une bande etrangere (pas en paix) tout pres : elle devient "l'autre".
-        near = [
-            b
-            for b in state.bands.values()
-            if b.tribe_id != tribe.id
-            and b.population > 0
-            and not diplo.at_peace(state, b.tribe_id, tribe.id)
-            and world.distance(b.position, band.position) <= args[0]
-        ]
-        if not near:
-            return False
-        near.sort(key=lambda b: (world.distance(b.position, band.position), b.id))
-        inst.other = near[0].tribe_id
-        return True
+    fn = _BAND_CONDITIONS.get(kind) or vocabulary()[0].get(kind)
+    if fn is not None:
+        return fn(state, inst, tribe, band, *args)
     return False
 
 
@@ -397,193 +536,329 @@ def _deaths(state, band, lo: int, hi: int) -> int:
     return n
 
 
+# --- les effets (events.apply) -----------------------------------------------------
+
+
+def _eff_prestige(state, inst, tribe, band, *args) -> None:
+    if args[0] > 0:
+        gain_prestige(state, tribe, args[0])
+    else:
+        tribe.prestige = max(0, min(100, tribe.prestige + args[0]))
+
+
+def _eff_flag(state, inst, tribe, band, *args) -> None:
+    weeks = args[1] if len(args) > 1 else -1
+    tribe.flags[args[0]] = -1 if weeks < 0 else state.tick_count + weeks
+
+
+def _eff_unflag(state, inst, tribe, band, *args) -> None:
+    tribe.flags.pop(args[0], None)
+
+
+def _eff_loyalty_all(state, inst, tribe, band, *args) -> None:
+    for b in state.bands.values():
+        if b.tribe_id == tribe.id and not chiefs.is_chief_band(state, b):
+            b.loyalty = max(0.0, min(100.0, b.loyalty + args[0]))
+
+
+def _eff_loyalty_near(state, inst, tribe, band, *args) -> None:
+    if band is not None:
+        for b in state.bands.values():
+            if b.tribe_id == tribe.id and state.world.distance(b.position, band.position) <= 3:
+                if not chiefs.is_chief_band(state, b):
+                    b.loyalty = max(0.0, min(100.0, b.loyalty + args[0]))
+
+
+def _eff_stock_all(state, inst, tribe, band, *args) -> None:
+    for b in state.bands.values():
+        if b.tribe_id == tribe.id:
+            b.stock = max(0.0, min(stock_max(b, state), b.stock + args[0] * b.population))
+
+
+def _eff_stock_near(state, inst, tribe, band, *args) -> None:
+    if band is not None:
+        for b in state.bands.values():
+            if b.tribe_id == tribe.id and state.world.distance(b.position, band.position) <= 3:
+                b.stock = max(0.0, min(stock_max(b, state), b.stock + args[0] * b.population))
+
+
+def _eff_chief_renown(state, inst, tribe, band, *args) -> None:
+    chief = chiefs.chief_of(state, tribe.id)
+    if chief is not None:
+        chief.renown = max(0, chief.renown + args[0])
+
+
+def _eff_chief_trait(state, inst, tribe, band, *args) -> None:
+    chief = chiefs.chief_of(state, tribe.id)
+    if chief is not None and args[0] not in chief.traits:
+        chief.traits = chief.traits + (args[0],)
+
+
+def _eff_relation(state, inst, tribe, band, *args) -> None:
+    if inst.other in state.tribes:
+        key = "accueil" if args[0] > 0 else "chasses"
+        diplo.make_contact(state, tribe.id, inst.other, quiet=True)
+        diplo.add_mod(state, tribe.id, inst.other, key, args[0], actor=tribe.id)
+
+
+def _eff_pact(state, inst, tribe, band, *args) -> None:
+    if inst.other in state.tribes and _alive(state, inst.other):
+        what = args[0]
+        if what == "treve":
+            diplo.add_pact(state, tribe.id, inst.other, "treve", diplo.TRUCE_WEEKS)
+        elif what == "alliance":
+            diplo.add_pact(state, tribe.id, inst.other, "alliance")
+            diplo.add_mod(state, tribe.id, inst.other, "mariage", 15)
+        elif what == "tribut_paye":
+            diplo.add_pact(state, tribe.id, inst.other, "tribut", diplo.TRIBUTE_WEEKS, payer=tribe.id)
+        elif what == "commerce":
+            diplo.add_pact(state, tribe.id, inst.other, "commerce")
+            diplo.add_mod(state, tribe.id, inst.other, "echanges", 5)
+        elif what == "protection":
+            chiefdom.make_vassal(state, inst.other, tribe.id, "protection")
+            diplo.add_mod(state, inst.other, tribe.id, "protection", 5)
+
+
+def _eff_conquest(state, inst, tribe, band, *args) -> None:
+    if inst.other in state.tribes:
+        chiefdom.conquer(state, tribe.id, inst.other, inst.site_id, args[0])
+
+
+def _eff_casus(state, inst, tribe, band, *args) -> None:
+    if inst.other in state.tribes:
+        state.diplo.casus[(inst.other, tribe.id)] = state.tick_count + 52
+        diplo.add_mod(state, inst.other, tribe.id, "tribut_refuse", -10, actor=tribe.id)
+
+
+def _eff_tech_progress(state, inst, tribe, band, *args) -> None:
+    other = state.tribes.get(inst.other)
+    pool = sorted(other.knowledge - tribe.knowledge) if other is not None else []
+    pool = [t for t in pool if not [p for p in tech.TECHS[t].prereqs if p not in tribe.knowledge]] or pool
+    if pool:
+        tid = state.story_rng.choice(pool)
+        cost = tech.TECHS[tid].cost
+        tribe.progress[tid] = min(cost - 1.0, tribe.progress.get(tid, 0.0) + cost * args[0])
+        inst.data["savoir"] = tech.TECHS[tid].name
+
+
+def _eff_tech_progress_id(state, inst, tribe, band, *args) -> None:
+    tid, share = args
+    if tid in tech.TECHS and tid not in tribe.knowledge:
+        cost = tech.TECHS[tid].cost
+        tribe.progress[tid] = min(cost - 1.0, tribe.progress.get(tid, 0.0) + cost * share)
+
+
+def _eff_reveal(state, inst, tribe, band, *args) -> None:
+    _reveal(state, inst, args[0])
+
+
+def _eff_crown(state, inst, tribe, band, *args) -> None:
+    target = state.bands.get(args[0]) if args else band
+    if target is not None and target.tribe_id == tribe.id:
+        chiefs.crown(state, tribe.id, target.id, quiet=True)
+
+
+def _eff_learn_boost(state, inst, tribe, band, *args) -> None:
+    tid = tribe.learning
+    if tid and tid in tech.TECHS:
+        cost = tech.TECHS[tid].cost
+        tribe.progress[tid] = min(cost - 1.0, tribe.progress.get(tid, 0.0) + cost * args[0])
+        inst.data["savoir"] = tech.TECHS[tid].name
+
+
+def _eff_rival_loyalty(state, inst, tribe, band, *args) -> None:
+    rival = state.bands.get(inst.rival)
+    if rival is not None and rival.tribe_id == tribe.id:
+        rival.loyalty = max(0.0, min(100.0, rival.loyalty + args[0]))
+
+
+def _eff_stock(state, inst, tribe, band, *args) -> None:
+    band.stock = max(0.0, min(stock_max(band, state), band.stock + args[0] * band.population))
+
+
+def _eff_good(state, inst, tribe, band, *args) -> None:
+    tribe.goods[args[0]] = min(goods.CAP, tribe.goods.get(args[0], 0.0) + args[1])
+
+
+def _eff_lose_goods(state, inst, tribe, band, *args) -> None:
+    if tribe.goods:
+        good = max(sorted(tribe.goods), key=lambda g: tribe.goods[g])
+        left = tribe.goods[good] - args[0]
+        if left > 1e-6:
+            tribe.goods[good] = left
+        else:
+            del tribe.goods[good]
+
+
+def _eff_craft_bonus(state, inst, tribe, band, *args) -> None:
+    site = places.site_of(state, band)
+    for cid, n in sorted(goods.teams(site).items()):
+        craft = goods.CRAFTS.get(cid)
+        if n and craft is not None and craft.good:
+            tribe.goods[craft.good] = min(goods.CAP, tribe.goods.get(craft.good, 0.0) + args[0])
+
+
+def _eff_pop(state, inst, tribe, band, *args) -> None:
+    _deaths(state, band, args[0], args[1])
+
+
+def _eff_pop_pct(state, inst, tribe, band, *args) -> None:
+    band.population = max(1, int(round(band.population * (1.0 + args[0]))))
+
+
+def _eff_loyalty(state, inst, tribe, band, *args) -> None:
+    if not chiefs.is_chief_band(state, band):
+        band.loyalty = max(0.0, min(100.0, band.loyalty + args[0]))
+
+
+def _eff_loyalty_set(state, inst, tribe, band, *args) -> None:
+    if not chiefs.is_chief_band(state, band):
+        band.loyalty = float(args[0])
+
+
+def _eff_renown(state, inst, tribe, band, *args) -> None:
+    if band.leader is not None:
+        band.leader.renown = max(0, band.leader.renown + args[0])
+
+
+def _eff_trait(state, inst, tribe, band, *args) -> None:
+    if band.leader is not None and args[0] not in band.leader.traits:
+        band.leader.traits = band.leader.traits + (args[0],)
+
+
+def _eff_heir(state, inst, tribe, band, *args) -> None:
+    chiefs.set_heir(state, band.id)
+
+
+def _eff_stop(state, inst, tribe, band, *args) -> None:
+    if not band.retreating:
+        band.path = []
+        band.order = stay_order()
+
+
+def _eff_goto_far(state, inst, tribe, band, *args) -> None:
+    spot = _far_spot(state, band, args[0], args[1])
+    if spot is not None:
+        set_goto(state, band.id, spot, max_nodes=600, max_cost=1200)
+
+
+def _eff_goto_warm(state, inst, tribe, band, *args) -> None:
+    spot = _warm_spot(state, band, args[0])
+    if spot is not None:
+        set_goto(state, band.id, spot, max_nodes=800, max_cost=1500)
+
+
+def _eff_split(state, inst, tribe, band, *args) -> None:
+    nid = split_band(state, band.id)
+    if nid is not None and len(args) >= 2:
+        child = state.bands[nid]
+        spot = _far_spot(state, child, args[0], args[1])
+        if spot is not None:
+            set_goto(state, nid, spot, max_nodes=800, max_cost=1500)
+
+
+def _eff_secede(state, inst, tribe, band, *args) -> None:
+    chiefs.secede(state, band.id, hostile=bool(args and args[0]))
+
+
+def _eff_camp(state, inst, tribe, band, *args) -> None:
+    sites.make_camp(state, band.id)
+
+
+def _eff_stock_pct(state, inst, tribe, band, *args) -> None:
+    band.stock = max(0.0, band.stock * (1.0 + args[0]))
+
+
+def _eff_seed_pct(state, inst, tribe, band, *args) -> None:
+    site = places.site_of(state, band)
+    if site is not None:
+        site.data.seed = max(0.0, site.data.seed * (1.0 + args[0]))
+
+
+def _eff_eat_seed(state, inst, tribe, band, *args) -> None:
+    inst.data["butin"] = int(villages.eat_seed(state, band))
+
+
+def _eff_burn(state, inst, tribe, band, *args) -> None:
+    villages.pillaged(state, band)
+
+
+def _eff_steal_cache(state, inst, tribe, band, *args) -> None:
+    site = state.sites.get(inst.site_id)
+    if site is not None and site.store >= 1:
+        take = min(site.store, max(0.0, stock_max(band, state) - band.stock))
+        band.stock += take
+        site.store -= take
+        inst.data["butin"] = int(take)
+
+
+# Les effets qui ne touchent que le peuple.
+_TRIBE_EFFECTS = {
+    "prestige": _eff_prestige,
+    "flag": _eff_flag,
+    "unflag": _eff_unflag,
+    "loyalty_all": _eff_loyalty_all,
+    "loyalty_near": _eff_loyalty_near,
+    "stock_all": _eff_stock_all,
+    "stock_near": _eff_stock_near,
+    "chief_renown": _eff_chief_renown,
+    "chief_trait": _eff_chief_trait,
+    "relation": _eff_relation,
+    "pact": _eff_pact,
+    "conquest": _eff_conquest,
+    "casus": _eff_casus,
+    "tech_progress": _eff_tech_progress,
+    "tech_progress_id": _eff_tech_progress_id,
+    "reveal": _eff_reveal,
+    "crown": _eff_crown,
+    "learn_boost": _eff_learn_boost,
+    "rival_loyalty": _eff_rival_loyalty,
+}
+
+
+# Ceux qui touchent la bande de l'evenement (il en faut une).
+_BAND_EFFECTS = {
+    "stock": _eff_stock,
+    "good": _eff_good,
+    "lose_goods": _eff_lose_goods,
+    "craft_bonus": _eff_craft_bonus,
+    "pop": _eff_pop,
+    "pop_pct": _eff_pop_pct,
+    "loyalty": _eff_loyalty,
+    "loyalty_set": _eff_loyalty_set,
+    "renown": _eff_renown,
+    "trait": _eff_trait,
+    "heir": _eff_heir,
+    "stop": _eff_stop,
+    "goto_far": _eff_goto_far,
+    "goto_warm": _eff_goto_warm,
+    "split": _eff_split,
+    "secede": _eff_secede,
+    "camp": _eff_camp,
+    "stock_pct": _eff_stock_pct,
+    "seed_pct": _eff_seed_pct,
+    "eat_seed": _eff_eat_seed,
+    "burn": _eff_burn,
+    "steal_cache": _eff_steal_cache,
+}
+
+
 def apply(state, inst, effect) -> None:
+    """Un effet (nom, arguments...) sur la portee de l'evenement : ceux du
+    moteur (_TRIBE_EFFECTS, puis, s'il y a une bande, _BAND_EFFECTS) et ceux
+    des systemes (systems.EVENT_VOCABULARY)."""
     kind, *args = effect
     tribe = state.tribes.get(inst.tribe_id)
     band = _band(state, inst)
     if tribe is None:
         return
-    if kind == "prestige":
-        if args[0] > 0:
-            gain_prestige(state, tribe, args[0])
-        else:
-            tribe.prestige = max(0, min(100, tribe.prestige + args[0]))
-    elif kind == "flag":
-        weeks = args[1] if len(args) > 1 else -1
-        tribe.flags[args[0]] = -1 if weeks < 0 else state.tick_count + weeks
-    elif kind == "unflag":
-        tribe.flags.pop(args[0], None)
-    elif kind == "loyalty_all":
-        for b in state.bands.values():
-            if b.tribe_id == tribe.id and not chiefs.is_chief_band(state, b):
-                b.loyalty = max(0.0, min(100.0, b.loyalty + args[0]))
-    elif kind == "loyalty_near":
-        if band is not None:
-            for b in state.bands.values():
-                if b.tribe_id == tribe.id and state.world.distance(b.position, band.position) <= 3:
-                    if not chiefs.is_chief_band(state, b):
-                        b.loyalty = max(0.0, min(100.0, b.loyalty + args[0]))
-    elif kind == "stock_all":
-        for b in state.bands.values():
-            if b.tribe_id == tribe.id:
-                b.stock = max(0.0, min(stock_max(b, state), b.stock + args[0] * b.population))
-    elif kind == "stock_near":
-        if band is not None:
-            for b in state.bands.values():
-                if b.tribe_id == tribe.id and state.world.distance(b.position, band.position) <= 3:
-                    b.stock = max(0.0, min(stock_max(b, state), b.stock + args[0] * b.population))
-    elif kind == "chief_renown":
-        chief = chiefs.chief_of(state, tribe.id)
-        if chief is not None:
-            chief.renown = max(0, chief.renown + args[0])
-    elif kind == "chief_trait":
-        chief = chiefs.chief_of(state, tribe.id)
-        if chief is not None and args[0] not in chief.traits:
-            chief.traits = chief.traits + (args[0],)
-    elif kind == "relation":
-        if inst.other in state.tribes:
-            key = "accueil" if args[0] > 0 else "chasses"
-            diplo.make_contact(state, tribe.id, inst.other, quiet=True)
-            diplo.add_mod(state, tribe.id, inst.other, key, args[0], actor=tribe.id)
-    elif kind == "pact":
-        if inst.other in state.tribes and _alive(state, inst.other):
-            what = args[0]
-            if what == "treve":
-                diplo.add_pact(state, tribe.id, inst.other, "treve", diplo.TRUCE_WEEKS)
-            elif what == "alliance":
-                diplo.add_pact(state, tribe.id, inst.other, "alliance")
-                diplo.add_mod(state, tribe.id, inst.other, "mariage", 15)
-            elif what == "tribut_paye":
-                diplo.add_pact(state, tribe.id, inst.other, "tribut", diplo.TRIBUTE_WEEKS, payer=tribe.id)
-            elif what == "commerce":
-                diplo.add_pact(state, tribe.id, inst.other, "commerce")
-                diplo.add_mod(state, tribe.id, inst.other, "echanges", 5)
-            elif what == "protection":
-                chiefdom.make_vassal(state, inst.other, tribe.id, "protection")
-                diplo.add_mod(state, inst.other, tribe.id, "protection", 5)
-    elif kind == "conquest":
-        # Le village pris (battle.py) : le soumettre ou le piller.
-        if inst.other in state.tribes:
-            chiefdom.conquer(state, tribe.id, inst.other, inst.site_id, args[0])
-    elif kind == "casus":
-        if inst.other in state.tribes:
-            state.diplo.casus[(inst.other, tribe.id)] = state.tick_count + 52
-            diplo.add_mod(state, inst.other, tribe.id, "tribut_refuse", -10, actor=tribe.id)
-    elif kind == "tech_progress":
-        # Une part d'un savoir que l'autre peuple connait et pas vous.
-        other = state.tribes.get(inst.other)
-        pool = sorted(other.knowledge - tribe.knowledge) if other is not None else []
-        pool = [t for t in pool if not [p for p in tech.TECHS[t].prereqs if p not in tribe.knowledge]] or pool
-        if pool:
-            tid = state.story_rng.choice(pool)
-            cost = tech.TECHS[tid].cost
-            tribe.progress[tid] = min(cost - 1.0, tribe.progress.get(tid, 0.0) + cost * args[0])
-            inst.data["savoir"] = tech.TECHS[tid].name
-    elif kind == "tech_progress_id":
-        tid, share = args
-        if tid in tech.TECHS and tid not in tribe.knowledge:
-            cost = tech.TECHS[tid].cost
-            tribe.progress[tid] = min(cost - 1.0, tribe.progress.get(tid, 0.0) + cost * share)
-    elif kind == "reveal":
-        _reveal(state, inst, args[0])
-    elif kind == "crown":
-        target = state.bands.get(args[0]) if args else band
-        if target is not None and target.tribe_id == tribe.id:
-            chiefs.crown(state, tribe.id, target.id, quiet=True)
-    elif kind == "learn_boost":
-        # Le savoir en cours d'apprentissage avance.
-        tid = tribe.learning
-        if tid and tid in tech.TECHS:
-            cost = tech.TECHS[tid].cost
-            tribe.progress[tid] = min(cost - 1.0, tribe.progress.get(tid, 0.0) + cost * args[0])
-            inst.data["savoir"] = tech.TECHS[tid].name
-    elif kind == "rival_loyalty":
-        rival = state.bands.get(inst.rival)
-        if rival is not None and rival.tribe_id == tribe.id:
-            rival.loyalty = max(0.0, min(100.0, rival.loyalty + args[0]))
-    elif band is None:
-        return
-    elif kind == "stock":
-        band.stock = max(0.0, min(stock_max(band, state), band.stock + args[0] * band.population))
-    elif kind == "good":
-        tribe.goods[args[0]] = min(goods.CAP, tribe.goods.get(args[0], 0.0) + args[1])
-    elif kind == "lose_goods":
-        # Une charge perdue : du bien dont le peuple a le plus.
-        if tribe.goods:
-            good = max(sorted(tribe.goods), key=lambda g: tribe.goods[g])
-            left = tribe.goods[good] - args[0]
-            if left > 1e-6:
-                tribe.goods[good] = left
-            else:
-                del tribe.goods[good]
-    elif kind in vocabulary()[1]:
-        # Un effet d'un systeme (systems.EVENT_VOCABULARY).
-        vocabulary()[1][kind](state, inst, tribe, band, *args)
-    elif kind == "craft_bonus":
-        # Une belle veine : de chaque bien que fait le village.
-        site = places.site_of(state, band)
-        for cid, n in sorted(goods.teams(site).items()):
-            craft = goods.CRAFTS.get(cid)
-            if n and craft is not None and craft.good:
-                tribe.goods[craft.good] = min(goods.CAP, tribe.goods.get(craft.good, 0.0) + args[0])
-    elif kind == "pop":
-        _deaths(state, band, args[0], args[1])
-    elif kind == "pop_pct":
-        band.population = max(1, int(round(band.population * (1.0 + args[0]))))
-    elif kind == "loyalty":
-        if not chiefs.is_chief_band(state, band):
-            band.loyalty = max(0.0, min(100.0, band.loyalty + args[0]))
-    elif kind == "loyalty_set":
-        if not chiefs.is_chief_band(state, band):
-            band.loyalty = float(args[0])
-    elif kind == "renown":
-        if band.leader is not None:
-            band.leader.renown = max(0, band.leader.renown + args[0])
-    elif kind == "trait":
-        if band.leader is not None and args[0] not in band.leader.traits:
-            band.leader.traits = band.leader.traits + (args[0],)
-    elif kind == "heir":
-        chiefs.set_heir(state, band.id)
-    elif kind == "stop":
-        if not band.retreating:
-            band.path = []
-            band.order = stay_order()
-    elif kind == "goto_far":
-        spot = _far_spot(state, band, args[0], args[1])
-        if spot is not None:
-            set_goto(state, band.id, spot, max_nodes=600, max_cost=1200)
-    elif kind == "goto_warm":
-        spot = _warm_spot(state, band, args[0])
-        if spot is not None:
-            set_goto(state, band.id, spot, max_nodes=800, max_cost=1500)
-    elif kind == "split":
-        nid = split_band(state, band.id)
-        if nid is not None and len(args) >= 2:
-            child = state.bands[nid]
-            spot = _far_spot(state, child, args[0], args[1])
-            if spot is not None:
-                set_goto(state, nid, spot, max_nodes=800, max_cost=1500)
-    elif kind == "secede":
-        chiefs.secede(state, band.id, hostile=bool(args and args[0]))
-    elif kind == "camp":
-        sites.make_camp(state, band.id)
-    elif kind == "stock_pct":
-        band.stock = max(0.0, band.stock * (1.0 + args[0]))
-    elif kind == "seed_pct":
-        site = places.site_of(state, band)
-        if site is not None:
-            site.data.seed = max(0.0, site.data.seed * (1.0 + args[0]))
-    elif kind == "eat_seed":
-        inst.data["butin"] = int(villages.eat_seed(state, band))
-    elif kind == "burn":
-        villages.pillaged(state, band)
-    elif kind == "steal_cache":
-        site = state.sites.get(inst.site_id)
-        if site is not None and site.store >= 1:
-            take = min(site.store, max(0.0, stock_max(band, state) - band.stock))
-            band.stock += take
-            site.store -= take
-            inst.data["butin"] = int(take)
+    fn = _TRIBE_EFFECTS.get(kind)
+    if fn is None:
+        if band is None:
+            return
+        fn = _BAND_EFFECTS.get(kind) or vocabulary()[1].get(kind)
+    if fn is not None:
+        fn(state, inst, tribe, band, *args)
 
 
 def _far_spot(state, band, lo: int, hi: int):
@@ -760,13 +1035,13 @@ def vocabulary() -> tuple[dict, dict, dict]:
 
 
 def effect_kinds() -> set:
-    """Tous les effets connus (tests)."""
-    return set(EFFECT_TEXT) | set(vocabulary()[2]) | set(vocabulary()[1])
+    """Tous les effets connus : du moteur et des systemes."""
+    return set(_TRIBE_EFFECTS) | set(_BAND_EFFECTS) | set(vocabulary()[1])
 
 
 def condition_kinds() -> set:
-    """Les conditions des systemes (tests ; les autres sont dans check)."""
-    return set(vocabulary()[0])
+    """Toutes les conditions connues : du moteur et des systemes."""
+    return set(_TRIBE_CONDITIONS) | set(_BAND_CONDITIONS) | set(vocabulary()[0])
 
 
 def _good_name(good: str) -> str:
