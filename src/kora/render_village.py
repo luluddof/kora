@@ -20,7 +20,6 @@ from src.kora import (
     diplo,
     goods,
     numbers,
-    orders,
     places,
     population as _pop,
     population,
@@ -31,7 +30,6 @@ from src.kora import (
     units as _units,
     villages,
 )
-from src.kora.look import BIOME_COLORS
 from src.kora.peoples import color_of
 from src.kora.layout import HUD_HEIGHT
 from src.kora.render_tech import (
@@ -49,12 +47,10 @@ from src.kora.render_tech import (
     _cross,
     _fit,
     _lock,
-    _ornate_frame,
     _tick,
     _wrap,
 )
 from src.kora.theme import C, _gradient_card, _lerp
-from src.kora.types import Hex
 from src.kora.sim import GROWTH_RATE
 from src.kora.battle import band_force
 from src.kora.bands import bonus_of, stock_max
@@ -397,8 +393,6 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     bw = max(760, width - 66 - 24)
     bh = max(480, height - HUD_HEIGHT - 14)
     close = (bx + bw - 24 - 136, by + 16, 136, 28)
-    leave = (close[0] - 10 - 150, by + 16, 150, 28)
-    split = (leave[0] - 10 - 180, by + 16, 180, 28)
     # Onglets de l'ecran : le village, ses metiers et ses echanges.
     pages = {}
     px = bx + 24
@@ -455,8 +449,10 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
             }
         )
         y += 70
-    mini = (left[0], body_y + 24, lw, min(240, int(body_h * 0.46)))
-    gy = mini[1] + mini[3] + 54
+    # Les champs en chiffres (la petite carte des terres est retiree : elle ne
+    # montrait pas les vraies terres), puis le graphe des recoltes.
+    mini = (left[0], body_y + 24, lw, 104)
+    gy = mini[1] + mini[3] + 30
     graph = (left[0], gy, lw, max(80, body_y + body_h - gy - 26))
     # Page des metiers : une carte par metier a gauche ; reserve, bras et
     # echanges a droite.
@@ -503,8 +499,6 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
         "stores": stores,
         "box": (bx, by, bw, bh),
         "close": close,
-        "leave": leave,
-        "split": split,
         "tiles": tiles,
         "left": left,
         "mid": mid,
@@ -527,10 +521,6 @@ def village_hit(lay: dict, mx: int, my: int, armies: list | None = None):
         return None
     if _hover(lay["close"], mx, my):
         return "vclose"
-    if _hover(lay["leave"], mx, my):
-        return "vleave"
-    if _hover(lay.get("split", (0, 0, 0, 0)), mx, my):
-        return "vsplit"
     for key, rect in lay.get("pages", {}).items():
         if _hover(rect, mx, my):
             return f"vpage:{key}"
@@ -617,18 +607,6 @@ def draw_village(r, state, ui) -> None:
     sub += f"  ·  serment : {oath.name}" if oath else "  ·  sans serment"
     screen.blit(r.tiny.render(sub, True, NOTE), (bx + 38, by + 42))
     _button(screen, r.small, lay["close"], "Fermer [Échap]", True, _hover(lay["close"], mx, my))
-    confirm = ui.get("leave_confirm")
-    leave_label = "Confirmer ?" if confirm else "Abandonner"
-    lx, ly, lw_, lh_ = lay["leave"]
-    hover = _hover(lay["leave"], mx, my)
-    screen.blit(_gradient_card(lw_, lh_, (110, 44, 34) if hover or confirm else (60, 30, 26), (70, 26, 20) if hover or confirm else (40, 20, 18), 6), (lx, ly))
-    pygame.draw.rect(screen, (200, 110, 90), lay["leave"], 1, border_radius=6)
-    ls = r.small.render(leave_label, True, INK)
-    screen.blit(ls, (lx + (lw_ - ls.get_width()) // 2, ly + (lh_ - ls.get_height()) // 2))
-    why_split = orders.band_actions(state, band.id).get("split", "?")
-    _button(screen, r.small, lay["split"], "Former une bande [S]", not why_split, not why_split and _hover(lay["split"], mx, my))
-    if why_split and _hover(lay["split"], mx, my):
-        ui.setdefault("_vtips", []).append(([(why_split, WARN)], mx, my))
     # Tuiles.
     cap = stock_max(band, state)
     weeks = band.stock / max(1, band.population)
@@ -940,46 +918,25 @@ def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
 def _draw_lands(r, state, site, band, lay) -> None:
     screen = r.screen
     x, y, w, _h = lay["left"]
-    _section(r, x, y, w, "TERRES")
-    mx_, my_, mw, mh = lay["mini"]
-    screen.blit(_gradient_card(mw, mh, (30, 23, 18), (20, 16, 12), 6), (mx_, my_))
-    world = state.world
-    radius = villages.FIELD_RADIUS
-    size = min((mw - 16) / (math.sqrt(3) * (2 * radius + 1)), (mh - 16) / (1.5 * (2 * radius) + 2))
-    cx0, cy0 = mx_ + mw / 2, my_ + mh / 2
-    fields = {tuple(f) for f in site.data.fields}
-    soil = site.data.soil
-    center = site.hex
-    for dq in range(-radius, radius + 1):
-        for dr in range(max(-radius, -dq - radius), min(radius, -dq + radius) + 1):
-            h = world.canonicalize(Hex(center.q + dq, center.r + dr))
-            if h is None:
-                continue
-            px = cx0 + size * math.sqrt(3) * (dq + dr / 2)
-            py = cy0 + size * 1.5 * dr
-            corners = [(px + size * 0.95 * math.cos(math.radians(60 * k - 30)), py + size * 0.95 * math.sin(math.radians(60 * k - 30))) for k in range(6)]
-            base = BIOME_COLORS.get(world.terrain(h), (112, 89, 68))
-            idx = world._index(h)
-            fert = villages.fertility(state, site.tribe_id, h)
-            fill = _lerp(base, (0, 0, 0), 0.35)
-            pygame.draw.polygon(screen, fill, corners)
-            pygame.draw.polygon(screen, _lerp(base, (0, 0, 0), 0.6), corners, 1)
-            key = f"{idx[0]},{idx[1]}" if idx else ""
-            s = soil.get(key, 1.0)
-            if idx and tuple(idx) in fields:
-                gold = _lerp((120, 90, 40), (226, 196, 96), s)
-                inner = [(px + (c[0] - px) * 0.7, py + (c[1] - py) * 0.7) for c in corners]
-                pygame.draw.polygon(screen, gold, inner)
-                for k in (-0.2, 0.1, 0.4):
-                    pygame.draw.line(screen, _lerp(gold, (0, 0, 0), 0.35), (px - size * 0.45, py + size * k), (px + size * 0.45, py + size * k), 1)
-            elif fert > 0.1:
-                dot = _lerp((90, 110, 70), (170, 210, 120), min(1.0, fert))
-                pygame.draw.circle(screen, dot, (int(px), int(py)), max(2, int(size * 0.18 * s + 1)))
-            if dq == 0 and dr == 0:
-                r.draw_village_icon(site, int(px), int(py) - 2, color_of(state.tribes.get(site.tribe_id)), max(5, int(size * 0.35)))
-    legend = "Champs : dorés au sol neuf, bruns au sol épuisé. Points : bonnes terres."
-    for k, part in enumerate(_wrap(r.tiny, legend, mw)[:2]):
-        screen.blit(r.tiny.render(part, True, NOTE), (mx_, my_ + mh + 4 + 13 * k))
+    _section(r, x, y, w, "CHAMPS")
+    mx_, my_, mw, _mh = lay["mini"]
+    fields = site.data.fields
+    good = sum(
+        1 for h in state.world.hexes_in_radius(site.hex, villages.FIELD_RADIUS)
+        if villages.fertility(state, site.tribe_id, h) > 0.1
+    )
+    soil = villages.soil_avg(site)
+    step, left = villages.next_step(state, site)
+    rows = [
+        (f"{len(fields)} champ{'s' if len(fields) > 1 else ''} semé{'s' if len(fields) > 1 else ''} · {good} bonnes terres autour du village", INK),
+        (f"Sol des champs : {100 * soil:.0f} % (la jachère le refait)", GOOD if soil >= 0.7 else WARN if soil < 0.45 else SOFT),
+        (f"Semences au grenier : {site.data.seed:.0f}", SOFT),
+        (f"Prochaine étape : {step} (~{left} sem.)", SOFT),
+    ]
+    yy = my_
+    for text, col in rows:
+        screen.blit(r.small.render(_fit(r.small, text, mw), True, col), (mx_, yy))
+        yy += 24
     # Recoltes : barres des dernieres annees.
     gx, gy, gw, gh = lay["graph"]
     screen.blit(r.tiny.render("RÉCOLTES DES DERNIÈRES ANNÉES", True, GOLD), (gx, gy - 18))

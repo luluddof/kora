@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from src.kora import battle, chiefs, diplo, events, records, sites, situations, tech, villages
+from src.kora import battle, chiefs, diplo, events, memory, records, sites, situations, tech, villages
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LOG_CAP, LogEntry, LogKind
 from src.kora.gamestate import GameState, Pov
@@ -221,11 +221,30 @@ def loads_game(text: str, world: World) -> tuple[GameState, dict] | None:
     return game_from_json(data, world)
 
 
+def _memory_to_json(vis) -> dict:
+    """La memoire du brouillard (memory.py) : les lieux, les zones."""
+    if vis is None:
+        return {}
+    return {
+        "sites": [[sid, *e] for sid, e in sorted(vis.sites.items())],
+        "zones": [[c, r, t, v] for (c, r), (t, v) in sorted(vis.zones.items())],
+    }
+
+
+def _memory_from_json(vis, data) -> None:
+    if not isinstance(vis, PlayerVision) or not isinstance(data, dict):
+        return
+    vis.sites = {int(r[0]): [int(r[1]), int(r[2]), str(r[3]), int(r[4]), bool(r[5]), int(r[6]) if len(r) > 6 else 0] for r in data.get("sites", [])}
+    vis.zones = {(int(r[0]), int(r[1])): [int(r[2]), float(r[3])] for r in data.get("zones", [])}
+    vis.mem_gen += 1
+
+
 def _pov_to_json(pov) -> dict:
     vis = pov.vision if isinstance(pov.vision, PlayerVision) else None
     return {
         "log": _log_to_json(pov.log),
         "explored": [_hex_to_list(h) for h in vis.explored] if vis is not None else [],
+        "memory": _memory_to_json(vis),
         "seen": sorted(pov.seen),
     }
 
@@ -279,6 +298,7 @@ def game_to_json(state: GameState, view: dict | None = None) -> dict:
         "tribes": [records.to_json(t) for t in state.tribes.values()],
         "bands": [records.to_json(b) for b in state.bands.values()],
         "explored": explored,
+        "memory": _memory_to_json(vis),
         "exhaustion": exhaustion,
         "influence": influence,
         "hex_season": ["".join(str(v) for v in row) for row in state.world._hex_season],
@@ -436,19 +456,27 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         else:
             world.fill_season(clock.season())
         explored_of = {}
+        memory_of = {}
         for tid, raw in data.get("povs", []):
             tid = int(tid)
             if tid in tribes and isinstance(raw, dict):
                 state.povs[tid] = Pov(log=_log_from_json(raw.get("log")), seen={int(t) for t in raw.get("seen", [])})
                 explored_of[tid] = raw.get("explored", [])
+                memory_of[tid] = raw.get("memory")
         recompute_vision(state)
         vis = state.vision
         if isinstance(vis, PlayerVision):
             vis.explored |= {_hex_from_list(h) for h in data.get("explored", [])}
+            _memory_from_json(vis, data.get("memory"))
         for tid, cells in explored_of.items():
             pov_vis = state.povs[tid].vision
             if isinstance(pov_vis, PlayerVision):
                 pov_vis.explored |= {_hex_from_list(h) for h in cells}
+                _memory_from_json(pov_vis, memory_of.get(tid))
+        # Une vieille partie sans memoire du brouillard : ce qu'il a explore,
+        # tel qu'il est aujourd'hui ; puis ce qu'il voit.
+        memory.seed(state)
+        memory.update(state)
         if "diplo" not in data and world.width >= 300 and len(tribes) <= 4:
             # Partie d'avant les petits peuples : ils naissent hors de ce que
             # le joueur a deja explore (ils etaient la, on ne les voyait pas).

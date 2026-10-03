@@ -91,12 +91,23 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   sans eux.
 - Les **nombres** : le comptage par bâtons (l'addition), puis les nombres additifs, où vous **choisissez la base**
   de vos nombres (10 : on apprend mieux ; 12 : on vend mieux ; 20 : on compte les gens ; 60 : on mesure le grain),
-  presque pour toujours. Des **calculateurs**, un métier du village, trouvent les opérations suivantes (−, ×, ÷,
-  fractions), chacune avec son effet : *Savoirs*, onglet **Les nombres**.
-- L'**argent** : avec les valeurs d'échange, un **trésor** et son **budget** (écran du *Trésor*, touche **G**) :
-  l'impôt (et ce qu'il coûte en stabilité), la solde des troupes, les gages des gens de métier, le commerce payé en
-  argent, les présents aux familles. Avec l'argent pesé, les **mineurs** creusent les filons des collines ; avec les
-  droits de passage, les convois étrangers paient pour traverser votre pays.
+  presque pour toujours (c'est une **loi** du pays : écran *Pays*, onglet *Lois*, touche **N**). Des
+  **calculateurs**, un métier du village, trouvent les opérations suivantes (−, ×, ÷, fractions), chacune avec son
+  effet : *Savoirs*, onglet **Les nombres**.
+- L'**argent** : avec les valeurs d'échange, un **trésor** et son **budget** (écran du *Trésor*, touche **G**), réglé
+  par des **curseurs** : l'impôt (et ce qu'il coûte en stabilité), la solde des troupes, les gages des gens de métier,
+  les présents aux familles, la paie des bâtisseurs (les chantiers avancent plus vite), de 0 à 200 % du tarif. Le
+  commerce payé en argent est une **loi** (*Pays*, *Lois*). On peut aussi offrir des **sicles** aux autres peuples
+  (écran *Peuples*). Avec l'argent pesé, les **mineurs** creusent les filons des collines ; avec les droits de
+  passage, les convois étrangers paient pour traverser votre pays.
+- Les **pays** : un tributaire prend une nuance claire de la couleur de son suzerain (et reprend la sienne s'il se
+  libère) ; la carte des **Suzerains** (touche **U**) ne montre que les grands pays et leurs villages. Avec la
+  *Confédération*, deux peuples (ou jusqu'à quatre) ne font plus qu'un pays au dehors : chacun reste maître chez
+  lui, mais ils se soutiennent à la guerre et font la paix ou la guerre ensemble ; si l'un devient tributaire de
+  quelqu'un, la confédération est rompue pour lui.
+- Un clic sur un pays (sans armée choisie) ouvre sa **diplomatie** ; celle de son suzerain s'il est tributaire.
+- Le **brouillard de guerre** garde ce que vous avez vu : les villages que vous connaissez y restent, tels que vous
+  les avez laissés, et la carte ne se met à jour que quand vous y revenez.
 
 Conseils : l'hiver tue. Faites des réserves à l'automne, cherchez les vallées, et ne laissez pas vos clans s'éloigner
 trop du chef. Au bout de quelques années, les savoirs du néolithique permettent de **fonder un village** : c'est un
@@ -115,6 +126,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **A** | L'armée (dès le premier village) |
 | **M** | L'écran du commerce (dès le premier village) |
 | **G** | Le trésor et le budget (avec Valeurs d'échange) |
+| **N** | Le pays et ses lois (avec Valeurs d'échange ou Nombres additifs) |
 | **E** | Ouvrir l'événement en attente |
 | **S** | Scinder la bande choisie (former un clan) |
 | **F** | Réunir les bandes proches |
@@ -123,7 +135,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **H** | Honorer un clan (il reste fidèle) |
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
-| **Z** / **R** / **X** | Modes de carte : influence / ressources / commerce |
+| **Z** / **U** / **R** / **X** | Modes de carte : influence / suzerains / ressources / commerce |
 | **F5** | Sauvegarder (le jeu sauvegarde aussi tout seul) |
 | **Entrée** | À plusieurs : écrire aux autres joueurs |
 | **Échap** | Fermer une fenêtre · menu (Reprendre, Sauvegarder, Menu principal, Quitter) |

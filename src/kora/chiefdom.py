@@ -33,7 +33,7 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
-from src.kora import approach, chiefs, diplo, events, places, population, situations, tech, villages
+from src.kora import approach, chiefs, confed, diplo, events, places, population, situations, tech, villages
 from src.kora.bands import gain_prestige, stock_max
 
 RATES = (0, 10, 20, 30)
@@ -384,6 +384,18 @@ def overlord_of(state, tid: int) -> int:
     return 0
 
 
+def top_lord(state, tid: int) -> int:
+    """Le suzerain au bout de la chaine (un tributaire d'un tributaire
+    remonte au grand suzerain) ; le peuple lui-meme s'il est libre."""
+    seen = {tid}
+    lord = overlord_of(state, tid)
+    while lord and lord not in seen:
+        seen.add(lord)
+        tid = lord
+        lord = overlord_of(state, tid)
+    return tid
+
+
 def vassals_of(state, tid: int) -> list[int]:
     out = []
     for (a, b), pacts in getattr(state.diplo, "pacts", {}).items():
@@ -448,6 +460,8 @@ def make_vassal(state, lord: int, vassal: int, how: str = "force") -> None:
         # Il conquiert un peuple au-dessus de lui : il se libere de son
         # propre suzerain d'abord.
         drop(lord, chain[0], ("vassal",))
+    # Un tributaire ne parle plus pour lui-meme : sa confederation est rompue.
+    confed.on_vassal(state, vassal)
     diplo.add_pact(state, lord, vassal, "vassal", 0, payer=vassal)
     if how == "force":
         diplo.add_mod(state, lord, vassal, "soumis", -15, actor=lord)

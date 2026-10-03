@@ -222,6 +222,8 @@ class Tribe:
     money_month: dict[str, float] = field(default_factory=dict)
     # [annee, semaine, rentrees, depenses, tresor, {poste: sicles}]
     money_hist: list = field(default_factory=list)
+    # Les lois du pays (laws.py) : loi -> option tenue.
+    laws: dict[str, str] = field(default_factory=dict)
     # L'approche de son chef envers les autres peuples (approach.py), depuis
     # quand, et le chef qui l'a prise.
     approach: str = ""

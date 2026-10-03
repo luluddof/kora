@@ -169,7 +169,7 @@ def monthly(state) -> None:
             choose(state, tid, ai_base(state, tribe))
         elif b.numbers and not tribe.base and (state.tick_count // 4) % 13 == 0:
             # Le joueur : un rappel, tous les ans, tant qu'il n'a pas choisi.
-            _note(state, tid, "Vos nombres attendent leur base : Savoirs, onglet « Les nombres ».")
+            _note(state, tid, "Vos nombres attendent leur base : Pays [N], onglet « Lois ».")
         nxt = next_op(tribe)
         if b.numbers and nxt is not None and nxt[3] > 0:
             tribe.math_progress = getattr(tribe, "math_progress", 0.0) + points(state, tid)

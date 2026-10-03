@@ -1,3 +1,5 @@
+from src.kora import chiefdom, confed
+from src.kora.peoples import color_of
 from src.kora.types import Season, Terrain
 
 BIOME_COLORS = {
@@ -88,3 +90,94 @@ def season_color(terrain: Terrain, season: Season) -> tuple[int, int, int]:
     if terrain is Terrain.COTE:
         return _mix(base, (180, 140, 80), 0.15)
     return base
+
+
+# --- la couleur des pays (tributaires, confederations) ----------------------------------
+# Un tributaire prend une nuance claire de la couleur de son grand suzerain ;
+# un confedere, une nuance de celle du fondateur : la carte montre des pays.
+# Libre, chacun reprend sa couleur a lui (tribe.color ne change jamais).
+VASSAL_OWN = 0.22    # ce qu'un tributaire garde de sa couleur
+VASSAL_LIGHT = 0.14  # et l'eclaircie
+CONFED_OWN = 0.3
+
+_COUNTRY_CACHE: dict = {}
+
+
+def _ties_key(state) -> tuple:
+    out = []
+    for k, ps in state.diplo.pacts.items():
+        for p in ps:
+            if p.kind in ("vassal", "confederation"):
+                out.append((k, p.kind, p.payer, p.since))
+    return (id(state), len(state.tribes), tuple(sorted(out)))
+
+
+def _countries(state) -> dict:
+    """{"color": peuple -> couleur affichee, "realm": peuple -> pays (son
+    grand suzerain, ou le fondateur de sa confederation), "members": pays ->
+    ses peuples} ; recalcule quand un lien change."""
+    key = _ties_key(state)
+    hit = _COUNTRY_CACHE.get("key")
+    if hit == key:
+        return _COUNTRY_CACHE["value"]
+    groups = confed.groups(state)
+    realm: dict[int, int] = {}
+    for tid in state.tribes:
+        root = chiefdom.top_lord(state, tid)
+        if root in groups:
+            root = confed.leader(state, root)
+        realm[tid] = root
+    members: dict[int, list] = {}
+    for tid, root in realm.items():
+        members.setdefault(root, []).append(tid)
+    color: dict[int, tuple] = {}
+    for tid, root in realm.items():
+        own = color_of(state.tribes[tid])
+        if root == tid:
+            color[tid] = own
+            continue
+        base = color_of(state.tribes.get(root))
+        if chiefdom.overlord_of(state, tid):
+            color[tid] = _mix(_mix(base, own, VASSAL_OWN), (255, 255, 255), VASSAL_LIGHT)
+        else:
+            color[tid] = _mix(base, own, CONFED_OWN)
+    value = {"color": color, "realm": realm, "members": {r: sorted(m) for r, m in members.items()}}
+    _COUNTRY_CACHE["key"] = key
+    _COUNTRY_CACHE["value"] = value
+    return value
+
+
+def country_color(state, tid) -> tuple:
+    """La couleur d'un peuple sur la carte (celle de son pays)."""
+    if tid not in state.tribes:
+            return color_of(None)
+    return _countries(state)["color"].get(tid) or (128, 128, 128)
+
+
+def realm_of(state, tid) -> int:
+    return _countries(state)["realm"].get(tid, tid)
+
+
+def great_realms(state) -> list[tuple[int, list]]:
+    """Les pays de plusieurs peuples (un suzerain et ses tributaires, une
+    confederation), du plus grand au plus petit : (pays, ses peuples)."""
+    out = [(root, m) for root, m in _countries(state)["members"].items() if len(m) > 1]
+    out.sort(key=lambda x: (-len(x[1]), x[0]))
+    return out
+
+
+def members_of(state, tid) -> list:
+    """Les peuples du pays de tid (lui seul s'il n'a ni suzerain, ni
+    tributaire, ni confederes)."""
+    c = _countries(state)
+    return c["members"].get(c["realm"].get(tid, tid), [tid])
+
+
+def seen_color(state, tid, lord) -> tuple:
+    """La couleur d'un lieu tel qu'on l'a vu (memory.py) : son peuple, en
+    nuance de son suzerain d'alors s'il en avait un."""
+    own = color_of(state.tribes.get(tid))
+    if not lord or lord not in state.tribes:
+        return own
+    base = color_of(state.tribes[lord])
+    return _mix(_mix(base, own, VASSAL_OWN), (255, 255, 255), VASSAL_LIGHT)

@@ -40,12 +40,20 @@ def test_every_screen_survives_the_mouse_everywhere(monkeypatch):
     me.operations = ["add", "sub"]
     me.math_progress = 12.0
     me.money = 42.0
-    money.set_budget(st, PLAYER_TRIBE_ID, "tax", 2)
-    money.set_budget(st, PLAYER_TRIBE_ID, "solde", True)
+    money.set_budget(st, PLAYER_TRIBE_ID, "impot", 4)
+    money.set_budget(st, PLAYER_TRIBE_ID, "solde", 1.5)
+    money.set_budget(st, PLAYER_TRIBE_ID, "chantiers", 1.0)
+    # Une confederation et un tributaire (0.9.0) : les couleurs des pays.
+    from src.kora import chiefdom, diplo
+
+    diplo.add_pact(st, others[0], others[1], "confederation", payer=others[0])
+    chiefdom.make_vassal(st, others[1], others[2], "force")
     money.monthly(st)
     money.earn(st, PLAYER_TRIBE_ID, "mines", 3.0)
     money.monthly(st)
-    screens = [("savoirs", {"tech_tab": "nombres", "base_confirm": 12}), (None, {"treasury_open": True})]
+    screens = [("savoirs", {"tech_tab": "nombres"}), (None, {"treasury_open": True})]
+    screens.append((None, {"country_open": True, "law_confirm": ("base", "12")}))
+    screens.append(("suzerains", {}))
     for pick in others[:2]:
         screens.append(("peuples", {"people_pick": pick}))
     for panel in ("tribu", "savoirs", "journal", "armee"):
@@ -61,6 +69,9 @@ def test_every_screen_survives_the_mouse_everywhere(monkeypatch):
     for panel, extra in screens:
         ui = _fresh_ui()
         ui.update(extra)
+        r.map_mode = "suzerains" if panel == "suzerains" else "zones"
+        if panel == "suzerains":
+            panel = None
         if panel == "battle":
             foe = next(b for b in st.bands.values() if b.tribe_id != PLAYER_TRIBE_ID and not b.village and b.population > 0)
             mine_band = next(b for b in st.bands.values() if b.tribe_id == PLAYER_TRIBE_ID and not b.village and b.kind != "armee")

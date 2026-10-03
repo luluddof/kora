@@ -17,12 +17,18 @@ from src.kora.globe_draw import (
 from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
+from src.kora.look import country_color
 from src.kora import (
     __version__,
     battle as _battle,
+    chiefdom,
     chiefs,
+    confed,
+    diplo,
     goods,
+    laws,
     learning,
+    look,
     money as _money,
     money,
     orders,
@@ -39,7 +45,7 @@ from src.kora import (
 from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
 from src.kora.gamestate import GameState, human_dead, log_of
 from src.kora.types import Hex, Season
-from src.kora.vision import enemy_band_visible, is_explored, is_visible
+from src.kora.vision import enemy_band_visible, is_explored, is_visible, vision_of
 from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.theme import C
 from src.kora.resources import COLORS, LABELS, NAMES
@@ -150,7 +156,7 @@ BAND_ICONS = {
     "honor": "honorer",
     "army": "armee",
 }
-MAP_MODE_ICONS = {"relief": "relief", "zones": "zones", "ressources": "ressources", "commerce": "commerce"}
+MAP_MODE_ICONS = {"relief": "relief", "zones": "zones", "suzerains": "chef", "ressources": "ressources", "commerce": "commerce"}
 
 
 SEASON_FR = {
@@ -262,6 +268,7 @@ class Renderer:
         # Ecran du commerce (render_trade.py).
         self.trade_hits: dict = {}
         self.treasury_hits: dict = {}
+        self.country_hits: dict = {}
         self.trade_partners: list = []
         self.trade_routes: list = []
         self.trade_candidates: list = []
@@ -296,7 +303,8 @@ class Renderer:
         planet = self._planet_for(state.world)
         sw, sh = self.screen.get_size()
         cx, cy, focal, dist = view_params(zoom, sw, sh, HUD_HEIGHT)
-        planet.zones_on = self.map_mode == "zones"
+        planet.zones_on = self.map_mode in ("zones", "suzerains")
+        planet.realm_on = self.map_mode == "suzerains"
         planet.res_on = self.map_mode == "ressources"
         planet.trade_on = self.map_mode == "commerce"
         if planet.zones_on:
@@ -404,7 +412,7 @@ class Renderer:
             band = state.bands[band_id]
             if bx < -40 or by < -40 or bx > w + 40 or by > h + 40:
                 continue
-            colr = color_of(state.tribes.get(band.tribe_id))
+            colr = self._people_color(state, band.tribe_id)
             ix, iy = int(bx), int(by)
             if band.village:
                 # Une bande installee se dessine en maisons : c'est un village.
@@ -498,7 +506,7 @@ class Renderer:
         self.band_hits = layout
         bx, by, bw, bh = layout["box"]
         theme.panel(self.screen, layout["box"], "peau")
-        color = color_of(state.tribes.get(band.tribe_id))
+        color = country_color(state, band.tribe_id)
         pygame.draw.polygon(self.screen, color, theme.chamfer((bx + 10, by + 14, 5, 26), 1))
         warn_from = band_warn_from(info)
         yy = by + 12
@@ -594,13 +602,30 @@ class Renderer:
             return
         world = state.world
         homes: dict = {}
+        vis = vision_of(state, state.viewer)
+        known = []
         for site in sorted(state.sites.values(), key=lambda s: s.id):
             if site.kind != "village":
                 continue
-            if site.tribe_id != state.viewer and not is_explored(state, site.hex, state.viewer):
+            if site.tribe_id != state.viewer and not (vis is not None and site.hex in vis.visible):
                 continue
-            homes.setdefault(site.tribe_id, []).append(site.hex)
+            known.append((site.tribe_id, site.hex))
+        if vis is not None:
+            # Les villages du brouillard : ceux dont on se souvient.
+            for _sid, (q, r_, kind, tid, _w, _lord) in sorted(vis.sites.items()):
+                h_ = Hex(q, r_)
+                if kind == "village" and tid != state.viewer and h_ not in vis.visible:
+                    known.append((tid, h_))
+        for tribe_id, site_hex in known:
+            if self.map_mode == "suzerains":
+                root = look.realm_of(state, tribe_id)
+                if len(look.members_of(state, root)) < 2:
+                    continue
+                homes.setdefault(root, []).append(site_hex)
+                continue
+            homes.setdefault(tribe_id, []).append(site_hex)
         font = self.small if dist <= LABEL_DIST else self.tiny
+        placed: list = []
         for tid, hexes in sorted(homes.items()):
             tribe = state.tribes.get(tid)
             if tribe is None:
@@ -616,8 +641,16 @@ class Renderer:
             if pos is None:
                 continue
             label = " ".join(tribe.name.upper())
-            color = _lighten(color_of(tribe), 0.35)
-            self._outlined_text(font, label, color, pos[0], pos[1] - (22 if dist <= LABEL_DIST else 12))
+            if self.map_mode == "suzerains" and confed.members(state, tid)[1:]:
+                label = " ".join(confed.name(state, tid).upper())
+            color = _lighten(country_color(state, tid), 0.35)
+            lx, ly = pos[0], pos[1] - (22 if dist <= LABEL_DIST else 12)
+            # Deux noms au meme endroit : le second se pose dessous.
+            lw = font.size(label)[0]
+            while any(abs(lx - px) < (lw + pw) / 2 and abs(ly - py) < font.get_height() for px, py, pw in placed):
+                ly += font.get_height()
+            placed.append((lx, ly, lw))
+            self._outlined_text(font, label, color, lx, ly)
 
     def draw_trade_routes(self, state: GameState, yaw, pitch, gcx, gcy, focal, dist) -> None:
         """Les routes commerciales : un chemin en pointilles a la couleur du
@@ -691,6 +724,7 @@ class Renderer:
         autres seulement sous les yeux de vos bandes."""
         w, h = self.screen.get_size()
         size = 7 if dist <= LABEL_DIST else 4
+        vis = vision_of(state, state.viewer)
         for site in sorted(state.sites.values(), key=lambda s: s.id):
             mine = site.tribe_id == state.viewer
             seen = is_explored(state, site.hex, state.viewer) if mine else is_visible(state, site.hex, state.viewer)
@@ -704,19 +738,55 @@ class Renderer:
             x, y = int(pos[0]), int(pos[1])
             if x < -20 or y < HUD_HEIGHT or x > w + 20 or y > h + 20:
                 continue
-            color = color_of(state.tribes.get(site.tribe_id))
+            color = self._people_color(state, site.tribe_id)
             if site.kind == "cache":
                 _draw_cache(self.screen, x, y + size, color, max(3, size - 2))
             elif site.kind == "camp":
                 _draw_camp(self.screen, x, y + size, color, size)
             # Le village lui-meme est dessine avec sa bande (draw).
+        if vis is None:
+            return
+        # Le brouillard : les lieux des autres tels qu'on les a vus la
+        # derniere fois (memory.py), un peu eteints.
+        for _sid, (q, r_, kind, tid, walled, lord) in sorted(vis.sites.items()):
+            h_ = Hex(q, r_)
+            if tid == state.viewer or h_ in vis.visible:
+                continue
+            pos = hex_to_globe_screen(h_, state.world, yaw, pitch, gcx, gcy, focal, dist)
+            if pos is None:
+                continue
+            x, y = int(pos[0]), int(pos[1])
+            if x < -20 or y < HUD_HEIGHT or x > w + 20 or y > h + 20:
+                continue
+            color = _darken(self._seen_color(state, tid, lord), 0.8)
+            if kind == "village":
+                self._draw_village_box(x, y, color, max(6, size + 2), walled)
+            elif kind == "camp":
+                _draw_camp(self.screen, x, y + size, color, size)
+            elif kind == "cache":
+                _draw_cache(self.screen, x, y + size, color, max(3, size - 2))
+
+    def _seen_color(self, state, tid, lord) -> tuple:
+        if self.map_mode == "suzerains" and not lord and len(look.members_of(state, tid)) < 2:
+            return (118, 110, 98)
+        return look.seen_color(state, tid, lord)
+
+    def _people_color(self, state, tid) -> tuple:
+        """La couleur d'un peuple sur la carte : celle de son pays ; sur la
+        carte des suzerains, les peuples seuls s'effacent."""
+        if self.map_mode == "suzerains" and tid != state.viewer and len(look.members_of(state, tid)) < 2:
+            return (118, 110, 98)
+        return country_color(state, tid)
 
     def draw_village_icon(self, site, x: int, y: int, color, size: int) -> None:
         """Un village : un carre a la couleur du peuple, bord sombre ; une
         palissade l'entoure d'un second cadre de bois."""
+        self._draw_village_box(x, y, color, size, palisade_state(site) == "built")
+
+    def _draw_village_box(self, x: int, y: int, color, size: int, walled: bool) -> None:
         half = max(4, size)
         rect = pygame.Rect(x - half, y - half, 2 * half, 2 * half)
-        if palisade_state(site) == "built":
+        if walled:
             outer = rect.inflate(8, 8)
             pygame.draw.rect(self.screen, (58, 42, 24), outer)
             pygame.draw.rect(self.screen, (168, 120, 64), outer, 2)
@@ -755,6 +825,8 @@ class Renderer:
             theme.button(self.screen, rect, head, "second", True, _contains(rect, mx, my), icon_key=MAP_MODE_ICONS.get(key), key_hint=hint, role="bouton_petit", active=self.map_mode == key)
         if self.map_mode == "commerce":
             self._draw_trade_legend(layout, w)
+        if self.map_mode == "suzerains":
+            self._draw_realm_legend(layout, w)
         if self.map_mode == "ressources":
             x0 = layout["relief"][0]
             y = layout["relief"][1] + 36
@@ -766,6 +838,42 @@ class Renderer:
                 cy = y + 8 + (i // 2) * 18
                 pygame.draw.polygon(self.screen, COLORS[name], theme.chamfer((cx, cy + 3, 11, 11), 2))
                 theme.text(self.screen, LABELS[name], "mini", C.lin, (cx + 16, cy), bw // 2 - 26)
+
+    def _draw_realm_legend(self, layout, w) -> None:
+        """Legende de la carte des suzerains : les grands pays (un suzerain et
+        ses tributaires, une confederation), du plus grand au plus petit."""
+        state = getattr(self, "_legend_state", None)
+        if state is None:
+            return
+        x0 = layout["relief"][0]
+        y = layout["relief"][1] + 36
+        bw = w - TAB_W - 14 - x0
+        realms = look.great_realms(state)
+        known = set(diplo.contacts_of(state, state.viewer)) | {state.viewer}
+        realms = [(root, m) for root, m in realms if known & set(m)][:10]
+        rows = 1 + max(1, len(realms)) + 2
+        theme.panel(self.screen, (x0, y, bw, 12 + 18 * rows), "infobulle")
+        theme.text(self.screen, "Les grands pays que vous connaissez", "mini", C.os, (x0 + 12, y + 6), bw - 24)
+        yy = y + 26
+        if not realms:
+            theme.text(self.screen, "Aucun : pas encore de suzerain ni de confédération.", "mini", C.lin, (x0 + 12, yy), bw - 24)
+            yy += 18
+        for root, members in realms:
+            pygame.draw.circle(self.screen, country_color(state, root), (x0 + 18, yy + 8), 5)
+            n_vass = sum(1 for t in members if chiefdom.overlord_of(state, t))
+            n_conf = len(confed.members(state, root))
+            vill = sum(1 for s in state.sites.values() if s.kind == "village" and s.tribe_id in members)
+            title = confed.name(state, root) if n_conf > 1 else f"Les {state.tribes[root].name}"
+            parts = []
+            if n_conf > 1:
+                parts.append(f"{n_conf} confédérés")
+            if n_vass:
+                parts.append(f"{n_vass} tributaire{'s' if n_vass > 1 else ''}")
+            parts.append(f"{vill} village{'s' if vill > 1 else ''}")
+            theme.text(self.screen, f"{title} : " + ", ".join(parts), "mini", C.lin, (x0 + 30, yy), bw - 42)
+            yy += 18
+        theme.text(self.screen, "Les tributaires : une nuance claire de leur suzerain.", "mini", C.cendre, (x0 + 12, yy), bw - 24)
+        theme.text(self.screen, "Les peuples seuls sont effacés.", "mini", C.cendre, (x0 + 12, yy + 18), bw - 24)
 
     def _draw_trade_legend(self, layout, w) -> None:
         """Legende du mode Commerce : les biens, ce que disent les traits,
@@ -948,12 +1056,13 @@ class Renderer:
         army = render_panels.army_ready(state)
         commerce = render_panels.commerce_ready(state)
         treasury = money.has_money(state, state.viewer)
+        country = bool(laws.available(state, state.viewer))
         if panel == "savoirs" and ui.get("tech_cam") is None:
             # Premiere ouverture : la vue se pose sur la recherche en cours.
             ui["tech_cam"] = render_tech.focus_cam(state, w, h)
         layout = side_layout(
             w, h, panel=panel if (panel != "armee" or army) else None, era=ui.get("era", 0), army=army, commerce=commerce,
-            tech_cam=ui.get("tech_cam"), tech_tab=ui.get("tech_tab", "arbre"), treasury=treasury,
+            tech_cam=ui.get("tech_cam"), tech_tab=ui.get("tech_tab", "arbre"), treasury=treasury, country=country,
         )
         if layout.get("tech") is not None:
             ui["tech_cam"] = layout["tech"]["cam"]
@@ -987,6 +1096,10 @@ class Renderer:
             self._draw_tab(tabs["commerce"], "Commerce", bool(ui.get("trade_open")), render_panels.commerce_alert(state), "commerce")
         if "tresor" in tabs:
             self._draw_tab(tabs["tresor"], "Trésor", bool(ui.get("treasury_open")), render_panels.treasury_alert(state), "tresor")
+        if "pays" in tabs:
+            tribe_ = state.tribes.get(state.viewer)
+            waiting = tribe_ is not None and laws.known(state, state.viewer, "base") and not tribe_.base
+            self._draw_tab(tabs["pays"], "Pays", bool(ui.get("country_open")), waiting, "balance")
         self._draw_tab(tabs["journal"], "Journal", panel == "journal", False, "journal")
 
     _TECH_COLORS = {

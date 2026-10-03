@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import approach, battle, chiefdom, chiefs, events, goods, influence, tech
+from src.kora import approach, battle, chiefdom, chiefs, confed, events, goods, influence, money, tech
 from src.kora.log import LogKind
 # Les donnees (contacts, relations, pactes, routes) : types.py.
 from src.kora.types import Diplomacy, Mod, Pact, TradeRoute  # noqa: F401
@@ -38,6 +38,12 @@ TRIBUTE_WEEKS = 104
 TRIBUTE_EVERY = 13
 GIFT_RANGE = 30
 GIFT_SIZES = (50, 150, 400)
+# Les presents en sicles (money.py) : pas besoin d'une bande a cote, des
+# envoyes les portent ; un peuple sans argent n'y voit que des parures
+# (moitie moins).
+PRESENT_SIZES = (5, 15, 40)
+PRESENT_NO_MONEY = 0.5
+AI_PRESENT = 5
 INVITE_COST = 10
 BETRAYAL_PRESTIGE = 10
 DIFFUSE_NEIGHBOR = 0.35
@@ -82,6 +88,9 @@ MOD_TEXT = {
     "festin": ("Ils ont mangé à votre table", "Vous avez mangé à leur table", 0.4),
     "oblige": ("Vos dons les obligent", "Leurs dons vous obligent", 0.5),
     "freres": ("Un village né du vôtre", "Votre village est né du leur", 0.1),
+    # La confederation (confed.py).
+    "raid_confedere": ("Vous avez attaqué leurs confédérés", "Ils ont attaqué vos confédérés", 1.0),
+    "confed_refusee": ("Confédération refusée", "Confédération refusée", 0.8),
 }
 
 
@@ -252,6 +261,8 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
             out.append(("Suzerain et tributaire", -8.0))
         elif p.kind == "commerce":
             out.append(("Accord commercial", 8.0))
+        elif p.kind == confed.KIND:
+            out.append(("Même confédération", 20.0))
     # Villages freres : la meme civilisation, ou suzerain et tributaire.
     if b in chiefdom.kin_of(state, a) or a in chiefdom.kin_of(state, b):
         out.append(("Villages frères", 15.0))
@@ -378,6 +389,8 @@ def status_line(state, a: int, b: int) -> str:
             parts.append("Vos tributaires" if p.payer == b else "Vous êtes leurs tributaires")
         elif p.kind == "commerce":
             parts.append("Accord commercial")
+        elif p.kind == confed.KIND:
+            parts.append("Confédérés")
     return " · ".join(parts)
 
 
@@ -395,6 +408,13 @@ def on_fight(state, attacker: int, defender: int, attacker_won: bool, hunted: bo
         add_mod(state, attacker, defender, "accrochage", -8, actor=attacker)
         return
     add_mod(state, attacker, defender, "raid", -25, actor=attacker)
+    # Un raid contre l'un est un raid contre tous ses confederes ; la paix
+    # des deux pays (treves, alliances) tombe.
+    for m in confed.members(state, defender):
+        if m != defender and m != attacker:
+            add_mod(state, attacker, m, "raid_confedere", -10, actor=attacker)
+    for x, y in confed.outside_pairs(state, attacker, defender):
+        _drop_shared(state, x, y)
     if has_pact(state, attacker, defender):
         excused = d.casus.get((attacker, defender), -1) >= state.tick_count
         d.pacts.pop(pair(attacker, defender), None)
@@ -427,7 +447,29 @@ def hostile_intent(state, a: int, b: int) -> bool:
 # --- pactes et paiements -------------------------------------------------------------
 
 
-def add_pact(state, a: int, b: int, kind: str, weeks: int = 0, payer: int = 0) -> None:
+def add_pact(state, a: int, b: int, kind: str, weeks: int = 0, payer: int = 0, shared: bool = True) -> None:
+    """Le pacte ; une treve ou une alliance engage aussi les confederes des
+    deux peuples (confed.py : une seule diplomatie exterieure)."""
+    _set_pact(state, a, b, kind, weeks, payer)
+    if shared and kind in confed.SHARED:
+        pairs = confed.outside_pairs(state, a, b)
+        for x, y in pairs:
+            _set_pact(state, x, y, kind, weeks, payer)
+        if pairs:
+            confed.shared_note(state, a, b, kind, pairs)
+
+
+def _drop_shared(state, a: int, b: int) -> None:
+    d = _d(state)
+    k = pair(a, b)
+    kept = [p for p in d.pacts.get(k, []) if p.kind not in confed.SHARED]
+    if kept:
+        d.pacts[k] = kept
+    else:
+        d.pacts.pop(k, None)
+
+
+def _set_pact(state, a: int, b: int, kind: str, weeks: int = 0, payer: int = 0) -> None:
     d = _d(state)
     k = pair(a, b)
     pacts = [p for p in d.pacts.get(k, []) if p.kind != kind]
@@ -454,6 +496,10 @@ def break_pact(state, actor: int, other: int, kind: str | None = None) -> bool:
     tribe = state.tribes.get(actor)
     if tribe is not None:
         tribe.prestige = max(0, tribe.prestige - 3)
+    # Rompre la paix avec le dehors : tout le pays la rompt.
+    if kind is None or kind in confed.SHARED:
+        for x, y in confed.outside_pairs(state, actor, other):
+            _drop_shared(state, x, y)
     return True
 
 
@@ -623,14 +669,16 @@ def pop_of(state, tid: int) -> int:
 
 # --- propositions -----------------------------------------------------------------------
 
-ACTIONS = ("cadeau", "treve", "alliance", "commerce", "tribut", "proteger", "union", "rompre")
+ACTIONS = ("cadeau", "present", "treve", "alliance", "commerce", "tribut", "proteger", "confederer", "union", "rompre")
 ACTION_LABELS = {
     "proteger": "Prendre sous sa protection",
     "cadeau": "Offrir des vivres",
+    "present": "Offrir des sicles",
     "treve": "Proposer une trêve",
     "alliance": "Proposer une alliance",
     "commerce": "Proposer des échanges",
     "tribut": "Exiger un tribut",
+    "confederer": "Proposer la confédération",
     "union": "Proposer l'union",
     "rompre": "Rompre le pacte",
 }
@@ -693,6 +741,15 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         if carrier is None:
             return Verdict(blocked=f"Aucune de vos bandes à moins de {GIFT_RANGE} cases d'eux")
         return Verdict(score=1, reasons=[("Un cadeau est toujours accepté", 1)])
+    if action == "present":
+        if not money.has_money(state, actor):
+            return Verdict(blocked="Il faut connaître Valeurs d'échange")
+        if state.tribes[actor].money < PRESENT_SIZES[0]:
+            return Verdict(blocked=f"Il faut {PRESENT_SIZES[0]} sicles au trésor")
+        out = [("Un présent est toujours accepté", 1)]
+        if not money.has_money(state, target):
+            out.append(("Ils ne connaissent pas l'argent : des parures, moitié moins", 0))
+        return Verdict(score=1, reasons=out)
     if action == "rompre":
         if not has_pact(state, actor, target):
             return Verdict(blocked="Aucun pacte avec eux")
@@ -806,6 +863,11 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
             out.append(("Vous êtes à leur porte", 10))
         if state.tribes[target].prestige >= 50:
             out.append(("Trop fiers pour plier", -10))
+    elif action == "confederer":
+        why = confed.block(state, actor, target)
+        if why:
+            return Verdict(blocked=why)
+        out.extend(confed.reasons(state, actor, target))
     elif action == "union":
         if not bonus.union:
             return Verdict(blocked="Il faut connaître Confédération")
@@ -860,13 +922,24 @@ def gift_sizes(state, actor: int, target: int) -> list[int]:
     return [s for s in GIFT_SIZES if s <= spare]
 
 
+def present_sizes(state, actor: int) -> list[int]:
+    have = state.tribes[actor].money if money.has_money(state, actor) else 0.0
+    return [s for s in PRESENT_SIZES if s <= have]
+
+
+def present_value(state, actor: int, target: int, sicles: float) -> float:
+    """Ce qu'un present en sicles vaut en relation (comme des vivres)."""
+    v = gift_value(state, actor, target, sicles * money.VPS)
+    return v if money.has_money(state, target) else v * PRESENT_NO_MONEY
+
+
 def gift_value(state, actor: int, target: int, amount: float) -> float:
     base = 40.0 * amount / (4.0 * max(1, pop_of(state, target)) + 40.0)
     return min(25.0, base) * tech.bonuses(state.tribes[actor]).gifts
 
 
 # Proposer a un autre joueur : il recoit la carte que l'IA lui enverrait.
-HUMAN_OFFERS = {"treve": "offre_treve", "alliance": "offre_alliance", "commerce": "offre_commerce", "tribut": "exige_tribut", "proteger": "offre_protection"}
+HUMAN_OFFERS = {"treve": "offre_treve", "alliance": "offre_alliance", "commerce": "offre_commerce", "tribut": "exige_tribut", "proteger": "offre_protection", "confederer": "offre_confederation"}
 
 
 def perform(state, actor: int, target: int, action: str, amount: float = 0.0) -> str:
@@ -892,6 +965,21 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         if human:
             _note(state, LogKind.POLITIQUE, f"Les {state.tribes[actor].name} vous offrent {amount:.0f} vivres.", receiver.position, to=target)
         return f"Les {names} acceptent vos {amount:.0f} vivres."
+    if action == "present":
+        tribe = state.tribes[actor]
+        amount = min(float(amount), tribe.money)
+        if amount <= 0:
+            return "Le trésor est vide"
+        tribe.money -= amount
+        money.book(state, actor, "presents", -amount)
+        if money.has_money(state, target):
+            money.earn(state, target, "presents", amount)
+        add_mod(state, actor, target, "cadeau", present_value(state, actor, target, amount), actor=actor)
+        if tech.bonuses(tribe).obligations:
+            add_mod(state, actor, target, "oblige", 6.0, actor=actor)
+        if human:
+            _note(state, LogKind.POLITIQUE, f"Les {tribe.name} vous offrent {amount:.0f} sicles.", to=target)
+        return f"Les {names} acceptent vos {amount:.0f} sicles."
     if action == "rompre":
         break_pact(state, actor, target)
         if human:
@@ -914,6 +1002,8 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
             return f"Les {names} refusent de payer. Vous pouvez les raider sans trahir (1 an)."
         if action == "union":
             add_mod(state, actor, target, "union_refusee", -5, actor=target)
+        if action == "confederer":
+            add_mod(state, actor, target, "confed_refusee", -5, actor=target)
         return f"Les {names} refusent."
     if action == "treve":
         add_pact(state, actor, target, "treve", TRUCE_WEEKS)
@@ -933,6 +1023,9 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
     if action == "union":
         absorb(state, actor, target)
         return f"Les {names} rejoignent votre peuple."
+    if action == "confederer":
+        confed.form(state, actor, target)
+        return f"Confédération conclue avec les {names} : un seul pays au dehors, chacun maître chez soi."
     if action == "proteger":
         chiefdom.make_vassal(state, actor, target, "protection")
         add_mod(state, actor, target, "protection", 5)
@@ -1062,6 +1155,11 @@ def ai_monthly(state) -> None:
                 if evaluate(state, tid, other, "alliance").accepted:
                     perform(state, tid, other, "alliance")
                     continue
+            if not on_cooldown(state, tid, other, "confederer") and confed.ai_wants(state, tid, other):
+                if evaluate(state, tid, other, "confederer").accepted:
+                    perform(state, tid, other, "confederer")
+                    continue
+                _d(state).cooldown[f"confederer:{tid}:{other}"] = state.tick_count
             if rel >= 10 + approach.factor(state, tid, "commerce_rel") and tech.bonuses(tribe).commerce and not has_pact(state, tid, other, "commerce"):
                 if not on_cooldown(state, tid, other, "commerce") and evaluate(state, tid, other, "commerce").accepted:
                     perform(state, tid, other, "commerce")
@@ -1095,8 +1193,14 @@ def ai_monthly(state) -> None:
                 and state.story_rng.random() < 0.05 * approach.factor(state, tid, "gift")
                 and gift_carrier(state, tid, other) is not None
             ):
-                carrier, _receiver = gift_carrier(state, tid, other)
-                spare = carrier.stock - 8 * carrier.population
+                # Un tresor riche donne des sicles plutot que des vivres (le
+                # meme don, en argent : AI_PRESENT sicles = 100 vivres).
+                if money.has_money(state, tid) and tribe.money > 2 * money.reserve(state, tid) + AI_PRESENT:
+                    perform(state, tid, other, "present", AI_PRESENT)
+                    _d(state).cooldown[f"cadeau:{tid}:{other}"] = state.tick_count
+                    continue
+                found = gift_carrier(state, tid, other)
+                spare = found[0].stock - 8 * found[0].population if found is not None else 0.0
                 if spare >= 60:
                     perform(state, tid, other, "cadeau", min(150.0, spare / 2))
                     d_ = _d(state)
@@ -1121,6 +1225,8 @@ def _propose_to_player(state, ai: int, player: int) -> None:
     elif rel >= 45 + approach.factor(state, ai, "alliance_rel") and not allied(state, ai, player) and tech.bonuses(state.tribes[ai]).alliance:
         if evaluate(state, player, ai, "alliance").accepted or rel >= 60:
             kind = "offre_alliance"
+    elif confed.ai_wants(state, ai, player) and not evaluate(state, ai, player, "confederer").blocked:
+        kind = "offre_confederation"
     elif (
         rel >= 10 + approach.factor(state, ai, "commerce_rel")
         and tech.bonuses(state.tribes[ai]).commerce
@@ -1145,6 +1251,16 @@ def _propose_to_player(state, ai: int, player: int) -> None:
         and state.story_rng.random() < 0.2 * approach.factor(state, ai, "tribute")
     ):
         kind = "exige_tribut"
+    elif (
+        rel >= 25
+        and money.has_money(state, ai)
+        and state.tribes[ai].money > 2 * money.reserve(state, ai) + AI_PRESENT
+        and gift_carrier(state, ai, player) is not None
+        and state.story_rng.random() < 0.05 * approach.factor(state, ai, "gift")
+    ):
+        perform(state, ai, player, "present", AI_PRESENT)
+        d.cooldown[key] = state.tick_count
+        return
     elif rel >= 25 and state.story_rng.random() < 0.08 * approach.factor(state, ai, "gift") and gift_carrier(state, ai, player) is not None:
         carrier, receiver = gift_carrier(state, ai, player)
         spare = carrier.stock - 6 * carrier.population

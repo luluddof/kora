@@ -15,13 +15,13 @@ import numpy as np
 import pygame
 
 from src.kora.globe import HEX_ROW_SHIFT, HEX_ROW_SQUASH, look_center, visible_hex_radius
+from src.kora import globe, look
 from src.kora.look import season_color
 from src.kora.types import Season, Terrain
 from src.kora.vision import vision_of
 from src.kora.world import NEIGHBOR_DELTAS, axial_to_offset
 from src.kora.resources import COLORS, NAMES
 from src.kora.influence import CORE_MIN, ZONE_MIN
-from src.kora.peoples import color_of
 
 FOG_UNEXPLORED = (8, 8, 10)
 TERRAINS = tuple(Terrain)
@@ -81,6 +81,7 @@ class Planet:
         # Calque "Zones" : peuple dominant de chaque case (-1 : personne),
         # opacite de la teinte (plus forte au bord et au coeur).
         self.zones_on = True
+        self.realm_on = False
         self._zone_key = None
         self.zone_owner = np.full((self.height, self.width), -1, dtype=np.int16)
         self.zone_alpha = np.zeros((self.height, self.width), dtype=np.float32)
@@ -177,17 +178,29 @@ class Planet:
         return self._nb
 
     def sync_zones(self, state) -> tuple:
-        """Refait le calque quand l'influence a change (une fois par mois)."""
+        """Refait le calque quand l'influence a change (une fois par mois), ou
+        un lien entre peuples (un tributaire prend la couleur de son pays).
+        realm_on (la carte des suzerains) : seuls les pays de plusieurs
+        peuples, leurs frontieres entre pays."""
         world = self.world
         tids = sorted(state.tribes)
-        key = (getattr(world, "_influence_gen", 0), len(world._influence), tuple(tids))
+        # Le brouillard : les zones telles que le joueur les a vues (memory.py).
+        vis = vision_of(state, state.viewer) if hasattr(state, "povs") else None
+        fog_key = (vis.mem_gen, id(vis.visible)) if vis is not None else None
+        key = (getattr(world, "_influence_gen", 0), len(world._influence), tuple(tids), look._ties_key(state)[2], self.realm_on, fog_key)
         if key == self._zone_key:
             return key
         self._zone_key = key
         index = {tid: i for i, tid in enumerate(tids)}
         self.zone_colors = np.array(
-            [color_of(state.tribes[t]) for t in tids] or [(0, 0, 0)], dtype=np.float32
+            [look.country_color(state, t) for t in tids] or [(0, 0, 0)], dtype=np.float32
         )
+        shown = None
+        realm_ix = np.zeros(max(1, len(tids)), dtype=np.int16)
+        if self.realm_on:
+            shown = {t for _root, m in look.great_realms(state) for t in m}
+            for t, i in index.items():
+                realm_ix[i] = look.realm_of(state, t)
         owner = np.full((self.height, self.width), -1, dtype=np.int16)
         value = np.zeros((self.height, self.width), dtype=np.float32)
         for (col, row), cell in world._influence.items():
@@ -195,21 +208,42 @@ class Planet:
             for t, v in cell.items():
                 if v > best_v:
                     best_t, best_v = t, v
-            if best_v >= ZONE_MIN and best_t in index:
+            if best_v >= ZONE_MIN and best_t in index and (shown is None or best_t in shown):
                 owner[row, col] = index[best_t]
                 value[row, col] = best_v
+        if vis is not None and (vis.zones or vis.sites):
+            seen_owner = np.full((self.height, self.width), -1, dtype=np.int16)
+            seen_value = np.zeros((self.height, self.width), dtype=np.float32)
+            for (col, row), (t, v) in vis.zones.items():
+                if t in index and (shown is None or t in shown) and 0 <= row < self.height:
+                    seen_owner[row, col % self.width] = index[t]
+                    seen_value[row, col % self.width] = v
+            if vis.visible:
+                rows, cols = self._cells(vis.visible)
+                seen_owner[rows, cols] = owner[rows, cols]
+                seen_value[rows, cols] = value[rows, cols]
+            owner, value = seen_owner, seen_value
         edge = np.zeros((self.height, self.width), dtype=bool)
-        for nr, nc in self._neighbors():
-            edge |= owner[nr, nc] != owner
+        if shown is None:
+            for nr, nc in self._neighbors():
+                edge |= owner[nr, nc] != owner
+        else:
+            # La frontiere d'un pays, pas celle de chacun de ses peuples.
+            realm = np.where(owner >= 0, realm_ix[np.maximum(owner, 0)], -1)
+            for nr, nc in self._neighbors():
+                edge |= realm[nr, nc] != realm
         inside = owner >= 0
         strength = np.clip((value - ZONE_MIN) / max(1e-6, CORE_MIN - ZONE_MIN), 0.0, 1.0)
-        alpha = np.where(edge, 0.36, 0.08 + 0.12 * strength).astype(np.float32)
+        if shown is None:
+            alpha = np.where(edge, 0.36, 0.08 + 0.12 * strength).astype(np.float32)
+        else:
+            alpha = np.where(edge, 0.8, 0.45 + 0.15 * strength).astype(np.float32)
         self.zone_owner = owner
         self.zone_alpha = np.where(inside, alpha, 0.0).astype(np.float32)
         return key
 
     def zone_key(self) -> tuple:
-        return (self.zones_on, self._zone_key, self.res_on, self.trade_on)
+        return (self.zones_on, self.realm_on, self._zone_key, self.res_on, self.trade_on)
 
     def _resources(self):
         if self._res_color is None:
@@ -243,6 +277,10 @@ class Planet:
         elif self.zones_on:
             owner = self.zone_owner[rows, cols]
             mine = owner >= 0
+            if self.realm_on:
+                # Carte politique : le terrain en gris, les pays par-dessus.
+                grey = base.mean(axis=-1, keepdims=True)
+                base = (base * 0.3 + grey * 0.7) * 0.75
             if mine.any():
                 a = self.zone_alpha[rows, cols][mine][:, None]
                 tint = self.zone_colors[owner[mine]]
@@ -258,6 +296,10 @@ class Planet:
         width, height = self.width, self.height
         xf = (lon + math.pi) * (width / (2.0 * math.pi)) - 0.5
         yf = (math.pi / 2.0 - lat) * ((height - 1) / math.pi)
+        # Le terrain sans nid d'abeille (globe.warp) : le meme que le clic.
+        dx, dy = globe.warp(xf, yf, width, np.sin, np.sqrt, np.minimum)
+        xf = xf + dx
+        yf = yf + dy
         r0 = np.clip(np.floor(yf), 0, height - 1).astype(np.int64)
         r1 = np.minimum(r0 + 1, height - 1)
         best_c = None
@@ -389,6 +431,27 @@ class Planet:
         self._corners = corners
         return centers, corners
 
+    def _warped(self, cor: np.ndarray) -> np.ndarray:
+        """Le terrain sans nid d'abeille, de pres : chaque bord en trois,
+        chaque point deplace a l'envers de globe.warp (ce que le lancer de
+        rayons montre de loin). Un coin partage par trois cases bouge de la
+        meme facon pour les trois : pas de trou."""
+        pts = []
+        for k in range(6):
+            a, b = cor[:, k, :], cor[:, (k + 1) % 6, :]
+            pts += [a, _normalize(a * (2.0 / 3.0) + b / 3.0), _normalize(a / 3.0 + b * (2.0 / 3.0))]
+        p = np.stack(pts, axis=1)
+        width, height = self.width, self.height
+        lon = np.arctan2(p[..., 0], p[..., 2])
+        lat = np.arcsin(np.clip(p[..., 1], -1.0, 1.0))
+        xf = (lon + math.pi) * (width / (2.0 * math.pi)) - 0.5
+        yf = (math.pi / 2.0 - lat) * ((height - 1) / math.pi)
+        dx, dy = globe.warp(xf, yf, width, np.sin, np.sqrt, np.minimum)
+        lon = (xf - dx + 0.5) * (2.0 * math.pi / width) - math.pi
+        lat = math.pi / 2.0 - (yf - dy) * (math.pi / max(1, height - 1))
+        cl = np.cos(lat)
+        return np.stack([cl * np.sin(lon), np.sin(lat), cl * np.cos(lon)], axis=-1)
+
     def draw_hexes(self, screen, state, yaw, pitch, cx, cy, focal, dist) -> None:
         self.sync_fog(state)
         centers, corners = self._mesh()
@@ -419,7 +482,7 @@ class Planet:
         rr, cc = rr[ok], cc[ok]
         if not len(rr):
             return
-        cor = corners[rr, cc].astype(np.float64)
+        cor = self._warped(corners[rr, cc].astype(np.float64))
         x, y, z = _rotate(cor[..., 0], cor[..., 1], cor[..., 2], yaw, pitch)
         depth = dist - z
         good = ((z * dist >= 0.98) & (depth > 0.04)).all(axis=1)

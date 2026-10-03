@@ -11,6 +11,8 @@ part ailleurs, on dit ou il se branche sur le reste du jeu :
   ARMY_MORALE    le moral d'une troupe ; (state, tid) -> points
   FLEE           les fuyards d'une bataille ; (state, tid) -> multiplicateur
   STOCK_WEEKS    les semaines de reserve d'une bande ; (state, band) -> semaines
+  BUILD_SPEED    les chantiers d'un village ; (state, site) -> semaines
+                 gagnees par semaine
   CRAFT_OUTPUT   la production d'un metier ; (state, site, craft) ->
                  multiplicateur (1.0 si le systeme ne s'en mele pas)
   EFFECT_FIELDS  les champs de Tribe qui portent des effets comme des
@@ -47,6 +49,7 @@ MONTHLY = (
     # L'approche de chaque chef (apres les successions, avant ses decisions).
     "approach.monthly",
     "diplo.ai_monthly",
+    "confed.monthly",
     "events.monthly",
     "situations.monthly",
 )
@@ -67,6 +70,10 @@ FLEE = ("money.flee_mult",)
 # Semaines de reserve d'une bande, en plus de ses savoirs (bands.stock_max) ;
 # (state, band) -> semaines (0 si le systeme ne s'en mele pas).
 STOCK_WEEKS = ("villages.stock_weeks",)
+
+# Les chantiers des villages : semaines de travail gagnees par semaine ;
+# (state, site) -> semaines (0 si le systeme ne s'en mele pas).
+BUILD_SPEED = ("money.build_speed",)
 
 CRAFT_OUTPUT = (
     "production.craft_mult",

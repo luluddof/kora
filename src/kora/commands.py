@@ -21,6 +21,7 @@ from src.kora import (
     diplo,
     events,
     goods,
+    laws,
     learning,
     money,
     numbers,
@@ -37,7 +38,7 @@ KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
     "teams", "diplo", "invite", "build", "raise", "reequip", "dissolve",
     "honor", "promote", "heir", "learn", "event", "situation",
-    "battle_retreat", "levy_rate", "feast", "charge", "base", "budget",
+    "battle_retreat", "levy_rate", "feast", "charge", "base", "budget", "law",
 )
 IN_BATTLE = "En bataille : ordonnez le repli d'abord"
 NOT_YOURS = "Ce n'est pas à vous"
@@ -219,7 +220,7 @@ def _diplo(state, tid, target, action, amount=0.0):
         return _out("Ce peuple a disparu")
     if action not in diplo.ACTIONS:
         return _out("?")
-    if action != "rompre" and action != "cadeau" and diplo.on_cooldown(state, tid, target, action):
+    if action not in ("rompre", "cadeau", "present") and diplo.on_cooldown(state, tid, target, action):
         return _out("Vous avez déjà proposé cela récemment.")
     return _out(diplo.perform(state, tid, target, action, float(amount)))
 
@@ -354,9 +355,14 @@ def _budget(state, tid, key, value):
     return _out(money.set_budget(state, tid, str(key), value))
 
 
+def _law(state, tid, law_id, option):
+    return _out(laws.enact(state, tid, str(law_id), str(option)))
+
+
 _HANDLERS = {
     "base": _base,
     "budget": _budget,
+    "law": _law,
     "battle_retreat": _battle_retreat,
     "levy_rate": _levy_rate,
     "feast": _feast,

@@ -4,12 +4,16 @@ import pygame
 
 from src.kora import (
     battle as _battle,
+    chiefdom,
     chiefs,
     commands,
     diplo,
     events,
     goods,
+    influence,
+    laws,
     layout,
+    memory,
     money,
     net,
     orders,
@@ -17,8 +21,10 @@ from src.kora import (
     render_battle,
     render_menu,
     render_tech,
+    render_treasury,
     screens,
     session,
+    sites,
     situations,
     tech,
     units,
@@ -32,6 +38,7 @@ from src.kora.globe import (
     pixel_to_hex_globe,
     view_params,
 )
+from src.kora.bands import is_army
 from src.kora.log import FILTER_ALL, LogKind
 from src.kora.persist import (
     default_save_path,
@@ -64,6 +71,7 @@ from src.kora.layout import (
 )
 from src.kora.sim import _default_world, consume_ticks, fight_at, hex_inspect, new_game, player_home_hex
 from src.kora.gamestate import human_dead, log_of, note
+from src.kora.vision import is_explored, is_visible, vision_of
 from src.kora.situations import SPECS
 from src.kora.render_situations import banner_hit, window_hit
 from src.kora.render_village import found_hit
@@ -272,9 +280,11 @@ def _fresh_ui() -> dict:
         "tech_cam": None,
         "tech_tab": "arbre",
         "base_confirm": None,
+        "country_open": False,
+        "country_tab": "lois",
+        "law_confirm": None,
         "levy": "troupe",
         "levy_role": "melee",
-        "leave_confirm": 0.0,
         # Multijoueur : cartes deja repondues (la reponse est en route).
         "answered": set(),
     }
@@ -594,6 +604,9 @@ class Play:
         # on glisse depuis n'importe ou ; sans bouger, un clic choisit le savoir.
         self.tech_drag = 0
         self.tech_press = {"at": (0, 0), "moved": False, "pick": None}
+        # Le curseur du budget qu'on glisse (render_treasury), le dernier ordre.
+        self.slider_drag = None
+        self.slider_sent = None
         self.acc = 0.0
         # En multijoueur, seul l'hote sauvegarde (a part : la partie solo reste).
         self.save_path = multi_save_path() if self.mp is not None else default_save_path()
@@ -617,7 +630,7 @@ class Play:
         self.now = 0.0
 
         # Les clics de chaque grand ecran (screens.SCREENS).
-        self.screen_clicks = {"village": self.village_click, "commerce": self.trade_click, "tresor": self.treasury_click}
+        self.screen_clicks = {"village": self.village_click, "commerce": self.trade_click, "tresor": self.treasury_click, "pays": self.country_click}
         assert set(self.screen_clicks) == set(screens.BY_NAME)
 
 
@@ -723,7 +736,6 @@ class Play:
     def open_village(self, site_id) -> None:
         screens.open(self.ui, "village", site_id)
         self.ui["village_pick"] = None
-        self.ui["leave_confirm"] = 0.0
         self.side_panel = None
 
     def open_screen(self, name: str, toggle: bool = False) -> None:
@@ -739,14 +751,41 @@ class Play:
         if choice == "mclose":
             screens.close_all(self.ui)
             return
-        if choice.startswith("mtax:"):
-            self.issue(commands.make(self.me(), "budget", "tax", int(choice.split(":")[1])))
+        tribe = self.state.tribes.get(self.me())
+        if tribe is None or ":" not in choice:
             return
-        if choice.startswith("mtoggle:"):
-            key = choice.split(":")[1]
-            tribe = self.state.tribes.get(self.me())
-            if tribe is not None:
-                self.issue(commands.make(self.me(), "budget", key, not money.budget(tribe)[key]))
+        kind, key = choice.split(":", 1)
+        bud = money.budget(tribe)
+        if kind in ("mminus", "mplus"):
+            self.set_slider(key, render_treasury.slider_step(bud, key, -1 if kind == "mminus" else 1))
+        elif kind == "mslide":
+            # Un clic sur la piste pose le curseur ; on peut ensuite le glisser.
+            self.slider_drag = key
+            self.set_slider(key, render_treasury.slider_value(self.renderer.treasury_hits, key, pygame.mouse.get_pos()[0]))
+
+    def country_click(self, choice) -> None:
+        """Clic dans l'ecran du pays : une loi passe par commands.py ; une
+        reforme des nombres demande un second clic."""
+        if choice == "lclose":
+            screens.close_all(self.ui)
+            return
+        if choice.startswith("ltab:"):
+            self.ui["country_tab"] = choice[5:]
+            return
+        if choice.startswith("law:"):
+            _k, law_id, option = choice.split(":", 2)
+            if law_id == "base" and self.ui.get("law_confirm") != (law_id, option):
+                self.ui["law_confirm"] = (law_id, option)
+                return
+            self.ui["law_confirm"] = None
+            self.issue(commands.make(self.me(), "law", law_id, option))
+
+    def set_slider(self, key: str, value) -> None:
+        """Un curseur du budget : l'ordre ne part que si la valeur change."""
+        tribe = self.state.tribes.get(self.me())
+        if tribe is not None and money.budget(tribe)[key] != value and self.slider_sent != (key, value):
+            self.slider_sent = (key, value)
+            self.issue(commands.make(self.me(), "budget", key, value))
 
     def trade_click(self, choice) -> None:
         """Clic dans l'ecran du commerce."""
@@ -808,21 +847,6 @@ class Play:
         if home is None or choice == "vclose":
             screens.close_all(self.ui)
             return
-        if choice == "vleave":
-            if self.now > self.ui["leave_confirm"]:
-                self.ui["leave_confirm"] = self.now + CONFIRM_SECONDS
-                self.toast("Abandonner le village ? Cliquez encore pour confirmer (champs et bâtiments perdus).", True)
-                return
-            self.ui["leave_confirm"] = 0.0
-
-            def left(res):
-                if res["msg"]:
-                    self.toast(res["msg"])
-                else:
-                    self.ui["village_open"] = None
-
-            self.issue(commands.make(self.me(), "band", home.id, "leave"), left)
-            return
         if choice.startswith("vb:"):
             self.ui["village_pick"] = choice[3:]
             return
@@ -857,20 +881,6 @@ class Play:
                     self.issue(commands.make(self.me(), "teams", site.id, cid, 1))
             elif goods.teams_of(site, cid) > 0:
                 self.issue(commands.make(self.me(), "teams", site.id, cid, -1))
-            return
-        if choice == "vsplit":
-            place = places.name(site)
-
-            def split_done(res, home_id=home.id):
-                new_sel = res["sel"]
-                if res["msg"]:
-                    self.toast(res["msg"])
-                elif new_sel is not None and new_sel != home_id and new_sel in self.state.bands:
-                    self.selected = new_sel
-                    self.ui["village_open"] = None
-                    self.toast(f"Une bande part de {place} : {self.state.bands[new_sel].population} personnes.")
-
-            self.issue(commands.make(self.me(), "band", home.id, "split"), split_done)
             return
         if choice == "vbuild":
             pick = self.ui["village_pick"] or next(
@@ -1066,6 +1076,44 @@ class Play:
         self.issue(commands.make(self.me(), "goto", self.selected, hx.q, hx.r))
         return True
 
+    def _army_selected(self) -> bool:
+        band = self.state.bands.get(self.selected) if self.selected is not None else None
+        return band is not None and is_army(band)
+
+    def _country_at(self, h) -> int:
+        """Le peuple etranger dont on voit le village sur la case, ou dans la
+        zone duquel elle est (0 : aucun, ou un peuple qu'on ne connait pas)."""
+        me = self.state.viewer
+        h = self.state.world.canonicalize(h) or h
+        if not is_explored(self.state, h, me):
+            return 0
+        if is_visible(self.state, h, me):
+            site = sites.site_on_hex(self.state, h)
+            tid = site.tribe_id if site is not None and site.tribe_id != me else influence.foreign_zone(self.state.world, h, me)
+        else:
+            # Le brouillard : ce dont on se souvient (memory.py).
+            seen = memory.site_at(self.state, h, me)
+            zone = vision_of(self.state, me).zones.get(self.state.world._index(h))
+            tid = seen[1][3] if seen is not None else (zone[0] if zone else 0)
+            tid = 0 if tid == me else tid
+        return tid if tid and tid in diplo.contacts_of(self.state, me) else 0
+
+    def open_diplomacy(self, tid: int) -> None:
+        """L'ecran Peuples sur ce peuple ; un tributaire n'a pas de diplomatie
+        a lui : c'est son grand suzerain qui parle pour lui."""
+        me = self.state.viewer
+        if tid == me or tid not in self.state.tribes:
+            return
+        lord = chiefdom.top_lord(self.state, tid)
+        if lord != tid and lord != me and lord in diplo.contacts_of(self.state, me):
+            self.toast(f"Les {self.state.tribes[tid].name} sont tributaires des {self.state.tribes[lord].name} : c'est à eux de parler.")
+            tid = lord
+        elif tid not in diplo.contacts_of(self.state, me):
+            return
+        screens.close_all(self.ui)
+        self.side_panel = "peuples"
+        self.ui["people_pick"] = tid
+
     def order_raid(self, target) -> None:
         band = self.state.bands.get(self.selected) if self.selected is not None else None
         if band is None:
@@ -1144,14 +1192,9 @@ class Play:
             self.ui["tech_tab"] = choice[5:]
             self.ui["base_confirm"] = None
             return True
-        if choice.startswith("nbase:"):
-            # Deux clics : la base est presque definitive.
-            base = int(choice[6:])
-            if self.ui.get("base_confirm") == base:
-                self.ui["base_confirm"] = None
-                self.issue(commands.make(self.me(), "base", base))
-            else:
-                self.ui["base_confirm"] = base
+        if choice == "nlaws":
+            # La base des nombres est une loi : l'ecran du pays.
+            self.open_screen("pays")
             return True
         if choice.startswith("era:"):
             self.ui["era"] = int(choice[4:])
@@ -1218,6 +1261,11 @@ class Play:
             tid = self.ui.get("people_pick")
             if tid is not None:
                 self.issue(commands.make(self.me(), "diplo", tid, "cadeau", float(choice.split(":")[1])))
+            return True
+        if choice.startswith("present:"):
+            tid = self.ui.get("people_pick")
+            if tid is not None:
+                self.issue(commands.make(self.me(), "diplo", tid, "present", float(choice.split(":")[1])))
             return True
         if choice.startswith("invite:"):
             self.issue(commands.make(self.me(), "invite", int(choice.split(":")[1])))
@@ -1340,12 +1388,20 @@ class Play:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             return self._on_click(event)
         elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:
+                self.slider_drag = None
+                self.slider_sent = None
             if event.button == self.drag_button:
                 self.dragging = False
             if event.button == self.tech_drag:
                 if self.tech_drag == 1 and not self.tech_press["moved"] and self.tech_press["pick"]:
                     self.side_click(self.tech_press["pick"])
                 self.tech_drag = 0
+        elif event.type == pygame.MOUSEMOTION and self.slider_drag:
+            if self.renderer.treasury_hits:
+                self.set_slider(self.slider_drag, render_treasury.slider_value(self.renderer.treasury_hits, self.slider_drag, event.pos[0]))
+            else:
+                self.slider_drag = None
         elif event.type == pygame.MOUSEMOTION and self.tech_drag:
             tlay = self.renderer.side_hits.get("tech")
             if tlay and self.side_panel == "savoirs":
@@ -1430,6 +1486,13 @@ class Play:
             self.open_screen("tresor", toggle=True)
         elif event.key == pygame.K_z:
             self.renderer.map_mode = "relief" if self.renderer.map_mode == "zones" else "zones"
+        elif event.key == pygame.K_n:
+            if not laws.available(self.state, self.state.viewer):
+                self.toast("Les lois viennent avec Valeurs d'échange ou Nombres additifs.")
+                return None
+            self.open_screen("pays", toggle=True)
+        elif event.key == pygame.K_u:
+            self.renderer.map_mode = "relief" if self.renderer.map_mode == "suzerains" else "suzerains"
         elif event.key == pygame.K_r:
             self.renderer.map_mode = "relief" if self.renderer.map_mode == "ressources" else "ressources"
         elif event.key == pygame.K_x:
@@ -1469,6 +1532,12 @@ class Play:
                 return None
             if isinstance(ui_hit, tuple) and ui_hit[0] == "speed":
                 self.set_speed(ui_hit[1])
+                return None
+            # Les medaillons des crises et conjonctures sont DANS la barre du
+            # haut : leur clic passe avant celui de la barre.
+            sit_uid = banner_hit(self.renderer.situation_hits, mx, my)
+            if sit_uid is not None:
+                self.open_situation(sit_uid)
                 return None
             if ui_hit == "bar":
                 return None
@@ -1514,10 +1583,6 @@ class Play:
                 elif bt is not None and bhit == "see":
                     self.show_place(bt.hex)
                 return None
-            sit_uid = banner_hit(self.renderer.situation_hits, mx, my)
-            if sit_uid is not None:
-                self.open_situation(sit_uid)
-                return None
             if self.open_fight is None:
                 hit_toast = toast_hit(self.renderer.toast_hits, mx, my)
                 if hit_toast is not None:
@@ -1561,8 +1626,11 @@ class Play:
                     self.selected = None
                 else:
                     self.selected = hit.id
-            elif hit is not None and self.selected is not None:
+            elif hit is not None and self._army_selected():
                 self.order_raid(hit)
+            elif hit is not None:
+                # Un pays clique sans armee choisie : sa diplomatie.
+                self.open_diplomacy(hit.tribe_id)
             else:
                 gcx, gcy, focal, dist = view_params(self.zoom, self.sw, self.sh, HUD_HEIGHT)
                 hx = pixel_to_hex_globe(
@@ -1571,6 +1639,11 @@ class Play:
                 if hx is not None:
                     if self.selected is not None:
                         self.order_move(hx)
+                    else:
+                        other = self._country_at(hx)
+                        if other:
+                            self.open_diplomacy(other)
+                            return None
                     info = hex_inspect(self.state, hx)
                     if info is None:
                         self.pinned_hex = None

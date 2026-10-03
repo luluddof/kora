@@ -1,8 +1,9 @@
 CARTE DU DEPOT — KORA
 (doc de code, pas de design de jeu)
 
-Date    : 2026-10-03 (architecture : fiches, tableau des systemes,
-          grands ecrans, tests de contrat)
+Date    : 2026-10-03 (0.9.0 : confederation, couleurs des pays, carte des
+          suzerains, lois et ecran du pays, budget en curseurs, memoire
+          du brouillard, terrain deforme)
 Statut  : a jour avec le proto actuel (tribus vivantes : peuples,
           zone d'influence, campements, chefs, diplomatie, evenements,
           ressources du pays, villages du neolithique ; fondation,
@@ -109,7 +110,8 @@ Ici c'est plus petit, mais le meme decoupage :
                     chiefs.py, diplo.py, events.py (+ events_data.py),
                     resources.py, villages.py, orders.py, battle.py, units.py,
                     goods.py, situations.py, production.py, population.py,
-                    chiefdom.py, numbers.py, money.py
+                    chiefdom.py, numbers.py, money.py, laws.py, confed.py,
+                    memory.py
                     "une semaine avance (ou un jour, en bataille)"
 
   Persistance       persist.py, data/kora_map.json
@@ -119,7 +121,7 @@ Ici c'est plus petit, mais le meme decoupage :
                     theme.py (la charte), render.py, render_panels.py,
                     render_tech.py, render_village.py, render_trade.py,
                     render_menu.py, render_situations.py, render_numbers.py,
-                    render_treasury.py, app.py
+                    render_treasury.py, render_country.py, app.py
                     "on dessine et on recoit la souris"
 
 Dependances autorisees : les ETAGES (du plus bas au plus haut ; un module
@@ -184,6 +186,35 @@ src/kora/approach.py  (pas de pygame)
   commerce : ai.py, diplo.ai_monthly, chiefdom), ACCEPT / accept (la
   reponse aux propositions : diplo.evaluate), BEHAVIOR / reasons (l'ecran
   Peuples). Tribe.approach / approach_since / approach_chief.
+
+src/kora/confed.py  (pas de pygame)
+  La CONFEDERATION : un pacte "confederation" entre deux peuples ; le
+  groupe = ceux qu'ils relient (members, groups, same, leader : le
+  fondateur, sa couleur ; name). Une seule diplomatie exterieure : les
+  pactes SHARED (treve, alliance) s'etendent a tout le groupe
+  (diplo.add_pact -> outside_pairs ; break_pact, on_fight les font tomber
+  pour tous ; raid contre un membre : mod "raid_confedere") ; aide a la
+  guerre (battle.helpers_of, ai_war.force_at). block / reasons
+  (diplo.evaluate "confederer"), form, leave, on_vassal (chiefdom.make_vassal
+  : un tributaire en sort), shared_note, monthly (systems.MONTHLY : l'IA
+  sans amis s'en va), ai_wants (diplo.ai_monthly, _propose_to_player ->
+  carte "offre_confederation"), lines (ecran Peuples).
+
+src/kora/laws.py  (pas de pygame)
+  Les LOIS du pays : all_laws (construites a la demande : money et numbers
+  s'importent en cercle), law, known / available, get (Tribe.laws ; la
+  base : Tribe.base ; vieille partie : budget["commerce"]), block, enact
+  (ordre "law" ; la base passe par numbers.choose), option_name. Deux lois :
+  "paiement" (vivres / argent : money.pays_in_money) et "base".
+
+src/kora/memory.py  (pas de pygame)
+  La MEMOIRE DU BROUILLARD : vision.PlayerVision.sites (id -> [q, r,
+  genre, peuple, palissade, suzerain]), .zones ((col, ligne) -> [peuple,
+  influence]), .mem_gen. update (sim._week apres la vue, new_game, persist
+  au chargement : ce que chaque joueur voit), seed (vieille partie : ce
+  qu'il a explore), site_at. Lu par render.draw_sites / draw_polity_labels,
+  globe_draw.sync_zones, sim.hex_inspect, app._country_at. Sauve par
+  persist (_memory_to_json, cle "memory", et dans chaque pov).
 
 src/kora/learning.py  (pas de pygame)
   Comment un peuple apprend : cond_progress, status, available, choose,
@@ -383,7 +414,8 @@ src/kora/log.py
 
 src/kora/vision.py
   Brouillard JOUEUR seulement. Rayon 8 (tech.BASE_VISION).
-  explored / visible. L'IA n'appelle pas ce module.
+  explored / visible, et la memoire (sites, zones, mem_gen : memory.py).
+  L'IA n'appelle pas ce module.
 
 src/kora/ai.py
   decide_ai. Ignore les bandes du joueur qui obeissent (mene ses clans
@@ -415,14 +447,14 @@ src/kora/records.py  (pas de pygame)
 
 src/kora/systems.py  (pas de pygame)
   LE TABLEAU DES SYSTEMES : MONTHLY (le mois du monde, dans l'ordre),
-  STABILITY, ARMY_MORALE, FLEE, CRAFT_OUTPUT (ce que chaque systeme ajoute
+  STABILITY, ARMY_MORALE, FLEE, BUILD_SPEED, CRAFT_OUTPUT (ce que chaque systeme ajoute
   a ces calculs), EFFECT_FIELDS / EFFECT_SPECS (effets comme des savoirs,
   lus par tech.bonuses et tech.spec_effect), EVENT_VOCABULARY (modules qui
   ajoutent conditions et effets aux evenements : events.vocabulary).
   fn("module.fonction"), run, parts, total, apply_mult.
 
 src/kora/screens.py
-  Les GRANDS ECRANS (village, commerce, tresor) : SCREENS (cle de ui,
+  Les GRANDS ECRANS (village, commerce, tresor, pays) : SCREENS (cle de ui,
   mise en page du renderer, dessin, visee) ; open / toggle / close_all /
   opened / under_mouse / hit / draw. Un seul ouvert a la fois ; app.play y
   route les clics (screen_clicks), render.py y dessine.
@@ -435,7 +467,12 @@ src/kora/persist.py
   Chemin : %APPDATA%\Kora\saves si frozen, sinon racine du depot.
 
 src/kora/look.py
-  Couleurs biome x saison. L'inspect (texte) est dans sim/render.
+  Couleurs biome x saison. La COULEUR DES PAYS : country_color (un
+  tributaire : nuance claire de son grand suzerain, VASSAL_OWN /
+  VASSAL_LIGHT ; un confedere : nuance du fondateur ; libre : la sienne),
+  realm_of, members_of, great_realms (la carte des suzerains), seen_color
+  (un lieu du brouillard, tel qu'on l'a vu) ; cache sur les liens
+  (_ties_key). L'inspect (texte) est dans sim/render.
 
 src/kora/atlas.py
   Noms au dezoom : continents (sans les calottes), banquises,
@@ -444,20 +481,25 @@ src/kora/atlas.py
 
 src/kora/globe.py
   Projection sphere. Clic -> hex (lonlat_to_colrow : case
-  hexagonale la plus proche), hex -> pixel ecran.
+  hexagonale la plus proche, apres warp), hex -> pixel ecran.
+  warp : le TERRAIN DEFORME (bruit doux a deux echelles, WARP_SCALES,
+  periodique autour du monde, borne a WARP_MAX case) ; le meme pour le
+  dessin et le clic.
   wrap sim = cylindre hex ; vue = sphere. Les deux se parlent
   ici, pas dans sim.
 
 src/kora/globe_draw.py
   Planet : dessin numpy d'un monde. Loin : lancer de rayons par
-  pixel (meme regle de case que le clic). Pres (hexagone >=
-  POLY_HEX_PX a l'ecran) : polygones calcules en bloc.
+  pixel (meme regle de case que le clic, globe.warp). Pres (hexagone >=
+  POLY_HEX_PX a l'ecran) : polygones calcules en bloc, bords en trois et
+  points deplaces (_warped). sync_zones : couleurs des pays (look),
+  realm_on (la carte des suzerains), memoire du brouillard (memory.py).
   Brouillard (grille 0/1/2), saisons par rangee, maillage.
 
 src/kora/render.py
   Dessin pygame : sphere, HUD, menu Echap, bandes (couronne du chef,
   anneau des clans indociles, villages en maisons), lieux (campements,
-  caches, champs), modes de carte (Relief / Zones / Ressources),
+  caches, champs), modes de carte (Relief / Influence / Suzerains / Ressources / Commerce),
   onglets Savoirs / Tribu / Peuples / Journal, toasts, inspect, fiche
   de bande (10 boutons, raison au survol).
   draw_savoirs : arbre, fiche du savoir choisi, bouton Apprendre
@@ -565,8 +607,12 @@ src/kora/numbers.py  (pas de pygame)
   tech.math_effect), page (ce que montre l'onglet), lines.
 
 src/kora/money.py  (pas de pygame)
-  L'argent : Tribe.money (sicles), budget (tax 0..3, solde, gages,
-  commerce, dons ; etat_* : payee / impayee), money_month (le compte du
+  L'argent : Tribe.money (sicles), budget en CURSEURS (impot 0..TAX_MAX
+  points ; solde, gages, dons, chantiers 0..PAY_MAX du tarif, eff : moitie
+  au-dela de 100 % ; vieilles parties : budget() lit "tax" et les
+  interrupteurs ; etat_* : payee / impayee), COSTS, chantier_cost,
+  build_speed (systems.BUILD_SPEED -> villages._advance_works,
+  VillageData.build_extra), money_month (le compte du
   mois : book / earn), money_hist (24 mois). has_money, set_budget
   (ordre "budget"), tax_income, solde_cost, gage_cost, don_cost, reserve,
   stability_parts (impot, presents ; lu par villages.stability_parts),
@@ -581,15 +627,25 @@ src/kora/money.py  (pas de pygame)
 src/kora/render_numbers.py
   Onglet « Les nombres » de l'ecran des savoirs : page_layout / items
   (purs ; render.tech_panel_layout(tab="nombres") les met dans
-  side_layout : "nbase:<b>", "ttab:arbre", "ttab:nombres"), draw. app.py :
-  ui["tech_tab"], ui["base_confirm"] (deux clics avant l'ordre "base").
+  side_layout : "nlaws" (la base est une loi : il ouvre l'ecran du pays),
+  "ttab:arbre", "ttab:nombres"), draw (la base en resume, les calculateurs,
+  les operations).
 
 src/kora/render_treasury.py
-  L'ecran du Tresor : treasury_layout / treasury_hit (purs ; "mtax:<n>",
-  "mtoggle:<cle>", "mclose"), draw_treasury (tuiles, compte du mois,
-  budget, peages, graphe). app.py : ui["treasury_open"], treasury_click
-  (ordre "budget"), touche G, onglet lateral "tresor" (render.side_tabs,
-  render_panels.treasury_alert) ; la pastille de sicles dans la barre.
+  L'ecran du Tresor : treasury_layout / treasury_hit (purs ; les curseurs :
+  "mslide:<cle>", "mminus:<cle>", "mplus:<cle>" ; "mclose"), slider_span /
+  slider_value / slider_step (purs), draw_treasury (tuiles, compte du mois,
+  budget en curseurs, peages, l'argent ailleurs, graphe). app.py :
+  ui["treasury_open"], treasury_click, set_slider, slider_drag (glisser :
+  _on_event), ordre "budget", touche G, onglet "tresor".
+
+src/kora/render_country.py
+  L'ecran du PAYS, onglet Lois : country_layout / country_hit (purs ;
+  "law:<loi>:<option>", "ltab:<onglet>", "lclose"), draw_country (le pays :
+  suzerain, tributaires, confederation ; une rangee par loi, ses options
+  en cartes). app.py : ui["country_open"], ui["law_confirm"] (une reforme
+  des nombres : deux clics), country_click (ordre "law"), touche N,
+  onglet "pays" (layout.COUNTRY_TAB, avec la premiere loi possible).
 
 src/kora/production.py  (pas de pygame)
   Le savoir-faire des villages : Tribe.efficiency (genre -> 1,0..EFF_MAX ;

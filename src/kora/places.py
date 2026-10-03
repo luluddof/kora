@@ -40,6 +40,8 @@ class VillageData:
     # les etapes du grand monument.
     buildings: list[str] = field(default_factory=list)
     build: Optional[list] = None
+    # Le travail en plus des batisseurs payes (money.build_speed), en semaines.
+    build_extra: float = 0.0
     monument: int = 0
     # Les recoltes : [annee, vivres] et la derniere.
     history: list[list] = field(default_factory=list)

@@ -7,7 +7,7 @@ import os
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
-from src.kora import battle, commands, goods, money, numbers, persist, resources, tech, villages
+from src.kora import battle, commands, diplo, goods, laws, money, numbers, persist, resources, tech, villages
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 from test_goods import CENTER, _village
@@ -124,14 +124,16 @@ def test_without_mathematicians_no_operation_is_found():
 def test_money_comes_with_exchange_values_and_the_tax_costs_stability():
     st, site, band = _village(("comptage",))
     assert not money.has_money(st, 1)
-    assert money.set_budget(st, 1, "tax", 2).startswith("Il faut")
+    assert money.set_budget(st, 1, "impot", 2).startswith("Il faut")
     _learn(st, 1, *MONEY)
     assert money.has_money(st, 1)
     calm = villages.stability(st, site)
-    assert money.set_budget(st, 1, "tax", 3).startswith("Impôt")
-    assert villages.stability(st, site) < calm
+    assert money.set_budget(st, 1, "impot", 7).startswith("Impôt")
+    assert villages.stability(st, site) == calm - 10
     labels = [l for l, _v in villages.stability_parts(st, site)]
-    assert "Impôt lourd" in labels
+    assert "Impôt (7 pour cent)" in labels
+    # Le curseur reste dans ses bornes.
+    assert money.set_budget(st, 1, "impot", money.TAX_MAX + 1) == "?"
     money.monthly(st)
     tribe = st.tribes[1]
     assert tribe.money > 0
@@ -141,7 +143,7 @@ def test_money_comes_with_exchange_values_and_the_tax_costs_stability():
 
 def test_silver_makes_the_tax_yield_more():
     st, site, band = _village(MONEY)
-    money.set_budget(st, 1, "tax", 2)
+    money.set_budget(st, 1, "impot", 4)
     plain = money.tax_income(st, 1)
     _learn(st, 1, "argent_pese")
     assert money.tax_income(st, 1) > plain
@@ -161,7 +163,7 @@ def test_paid_soldiers_hold_better_and_unpaid_ones_worse():
     assert villages.army_morale(st, army) == base + 5
     assert money.flee_mult(st, 1) < 1.0
     tribe.money = 0.0
-    tribe.budget["tax"] = 0
+    tribe.budget["impot"] = 0
     money.monthly(st)
     assert money.budget(tribe)["etat_solde"] == "impayee"
     assert villages.army_morale(st, army) == base - 5
@@ -233,7 +235,8 @@ def _two_peoples(known=MONEY):
 
 def test_routes_can_be_paid_in_silver():
     st = _two_peoples()
-    money.set_budget(st, 1, "commerce", True)
+    assert not money.pays_in_money(st, 1, 2)
+    assert laws.enact(st, 1, "paiement", "argent") == "Paiement en argent : en argent."
     assert money.pays_in_money(st, 1, 2)
     st.tribes[1].money = 10.0
     paid = money.pay_route(st, 1, 2, 100.0)
@@ -276,13 +279,13 @@ def test_the_ai_keeps_a_budget_and_does_not_hoard():
     st.tribes[2].money = 50.0
     money.monthly(st)
     b = money.budget(st.tribes[2])
-    assert b["commerce"] is True and b["tax"] in money.TAX
+    assert laws.get(st.tribes[2], "paiement") == "argent" and 0 <= b["impot"] <= money.TAX_MAX
     # Un tresor plein : plus d'impot, des presents aux familles.
     st.tribes[2].families = [{"id": 1, "name": "x", "trait": "", "charge": "", "favour": 40.0, "village": 0}]
     st.tribes[2].money = 50 * money.reserve(st, 2)
     money.monthly(st)
     b = money.budget(st.tribes[2])
-    assert b["tax"] == 0 and b["dons"] is True and b["etat_dons"] == "payee"
+    assert b["impot"] == 0 and b["dons"] == 1.0 and b["etat_dons"] == "payee"
     assert st.tribes[2].families[0]["favour"] > 40.0
 
 
@@ -320,10 +323,12 @@ def test_base_and_budget_go_through_commands():
     st, site, band = _village(MONEY)
     out = commands.apply(st, commands.make(1, "base", 12))
     assert st.tribes[1].base == 12 and "douze" in out["msg"]
-    commands.apply(st, commands.make(1, "budget", "tax", 1))
-    commands.apply(st, commands.make(1, "budget", "gages", True))
+    commands.apply(st, commands.make(1, "budget", "impot", 3))
+    commands.apply(st, commands.make(1, "budget", "gages", 1.5))
     b = money.budget(st.tribes[1])
-    assert b["tax"] == 1 and b["gages"] is True
+    assert b["impot"] == 3 and b["gages"] == 1.5
+    out = commands.apply(st, commands.make(1, "law", "paiement", "argent"))
+    assert laws.get(st.tribes[1], "paiement") == "argent" and "argent" in out["msg"]
 
 
 def test_numbers_and_treasury_survive_a_save():
@@ -334,12 +339,13 @@ def test_numbers_and_treasury_survive_a_save():
     tribe.operations = ["add", "sub"]
     tribe.math_progress = 7.5
     tribe.money = 12.25
-    money.set_budget(st, 1, "tax", 2)
-    money.set_budget(st, 1, "solde", True)
+    money.set_budget(st, 1, "impot", 2)
+    money.set_budget(st, 1, "solde", 1.25)
+    laws.enact(st, 1, "paiement", "argent")
     money.monthly(st)
     back, _view = persist.loads_game(persist.dumps_game(st), st.world)
     t2 = back.tribes[1]
-    for name in ("base", "base_changed", "operations", "math_progress", "math_effects", "money", "budget", "money_hist"):
+    for name in ("base", "base_changed", "operations", "math_progress", "math_effects", "money", "budget", "money_hist", "laws"):
         assert getattr(t2, name) == getattr(tribe, name), name
 
 
@@ -354,18 +360,24 @@ def test_the_numbers_page_and_the_treasury_lay_out_cleanly():
         for base, rects in page["bases"].items():
             x, y, cw, ch = rects["card"]
             assert by <= y and y + ch <= by + bh
-            assert side_hit(lay, rects["btn"][0] + 5, rects["btn"][1] + 5) == f"nbase:{base}"
+        btn = page["bases"][10]["btn"]
+        assert side_hit(lay, btn[0] + 5, btn[1] + 5) == "nlaws"
         for rect in list(page["ops"].values()) + [page["later"], page["calc"]]:
             assert rect[1] + rect[3] <= by + bh
         assert side_hit(lay, *lay["tech"]["tabs"]["arbre"][:2]) == "ttab:arbre"
         tree = side_layout(w, h, panel="savoirs")
-        assert any(k.startswith("tech:") for k in tree["items"]) and not any(k.startswith("nbase:") for k in tree["items"])
+        assert any(k.startswith("tech:") for k in tree["items"]) and "nlaws" not in tree["items"]
         tl = render_treasury.treasury_layout(w, h)
         bx, by, bw, bh = tl["box"]
-        for lvl, rect in tl["taxes"].items():
-            assert render_treasury.treasury_hit(tl, rect[0] + 3, rect[1] + 3) == f"mtax:{lvl}"
-        for key, rects in tl["toggles"].items():
-            assert render_treasury.treasury_hit(tl, rects["btn"][0] + 3, rects["btn"][1] + 3) == f"mtoggle:{key}"
+        for key, rects in tl["sliders"].items():
+            for part in ("minus", "plus"):
+                r_ = rects[part]
+                assert render_treasury.treasury_hit(tl, r_[0] + 3, r_[1] + 3) == f"m{part}:{key}"
+            tx, ty, tw, th = rects["track"]
+            assert render_treasury.treasury_hit(tl, tx + tw // 2, ty + 3) == f"mslide:{key}"
+            # Le bout de la piste : le plus grand cran ; le debut : zero.
+            lo, hi, _step = render_treasury.slider_span(key)
+            assert render_treasury.slider_value(tl, key, tx + tw) == hi and render_treasury.slider_value(tl, key, tx - 5) == lo
             assert rects["row"][1] + rects["row"][3] <= by + bh
     assert "tresor" in side_layout(1280, 720, treasury=True)["tabs"]
     assert "tresor" not in side_layout(1280, 720)["tabs"]
@@ -400,3 +412,107 @@ def test_money_events_speak_through_the_systems_vocabulary():
     assert tribe.money_month["evenements"] == 4 - 12.0
     assert events.effect_text(("money", 4)) == "+4 sicles au trésor"
     assert "mineurs" in events.effect_text(("craft_team", "mineurs"))
+
+
+# --- les curseurs, les lois, l'argent ailleurs (0.9.0) ----------------------------
+
+
+def test_an_old_budget_reads_as_sliders_and_a_law():
+    st, site, band = _village(MONEY)
+    tribe = st.tribes[1]
+    tribe.budget = {"tax": 2, "solde": True, "gages": False, "commerce": True, "dons": False}
+    b = money.budget(tribe)
+    assert b["impot"] == 4 and b["solde"] == 1.0 and b["gages"] == 0.0
+    assert laws.get(tribe, "paiement") == "argent"
+    # Toucher un curseur ne fait pas perdre l'ancien choix du commerce.
+    money.set_budget(st, 1, "dons", 0.5)
+    assert laws.get(tribe, "paiement") == "argent"
+    laws.enact(st, 1, "paiement", "vivres")
+    assert "commerce" not in tribe.budget and laws.get(tribe, "paiement") == "vivres"
+
+
+def test_paying_more_does_more_but_less_and_less():
+    st, site, band = _village(MONEY)
+    tribe = st.tribes[1]
+    army = Band(5, 1, band.position, 30, 0.0, kind="armee")
+    st.bands[5] = army
+    st.next_band_id = 6
+    tribe.money = 500.0
+    morale = {}
+    for level in (0.5, 1.0, 2.0):
+        money.set_budget(st, 1, "solde", level)
+        money.monthly(st)
+        morale[level] = money.solde_morale(st, 1)
+    assert morale[0.5] == 2.5 and morale[1.0] == 5.0 and morale[2.0] == 7.5
+    assert money.solde_cost(st, 1, 2.0) == 2 * money.solde_cost(st, 1, 1.0)
+
+
+def test_paid_builders_finish_sooner():
+    def weeks(level):
+        st, site, band = _village(MONEY, pop=200)
+        tribe = st.tribes[1]
+        tribe.money = 500.0
+        band.stock = 50000.0
+        bid = next(b for b in villages.BUILD_ORDER if not villages.build_block(st, band.id, b))
+        villages.build(st, band.id, bid)
+        money.set_budget(st, 1, "chantiers", level)
+        money.monthly(st)
+        n = 0
+        while site.data.build and n < 200:
+            villages._advance_works(st, site, band)
+            n += 1
+        return n, money.last_month(tribe).get("chantiers", 0.0)
+
+    plain, cost0 = weeks(0.0)
+    paid, cost = weeks(1.0)
+    assert paid < plain and cost < 0 and cost0 == 0.0
+
+
+def test_silver_presents_please_other_peoples():
+    st = _two_peoples()
+    diplo.make_contact(st, 1, 2, quiet=True)
+    st.tribes[1].money = 50.0
+    v = diplo.evaluate(st, 1, 2, "present")
+    assert v.accepted
+    out = diplo.perform(st, 1, 2, "present", 15)
+    assert "15 sicles" in out and st.tribes[1].money == 35.0 and st.tribes[2].money == 15.0
+    assert money.last_month(st.tribes[1]) == {} and st.tribes[1].money_month["presents"] == -15.0
+    assert any(m.key == "cadeau" for m in st.diplo.mods.get(diplo.pair(1, 2), []))
+    # Un peuple sans l'argent : des parures, moitie moins.
+    full = diplo.present_value(st, 1, 2, 15)
+    st.tribes[2].knowledge.discard("valeurs")
+    tech.invalidate()
+    assert diplo.present_value(st, 1, 2, 15) == full * diplo.PRESENT_NO_MONEY
+    st.tribes[1].money = 1.0
+    assert diplo.evaluate(st, 1, 2, "present").blocked
+
+
+def test_the_base_of_numbers_is_a_law_of_the_country():
+    st, site, band = _village(("comptage",))
+    assert [x.id for x in laws.available(st, 1)] == []
+    _learn(st, 1, "nombres")
+    assert [x.id for x in laws.available(st, 1)] == ["base"]
+    assert laws.option_name(st.tribes[1], "base") == "à choisir"
+    assert "douze" in laws.enact(st, 1, "base", "12")
+    assert st.tribes[1].base == 12 and laws.get(st.tribes[1], "base") == "12"
+    # En changer : la reforme des nombres (prestige).
+    st.tribes[1].prestige = 0
+    assert "prestige" in laws.block(st, 1, "base", "60") or "30 ans" in laws.block(st, 1, "base", "60")
+    _learn(st, 1, "valeurs")
+    assert [x.id for x in laws.available(st, 1)] == ["paiement", "base"]
+
+
+def test_the_country_screen_lays_out_and_answers():
+    from src.kora import render_country
+    from src.kora.layout import side_layout
+
+    for w, h in ((1024, 640), (1280, 720), (1920, 1080)):
+        lay = render_country.country_layout(w, h)
+        bx, by, bw, bh = lay["box"]
+        for law_id, row in lay["rows"].items():
+            for opt, rects in row["cards"].items():
+                b = rects["btn"]
+                assert render_country.country_hit(lay, b[0] + 3, b[1] + 3) == f"law:{law_id}:{opt}"
+                assert rects["card"][1] + rects["card"][3] <= by + bh
+        assert render_country.country_hit(lay, *lay["close"][:2]) == "lclose"
+    assert "pays" in side_layout(1280, 720, country=True)["tabs"]

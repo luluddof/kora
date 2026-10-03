@@ -3,9 +3,10 @@
     balance, l'impot, l'etat de la solde ;
   - a gauche, le COMPTE DU MOIS (chaque rentree, chaque depense) et ce que
     le mois prochain promet ;
-  - au milieu, le BUDGET : l'impot en argent (aucun, leger, moyen, lourd),
-    la solde des troupes, les gages des gens de metier, le commerce en
-    argent, les droits de passage ;
+  - au milieu, le BUDGET, en CURSEURS : l'impot en argent (0 a 8 sicles pour
+    cent villageois), la solde des troupes, les gages des gens de metier,
+    les presents aux familles, la paie des batisseurs (0 a 200 % du tarif) ;
+    puis les droits de passage et ce que l'argent fait ailleurs ;
   - a droite, le graphe du tresor des 24 derniers mois.
 treasury_layout et treasury_hit sont purs (tests) ; draw_treasury dessine.
 Tout changement passe par commands.py ("budget").
@@ -15,14 +16,14 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import money, tech, theme
+from src.kora import laws, money, tech, theme
 from src.kora.peoples import color_of
 from src.kora.layout import HUD_HEIGHT
 from src.kora.render_tech import BAD, GOLD, GOOD, INK, NOTE, SOFT
 from src.kora.theme import C, _gradient_card
 from src.kora.render_village import WARN, _fonts, _frame, _hover, _section, _tile, _tip
 
-TOGGLES = money.TOGGLE_KEYS
+SLIDERS = money.SLIDER_KEYS
 
 
 def treasury_layout(width: int, height: int) -> dict:
@@ -44,15 +45,19 @@ def treasury_layout(width: int, height: int) -> dict:
     left = (bx + 24, body_y, lw, body_h)
     mid = (left[0] + lw + 16, body_y, mw, body_h)
     right = (mid[0] + mw + 16, body_y, rw, body_h)
-    # Le budget : l'impot (quatre crans), puis trois interrupteurs.
+    # Le budget : un curseur par ligne (l'impot, puis les depenses).
     y = body_y + 24
-    cw = (mw - 3 * 8) // 4
-    taxes = {lvl: (mid[0] + lvl * (cw + 8), y + 20, cw, 28) for lvl in money.TAX}
-    y += 20 + 28 + 46
-    toggles = {}
-    block = max(64, min(92, (body_y + body_h - y - 60) // len(TOGGLES)))
-    for key in TOGGLES:
-        toggles[key] = {"row": (mid[0], y, mw, block - 6), "btn": (mid[0] + mw - 150, y + 2, 150, 26)}
+    sliders = {}
+    block = max(66, min(84, (body_y + body_h - y - 110) // len(SLIDERS)))
+    for key in SLIDERS:
+        row = (mid[0], y, mw, block - 6)
+        track = (mid[0] + 40, y + 32, mw - 80 - 120, 14)
+        sliders[key] = {
+            "row": row,
+            "track": track,
+            "minus": (mid[0] + 8, y + 27, 24, 24),
+            "plus": (track[0] + track[2] + 8, y + 27, 24, 24),
+        }
         y += block
     tolls = (mid[0], y, mw, max(40, body_y + body_h - y))
     graph = (right[0], body_y + 24, rw, max(120, min(320, body_h // 2)))
@@ -63,8 +68,7 @@ def treasury_layout(width: int, height: int) -> dict:
         "left": left,
         "mid": mid,
         "right": right,
-        "taxes": taxes,
-        "toggles": toggles,
+        "sliders": sliders,
         "tolls": tolls,
         "graph": graph,
     }
@@ -75,15 +79,44 @@ def treasury_hit(lay: dict, mx: int, my: int):
         return None
     if _hover(lay["close"], mx, my):
         return "mclose"
-    for lvl, rect in lay["taxes"].items():
-        if _hover(rect, mx, my):
-            return f"mtax:{lvl}"
-    for key, rects in lay["toggles"].items():
-        if _hover(rects["btn"], mx, my):
-            return f"mtoggle:{key}"
+    for key, rects in lay["sliders"].items():
+        if _hover(rects["minus"], mx, my):
+            return f"mminus:{key}"
+        if _hover(rects["plus"], mx, my):
+            return f"mplus:{key}"
+        tx, ty, tw, th = rects["track"]
+        if _hover((tx - 8, ty - 8, tw + 16, th + 16), mx, my):
+            return f"mslide:{key}"
     if _hover(lay["box"], mx, my):
         return "panel"
     return None
+
+
+def slider_span(key: str) -> tuple:
+    """(plus petit, plus grand, pas) d'un curseur du budget."""
+    if key == "impot":
+        return 0, money.TAX_MAX, 1
+    return 0.0, money.PAY_MAX, money.PAY_STEP
+
+
+def slider_value(lay: dict, key: str, mx: int):
+    """La valeur du curseur `key` sous la souris (a son pas le plus proche)."""
+    tx, _ty, tw, _th = lay["sliders"][key]["track"]
+    lo, hi, step = slider_span(key)
+    t = max(0.0, min(1.0, (mx - tx) / max(1, tw)))
+    v = round((lo + t * (hi - lo)) / step) * step
+    return int(v) if key == "impot" else float(v)
+
+
+def slider_step(bud: dict, key: str, sign: int):
+    lo, hi, step = slider_span(key)
+    v = max(lo, min(hi, bud[key] + sign * step))
+    return int(v) if key == "impot" else float(v)
+
+
+def _dec(v: float, n: int = 1) -> str:
+    """Un nombre a virgule, a la francaise."""
+    return f"{v:.{n}f}".replace(".", ",")
 
 
 def _sicles(v: float, sign: bool = False) -> str:
@@ -129,10 +162,10 @@ def draw_treasury(r, state, ui) -> None:
         ("RENTRÉES", _sicles(income, True), "le dernier mois", GOOD if income else INK),
         ("DÉPENSES", "-" + _sicles(spent), "le dernier mois", WARN if spent else INK),
         ("BALANCE", _sicles(bal, True), "sicles, dernier mois", GOOD if bal > 0 else BAD if bal < 0 else INK),
-        ("IMPÔT", money.TAX_NAMES[bud["tax"]], f"{_sicles(money.tax_income(state, tid))} sicles / mois", INK),
+        ("IMPÔT", f"{bud['impot']} pour cent" if bud["impot"] else "Aucun", f"{_sicles(money.tax_income(state, tid))} sicles / mois", INK),
         (
             "SOLDE",
-            {"payee": "Payée", "impayee": "Impayée"}.get(solde_state, ("Promise" if bud["solde"] else "Aucune")),
+            {"payee": f"Payée ({round(100 * bud['solde'])} %)", "impayee": "Impayée"}.get(solde_state, ("Promise" if bud["solde"] else "Aucune")),
             f"{money.soldiers(state, tid)} hommes sous les armes",
             GOOD if solde_state == "payee" else BAD if solde_state == "impayee" else INK,
         ),
@@ -165,12 +198,9 @@ def _draw_account(r, state, tribe, lay, month) -> None:
     yy = _section(r, x, yy + 10, w, "LE MOIS PROCHAIN (à peu près)")
     bud = money.budget(tribe)
     rows = [("Impôt", money.tax_income(state, tid), True)]
-    if bud["solde"]:
-        rows.append(("Solde des troupes", -money.solde_cost(state, tid), True))
-    if bud["gages"]:
-        rows.append(("Gages des gens de métier", -money.gage_cost(state, tid), True))
-    if bud["dons"]:
-        rows.append(("Présents aux familles", -money.don_cost(state, tid), True))
+    for key in money.PAY_KEYS:
+        if bud[key]:
+            rows.append((money.PAY_NAMES[key], -money.COSTS[key](state, tid), True))
     for name, v, _on in rows:
         screen.blit(r.small.render(name, True, SOFT), (x, yy))
         t = r.small.render(_sicles(v, True), True, GOOD if v > 0 else WARN if v < 0 else NOTE)
@@ -188,85 +218,96 @@ def _draw_account(r, state, tribe, lay, month) -> None:
             yy += 15
 
 
-def _draw_budget(r, state, tribe, lay, bud, tips, mx, my) -> None:
-    screen = r.screen
+def _slider_texts(state, tribe, bud) -> dict:
+    """Pour chaque curseur : (nom, valeur, ce que ca coute ou rapporte, ce que ca fait)."""
     tid = tribe.id
-    x, y, w, _h = lay["mid"]
-    yy = _section(r, x, y, w, "LE BUDGET")
-    screen.blit(r.small.render("Impôt en argent, sur chaque villageois", True, INK), (x, yy - 2))
-    for lvl, rect in lay["taxes"].items():
-        on = bud["tax"] == lvl
-        hover = _hover(rect, mx, my)
-        theme.button(screen, rect, money.TAX_NAMES[lvl], "second", True, hover, active=on)
-        if hover:
-            gain = money.villagers(state, tid) * money.TAX[lvl] * tech.bonuses(tribe).tax * (money.SILVER_TAX if tech.bonuses(tribe).silver else 1.0)
-            lines = [(f"Impôt {money.TAX_NAMES[lvl].lower()}", C.os, "petit_gras")]
-            if lvl:
-                lines += [
-                    (f"{money.TAX[lvl]:.2f} sicle par villageois et par mois : environ {_sicles(gain)} sicles.".replace(".", ",", 1), SOFT),
-                    (f"Stabilité des villages : {money.TAX_STAB[lvl]}", C.mauvais),
-                ]
-            else:
-                lines.append(("On ne prélève rien : la stabilité ne bouge pas.", SOFT))
-            tips.append((lines, rect))
-    lvl = bud["tax"]
-    eff = f"Stabilité {money.TAX_STAB[lvl]}" if lvl else "Pas d'impôt : pas de mécontentement"
-    if tech.bonuses(tribe).silver:
-        eff += " · Argent pesé : +25 % de rendement"
-    rect = lay["taxes"][0]
-    screen.blit(r.tiny.render(theme.fit(r.tiny, eff, w), True, NOTE), (x, rect[1] + rect[3] + 6))
-    texts = {
+    pts = bud["impot"]
+    silver = " Argent pesé : +25 %." if tech.bonuses(tribe).silver else ""
+
+    def pct(key):
+        return f"{round(100 * bud[key])} %"
+
+    e = {k: money.eff(bud[k]) for k in money.PAY_KEYS}
+    return {
+        "impot": (
+            "Impôt en argent",
+            f"{pts} pour cent" if pts else "aucun",
+            f"{pts} sicles pour cent villageois par mois : {_sicles(money.tax_income(state, tid))} sicles" if pts else "On ne prélève rien",
+            (f"Stabilité des villages {money.tax_stab(pts)}." + silver) if pts else "Pas d'impôt : pas de mécontentement.",
+        ),
         "solde": (
             "Solde des troupes",
-            f"{money.SOLDE:.2f} sicle par homme levé et par mois : {_sicles(money.solde_cost(state, tid))} sicles".replace(".", ",", 1),
-            "Payée : moral +5, deux fois moins de fuyards. Promise et pas payée : moral -5, plus de fuyards.",
+            pct("solde"),
+            f"{_dec(money.SOLDE, 2)} sicle par homme levé au tarif : {_sicles(money.solde_cost(state, tid))} sicles par mois",
+            f"Payée : moral +{_dec(5 * e['solde'])}, fuyards x{_dec(max(0.2, 1 - 0.5 * e['solde']), 2)}. Promise et pas payée : moral -5, plus de fuyards."
+            if bud["solde"] else "Pas de solde : les troupes se battent pour le butin.",
         ),
         "gages": (
             "Gages des gens de métier",
-            f"{money.GAGE:.2f} sicle par artisan et par mois : {_sicles(money.gage_cost(state, tid))} sicles".replace(".", ",", 1),
-            "Payés : métiers +10 %, calculateurs +25 %. Promis et pas payés : -10 %.",
-        ),
-        "commerce": (
-            "Commerce en argent",
-            "Vos achats sur les routes se paient en sicles (le reste en vivres)",
-            "Il faut que l'autre peuple connaisse aussi l'argent. Les vivres restent au grenier.",
+            pct("gages"),
+            f"{_dec(money.GAGE, 2)} sicle par artisan au tarif : {_sicles(money.gage_cost(state, tid))} sicles par mois",
+            f"Payés : métiers +{_dec(10 * e['gages'])} %, calculateurs +{_dec(25 * e['gages'])} %. Promis et pas payés : -10 %."
+            if bud["gages"] else "Pas de gages : les métiers travaillent pour leur part de vivres.",
         ),
         "dons": (
             "Présents aux familles",
-            f"{int(100 * money.DON_SHARE)} % du trésor par mois, au moins un sicle par famille : {_sicles(money.don_cost(state, tid))} sicles",
-            f"Faveur des familles +{money.DON_FAVOUR:g} par mois, stabilité des villages +{money.DON_STABILITY}.".replace(".", ",", 1),
+            pct("dons"),
+            f"{int(100 * money.DON_SHARE)} % du trésor au tarif, au moins un sicle par famille : {_sicles(money.don_cost(state, tid))} sicles",
+            f"Faveur des familles +{_dec(money.DON_FAVOUR * e['dons'])} par mois, stabilité des villages +{round(money.DON_STABILITY * e['dons'])}."
+            if bud["dons"] else "Pas de présents : les familles comptent sur leurs charges.",
+        ),
+        "chantiers": (
+            "Paie des bâtisseurs",
+            pct("chantiers"),
+            f"{_dec(money.CHANTIER)} sicle par chantier au tarif ; {money.chantiers(state, tid)} chantier(s) : {_sicles(money.chantier_cost(state, tid))} sicles",
+            f"Payés : les chantiers avancent {round(100 * money.CHANTIER_SPEED * e['chantiers'])} % plus vite."
+            if bud["chantiers"] else "Les villageois bâtissent entre deux travaux des champs.",
         ),
     }
-    for key in TOGGLES:
-        rects = lay["toggles"][key]
+
+
+def _draw_budget(r, state, tribe, lay, bud, tips, mx, my) -> None:
+    screen = r.screen
+    x, y, w, _h = lay["mid"]
+    _section(r, x, y, w, "LE BUDGET (glissez les curseurs)")
+    texts = _slider_texts(state, tribe, bud)
+    for key in SLIDERS:
+        rects = lay["sliders"][key]
         rx, ry, rw, rh = rects["row"]
         screen.blit(_gradient_card(rw, rh, (44, 34, 26), (30, 23, 18), 6), (rx, ry))
         pygame.draw.rect(screen, (90, 70, 50), rects["row"], 1, border_radius=6)
-        name, cost, what = texts[key]
-        on = bool(bud[key])
-        state_word = ""
-        if key in ("solde", "gages", "dons"):
-            st = bud.get("etat_" + key, "")
-            state_word = {"payee": " · payée" if key != "dons" else " · donnés", "impayee": " · IMPAYÉE"}.get(st, "")
-        screen.blit(r.small.render(theme.fit(r.small, name + state_word, rw - 170), True, BAD if "IMPAY" in state_word else INK), (rx + 10, ry + 5))
-        screen.blit(r.tiny.render(theme.fit(r.tiny, cost, rw - 20), True, SOFT), (rx + 10, ry + 30))
-        wy = ry + 46
-        for part in theme.wrap(r.tiny, what, rw - 20):
-            if wy + 15 > ry + rh:
-                break
-            screen.blit(r.tiny.render(part, True, NOTE), (rx + 10, wy))
-            wy += 15
-        btn = rects["btn"]
-        hover = _hover(btn, mx, my)
-        label = {
-            "solde": ("Payer la solde", "Ne plus payer"),
-            "gages": ("Payer les gages", "Ne plus payer"),
-            "commerce": ("Payer en argent", "Payer en vivres"),
-            "dons": ("Faire des présents", "Plus de présents"),
-        }[key]
-        theme.button(screen, btn, label[1] if on else label[0], "second", True, hover, active=on)
-        if hover:
-            tips.append(([(name, C.os, "petit_gras"), (cost, SOFT), (what, NOTE)], btn))
+        name, value, cost, what = texts[key]
+        st = bud.get("etat_" + key, "") if key != "impot" else ""
+        word = {"payee": " · donnés" if key == "dons" else " · payée", "impayee": " · IMPAYÉE"}.get(st, "")
+        screen.blit(r.small.render(theme.fit(r.small, name + word, rw - 130), True, BAD if "IMPAY" in word else INK), (rx + 10, ry + 5))
+        vt = r.small.render(value, True, GOLD if (bud[key] if key != "impot" else bud["impot"]) else NOTE)
+        screen.blit(vt, (rx + rw - vt.get_width() - 10, ry + 5))
+        # Le curseur : la piste, la part remplie, la poignee.
+        tx, ty, tw, th = rects["track"]
+        lo, hi, _step = slider_span(key)
+        frac = (bud[key] - lo) / (hi - lo)
+        hover = _hover((tx - 8, ty - 8, tw + 16, th + 16), mx, my)
+        pygame.draw.rect(screen, (24, 18, 14), rects["track"], border_radius=7)
+        if key != "impot":
+            # Le tarif (100 %) : un trait.
+            mark = tx + int(tw * (1.0 - lo) / (hi - lo))
+            pygame.draw.line(screen, (120, 98, 70), (mark, ty - 4), (mark, ty + th + 3), 1)
+        fill = int(tw * frac)
+        if fill > 0:
+            pygame.draw.rect(screen, (166, 120, 52) if key != "impot" else (150, 96, 70), (tx, ty, fill, th), border_radius=7)
+        pygame.draw.rect(screen, (120, 92, 62), rects["track"], 1, border_radius=7)
+        kx = tx + fill
+        pygame.draw.circle(screen, (60, 44, 30), (kx, ty + th // 2), 11)
+        pygame.draw.circle(screen, GOLD if hover else (217, 180, 110), (kx, ty + th // 2), 9)
+        for btn, label in ((rects["minus"], "−"), (rects["plus"], "+")):
+            theme.button(screen, btn, label, "second", True, _hover(btn, mx, my))
+        # Ce que la ligne rapporte (l'impot) ou coute chaque mois.
+        flow = money.tax_income(state, tribe.id) if key == "impot" else -money.COSTS[key](state, tribe.id)
+        ft = r.tiny.render(f"{_sicles(flow, True)} / mois" if flow else "rien", True, GOOD if flow > 0 else WARN if flow < 0 else NOTE)
+        screen.blit(ft, (rx + rw - ft.get_width() - 10, ty))
+        screen.blit(r.tiny.render(theme.fit(r.tiny, what, rw - 20), True, NOTE), (rx + 10, ry + rh - 18))
+        if hover or _hover(rects["row"], mx, my) and not (_hover(rects["minus"], mx, my) or _hover(rects["plus"], mx, my)):
+            tips.append(([(name, C.os, "petit_gras"), (cost, SOFT), (what, NOTE)], rects["row"]))
     tx, ty, tw, th = lay["tolls"]
     yy = _section(r, tx, ty + 4, tw, "DROITS DE PASSAGE")
     if tech.bonuses(tribe).tolls:
@@ -282,6 +323,20 @@ def _draw_budget(r, state, tribe, lay, bud, tips, mx, my) -> None:
             break
         screen.blit(r.tiny.render(part, True, NOTE), (tx, yy))
         yy += 15
+    if yy + 40 > ty + th:
+        return
+    yy = _section(r, tx, yy + 8, tw, "L'ARGENT AILLEURS")
+    pay = laws.option_name(tribe, "paiement").lower()
+    for text in (
+        f"Le commerce se paie {pay} : la loi « Paiement en argent » (Pays, onglet Lois [N]).",
+        "Des présents en sicles aux autres peuples : l'écran Peuples.",
+        f"Le tribut de vos tributaires : {int(100 * money.VASSAL_SHARE)} % de leur trésor chaque mois.",
+    ):
+        for part in theme.wrap(r.tiny, text, tw):
+            if yy + 15 > ty + th:
+                return
+            screen.blit(r.tiny.render(part, True, NOTE), (tx, yy))
+            yy += 15
 
 
 def _draw_graph(r, tribe, lay) -> None:

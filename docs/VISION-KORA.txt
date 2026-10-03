@@ -436,6 +436,31 @@ lente, bandes dessinees petites a taille fixe.
     FAIT : Cueillette, Garde des troupeaux, Camp permanent, Champs cultivés
     et les accents des descriptions.
     Spec : 2026-10-03-chefs-et-grandes-chefferies.txt.
+  - LA VAGUE DE CORRECTIONS du 2026-10-03 (0.9.0 ; spec :
+    2026-10-03-vague-de-corrections-0.9.0.txt), point par point :
+    "Le clic sur la conjoncture ne l'ouvre pas." CORRIGE.
+    "Ces deux boutons (Abandonner, Former une bande), tu vires." FAIT.
+    "Des curseurs horizontaux pour augmenter ou diminuer ce qu'on leur
+    paye ; regarde quel autre domaine l'argent peut affecter ; le choix de
+    payer en argent sera la toute premiere loi de l'onglet Pays, sous-onglet
+    Lois ; aucune autre loi pour l'instant sauf la base des nombres." FAIT :
+    budget en curseurs (0 a 200 %), la paie des batisseurs et les presents
+    en sicles aux autres peuples (les autres pistes notees), l'ecran Pays
+    (N) et ses deux lois.
+    "Ce visuel des terres, vire-le." FAIT (les champs en chiffres).
+    "Un clic sur un pays sans armee ouvre son menu diplomatique (celui du
+    suzerain s'il est vassal)." FAIT.
+    "Tributaire : un derive leger de la couleur du suzerain ; une carte qui
+    ne montre que les grands suzerains et leurs villes ; nouveau suzerain :
+    sa couleur ; independant : la sienne." FAIT (carte des Suzerains, U).
+    "La confederation : un seul pays, chacun independant, soutien a la
+    guerre, une diplomatie exterieure ; rompue si l'un est vassalise." FAIT.
+    "Dans le brouillard on voit les villes qu'on connait ; il ne se met a
+    jour que si on revient." FAIT (la memoire du brouillard, sauvee).
+    "La place des batiments ne diminue pas : pas de 10/5." CORRIGE.
+    "Le T1, le terrain legerement deforme, j'aime bien." FAIT (S3 des
+    frontieres naturelles : dessin seul, clic compris). Restent en
+    attente : S1, S2, S4.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -533,6 +558,15 @@ lente, bandes dessinees petites a taille fixe.
   neolithique va au palier 6 tant qu'il y a des cases libres (une case par
   colonne et par palier) ; un age suivant seulement si l'histoire l'exige.
   EN ATTENTE (sa demande) : les frontieres naturelles (propositions S1-S4).
+  Fait le 2026-10-03 (0.9.0) : la vague de corrections (curseurs du
+  budget, lois et ecran du Pays, confederation, couleurs des pays et carte
+  des suzerains, clic -> diplomatie, memoire du brouillard, terrain
+  deforme S3). REGLES NOUVELLES : une couleur de peuple sur la carte passe
+  par look.country_color (jamais color_of) ; le brouillard montre la
+  memoire du joueur (memory.py), jamais l'etat vivant ; une loi nouvelle =
+  une Law dans laws._build ; un reglage d'argent = un curseur (money
+  .SLIDER_KEYS), pas un interrupteur ; le terrain se dessine et se clique
+  par globe.warp (les deux ensemble). Toujours en attente : S1, S2, S4.
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes
@@ -541,7 +575,8 @@ lente, bandes dessinees petites a taille fixe.
   propositions du 2026-09-25 et du 2026-09-26). Fait : la chefferie (1B).
   Mis de cote : les voix et coutumes (1A). Restent : betail et guerre avec
   des buts (2), memoire (3), age tribal vivant (4), civilisation vivante
-  (5), et le systeme de LOIS qu'il annonce.
+  (5), et le systeme de LOIS qu'il annonce (commence en 0.9.0 : deux lois,
+  "aucune autre pour l'instant").
   Autres pistes qui suivent la vision (a proposer, rien n'est decide) :
   - Commerce : caravanes attaquables par un tiers en guerre, evenements de
     route (marchand, porteurs perdus), biens de prestige (parures, ambre),

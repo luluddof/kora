@@ -38,8 +38,9 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
     if b.numbers and not tribe.base:
         issue(make(me, "base", (10, 12, 20, 60)[me % 4]))
     if b.money and rng.random() < 0.1:
-        issue(make(me, "budget", "tax", rng.randrange(4)))
-        issue(make(me, "budget", rng.choice(money.TOGGLE_KEYS), rng.random() < 0.5))
+        issue(make(me, "budget", "impot", rng.randrange(money.TAX_MAX + 1)))
+        issue(make(me, "budget", rng.choice(money.PAY_KEYS), rng.randrange(9) * money.PAY_STEP))
+        issue(make(me, "law", "paiement", rng.choice(("vivres", "argent"))))
     # Les situations : une action permise, de temps en temps (ordre "situation").
     for inst in situations.of_tribe(state, me):
         if rng.random() < 0.25:

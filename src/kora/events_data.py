@@ -531,6 +531,21 @@ EVENTS: dict[str, Event] = {
                 Option("Refuser", effects=(("relation", -5),), text="Vous gardez votre liberté face aux {other}.", ai=1.2),
             ),
         ),
+        Event(
+            "offre_confederation",
+            "Une offre de confédération",
+            "Les chefs des {other} proposent de ne plus faire qu'un seul pays : chacun garde son chef, ses "
+            "villages et ses greniers, mais vous ferez la paix et la guerre ensemble, et qui attaque l'un "
+            "attaque l'autre. Si l'un de vous devient tributaire de quelqu'un, le serment tombe.",
+            trigger="offre_confederation",
+            player_only=True,
+            conds=(("other_alive",),),
+            mood="peuple",
+            options=(
+                Option("Accepter la confédération", effects=(("pact", "confederation"),), text="Vous voilà confédérés des {other}.", ai=1.2),
+                Option("Refuser", effects=(("relation", -5),), text="Vous gardez votre diplomatie à vous.", ai=1.0),
+            ),
+        ),
         # --- la conquete (battle.py, chiefdom.py) ------------------------------
         Event(
             "conquete",

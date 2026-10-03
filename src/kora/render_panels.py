@@ -12,6 +12,7 @@ import pygame
 from src.kora import (
     approach,
     chiefs,
+    confed,
     diplo,
     diplo as _diplo,
     events,
@@ -687,6 +688,10 @@ def draw_peoples(r, state, layout, ui) -> None:
         _text(r, r.small, status, GOLD, cx + cw - sw_ - 4, cy + 2)
     _relation_meter(r, cx + 10, cy + 34, cw - 20, rel)
     cy += 62
+    # Leur pays : une confederation parle d'une seule voix au dehors.
+    for line in confed.lines(state, pick):
+        _text(r, r.tiny, r._fit(r.tiny, line + " (paix et guerre partagées)", cw - 8), GOLD, cx + 4, cy)
+        cy += 16
     reasons = diplo.reasons(state, state.viewer, pick)
     _text(r, r.tiny, "Pourquoi :", NOTE, cx + 4, cy)
     cy += 16
@@ -720,7 +725,9 @@ def draw_peoples(r, state, layout, ui) -> None:
     for other in known_peoples(state):
         if other == pick or not diplo.in_contact(state, pick, other):
             continue
-        if diplo.allied(state, pick, other):
+        if confed.same(state, pick, other):
+            ties.append(f"confédérés des {state.tribes[other].name}")
+        elif diplo.allied(state, pick, other):
             ties.append(f"alliés des {state.tribes[other].name}")
         elif diplo.has_pact(state, pick, other, "commerce"):
             ties.append(f"commercent avec les {state.tribes[other].name}")
@@ -766,11 +773,32 @@ def draw_peoples(r, state, layout, ui) -> None:
     else:
         note = "Toujours accepté"
     _text(r, r.tiny, r._fit(r.tiny, note, cx + cw - gx - 4), NOTE if verdict.blocked or not sizes else GOOD, gx + 4, cy + 5)
-    cy += 34
+    cy += 30
+    # Les presents en sicles (le tresor) : des envoyes les portent.
+    if money.has_money(state, state.viewer):
+        verdict = diplo.evaluate(state, state.viewer, pick, "present")
+        _text(r, r.small, diplo.ACTION_LABELS["present"], TEXT if not verdict.blocked else NOTE, cx + 4, cy + 3)
+        sizes = diplo.present_sizes(state, state.viewer)
+        gx = cx + 160
+        for amount in diplo.PRESENT_SIZES:
+            rect = (gx, cy, 50, 22)
+            items[f"present:{amount}"] = rect
+            on = amount in sizes
+            _button(r, rect, str(amount), on=on)
+            if on and _hover(rect):
+                gain = diplo.present_value(state, state.viewer, pick, amount)
+                rows = [(f"{amount} sicles, portés par des envoyés", TEXT), (f"Relation : +{gain:.0f}", GOOD)]
+                rows += [(label, SOFT) for label, _v in verdict.reasons[1:]]
+                tips.append((rows, rect[0] + rect[2] + 8, rect[1]))
+            gx += 56
+        note = verdict.blocked or ("Toujours accepté" if money.has_money(state, pick) else "Ils ne connaissent pas l'argent : moitié moins")
+        _text(r, r.tiny, r._fit(r.tiny, note, cx + cw - gx - 4), NOTE if verdict.blocked else GOOD, gx + 4, cy + 5)
+        cy += 30
+    cy += 4
     cols = 2
     aw = (cw - 12) // cols
     ah = 46
-    for i, action in enumerate(["treve", "alliance", "commerce", "tribut", "proteger", "union", "rompre"]):
+    for i, action in enumerate(["treve", "alliance", "commerce", "tribut", "proteger", "confederer", "union", "rompre"]):
         ax = cx + (i % cols) * (aw + 12)
         ay = cy + (i // cols) * ah
         if ay + ah > by + bh - 6:

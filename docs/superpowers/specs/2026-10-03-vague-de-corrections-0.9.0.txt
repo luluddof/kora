@@ -1,0 +1,196 @@
+Kora - Une vague de corrections : pays, lois, argent, brouillard, terrain
+=========================================================================
+Date : 2026-10-03. Statut : FAIT (version 0.9.0).
+
+Demandes (ses mots, raccourcis), et ce qui est fait :
+  1. "Le clic sur la conjoncture ne l'ouvre pas." CORRIGE : les medaillons
+     des crises et conjonctures sont DANS la barre du haut ; le clic de la
+     barre passait avant (app.Play._on_click : les medaillons d'abord).
+  2. "Ces deux boutons, tu vires" (Abandonner, Former une bande [S] dans
+     l'ecran du village). RETIRES (dessin, clic, ui["leave_confirm"]). La
+     touche S scinde toujours une bande hors de l'ecran.
+  3. Le tresor et les lois :
+     - "des curseurs horizontaux pour augmenter ou diminuer ce qu'on leur
+       paye" : le budget est en CURSEURS (section 1) ;
+     - "regarde quel autre domaine l'argent peut affecter" : section 2 ;
+     - "le choix de payer en argent sera la toute premiere loi de l'onglet
+       Pays, sous-onglet Lois ; aucune autre loi pour l'instant sauf la base
+       des nombres" : section 3.
+  4. "Ce visuel des terres, vire-le : il ne correspond pas aux vraies
+     terres." RETIRE : a la place, les champs en chiffres (champs semes,
+     bonnes terres autour, sol, semences, prochaine etape) ; le graphe des
+     recoltes prend la place.
+  5. "Un clic sur un pays sans armee ouvre son menu diplomatique (celui du
+     suzerain en cas de vassalisation)." FAIT : section 4.
+  6. "Tributaire : un derive leger de la couleur du suzerain ; une carte
+     des zones d'influence qui ne montre que les grands suzerains et leurs
+     villes controlees et vassalisees ; un nouveau suzerain : la couleur
+     va vers lui ; independant : il reprend sa couleur." FAIT : section 5.
+  7. "La confederation : deux villes qui ne forment qu'un pays, chacune
+     independante mais qui soutient l'autre en guerre et unifie leur
+     diplomatie exterieure (sauf si l'une se fait vassaliser, ce qui rompt
+     la confederation)." FAIT : section 6.
+  8. "Meme dans le brouillard de guerre on voit les villes si on sait
+     qu'elles existent ; le brouillard ne se met a jour que si on revient
+     sur l'endroit." FAIT : section 7.
+  9. "La place des batiments ne diminue pas si on a un batiment dessus : pas
+     de 10/5." CORRIGE : villages.slots ne descend jamais sous ce qui est
+     bati.
+ 10. (en cours de route) "Le T1, le terrain legerement deforme, j'aime
+     bien." FAIT : section 8 (la proposition S3 des frontieres naturelles).
+
+
+1. LE BUDGET EN CURSEURS (money.py, render_treasury.py)
+------------------------------------------------------
+  Impot       0 a 8 sicles pour cent villageois par mois ; stabilite -1,5 par
+              point (l'ancien "leger, moyen, lourd" = 2, 4, 7 points).
+  Solde, gages, presents aux familles, paie des batisseurs : 0 a 200 % du
+              tarif, par quarts. Au-dela de 100 %, chaque point rapporte deux
+              fois moins (money.eff) : solde 200 % = moral +7,5 (au lieu de
+              +5), fuyards x0,25 ; gages 200 % = metiers +15 %.
+  Sur l'ecran : une piste par ligne, la poignee, un trait au tarif (100 %),
+  - et + aux bouts, ce que la ligne rapporte ou coute chaque mois, ce
+  qu'elle fait ; on clique la piste ou on GLISSE la poignee (un ordre
+  "budget" seulement quand la valeur change : multijoueur sobre).
+  Vieilles parties : l'impot a crans et les interrupteurs se lisent (True =
+  100 %) ; rien n'est perdu.
+
+
+2. CE QUE L'ARGENT TOUCHE D'AUTRE (l'etude, et ce qui est fait)
+--------------------------------------------------------------
+  Deja : impot, mines, commerce, tribut des tributaires, peages, solde,
+  gages, presents aux familles, evenements.
+  Ajoute (0.9.0) :
+  - LA PAIE DES BATISSEURS (un curseur du budget) : 1,5 sicle par chantier
+    et par mois au tarif ; le chantier avance 30 % plus vite (systems
+    .BUILD_SPEED, VillageData.build_extra). L'IA paie quand son tresor
+    depasse sa reserve et un an de chantiers.
+  - LES PRESENTS EN SICLES aux autres peuples (ecran Peuples : 5, 15, 40
+    sicles) : pas besoin d'une bande a cote, des envoyes les portent ; un
+    peuple qui ne connait pas l'argent n'y voit que des parures (moitie
+    moins de relation) ; avec Biens de prestige, ils obligent. L'IA riche
+    (un tresor plus de deux fois sa reserve) en offre a ses voisins plus
+    faibles, au joueur aussi.
+  Pistes pour plus tard (non faites) : acheter du grain en famine chez un
+  partenaire ; debaucher un clan avec des sicles ; payer des guerriers
+  etrangers (mercenaires) ; une rancon pour un village pris.
+
+
+3. LES LOIS ET L'ECRAN DU PAYS (laws.py, render_country.py)
+-----------------------------------------------------------
+  Un onglet "Pays" (touche N), avec la premiere loi possible ; l'ecran du
+  pays : son nom, son suzerain, ses tributaires, sa confederation ; un
+  sous-onglet "Lois" (le seul pour l'instant).
+  Loi 1 : Paiement en argent (il faut Valeurs d'echange) : en vivres (par
+          defaut) / en argent (l'ancien interrupteur "commerce" du tresor).
+  Loi 2 : La base des nombres (il faut Nombres additifs) : dix, douze,
+          vingt, soixante, avec leurs effets ; la premiere fois, tout de
+          suite ; ensuite une reforme (40 de prestige, trois ans sans
+          l'avantage, une fois en 30 ans), deux clics. L'onglet Savoirs ›
+          Les nombres montre la base en resume et renvoie au pays.
+  Tribe.laws (sauve), ordre "law". L'IA : paiement en argent des qu'elle
+  a l'argent ; sa base comme avant.
+
+
+4. LE CLIC SUR UN PAYS (app.py)
+-------------------------------
+  Sans armee choisie (rien, ou un clan qui n'est pas une troupe), un clic
+  sur une bande, un village ou la zone d'un autre peuple ouvre l'ecran
+  Peuples sur lui. Un tributaire n'a pas de diplomatie a lui : c'est son
+  GRAND suzerain (chiefdom.top_lord : le haut de la chaine) qui s'ouvre, et
+  une ligne le dit. Avec une troupe choisie, le clic sur une bande reste
+  une attaque. Dans le brouillard, d'apres ce dont on se souvient.
+
+
+5. LES COULEURS DES PAYS ET LA CARTE DES SUZERAINS (look.py, globe_draw.py)
+-------------------------------------------------------------------------
+  look.country_color : libre, sa couleur ; tributaire, une nuance claire de
+  son grand suzerain (78 % de sa couleur, 22 % de la sienne, un peu
+  eclaircie) ; un autre suzerain : la nuance du nouveau ; libre a nouveau :
+  la sienne (tribe.color ne change jamais). Sur les zones, les villages,
+  les bandes, les noms, l'ecran Peuples.
+  La carte des SUZERAINS (touche U) : le terrain en gris, seuls les pays
+  de plusieurs peuples (un suzerain et ses tributaires, une confederation)
+  en couleurs, leurs frontieres de PAYS ; les peuples seuls s'effacent ; le
+  nom du pays au-dessus de tous ses villages ; une legende (les grands pays
+  que vous connaissez : tributaires, confederes, villages).
+
+
+6. LA CONFEDERATION (confed.py)
+-------------------------------
+  Un pacte "confederation" ; il faut que les deux connaissent
+  Confederation, une relation de 40, etre voisins (40 cases) ; au plus 4
+  peuples. Chacun reste maitre chez lui (chef, villages, greniers,
+  commerce, budget).
+  - Soutien a la guerre : leurs bandes viennent en renfort (helpers_of) et
+    l'IA compte leurs forces (force_at).
+  - Une diplomatie exterieure : une treve ou une alliance de l'un avec le
+    dehors engage tous les autres (et le joueur l'apprend) ; rompre, ou
+    raider le dehors, fait tomber la paix de tous ; un raid contre l'un est
+    un raid contre tous (relation -10 avec chaque confedere).
+  - Rompue pour qui devient tributaire de quelqu'un (make_vassal) ; "Rompre
+    le pacte" pour en sortir ; l'IA sans amis la quitte.
+  - Un seul pays sur la carte : la couleur du fondateur, des nuances pour
+    les autres ; sur la carte des suzerains, "Confédération des X".
+  - L'IA la propose a un allie de deux ans, tres ami (60), plutot si son
+    chef est paisible, marchand ou mefiant ; au joueur par une carte
+    ("Une offre de confederation"). L'ancienne "union" (absorber un petit
+    peuple) reste.
+
+
+7. LA MEMOIRE DU BROUILLARD (memory.py)
+---------------------------------------
+  Chaque joueur retient, la ou ses bandes voient, les lieux (village,
+  campement, cache : qui le tient, son suzerain d'alors, sa palissade) et
+  les zones d'influence. Dans le brouillard, la carte montre ce souvenir :
+  les villages restent (un peu eteints) a la couleur vue, leur nom aussi ;
+  les zones restent telles qu'elles etaient ; le survol dit "Vu la derniere
+  fois : il a pu changer depuis". Un village pris ou detruit loin des yeux
+  reste tel quel jusqu'au retour. Sauve avec la partie (et pour chaque
+  joueur en multijoueur) ; une vieille partie recoit d'office le souvenir
+  de ce qu'elle a explore.
+
+
+8. LE TERRAIN DEFORME (globe.py, globe_draw.py ; sa maquette T1)
+---------------------------------------------------------------
+  Avant de chercher la case sous un point, on le deplace un peu : un bruit
+  doux a deux echelles (ondulations d'une quinzaine de cases, dentelure de
+  trois), periodique autour du monde (pas de couture), borne a 0,32 case
+  (les villages et les bandes restent sur leur case). De loin : dans le
+  lancer de rayons ; de pres : chaque bord d'hexagone en trois, chaque
+  point deplace (un coin partage bouge pareil : pas de trou) ; le clic
+  suit la meme regle. Cotes, lisieres, cretes et zones deviennent
+  organiques. La partie ne change pas (dessin seul). Cout : +6 ms quand la
+  camera bouge, +38 ms pour l'image fine.
+
+
+9. VERIFICATIONS
+----------------
+  Tests : 590+ (test_confed, test_memory, test_map_clicks, curseurs, lois,
+  batisseurs, presents, couleurs, ecran du pays, souris partout, clics :
+  glisser un curseur, adopter une loi, la reforme en deux clics, N, U).
+  Empreinte identique (les parties temoins n'atteignent pas l'argent) ;
+  multijoueur (essai_reseau 6) identique.
+  SA partie (copie, an 50 -> 80, IA et robot) : voir la section 10.
+
+
+10. EQUILIBRAGE (sa partie, copie, an 50 ; robot joueur, IA)
+-----------------------------------------------------------
+  Premier reglage : trop de confederations (en 5 ans, 22 peuples sur 65,
+  presque toutes a 4) et des presents en sicles trop genereux (a des
+  peuples lointains, 300 vivres de valeur) : les combats tombaient a 58 en
+  20 ans (0.8.0 : 85). Corrige : il faut que les DEUX connaissent
+  Confederation ; l'IA ne la propose qu'a un allie de deux ans, relation
+  60, chance /3 ; ses presents en sicles vont a qui elle pourrait aussi
+  nourrir (une bande a portee), 5 sicles (100 vivres).
+  Apres (15 ans, an 50 -> 65) :
+                         0.8.0     0.9.0
+    combats              77        66   (sans confederations : 66 ; le
+                                         hasard d'un essai : +-10)
+    tributaires          34        33
+    confederations       -         6 (2 a 4 peuples, 16 peuples)
+    population           14 400    15 100
+    tresor moyen         164       152
+  L'IA paie ses batisseurs (9 mois sur 24, tous peuples) et offre des
+  sicles (8 mois). Rien ne s'emballe : pas de tresor qui gonfle, les
+  confederations restent petites.

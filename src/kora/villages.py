@@ -310,7 +310,9 @@ def pull_down_monument(state, site) -> bool:
 def slots(state, site) -> int:
     band = band_of(state, site)
     pop = band.population if band is not None else 0
-    return min(len(BUILDINGS), BASE_SLOTS + pop // SLOT_POP)
+    # Un batiment garde sa place : la capacite ne descend jamais sous ce qui
+    # est bati (un village qui perd du monde n'affiche pas 10/5).
+    return max(min(len(BUILDINGS), BASE_SLOTS + pop // SLOT_POP), used_slots(site))
 
 
 def used_slots(site) -> int:
@@ -424,6 +426,12 @@ def _advance_works(state, site, band) -> None:
         return
     bid, left = job
     left -= 1
+    # Des batisseurs payes (money.py) : du travail en plus, semaine apres semaine.
+    extra = site.data.build_extra + systems.total(systems.BUILD_SPEED, state, site)
+    if extra >= 1.0 and left > 0:
+        left -= 1
+        extra -= 1.0
+    site.data.build_extra = round(extra, 4) if left > 0 else 0.0
     if left > 0:
         site.data.build = [bid, left]
         return

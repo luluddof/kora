@@ -36,7 +36,7 @@ from src.kora.world import (
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.types import stay_order
 from src.kora.vision import vision_of
-from src.kora import chiefdom, chiefs, diplo, goods, places, sites, systems, tech, villages
+from src.kora import chiefdom, chiefs, confed, diplo, goods, places, sites, systems, tech, villages
 from src.kora.bands import gain_prestige, max_bands_of, set_goto, split_band, stock_max, tribe_band_count
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
@@ -617,6 +617,9 @@ def _eff_pact(state, inst, tribe, band, *args) -> None:
         elif what == "protection":
             chiefdom.make_vassal(state, inst.other, tribe.id, "protection")
             diplo.add_mod(state, inst.other, tribe.id, "protection", 5)
+        elif what == "confederation":
+            if not confed.block(state, inst.other, tribe.id):
+                confed.form(state, inst.other, tribe.id)
 
 
 def _eff_conquest(state, inst, tribe, band, *args) -> None:
@@ -1000,7 +1003,7 @@ EFFECT_TEXT = {
     "tech_progress_id": lambda a: f"{_tech_name(a[0])} avance de {round(a[1] * 100)} %",
     "learn_boost": lambda a: f"le savoir en cours avance de {round(a[0] * 100)} %",
     "reveal": lambda a: "une contree lointaine apparaît sur la carte",
-    "pact": lambda a: {"treve": "trêve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : échanges chaque mois", "protection": "vous devenez leurs tributaires (une part de vos réserves chaque mois ; vous les suivez à la guerre)"}.get(a[0], a[0]),
+    "pact": lambda a: {"treve": "trêve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : échanges chaque mois", "protection": "vous devenez leurs tributaires (une part de vos réserves chaque mois ; vous les suivez à la guerre)", "confederation": "confédération : un seul pays au dehors (paix et guerre partagées), chacun maître chez soi"}.get(a[0], a[0]),
     "conquest": lambda a: {"soumettre": "ils deviennent vos tributaires : une part de leurs réserves chaque mois, ils vous suivent à la guerre", "piller": "champs brûlés, grain pris, un bâtiment peut-être perdu"}.get(a[0], a[0]),
     "casus": lambda a: "ils pourront vous raider sans trahir",
     "stock_pct": lambda a: f"{round(a[0] * 100)} % du grenier" if a[0] < 0 else f"+{round(a[0] * 100)} % au grenier",
@@ -1274,7 +1277,7 @@ def resolve(state, inst: Instance, index: int) -> str:
 
 # Les propositions d'un peuple a un autre (diplo) : si elles viennent d'un
 # joueur, il apprend la reponse.
-OFFERS = ("offre_treve", "offre_alliance", "offre_commerce", "exige_tribut")
+OFFERS = ("offre_treve", "offre_alliance", "offre_commerce", "exige_tribut", "offre_protection", "offre_confederation")
 
 
 def _log(state, tid: int, kind, text: str, where=None) -> None:

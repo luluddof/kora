@@ -17,6 +17,7 @@ from src.kora import (
     events,
     influence,
     learning,
+    memory,
     places,
     population,
     records,
@@ -60,7 +61,7 @@ from src.kora.gamestate import (  # noqa: F401
     pov_of,
     seen_of,
 )
-from src.kora.vision import enemy_band_visible, is_explored, is_visible, recompute_vision
+from src.kora.vision import enemy_band_visible, is_explored, is_visible, recompute_vision, vision_of
 from src.kora.peoples import (
     CULTURES,
     LEGACY_COLOR,
@@ -160,6 +161,18 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
         owner = villages.field_site(state, placed)
         if owner is not None and (visible or owner.tribe_id == me):
             site_info = [f"Champ de {places.name(owner)}"]
+    zone = influence.zone_lines(state, placed)
+    if not visible:
+        # Le brouillard : ce qu'on en a vu la derniere fois (memory.py).
+        seen = memory.site_at(state, placed, me)
+        if site_info is None and seen is not None:
+            _sid, (_q, _r, kind, tid, _w, _lord) = seen
+            word = {"village": "Village", "camp": "Campement", "cache": "Cache"}.get(kind, "Lieu")
+            who = state.tribes[tid].name if tid in state.tribes else "?"
+            site_info = [f"{word} des {who}", "Vu la dernière fois : il a pu changer depuis."]
+        vis = vision_of(state, me)
+        mem = vis.zones.get(state.world._index(placed)) if vis is not None else None
+        zone = [f"Zone des {state.tribes[mem[0]].name} (votre dernière visite)"] if mem and mem[0] in state.tribes else []
     return {
         "hex": placed,
         "terrain": terrain,
@@ -170,7 +183,7 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
         "food": food,
         "band": band_info,
         "winter_weeks": local_winter_weeks(state.world, placed),
-        "zone": influence.zone_lines(state, placed),
+        "zone": zone,
         "site": site_info,
         "resources": state.world.resource_lines(placed) if getattr(state.world, "resources", None) else [],
     }
@@ -897,6 +910,7 @@ def new_game(
     if minor_peoples:
         add_minor_peoples(st, minor_peoples)
     recompute_vision(st)
+    memory.update(st)
     _note_spotted_enemies(st)
     learning.update_practice(st, count=False)
     return st
@@ -1005,6 +1019,7 @@ def _week(state: GameState, battle_days: int) -> None:
     learning.update_learning(state)
     tech.invalidate()
     recompute_vision(state)
+    memory.update(state)
     _note_spotted_enemies(state)
     decide_ai(state)
 

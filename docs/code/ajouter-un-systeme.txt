@@ -1,6 +1,7 @@
 AJOUTER UN SYSTEME A KORA (et garder le jeu coherent)
 =====================================================
-Date : 2026-10-03 (mis a jour : etages, imports, fiche du village, Play).
+Date : 2026-10-03 (mis a jour : etages, imports, fiche du village, Play ;
+0.9.0 : les lois, la confederation, la memoire du brouillard).
 A lire avant d'ajouter une fonctionnalite. Les regles ci-dessous sont
 VERIFIEES par tests/test_architecture.py : un oubli fait casser un test qui
 dit quoi faire.
@@ -25,8 +26,9 @@ bas au plus haut :
   4  savoirs, gens    tech (l'arbre et ses effets), units, vision, population
   5  LES SYSTEMES     learning (comment on apprend), bands (les outils des
                       bandes), chiefs, sites, influence, production, diplo,
-                      goods, money, numbers, chiefdom, villages, battle,
-                      situations, events, events_data
+                      goods, money, approach, numbers, laws, chiefdom,
+                      confed, memory, villages, battle, situations, events,
+                      events_data
   6  l'IA             ai_war, orders, puis ai
   7  la semaine       sim
   8  les ordres       commands
@@ -52,6 +54,11 @@ bas au plus haut :
 
 2. LA RECETTE (exemple : un systeme de LOIS)
 --------------------------------------------
+  (Les lois existent depuis 0.9.0 : laws.py. UNE LOI NOUVELLE : une Law de
+  plus dans laws._build (ses options, ce qu'il faut savoir : known), son
+  effet lu la ou il agit (laws.get(tribe, "id")), son IA ; l'ecran du pays
+  la montre d'office. La recette ci-dessous reste celle d'un systeme
+  entier.)
   a) Le module : src/kora/lois.py, a l'etage 5 (l'ajouter a LAYERS). En
      tete, sa docstring (ce que fait le systeme, ses chiffres) et ses
      constantes ; "N'importe pas pygame."
@@ -72,7 +79,7 @@ bas au plus haut :
   c) Son mois : une ligne dans systems.MONTHLY, a sa place dans l'ordre
      ("lois.monthly"). Ce qu'il fait a la stabilite, au moral, aux fuyards,
      aux reserves, a la production : une ligne dans systems.STABILITY,
-     ARMY_MORALE, FLEE, STOCK_WEEKS, CRAFT_OUTPUT. Ses reactions aux bandes
+     ARMY_MORALE, FLEE, STOCK_WEEKS, BUILD_SPEED, CRAFT_OUTPUT. Ses reactions aux bandes
      (BAND_SPLIT, BAND_MERGE, MERGE_ALLOWED), aux clans emancipes
      (EMANCIPATED), ce qu'il dit d'un savoir (TECH_LINES). La fonction
      attendue par chaque tableau est decrite en tete de systems.py ; un
@@ -111,7 +118,12 @@ bas au plus haut :
        - un panneau ou un onglet : sa mise en page PURE dans layout.py (ou
          render_<x>.py : <x>_layout, <x>_hit, testables sans fenetre) et
          son dessin dans render_<x>.py ;
-       - un GRAND ECRAN (comme le commerce, le tresor) : une ligne dans
+       - un mode de carte : layout.MAP_MODES (et sa touche) ; la couleur
+         d'un peuple sur la carte : look.country_color (jamais color_of :
+         un tributaire a la nuance de son suzerain) ; ce qu'on montre dans
+         le brouillard : la memoire du joueur (memory.py), jamais l'etat
+         vivant ;
+       - un GRAND ECRAN (comme le commerce, le tresor, le pays) : une ligne dans
          screens.SCREENS et sa methode de clic dans app.Play (screen_clicks) ;
          ouvrir, fermer, Echap, la souris : deja faits ;
        - une touche : Play._on_key ; un clic sur la carte : Play._on_click ;

@@ -141,8 +141,11 @@ def test_lonlat_wraps_to_map_columns():
     assert 9 <= row <= 11
     west, _ = lonlat_to_colrow(-math.pi + 0.01, 0.0, 40, 20)
     east, _ = lonlat_to_colrow(math.pi - 0.01, 0.0, 40, 20)
-    assert west <= 2
-    assert east >= 37
+    # Le terrain deforme (globe.warp) peut pousser le point d'une case, de
+    # l'autre cote de la couture : la colonne 39 touche la colonne 0.
+    assert min(west, 40 - west) <= 2
+    assert min(east, 40 - east) <= 3
+    assert min(abs(west - east), 40 - abs(west - east)) <= 3
 
 
 def test_click_and_drawing_agree_on_the_hex_under_a_point():
@@ -160,3 +163,19 @@ def test_click_and_drawing_agree_on_the_hex_under_a_point():
     rows, cols = planet.cells_at(np.array(lons), np.array(lats))
     for lon, lat, row, col in zip(lons, lats, rows.tolist(), cols.tolist()):
         assert lonlat_to_colrow(lon, lat, 40, 20) == (col, row)
+
+
+def test_the_warped_terrain_keeps_each_hex_on_its_centre_and_has_no_seam():
+    from src.kora.globe import WARP_MAX, lonlat_from_offset, warp
+
+    for width, height in ((40, 20), (400, 200)):
+        for col in range(0, width, 7):
+            for row in range(1, height - 1, 3):
+                lon, lat = lonlat_from_offset(col, row, width, height)
+                assert lonlat_to_colrow(lon, lat, width, height) == (col, row)
+        # Pas de couture : le bruit fait le tour du monde.
+        a = warp(-0.5, 5.0, width)
+        b = warp(width - 0.5, 5.0, width)
+        assert abs(a[0] - b[0]) < 1e-9 and abs(a[1] - b[1]) < 1e-9
+    dx, dy = warp(3.3, 7.1, 400)
+    assert (dx * dx + (dy * 0.87) ** 2) ** 0.5 <= WARP_MAX + 1e-6

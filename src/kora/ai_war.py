@@ -14,7 +14,7 @@ Un raid en cours est annule si la cible s'est renforcee entre-temps.
 
 from __future__ import annotations
 
-from src.kora import battle, chiefs, diplo
+from src.kora import battle, chiefs, confed, diplo
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
 from src.kora.battle import band_force, defense_force, side_force
@@ -45,7 +45,7 @@ def force_at(state: GameState, bands: list[Band], spot) -> float:
         if ally.tribe_id == tribe_id:
             if not chiefs.helps(state, ally):
                 continue
-        elif not diplo.allied(state, ally.tribe_id, tribe_id):
+        elif not (diplo.allied(state, ally.tribe_id, tribe_id) or confed.same(state, ally.tribe_id, tribe_id)):
             continue
         force += band_force(state, ally)
     return force

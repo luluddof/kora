@@ -262,15 +262,16 @@ def test_numbers_and_budget_orders_are_the_same_on_both_machines():
             tech.invalidate()
         host.issue(make(1, "base", 60))
         client.issue(make(2, "base", 12))
-        host.issue(make(1, "budget", "tax", 2))
-        client.issue(make(2, "budget", "commerce", True))
-        client.issue(make(2, "budget", "tax", 1))
+        host.issue(make(1, "budget", "impot", 4))
+        client.issue(make(2, "law", "paiement", "argent"))
+        client.issue(make(2, "budget", "solde", 1.75))
         host.set_speed(5)
         assert _until(lambda: hs.tick_count >= 12, lambda: host.pump(0.05), lambda: client.pump(0.05), timeout=30)
         host.toggle_pause()
         assert _until(lambda: cs.tick_count == hs.tick_count, lambda: host.pump(0.05), lambda: client.pump(0.05))
         assert cs.tribes[1].base == 60 and cs.tribes[2].base == 12
-        assert money.budget(cs.tribes[1])["tax"] == 2 and money.budget(cs.tribes[2])["commerce"] is True
+        assert money.budget(cs.tribes[1])["impot"] == 4 and cs.tribes[2].laws["paiement"] == "argent"
+        assert money.budget(cs.tribes[2])["solde"] == 1.75
         assert cs.tribes[1].money_hist
         assert session.sync_digest(hs) == session.sync_digest(cs)
         assert client.resyncs == 0

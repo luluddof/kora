@@ -69,22 +69,22 @@ PEACE = ("paisible", "marchand", "protecteur", "mefiant", "conquerant", "affame"
 #   feast           donner la grande fete plus tot (grenier moins plein)
 #   alliance_rel, commerce_rel   la relation qu'il faut pour proposer
 PROFILES = {
-    "conquerant": {"raid": 2.0, "army": 2.0, "tribute": 2.0, "protect": 0.6, "gift": 0.3, "commerce_rel": 10},
+    "conquerant": {"raid": 2.0, "army": 2.0, "tribute": 2.0, "protect": 0.6, "gift": 0.3, "commerce_rel": 10, "confed": 0.4},
     "protecteur": {"raid": 0.5, "army": 0.8, "tribute": 0.4, "protect": 3.0, "gift": 2.0, "feast": 1.5},
-    "marchand": {"raid": 0.5, "army": 0.7, "tribute": 0.5, "gift": 1.0, "commerce_rel": -15},
-    "paisible": {"raid": 0.3, "army": 0.6, "tribute": 0.2, "protect": 0.5},
-    "mefiant": {"raid": 0.7, "army": 1.3, "tribute": 0.3, "protect": 0.5, "alliance_rel": -15},
+    "marchand": {"raid": 0.5, "army": 0.7, "tribute": 0.5, "gift": 1.0, "commerce_rel": -15, "confed": 1.5},
+    "paisible": {"raid": 0.3, "army": 0.6, "tribute": 0.2, "protect": 0.5, "confed": 1.5},
+    "mefiant": {"raid": 0.7, "army": 1.3, "tribute": 0.3, "protect": 0.5, "alliance_rel": -15, "confed": 1.3},
     "affame": {"raid": 2.5, "army": 1.5, "tribute": 1.5, "protect": 0.2, "gift": 0.0},
     "soumis": {"raid": 0.5, "army": 0.8, "tribute": 0.2, "protect": 0.3},
     "retif": {"raid": 1.0, "army": 1.2, "tribute": 0.5, "protect": 0.3, "alliance_rel": -10},
 }
 # Ce que le peuple repond, selon l'approche de son chef (diplo.evaluate).
 ACCEPT = {
-    "conquerant": {"treve": -10, "tribut": -15, "proteger": -15},
+    "conquerant": {"treve": -10, "tribut": -15, "proteger": -15, "confederer": -10},
     "protecteur": {"treve": 10, "alliance": 10, "commerce": 5, "proteger": -10},
     "marchand": {"commerce": 15, "treve": 10, "alliance": 5},
-    "paisible": {"treve": 15, "tribut": 5, "proteger": 5},
-    "mefiant": {"alliance": 15, "proteger": 15, "tribut": 10, "treve": 10},
+    "paisible": {"treve": 15, "tribut": 5, "proteger": 5, "confederer": 10},
+    "mefiant": {"alliance": 15, "proteger": 15, "tribut": 10, "treve": 10, "confederer": 10},
     "affame": {"treve": -5, "proteger": 10},
     "soumis": {"tribut": 5},
     "retif": {"proteger": -20, "alliance": 10},

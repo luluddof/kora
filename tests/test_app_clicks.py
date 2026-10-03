@@ -37,6 +37,23 @@ def _click(at, button=1):
     ]
 
 
+def _track_at(r, key, frac):
+    tx, ty, tw, th = r.treasury_hits["sliders"][key]["track"]
+    return (int(tx + tw * frac), ty + th // 2)
+
+
+def _press_at(r, key, frac):
+    return [pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=_track_at(r, key, 0.1), button=1)]
+
+
+def _drag_to(r, key, frac):
+    return [pygame.event.Event(pygame.MOUSEMOTION, pos=_track_at(r, key, frac), rel=(0, 0), buttons=(1, 0, 0))]
+
+
+def _release(r, key, frac):
+    return [pygame.event.Event(pygame.MOUSEBUTTONUP, pos=_track_at(r, key, frac), button=1)]
+
+
 def _play(monkeypatch, tmp_path, st, steps):
     """Joue `steps` (une fonction par image : renderer -> evenements) puis
     quitte. Rend le renderer."""
@@ -83,9 +100,12 @@ def test_the_big_screens_open_close_and_answer_clicks(monkeypatch, tmp_path):
         lambda r: [],
         # G ouvre le tresor.
         lambda r: _key(pygame.K_g),
-        lambda r: need(r.treasury_hits, "le tresor s'ouvre avec G") or _click(_center(r.treasury_hits["taxes"][2])),
-        lambda r: need(money.budget(st.tribes[1])["tax"] == 2, "impot moyen") or _click(_center(r.treasury_hits["toggles"]["dons"]["btn"])),
-        lambda r: need(money.budget(st.tribes[1])["dons"] is True, "presents") or _key(pygame.K_m),
+        lambda r: need(r.treasury_hits, "le tresor s'ouvre avec G") or _click(_center(r.treasury_hits["sliders"]["impot"]["plus"])),
+        lambda r: need(money.budget(st.tribes[1])["impot"] == 1, "+ : un point d'impot") or _press_at(r, "dons", 0.5),
+        # Glisser le curseur des presents jusqu'a la moitie de la piste : 100 %.
+        lambda r: _drag_to(r, "dons", 0.5),
+        lambda r: _release(r, "dons", 0.5),
+        lambda r: need(money.budget(st.tribes[1])["dons"] == 1.0, money.budget(st.tribes[1])["dons"]) or _key(pygame.K_m),
         # M ouvre le commerce et ferme le tresor.
         lambda r: need(r.trade_hits and not r.treasury_hits, "M : commerce seul") or _key(pygame.K_ESCAPE),
         lambda r: need(not r.trade_hits and not r.treasury_hits, "Échap ferme") or _click(_center(r.side_hits["tabs"]["tresor"])),
@@ -94,11 +114,15 @@ def test_the_big_screens_open_close_and_answer_clicks(monkeypatch, tmp_path):
         lambda r: seen.update(closed=not r.treasury_hits) or _click(_center(r.side_hits["tabs"]["tresor"])),
         lambda r: need(r.treasury_hits, "rouvert") or _click(_center(r.treasury_hits["close"])),
         lambda r: need(not r.treasury_hits, "Fermer") or _key(pygame.K_t),
-        # Les savoirs : l'onglet des nombres, une base en deux clics.
+        # Les savoirs, l'onglet des nombres : la base est une loi (Pays).
         lambda r: _click(_center(r.side_hits["items"]["ttab:nombres"])),
-        lambda r: _click(_center(r.side_hits["items"]["nbase:60"])),
-        lambda r: need(st.tribes[1].base == 0, "un clic ne suffit pas") or _click(_center(r.side_hits["items"]["nbase:60"])),
-        lambda r: need(st.tribes[1].base == 60, "deux clics : base soixante") or [],
+        lambda r: _click(_center(r.side_hits["items"]["nlaws"])),
+        lambda r: need(r.country_hits, "le bouton ouvre le pays") or _click(_center(r.country_hits["rows"]["base"]["cards"]["60"]["btn"])),
+        lambda r: need(st.tribes[1].base == 0, "un clic ne suffit pas") or _click(_center(r.country_hits["rows"]["base"]["cards"]["60"]["btn"])),
+        lambda r: need(st.tribes[1].base == 60, "deux clics : base soixante") or _click(_center(r.country_hits["rows"]["paiement"]["cards"]["argent"]["btn"])),
+        lambda r: need(st.tribes[1].laws.get("paiement") == "argent", "la loi du paiement") or _key(pygame.K_n),
+        lambda r: need(not r.country_hits, "N ferme le pays") or _key(pygame.K_n),
+        lambda r: need(r.country_hits, "N ouvre le pays") or [],
     ]
     _play(monkeypatch, tmp_path, st, steps)
     assert seen["closed"], "un clic hors du tresor le ferme"

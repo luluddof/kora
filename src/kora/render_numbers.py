@@ -55,49 +55,41 @@ def draw(r, state, lay: dict, ui: dict | None) -> None:
     else:
         sub = f"Changer : une réforme ({numbers.REFORM_PRESTIGE} de prestige, trois ans sans l'avantage, une fois tous les 30 ans)."
     theme.text(screen, sub, "mini", C.cendre, (lx, ly + 30), lw)
-    pending = ui.get("base_confirm")
-    for base in numbers.BASE_ORDER:
-        rects = page["bases"][base]
-        name, about, _eff = numbers.BASES[base]
-        mine = data["base"] == base
-        why = data["blocks"][base]
-        if mine:
-            top, bot, edge = (78, 58, 30), (52, 38, 21), C.ocre_jaune
-        elif data["numbers"] and not why:
-            top, bot, edge = (32, 58, 54), (20, 38, 35), C.savoir
-        else:
-            top, bot, edge = (36, 28, 22), (26, 20, 16), C.bois
-        _card(screen, rects["card"], top, bot, edge)
-        cx, cy, cw, ch = rects["card"]
+    # La base est une LOI : elle se choisit dans l'ecran du pays (Pays, Lois).
+    cards = [page["bases"][b]["card"] for b in numbers.BASE_ORDER]
+    x0, y0 = cards[0][0], cards[0][1]
+    x1 = max(c[0] + c[2] for c in cards)
+    y1 = max(c[1] + c[3] for c in cards)
+    card = (x0, y0, x1 - x0, y1 - y0)
+    base = data["base"]
+    edge = C.ocre_jaune if base else C.bois
+    _card(screen, card, (52, 40, 26) if base else (36, 28, 22), (36, 27, 18) if base else (26, 20, 16), edge)
+    btn = page["bases"][numbers.BASE_ORDER[0]]["btn"]
+    if base:
         big = theme.font("chiffre_grand").render(str(base), True, edge)
-        screen.blit(big, (cx + 12, cy + (ch - big.get_height()) // 2))
-        tx = cx + 64
-        room = rects["btn"][0] - tx - 10
-        theme.text(screen, name, "petit_gras", C.os, (tx, cy + 5), room)
-        eff = tech.effect_lines(tech.math_effect(f"base:{base}"))
-        yy = cy + 25
-        if ch >= 74:
-            theme.text(screen, about, "mini", C.lin, (tx, yy), room)
-            yy += 17
-        for line in eff:
-            if yy + 16 > cy + ch:
-                break
-            theme.text(screen, line, "mini", GREEN, (tx, yy), room)
+        screen.blit(big, (x0 + 14, y0 + 12))
+        tx = x0 + 24 + big.get_width()
+        name, about, _eff = numbers.BASES[base]
+        theme.text(screen, f"Votre base : {name.lower()}", "petit_gras", C.os, (tx, y0 + 10), btn[0] - tx - 10)
+        yy = y0 + 32
+        theme.text(screen, about, "mini", C.lin, (tx, yy), card[2] - (tx - x0) - 12)
+        yy += 18
+        for line in tech.effect_lines(tech.math_effect(f"base:{base}")):
+            theme.text(screen, line, "mini", GREEN, (tx, yy), card[2] - (tx - x0) - 12)
             yy += 16
-        btn = rects["btn"]
-        if mine:
-            label, on = ("Votre base" if not data["reform_weeks"] else "En réforme"), False
-        elif pending == base and not why:
-            label, on = ("Confirmer la réforme" if data["base"] else "Confirmer ce choix"), True
-        else:
-            label, on = ("Réformer" if data["base"] else "Choisir"), bool(data["numbers"]) and not why
-        hover = _hover(btn, mx, my)
-        theme.button(screen, btn, label, "principal" if pending == base and on else "second", on, hover and on, active=mine)
-        if hover and why and not mine:
-            tips.append(([(why, C.alerte)], btn))
-        elif hover and on:
-            hint = "Un second clic confirme." if pending != base else "La base est presque définitive."
-            tips.append(([(name, C.os, "petit_gras"), (about, C.lin)] + [(e, GREEN) for e in eff] + [(hint, C.cendre)], btn))
+    else:
+        tx = x0 + 14
+        theme.text(screen, "Pas encore de base", "petit_gras", C.os, (tx, y0 + 10), btn[0] - tx - 10)
+        yy = y0 + 32
+        for b in numbers.BASE_ORDER:
+            name, _about, _eff = numbers.BASES[b]
+            eff = " · ".join(tech.effect_lines(tech.math_effect(f"base:{b}")))
+            theme.text(screen, f"{name} : {eff}", "mini", C.lin, (tx, yy), card[2] - 28)
+            yy += 17
+    theme.text(screen, "La base des nombres est une loi du pays : elle se choisit, ou se réforme, dans l'écran Pays, onglet Lois [N].", "mini", C.cendre, (x0 + 14, y1 - 22), card[2] - 28)
+    hover = _hover(btn, mx, my)
+    on = bool(data["numbers"])
+    theme.button(screen, btn, "Pays : les lois [N]", "principal" if on and not base else "second", on, hover and on)
     # --- les calculateurs ------------------------------------------------------
     cx, cy, cw, ch = page["calc"]
     _card(screen, page["calc"], (40, 31, 24), (28, 21, 16), C.bois)

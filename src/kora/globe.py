@@ -174,6 +174,66 @@ def hit_globe(
 HEX_ROW_SHIFT = 1.0 / 6.0
 HEX_ROW_SQUASH = 0.87
 
+# Un terrain sans nid d'abeille (sa maquette T1) : avant de chercher la case
+# sous un point, on le deplace un peu, selon un bruit doux a deux echelles
+# (de larges ondulations, une dentelure fine). Cotes, lisieres et zones
+# deviennent organiques ; la partie, elle, reste sur sa grille. Le meme
+# deplacement sert au dessin (globe_draw) et au clic (on clique ce qu'on
+# voit). Il ne depasse jamais WARP_MAX case : le point ou se posent les
+# villages et les bandes reste sur sa case.
+# (frequence en cases, amplitude en cases, graine), trois ondes par echelle.
+WARP_SCALES = ((0.45, 0.26, 1), (2.2, 0.24, 3))
+WARP_WAVES = 3
+WARP_MAX = 0.32
+_WARP_TERMS: dict = {}
+
+
+def _warp_terms(width: int) -> tuple:
+    """Les ondes du bruit, pour une carte de cette largeur : leur pas en
+    colonnes tombe juste sur le tour du monde (pas de couture)."""
+    hit = _WARP_TERMS.get(width)
+    if hit is not None:
+        return hit
+    out = []
+    for axis in (0, 1):
+        terms = []
+        for freq, amp, seed in WARP_SCALES:
+            rnd = _Lcg(seed * 7 + axis)
+            for k in range(WARP_WAVES):
+                a, b, p = rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(0.0, 6.2832)
+                f = freq * (1.6 ** k)
+                cycles = round(a * f * width / (2.0 * math.pi))
+                terms.append((2.0 * math.pi * cycles / max(1, width), b * f, p, amp / (1.6 ** k) / 1.6))
+        out.append(tuple(terms))
+    _WARP_TERMS[width] = tuple(out)
+    return _WARP_TERMS[width]
+
+
+class _Lcg:
+    """Un petit hasard fixe (le meme sur toutes les machines)."""
+
+    def __init__(self, seed: int) -> None:
+        self.v = (seed * 2654435761 + 12345) & 0xFFFFFFFF
+
+    def uniform(self, lo: float, hi: float) -> float:
+        self.v = (self.v * 1664525 + 1013904223) & 0xFFFFFFFF
+        return lo + (hi - lo) * self.v / 0xFFFFFFFF
+
+
+def warp(xf, yf, width: int, sin=math.sin, sqrt=math.sqrt, minimum=min):
+    """Le deplacement (dx, dy), en colonnes et en rangees, du point (xf, yf).
+    Marche sur des nombres (math) ou des tableaux (numpy : sin=np.sin...)."""
+    tx, ty = _warp_terms(width)
+    dx = 0.0
+    for ax, by, p, w in tx:
+        dx = dx + w * sin(ax * xf + by * yf + p)
+    dy = 0.0
+    for ax, by, p, w in ty:
+        dy = dy + w * sin(ax * xf + by * yf + p)
+    m = sqrt(dx * dx + dy * dy) + 1e-9
+    k = minimum(1.0, WARP_MAX / m)
+    return dx * k, dy * k / HEX_ROW_SQUASH
+
 
 def lonlat_to_colrow(
     lon: float, lat: float, width: int, height: int
@@ -183,6 +243,8 @@ def lonlat_to_colrow(
     if height <= 1:
         return int(math.floor(xf + 0.5)) % width, 0
     yf = ((math.pi / 2.0) - lat) * ((height - 1) / math.pi)
+    dx, dy = warp(xf, yf, width)
+    xf, yf = xf + dx, yf + dy
     r0 = max(0, min(height - 1, int(math.floor(yf))))
     best = None
     for row in (r0, min(r0 + 1, height - 1)):

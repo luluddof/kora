@@ -47,8 +47,8 @@ def page_layout(area) -> dict:
 
 
 def numbers_items(lay: dict) -> dict:
-    """Les boutons de l'onglet des nombres (nbase:<base>)."""
-    return {f"nbase:{b}": r["btn"] for b, r in lay["bases"].items()}
+    """Le bouton de l'onglet des nombres : la base se choisit dans Pays, Lois."""
+    return {"nlaws": lay["bases"][10]["btn"]}
 
 
 def panel_box(width: int, height: int, panel: str, tab_w: int = 66) -> tuple:
@@ -239,6 +239,7 @@ def band_card_layout(width: int, height: int, n_lines: int) -> dict:
 MAP_MODES = (
     ("relief", "Relief"),
     ("zones", "Influence [Z]"),
+    ("suzerains", "Suzerains [U]"),
     ("ressources", "Ressources [R]"),
     ("commerce", "Commerce [X]"),
 )
@@ -551,15 +552,25 @@ COMMERCE_TAB = ("commerce", "Commerce")
 TREASURY_TAB = ("tresor", "Trésor")
 
 
-def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False) -> tuple:
-    return SIDE_TABS + ((ARMY_TAB,) if army else ()) + ((COMMERCE_TAB,) if commerce else ()) + ((TREASURY_TAB,) if treasury else ())
+# Le pays et ses lois (render_country.py) : avec la premiere loi possible.
+COUNTRY_TAB = ("pays", "Pays")
 
 
-def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None, tech_tab: str = "arbre", treasury: bool = False) -> dict:
+def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False, country: bool = False) -> tuple:
+    return (
+        SIDE_TABS
+        + ((ARMY_TAB,) if army else ())
+        + ((COMMERCE_TAB,) if commerce else ())
+        + ((TREASURY_TAB,) if treasury else ())
+        + ((COUNTRY_TAB,) if country else ())
+    )
+
+
+def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None, tech_tab: str = "arbre", treasury: bool = False, country: bool = False) -> dict:
     tab_w, gap = TAB_W, 6
     tab_x = width - tab_w - 4
     top = HUD_HEIGHT + 44
-    shown = side_tabs(army, commerce, treasury)
+    shown = side_tabs(army, commerce, treasury, country)
     n = len(shown)
     tab_h = max(54, min(TAB_H, (height - top - 8 - gap * (n - 1)) // n))
     tabs = {key: (tab_x, top + i * (tab_h + gap), tab_w, tab_h) for i, (key, _l) in enumerate(shown)}

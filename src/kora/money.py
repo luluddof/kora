@@ -5,9 +5,13 @@ en sicles : d'abord des valeurs - perles, coquillages, haches polies -,
 puis, avec Argent pese, le metal des collines, pese a la balance). Chaque
 mois, son BUDGET (Tribe.budget) :
 
+  Chaque ligne se regle par un CURSEUR : l'impot de 0 a 8 sicles pour cent
+  villageois, la solde, les gages, les presents et les batisseurs de 0 a
+  200 % du tarif (au-dela de 100 %, chaque point rapporte deux fois moins).
+
   RENTREES
-    l'impot en argent  une part sur chaque villageois (Leger, Moyen, Lourd) :
-                       la stabilite baisse d'autant ; Argent pese : +25 %
+    l'impot en argent  une part sur chaque villageois : la stabilite baisse
+                       de 1,5 par point ; Argent pese : +25 %
     les mines          les mineurs d'argent (goods.py : "mineurs", sur les
                        filons des collines : resources.derive_silver)
     le commerce        les routes vendues en argent (au lieu des vivres) quand
@@ -24,6 +28,10 @@ mois, son BUDGET (Tribe.budget) :
     les presents       aux familles qui comptent (chiefdom.py) : 3 % du tresor
                        par mois (au moins un sicle par famille) ; leur faveur
                        monte, la stabilite des villages aussi (+3)
+    les batisseurs     payer les chantiers des villages : 1,5 sicle par
+                       chantier et par mois ; il avance 30 % plus vite
+  Ailleurs : les presents en sicles aux autres peuples (diplo, "present"),
+  le commerce paye en argent (la loi "Paiement en argent", laws.py).
 
 L'IA tient son budget selon son chef. Tout passe par commands.py ("budget").
 N'importe pas pygame.
@@ -34,14 +42,22 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.types import Hex
 from src.kora.gamestate import is_human, note
-from src.kora import chiefdom, chiefs, goods, influence, tech
+from src.kora import chiefdom, chiefs, goods, influence, laws, tech
 
 # Vivres pour un sicle (payer une route en argent, convertir un peage).
 VPS = 20.0
-TAX = {0: 0.0, 1: 0.02, 2: 0.04, 3: 0.07}
-TAX_STAB = {0: 0, 1: -3, 2: -6, 3: -10}
-TAX_NAMES = {0: "Aucun", 1: "Léger", 2: "Moyen", 3: "Lourd"}
+# L'impot : des sicles pour cent villageois par mois (le curseur) ; la
+# stabilite des villages baisse de TAX_STAB par point.
+TAX_MAX = 8
+TAX_STAB = 1.5
+# L'ancien impot a quatre crans (vieilles parties) -> points.
+OLD_TAX = {0: 0, 1: 2, 2: 4, 3: 7}
 SILVER_TAX = 1.25
+# Solde, gages, presents, batisseurs : de 0 a 200 % du tarif, par quarts.
+PAY_MAX = 2.0
+PAY_STEP = 0.25
+CHANTIER = 1.5
+CHANTIER_SPEED = 0.3
 SOLDE = 0.08
 GAGE = 0.06
 TOLL = 0.10
@@ -54,8 +70,16 @@ DON_MIN = 1.0
 DON_FAVOUR = 1.5
 DON_STABILITY = 3
 HISTORY = 24
-DEFAULT = {"tax": 0, "solde": False, "gages": False, "commerce": False, "dons": False}
-TOGGLE_KEYS = ("solde", "gages", "commerce", "dons")
+DEFAULT = {"impot": 0, "solde": 0.0, "gages": 0.0, "dons": 0.0, "chantiers": 0.0}
+# Les depenses reglees par un curseur de 0 a PAY_MAX.
+PAY_KEYS = ("solde", "gages", "dons", "chantiers")
+SLIDER_KEYS = ("impot",) + PAY_KEYS
+PAY_NAMES = {
+    "solde": "Solde des troupes",
+    "gages": "Gages des gens de métier",
+    "dons": "Présents aux familles",
+    "chantiers": "Paie des bâtisseurs",
+}
 
 
 def has_money(state, tid: int) -> bool:
@@ -64,9 +88,28 @@ def has_money(state, tid: int) -> bool:
 
 
 def budget(tribe) -> dict:
+    """Le budget, avec ce que les vieilles parties gardaient autrement :
+    l'impot a quatre crans ("tax"), des interrupteurs (True : 100 %) ; le
+    commerce en argent ("commerce") est devenu une loi (laws.get le lit)."""
+    raw = dict(getattr(tribe, "budget", None) or {})
     b = dict(DEFAULT)
-    b.update(getattr(tribe, "budget", None) or {})
+    if "impot" not in raw and "tax" in raw:
+        raw["impot"] = OLD_TAX.get(int(raw["tax"]), 0)
+    raw.pop("tax", None)
+    b.update(raw)
+    for k in PAY_KEYS:
+        b[k] = float(b[k])
+    b["impot"] = int(b["impot"])
     return b
+
+
+def eff(level: float) -> float:
+    """Ce que rapporte un niveau de paie : plein jusqu'a 100 %, moitie au-dela."""
+    return min(level, 1.0) + 0.5 * max(0.0, level - 1.0)
+
+
+def tax_stab(points: int) -> int:
+    return -round(TAX_STAB * points)
 
 
 def set_budget(state, tid: int, key: str, value) -> str:
@@ -74,19 +117,18 @@ def set_budget(state, tid: int, key: str, value) -> str:
     if tribe is None or not has_money(state, tid):
         return "Il faut connaître Valeurs d'échange"
     b = budget(tribe)
-    if key == "tax":
+    if key == "impot":
         v = int(value)
-        if v not in TAX:
+        if not 0 <= v <= TAX_MAX:
             return "?"
-        b["tax"] = v
-        msg = f"Impôt : {TAX_NAMES[v].lower()}."
-    elif key in TOGGLE_KEYS:
-        b[key] = bool(value)
-        if key == "dons":
-            msg = "Le chef fera des présents aux familles." if b[key] else "Plus de présents aux familles."
-        else:
-            msg = {"solde": "Les troupes", "gages": "Les gens de métier", "commerce": "Le commerce"}[key]
-            msg += " seront payés en argent." if b[key] else (" ne seront plus payés." if key != "commerce" else " se paiera en vivres.")
+        b["impot"] = v
+        msg = f"Impôt : {v} sicles pour cent villageois par mois." if v else "Plus d'impôt."
+    elif key in PAY_KEYS:
+        v = round(float(value) / PAY_STEP) * PAY_STEP
+        if not 0.0 <= v <= PAY_MAX:
+            return "?"
+        b[key] = v
+        msg = f"{PAY_NAMES[key]} : {round(100 * v)} % du tarif." if v else f"{PAY_NAMES[key]} : plus rien."
     else:
         return "?"
     tribe.budget = b
@@ -117,24 +159,50 @@ def tax_income(state, tid: int) -> float:
     tribe = state.tribes.get(tid)
     if tribe is None or not has_money(state, tid):
         return 0.0
-    level = budget(tribe)["tax"]
+    return tax_at(state, tid, budget(tribe)["impot"])
+
+
+def tax_at(state, tid: int, points: int) -> float:
+    """L'impot que rapporterait ce reglage."""
+    tribe = state.tribes[tid]
     b = tech.bonuses(tribe)
-    return villagers(state, tid) * TAX[level] * b.tax * (SILVER_TAX if b.silver else 1.0)
+    return villagers(state, tid) * points / 100.0 * b.tax * (SILVER_TAX if b.silver else 1.0)
 
 
-def solde_cost(state, tid: int) -> float:
-    return soldiers(state, tid) * SOLDE
+def _level(state, tid: int, key: str, level) -> float:
+    tribe = state.tribes.get(tid)
+    if level is None:
+        level = budget(tribe)[key] if tribe is not None else 0.0
+    return level
 
 
-def gage_cost(state, tid: int) -> float:
-    return specialists(state, tid) * GAGE
+def solde_cost(state, tid: int, level=None) -> float:
+    """Ce que coute la solde au niveau donne (celui du budget sinon)."""
+    return soldiers(state, tid) * SOLDE * _level(state, tid, "solde", level)
 
 
-def don_cost(state, tid: int) -> float:
+def gage_cost(state, tid: int, level=None) -> float:
+    return specialists(state, tid) * GAGE * _level(state, tid, "gages", level)
+
+
+def don_cost(state, tid: int, level=None) -> float:
     tribe = state.tribes.get(tid)
     if tribe is None or not tribe.families:
         return 0.0
-    return max(DON_MIN * len(tribe.families), getattr(tribe, "money", 0.0) * DON_SHARE)
+    level = _level(state, tid, "dons", level)
+    return level * max(DON_MIN * len(tribe.families), getattr(tribe, "money", 0.0) * DON_SHARE)
+
+
+def chantiers(state, tid: int) -> int:
+    """Les chantiers en cours dans les villages du peuple."""
+    return sum(1 for s in _villages(state, tid) if s.data.build)
+
+
+def chantier_cost(state, tid: int, level=None) -> float:
+    return chantiers(state, tid) * CHANTIER * _level(state, tid, "chantiers", level)
+
+
+COSTS = {"solde": solde_cost, "gages": gage_cost, "dons": don_cost, "chantiers": chantier_cost}
 
 
 def stability_parts(state, tid: int) -> list[tuple[str, float]]:
@@ -142,10 +210,10 @@ def stability_parts(state, tid: int) -> list[tuple[str, float]]:
     if tribe is None or not has_money(state, tid):
         return []
     b = budget(tribe)
-    level = b["tax"]
-    out = [(f"Impôt {TAX_NAMES[level].lower()}", float(TAX_STAB[level]))] if level else []
+    points = b["impot"]
+    out = [(f"Impôt ({points} pour cent)", float(tax_stab(points)))] if points else []
     if b.get("etat_dons") == "payee":
-        out.append(("Les présents du chef", float(DON_STABILITY)))
+        out.append(("Les présents du chef", float(round(DON_STABILITY * eff(b["dons"])))))
     return out
 
 
@@ -161,7 +229,8 @@ def wage_mult(state, tid: int, kind: str = "metier") -> float:
         return 1.0
     s = _paid(tribe, "gages")
     if s == "payee":
-        return 1.25 if kind == "calcul" else 1.1
+        e = eff(budget(tribe)["gages"])
+        return 1.0 + (0.25 if kind == "calcul" else 0.1) * e
     if s == "impayee":
         return 0.9
     return 1.0
@@ -175,13 +244,26 @@ def craft_output(state, site, craft) -> float:
 def solde_morale(state, tid: int) -> float:
     tribe = state.tribes.get(tid)
     s = _paid(tribe, "solde") if tribe is not None else ""
-    return 5.0 if s == "payee" else -5.0 if s == "impayee" else 0.0
+    if s == "payee":
+        return 5.0 * eff(budget(tribe)["solde"])
+    return -5.0 if s == "impayee" else 0.0
 
 
 def flee_mult(state, tid: int) -> float:
     tribe = state.tribes.get(tid)
     s = _paid(tribe, "solde") if tribe is not None else ""
-    return 0.5 if s == "payee" else 1.3 if s == "impayee" else 1.0
+    if s == "payee":
+        return max(0.2, 1.0 - 0.5 * eff(budget(tribe)["solde"]))
+    return 1.3 if s == "impayee" else 1.0
+
+
+def build_speed(state, site) -> float:
+    """Les batisseurs payes : semaines de chantier gagnees par semaine
+    (systems.BUILD_SPEED)."""
+    tribe = state.tribes.get(site.tribe_id)
+    if tribe is None or _paid(tribe, "chantiers") != "payee":
+        return 0.0
+    return CHANTIER_SPEED * eff(budget(tribe)["chantiers"])
 
 
 def book(state, tid: int, key: str, amount: float) -> None:
@@ -208,7 +290,7 @@ def earn(state, tid: int, key: str, amount: float) -> None:
 def pays_in_money(state, payer: int, receiver: int) -> bool:
     tribe = state.tribes.get(payer)
     return bool(
-        tribe is not None and has_money(state, payer) and has_money(state, receiver) and budget(tribe)["commerce"]
+        tribe is not None and has_money(state, payer) and has_money(state, receiver) and laws.get(tribe, "paiement") == "argent"
     )
 
 
@@ -294,7 +376,8 @@ def monthly(state) -> None:
                 vt.money -= part
                 book(state, v, "tribut", -part)
                 earn(state, tid, "tribut", part)
-        for key, cost in (("solde", solde_cost(state, tid)), ("gages", gage_cost(state, tid)), ("dons", don_cost(state, tid))):
+        for key in PAY_KEYS:
+            cost = COSTS[key](state, tid)
             if not b[key] or cost <= 0:
                 b["etat_" + key] = ""
                 continue
@@ -304,14 +387,14 @@ def monthly(state) -> None:
                 b["etat_" + key] = "payee"
                 if key == "dons":
                     for fam in tribe.families or []:
-                        fam["favour"] = round(min(100.0, fam["favour"] + DON_FAVOUR), 2)
-            elif key == "dons":
-                # Pas de quoi faire des presents : on n'en fait pas (rien n'est promis).
+                        fam["favour"] = round(min(100.0, fam["favour"] + DON_FAVOUR * eff(b["dons"])), 2)
+            elif key in ("dons", "chantiers"):
+                # Pas de quoi : on n'en fait pas (rien n'etait promis).
                 b["etat_" + key] = ""
             else:
                 if b.get("etat_" + key) != "impayee":
-                    what = "la solde des troupes" if key == "solde" else "les gages des gens de métier"
-                    _note(state, tid, f"Le trésor est vide : {what} n'est pas payée.")
+                    what = "la solde des troupes n'est pas payée" if key == "solde" else "les gages des gens de métier ne sont pas payés"
+                    _note(state, tid, f"Le trésor est vide : {what}.")
                 b["etat_" + key] = "impayee"
         tribe.budget = b
         month = getattr(tribe, "money_month", None) or {}
@@ -325,7 +408,7 @@ def monthly(state) -> None:
 
 def reserve(state, tid: int) -> float:
     """Ce qu'un tresor prudent garde : un an de solde et de gages."""
-    return 12.0 * (solde_cost(state, tid) + gage_cost(state, tid)) + 30.0
+    return 12.0 * (solde_cost(state, tid, 1.0) + gage_cost(state, tid, 1.0)) + 30.0
 
 
 def _ai(state, tribe) -> None:
@@ -336,18 +419,21 @@ def _ai(state, tribe) -> None:
     b = budget(tribe)
     chief = chiefs.chief_of(state, tribe.id)
     traits = chief.traits if chief is not None else ()
-    tax = 2 if "ambitieux" in traits else 0 if "genereux" in traits else 1
+    tax = 4 if "ambitieux" in traits else 0 if "genereux" in traits else 2
     keep = reserve(state, tribe.id)
     if tribe.money > 4 * keep:
         tax = 0
     elif tribe.money > 2 * keep:
-        tax = min(tax, 1)
-    b["tax"] = tax
-    b["solde"] = soldiers(state, tribe.id) > 0 and tribe.money > solde_cost(state, tribe.id) * 3
-    b["gages"] = tribe.money > (gage_cost(state, tribe.id) + solde_cost(state, tribe.id)) * 6
-    b["dons"] = bool(tribe.families) and tribe.money > 2 * keep
-    b["commerce"] = True
+        tax = min(tax, 2)
+    b["impot"] = tax
+    tid = tribe.id
+    b["solde"] = 1.0 if soldiers(state, tid) > 0 and tribe.money > solde_cost(state, tid, 1.0) * 3 else 0.0
+    b["gages"] = 1.0 if tribe.money > (gage_cost(state, tid, 1.0) + solde_cost(state, tid, 1.0)) * 6 else 0.0
+    b["dons"] = 1.0 if tribe.families and tribe.money > 2 * keep else 0.0
+    b["chantiers"] = 1.0 if chantiers(state, tid) and tribe.money > keep + 12 * chantier_cost(state, tid, 1.0) else 0.0
     tribe.budget = b
+    if laws.get(tribe, "paiement") != "argent":
+        laws.enact(state, tid, "paiement", "argent")
 
 
 def last_month(tribe) -> dict:
@@ -371,6 +457,8 @@ KEY_NAMES = {
     "gages": "Gages des gens de métier",
     "evenements": "Événements",
     "dons": "Présents aux familles",
+    "chantiers": "Paie des bâtisseurs",
+    "presents": "Présents aux autres peuples",
 }
 
 

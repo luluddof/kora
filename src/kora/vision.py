@@ -16,6 +16,12 @@ class PlayerVision:
     # Positions des bandes du joueur au dernier calcul : si rien n'a bouge,
     # la vue est la meme (meme objet, le rendu n'a rien a resynchroniser).
     key: tuple | None = None
+    # La memoire du brouillard (memory.py) : les lieux tels qu'on les a vus
+    # (id -> [q, r, genre, peuple, palissade, suzerain]), les zones ((col, ligne) ->
+    # [peuple, influence]) ; mem_gen change quand elle change.
+    sites: dict = field(default_factory=dict)
+    zones: dict = field(default_factory=dict)
+    mem_gen: int = 0
 
 
 def vision_of(state: GameState, tid: int = PLAYER_TRIBE_ID):
