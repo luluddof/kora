@@ -27,7 +27,7 @@ N'importe pas pygame.
 """
 
 from __future__ import annotations
-from src.kora import places, tech
+from src.kora import places, tech, villages
 
 KINDS = ("collecte", "agriculture", "peche", "potiers", "sauniers", "tisserands", "pelletiers", "tailleurs")
 KIND_NAMES = {
@@ -112,8 +112,6 @@ def demand(state, tid: int, good: str) -> tuple[float, float]:
 
 def food_pressure(state, tid: int) -> float:
     """0 a 1 : les greniers des villages ne tiendront pas jusqu'a la recolte."""
-    from src.kora import villages
-
     total, weight = 0.0, 0
     for site in _villages(state, tid):
         band = places.band_of(state, site)

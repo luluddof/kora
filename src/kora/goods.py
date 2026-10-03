@@ -44,7 +44,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.kora import money, places, population, situations, systems, tech, villages
+from src.kora import chiefdom, diplo, money, places, population, situations, systems, tech, villages
 from src.kora.log import LogKind
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.types import TradeRoute
@@ -601,14 +601,10 @@ def price_word(state, tribe_id: int, good: str) -> str:
 
 
 def _d(state):
-    from src.kora import diplo
-
     return diplo._d(state)
 
 
 def _pact(state, a: int, b: int) -> bool:
-    from src.kora import diplo
-
     return diplo.has_pact(state, a, b, "commerce")
 
 
@@ -627,8 +623,6 @@ def routes_of(state, tribe_id: int) -> list:
 
 def partners(state, tribe_id: int) -> list[int]:
     """Peuples lies a celui-ci par un accord commercial."""
-    from src.kora import diplo
-
     alive = {b.tribe_id for b in state.bands.values() if b.population > 0}
     return [t for t in sorted(state.tribes) if t != tribe_id and t in alive and diplo.has_pact(state, tribe_id, t, "commerce")]
 
@@ -745,8 +739,6 @@ def set_level(state, tribe_id: int, route, level: int) -> bool:
 
 def close_route(state, tribe_id: int, route) -> bool:
     """Fermer une route ; fermer celle que l'autre a ouverte le froisse."""
-    from src.kora import diplo
-
     routes = all_routes(state)
     if route not in routes or tribe_id not in (route.exporter, route.importer):
         return False
@@ -766,8 +758,6 @@ def route_price(state, route) -> float:
     # Le marche refuge vend plus cher ; l'effondrement du commerce fait tout baisser.
     exp = state.tribes.get(route.exporter)
     if exp is not None:
-        from src.kora import chiefdom
-
         p *= tech.bonuses(exp).trade_price * chiefdom.trade_mult(state, route.exporter)
     p *= situations.route_mult(state, route)
     return round(p, 2)
@@ -905,8 +895,6 @@ def _run_pair(state, routes: list) -> None:
 def monthly(state) -> None:
     """Un mois de commerce : routes sans accord fermees, l'IA gere ses
     routes, chaque route porte ses biens, on tient les comptes."""
-    from src.kora import diplo
-
     d = getattr(state, "diplo", None)
     if d is None:
         return

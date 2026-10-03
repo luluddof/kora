@@ -36,7 +36,7 @@ from src.kora.world import (
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.types import stay_order
 from src.kora.vision import vision_of
-from src.kora import chiefs, goods, places, sites, systems, tech, villages
+from src.kora import chiefdom, chiefs, diplo, goods, places, sites, systems, tech, villages
 from src.kora.bands import gain_prestige, max_bands_of, set_goto, split_band, stock_max, tribe_band_count
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
@@ -349,15 +349,11 @@ def check(state, inst, cond) -> bool:
         inst.other = active[0]
         return True
     if kind == "no_trade":
-        from src.kora import diplo
-
         return not any(
             diplo.has_pact(state, tribe.id, other, "commerce") for other in state.tribes if other != tribe.id
         )
     if kind == "foreign_near":
         # Une bande etrangere (pas en paix) tout pres : elle devient "l'autre".
-        from src.kora import diplo
-
         near = [
             b
             for b in state.bands.values()
@@ -401,8 +397,6 @@ def _deaths(state, band, lo: int, hi: int) -> int:
 
 
 def apply(state, inst, effect) -> None:
-    from src.kora import diplo
-
     kind, *args = effect
     tribe = state.tribes.get(inst.tribe_id)
     band = _band(state, inst)
@@ -464,14 +458,10 @@ def apply(state, inst, effect) -> None:
                 diplo.add_pact(state, tribe.id, inst.other, "commerce")
                 diplo.add_mod(state, tribe.id, inst.other, "echanges", 5)
             elif what == "protection":
-                from src.kora import chiefdom
-
                 chiefdom.make_vassal(state, inst.other, tribe.id, "protection")
                 diplo.add_mod(state, inst.other, tribe.id, "protection", 5)
     elif kind == "conquest":
         # Le village pris (battle.py) : le soumettre ou le piller.
-        from src.kora import chiefdom
-
         if inst.other in state.tribes:
             chiefdom.conquer(state, tribe.id, inst.other, inst.site_id, args[0])
     elif kind == "casus":

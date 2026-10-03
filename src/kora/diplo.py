@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import chiefs, events, goods, influence, tech
+from src.kora import chiefdom, chiefs, events, goods, influence, tech
 from src.kora.log import LogKind
 # Les donnees (contacts, relations, pactes, routes) : types.py.
 from src.kora.types import Diplomacy, Mod, Pact, TradeRoute  # noqa: F401
@@ -250,8 +250,6 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
         elif p.kind == "commerce":
             out.append(("Accord commercial", 8.0))
     # Villages freres : la meme civilisation, ou suzerain et tributaire.
-    from src.kora import chiefdom
-
     if b in chiefdom.kin_of(state, a) or a in chiefdom.kin_of(state, b):
         out.append(("Villages frères", 15.0))
     for t in (a, b):
@@ -767,8 +765,6 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         if state.tribes[target].prestige >= 50:
             out.append(("Trop fiers pour payer", -10))
     elif action == "proteger":
-        from src.kora import chiefdom
-
         if not chiefdom.has_chiefdom(state, actor):
             return Verdict(blocked="Il vous faut un village")
         if not chiefdom.has_chiefdom(state, target):
@@ -916,8 +912,6 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         absorb(state, actor, target)
         return f"Les {names} rejoignent votre peuple."
     if action == "proteger":
-        from src.kora import chiefdom
-
         chiefdom.make_vassal(state, actor, target, "protection")
         add_mod(state, actor, target, "protection", 5)
         return f"Les {names} se placent sous votre protection : ils deviennent vos tributaires."

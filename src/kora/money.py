@@ -34,7 +34,7 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.types import Hex
 from src.kora.gamestate import is_human, note
-from src.kora import chiefs, influence, tech
+from src.kora import chiefdom, chiefs, goods, influence, tech
 
 # Vivres pour un sicle (payer une route en argent, convertir un peage).
 VPS = 20.0
@@ -102,8 +102,6 @@ def _villages(state, tid: int) -> list:
 
 
 def villagers(state, tid: int) -> int:
-    from src.kora import goods
-
     return goods.villagers(state, tid)
 
 
@@ -112,8 +110,6 @@ def soldiers(state, tid: int) -> int:
 
 
 def specialists(state, tid: int) -> int:
-    from src.kora import goods
-
     return sum(goods.TEAM * goods.total_teams(s) for s in _villages(state, tid))
 
 
@@ -234,8 +230,6 @@ def pay_route(state, payer: int, receiver: int, vivres: float) -> float:
 def toll_owner(state, route) -> int:
     """Le peuple qui tient le passage d'une route : celui qui domine le
     milieu du chemin entre les deux villages (Droits de passage)."""
-    from src.kora import goods
-
     ends = goods.trade_ends(state, route.exporter, route.importer)
     if ends is None:
         return 0
@@ -256,8 +250,6 @@ def toll_owner(state, route) -> int:
 def collect_tolls(state) -> None:
     """Chaque mois, apres les routes : les convois qui ont porte paient leur
     passage a qui tient le chemin."""
-    from src.kora import goods
-
     for r in sorted(goods.all_routes(state), key=lambda r: (r.exporter, r.importer, r.good)):
         if r.paid <= 0:
             continue
@@ -284,8 +276,6 @@ def collect_tolls(state) -> None:
 def monthly(state) -> None:
     """Le budget de chaque peuple qui a l'argent : l'impot, le tribut, la
     solde, les gages ; l'histoire du tresor."""
-    from src.kora import chiefdom
-
     for tid in sorted(state.tribes):
         tribe = state.tribes[tid]
         if not has_money(state, tid):

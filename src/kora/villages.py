@@ -34,7 +34,7 @@ import math
 import random
 from dataclasses import dataclass
 
-from src.kora import chiefs, population, production, sites, systems, tech, units
+from src.kora import chiefs, population, production, sites, situations, systems, tech, units
 from src.kora.log import LogKind
 from src.kora.types import Band, Season, Terrain, stay_order
 from src.kora.resources import LABELS, NAMES, PRESENT
@@ -259,8 +259,6 @@ def _key(col: int, row: int) -> str:
 def monument_open(state, site) -> bool:
     """Le peuple de ce village vit les grands travaux, et le village est
     dans leur lieu : il peut elever son monument."""
-    from src.kora import situations
-
     return any(
         inst.sid == "travaux" and situations.in_zone(state, inst, site.hex)
         for inst in situations.of_tribe(state, site.tribe_id)
