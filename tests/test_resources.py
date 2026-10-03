@@ -2,7 +2,7 @@
 
 import functools
 
-from src.kora import resources, tech
+from src.kora import learning, resources, tech
 from src.kora.clock import Clock
 from src.kora.mapgen import generate_world
 from src.kora.sim import _default_world
@@ -85,7 +85,7 @@ def test_living_near_a_resource_counts_for_knowledge():
     st = GameState(world=world, clock=Clock(), tribes={1: tribe}, bands={1: band})
     st.world.fill_season(st.clock.season())
     for _ in range(3):
-        tech.update_practice(st)
+        learning.update_practice(st)
     assert tribe.practice["res:cereales"] == 3
-    label = tech.cond_progress(st, tribe, tech.TECHS["semis"].conds[2])[2]
+    label = learning.cond_progress(st, tribe, tech.TECHS["semis"].conds[2])[2]
     assert "céréales" in label

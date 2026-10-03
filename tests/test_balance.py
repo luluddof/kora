@@ -17,7 +17,7 @@ from src.kora.sim import _default_world, new_game, tick
 from src.kora.battle import side_force
 from src.kora.bands import _herd_ok, set_goto, split_band
 from src.kora.gamestate import PLAYER_TRIBE_ID
-from src.kora import tech
+from src.kora import learning, tech
 from src.kora.types import Season
 from src.kora.world import axial_to_offset, enter_cost_for, food_production
 
@@ -35,7 +35,7 @@ def _robot(st):
     if st.tick_count % 4:
         return
     # Le robot apprend les savoirs disponibles, comme l'IA.
-    tech.auto_choose(st, PLAYER_TRIBE_ID)
+    learning.auto_choose(st, PLAYER_TRIBE_ID)
     herd = _herd_ok(st, PLAYER_TRIBE_ID)
     water = st.tribes[PLAYER_TRIBE_ID].cabotage
     wait = st.clock.weeks_until_winter()

@@ -7,7 +7,7 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 import pygame
 
-from src.kora import tech
+from src.kora import learning, tech
 from src.kora.persist import load_game, peek_save, save_game
 from src.kora.sim import new_game, tick
 from src.kora.gamestate import PLAYER_TRIBE_ID
@@ -51,7 +51,7 @@ def test_unknown_bonus_is_dropped_and_no_setup_changes_nothing():
 def test_bonuses_speed_learning_and_growth():
     fast = new_game(_world(), setup={"bonuses": ["bonus:conteurs", "bonus:fertiles"]})
     slow = new_game(_world())
-    assert tech.base_rate(fast, PLAYER_TRIBE_ID) > tech.base_rate(slow, PLAYER_TRIBE_ID) * 1.25
+    assert learning.base_rate(fast, PLAYER_TRIBE_ID) > learning.base_rate(slow, PLAYER_TRIBE_ID) * 1.25
     assert tech.bonuses(fast.tribes[PLAYER_TRIBE_ID]).growth == 1.3
 
 

@@ -17,7 +17,7 @@ from src.kora.globe_draw import (
 from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
-from src.kora import battle as _battle, chiefs, goods, money, money as _money, orders, tech, theme
+from src.kora import battle as _battle, chiefs, goods, learning, money, money as _money, orders, tech, theme
 from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
 from src.kora.gamestate import GameState, human_dead, log_of
 from src.kora.types import Hex, Season
@@ -1569,7 +1569,7 @@ class Renderer:
             draw_journal(self, state, layout, log_filter, log_newest)
         player = state.tribes.get(state.viewer)
         idle = player is not None and not player.learning
-        ready = idle and bool(tech.available(state, state.viewer))
+        ready = idle and bool(learning.available(state, state.viewer))
         tabs = layout["tabs"]
         self._draw_tab(tabs["savoirs"], "Savoirs", panel == "savoirs", ready, "savoir")
         if player is not None and player.learning and player.learning in tech.TECHS:
@@ -1792,7 +1792,7 @@ class Renderer:
             self.screen.blit(theme.icon("savoir", 22, C.savoir), (x, 8))
             theme.text(self.screen, t.name, "mini_gras", C.os, (x + 28, 7), box_w - 32)
             theme.bar(self.screen, (x + 28, 28, box_w - 34, 8), done, C.savoir)
-        elif tech.available(state, state.viewer):
+        elif learning.available(state, state.viewer):
             x -= 190
             self.screen.blit(theme.icon("savoir", 22, C.braise), (x, 14))
             theme.text(self.screen, "Choisir un savoir [T]", "petit_gras", C.braise, (x + 28, 15))

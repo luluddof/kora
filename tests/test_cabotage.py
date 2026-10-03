@@ -1,6 +1,6 @@
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora import tech
+from src.kora import learning, tech
 from src.kora.sim import apply_movement, tick
 from src.kora.bands import set_goto
 from src.kora.gamestate import GameState
@@ -43,13 +43,13 @@ def _tribe_on_coast(pop=tech.PIROGUE_POP, prestige=30, is_player=True, cabotage=
 
 
 def _ready(st, tid=1):
-    return tech.status(st, tid, "pirogue") in ("disponible", "en_cours")
+    return learning.status(st, tid, "pirogue") in ("disponible", "en_cours")
 
 
 def test_pirogue_needs_fishing_first():
     st, _band, tribe = _tribe_on_coast()
     tribe.knowledge = {"feu", "outils"}
-    assert tech.status(st, 1, "pirogue") == "verrouille"
+    assert learning.status(st, 1, "pirogue") == "verrouille"
     tribe.knowledge.add("peche")
     assert _ready(st)
 
@@ -81,21 +81,21 @@ def test_not_ready_if_shore_unseen():
 def test_player_must_choose_then_learns_it():
     st, _band, tribe = _tribe_on_coast(is_player=True)
     for _ in range(80):
-        tech.update_learning(st)
+        learning.update_learning(st)
     assert tribe.cabotage is False  # le joueur n'apprend rien tout seul
-    assert tech.choose(st, 1, "pirogue")
+    assert learning.choose(st, 1, "pirogue")
     for _ in range(80):
-        tech.update_learning(st)
+        learning.update_learning(st)
     assert tribe.cabotage is True
     assert "pirogue" in tribe.knowledge
-    assert tech.status(st, 1, "pirogue") == "connu"
+    assert learning.status(st, 1, "pirogue") == "connu"
 
 
 def test_ai_learns_it_on_its_own():
     st, _band, tribe = _tribe_on_coast(is_player=False)
     for week in range(80):
         st.tick_count = week
-        tech.update_learning(st)
+        learning.update_learning(st)
     assert tribe.cabotage is True
 
 
@@ -127,8 +127,8 @@ def test_coast_weeks_accumulate_on_tick():
     tribe = Tribe(1, "t", 20, True)
     st = GameState(world=world, clock=Clock(), tribes={1: tribe}, bands={1: band})
     assert tribe.coast_weeks == 0
-    tech.update_practice(st)
-    tech.update_practice(st)
+    learning.update_practice(st)
+    learning.update_practice(st)
     assert tribe.coast_weeks == 2
     assert tribe.practice["cote"] == 2
     assert tribe.shore_seen is True
@@ -140,13 +140,13 @@ def test_inland_does_not_count_coast_weeks():
     band = Band(id=1, tribe_id=1, position=pos, population=40, stock=160)
     tribe = Tribe(1, "t", 20, True)
     st = GameState(world=world, clock=Clock(), tribes={1: tribe}, bands={1: band})
-    tech.update_practice(st)
+    learning.update_practice(st)
     assert tribe.coast_weeks == 0
 
 
 def test_detail_lists_the_three_conditions_with_progress():
     st, _band, _tribe = _tribe_on_coast()
-    lines = [text for text, _style in tech.detail_lines(st, 1, "pirogue")]
+    lines = [text for text, _style in learning.detail_lines(st, 1, "pirogue")]
     assert any("Rivage en vue" in line for line in lines)
     assert any(f"Peuple {tech.PIROGUE_POP}" in line for line in lines)
     assert any("sem. en côte" in line for line in lines)

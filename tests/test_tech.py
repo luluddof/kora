@@ -1,6 +1,6 @@
 """Savoirs : l'arbre tient debout, chaque effet affiche agit vraiment."""
 
-from src.kora import tech
+from src.kora import learning, tech
 from src.kora.clock import Clock
 from src.kora.path import astar
 from src.kora.persist import load_game, save_game
@@ -76,38 +76,38 @@ def test_effect_text_is_drawn_from_the_numbers():
 def test_status_goes_locked_waiting_available_learning_known():
     st, band = _state()
     tribe = st.tribes[1]
-    assert tech.status(st, 1, "arc") == "verrouille"
-    assert tech.status(st, 1, "epieu") == "attente"  # jamais vecu la plaine
+    assert learning.status(st, 1, "arc") == "verrouille"
+    assert learning.status(st, 1, "epieu") == "attente"  # jamais vecu la plaine
     tribe.practice["plaine"] = 6
-    assert tech.status(st, 1, "epieu") == "disponible"
-    assert tech.choose(st, 1, "epieu")
-    assert tech.status(st, 1, "epieu") == "en_cours"
+    assert learning.status(st, 1, "epieu") == "disponible"
+    assert learning.choose(st, 1, "epieu")
+    assert learning.status(st, 1, "epieu") == "en_cours"
     for _ in range(40):
-        tech.update_learning(st)
-    assert tech.status(st, 1, "epieu") == "connu"
-    assert tech.status(st, 1, "arc") == "attente"
+        learning.update_learning(st)
+    assert learning.status(st, 1, "epieu") == "connu"
+    assert learning.status(st, 1, "arc") == "attente"
 
 
 def test_cannot_choose_what_is_not_available():
     st, _band = _state()
-    assert not tech.choose(st, 1, "arc")
-    assert not tech.choose(st, 1, "inconnu")
+    assert not learning.choose(st, 1, "arc")
+    assert not learning.choose(st, 1, "inconnu")
     assert st.tribes[1].learning is None
 
 
 def test_more_people_learn_faster_and_progress_is_kept_when_switching():
     small, _ = _state(pop=20)
     big, _ = _state(pop=200)
-    assert tech.learn_rate(big, 1) > tech.learn_rate(small, 1)
+    assert learning.learn_rate(big, 1) > learning.learn_rate(small, 1)
     st, _band = _state(pop=40)
     tribe = st.tribes[1]
     tribe.practice.update({"plaine": 6, "foret": 8, "hivers": 1})
-    tech.choose(st, 1, "epieu")
-    tech.update_learning(st)
-    tech.update_learning(st)
+    learning.choose(st, 1, "epieu")
+    learning.update_learning(st)
+    learning.update_learning(st)
     kept = tribe.progress["epieu"]
-    tech.choose(st, 1, "fumage")
-    tech.update_learning(st)
+    learning.choose(st, 1, "fumage")
+    learning.update_learning(st)
     assert tribe.progress["epieu"] == kept
     assert tribe.progress["fumage"] > 0
 
@@ -115,8 +115,8 @@ def test_more_people_learn_faster_and_progress_is_kept_when_switching():
 def test_practice_counts_terrains_and_winters():
     st, band = _state(terrain=Terrain.FORET, week=45)
     st.world.fill_season(Season.HIVER)
-    tech.update_practice(st)
-    tech.update_practice(st)
+    learning.update_practice(st)
+    learning.update_practice(st)
     assert st.tribes[1].practice["foret"] == 2
     assert st.tribes[1].practice["hiver"] == 2
     st.clock.week = 52

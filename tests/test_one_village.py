@@ -2,7 +2,7 @@
 villages freres, les chaines de tributaires, qui fait quoi dans un village,
 la fuite des demoralises, le repli de l'IA, les loups des troupes en marche."""
 
-from src.kora import battle, chiefdom, chiefs, diplo, events, goods, population, sites, tech, villages
+from src.kora import battle, chiefdom, chiefs, diplo, events, goods, learning, population, sites, tech, villages
 from src.kora.sim import fight_out
 from src.kora.battle import helpers_of, resolve_raids
 from src.kora.types import Band, Order, OrderKind, Terrain
@@ -33,10 +33,10 @@ def test_a_marching_troop_can_bring_back_wolf_cubs_for_hunting_dogs():
     assert events._eligible(st, events.EVENTS["loups_troupe"], inst)
     assert "la troupe de" in events.text_for(st, inst)
     st.tribes[1].knowledge |= {"epieu"}
-    assert tech.status(st, 1, "chiens") != "disponible"
+    assert learning.status(st, 1, "chiens") != "disponible"
     cubs = events._new_instance(st, events.EVENTS["louveteaux_troupe"], 1, army.id, {})
     events.apply(st, cubs, ("flag", "louveteaux"))
-    assert tech.status(st, 1, "chiens") == "disponible", "un peuple fixé peut avoir ses chiens"
+    assert learning.status(st, 1, "chiens") == "disponible", "un peuple fixé peut avoir ses chiens"
 
 
 # --- un village par peuple ------------------------------------------------------------
@@ -69,7 +69,7 @@ def test_brother_villages_count_the_civilisation_and_tributaries():
     _village(st, 1, 1, pop=120, col=5)
     st.tribes[1].knowledge.discard("freres")
     tech.invalidate()
-    assert tech.status(st, 1, "freres") == "attente"
+    assert learning.status(st, 1, "freres") == "attente"
     for k, col in enumerate((18, 31)):
         b = _band(st, 10 + k, 1, 60, col=col)
         new = chiefs.secede(st, b.id, independence=True)
@@ -77,7 +77,7 @@ def test_brother_villages_count_the_civilisation_and_tributaries():
         sites.make_camp(st, b.id)
         assert villages.found(st, b.id) is not None
     assert chiefdom.kin_villages(st, 1) == 2
-    assert tech.status(st, 1, "freres") == "disponible"
+    assert learning.status(st, 1, "freres") == "disponible"
     tech.grant(st.tribes[1], "freres")
     tech.invalidate()
     kin = chiefdom.kin_of(st, 1)

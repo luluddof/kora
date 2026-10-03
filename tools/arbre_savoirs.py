@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.kora import tech  # noqa: E402
+from src.kora import learning
 
 
 class _Tribe:
@@ -36,7 +37,7 @@ def _cond_label(cond) -> str:
         diplo = None
 
     try:
-        return tech.cond_progress(_State(), _Tribe(), cond)[2]
+        return learning.cond_progress(_State(), _Tribe(), cond)[2]
     except Exception:
         return cond.label or cond.kind
 

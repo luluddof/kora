@@ -21,6 +21,7 @@ from src.kora import (
     diplo,
     events,
     goods,
+    learning,
     money,
     numbers,
     orders,
@@ -308,7 +309,7 @@ def _heir(state, tid, band_id):
 
 
 def _learn(state, tid, tech_id):
-    tech.choose(state, tid, str(tech_id))
+    learning.choose(state, tid, str(tech_id))
     return _out()
 
 

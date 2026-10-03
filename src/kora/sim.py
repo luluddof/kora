@@ -16,6 +16,7 @@ from src.kora import (
     diplo,
     events,
     influence,
+    learning,
     population,
     records,
     sites,
@@ -655,7 +656,7 @@ def fight_out(state: GameState) -> None:
 def update_prestige(state: GameState) -> None:
     if state.clock.just_finished_winter():
         living = {b.tribe_id for b in state.bands.values()}
-        tech.count_winter(state)
+        learning.count_winter(state)
         for tid, tribe in state.tribes.items():
             if tid not in living:
                 continue
@@ -919,7 +920,7 @@ def new_game(
         add_minor_peoples(st, minor_peoples)
     recompute_vision(st)
     _note_spotted_enemies(st)
-    tech.update_practice(st, count=False)
+    learning.update_practice(st, count=False)
     return st
 
 
@@ -1003,7 +1004,7 @@ def _week(state: GameState, battle_days: int) -> None:
     apply_season_spread(state)
     apply_movement(state)
     resolve_joins(state)
-    tech.update_practice(state)
+    learning.update_practice(state)
     prune_fight_marks(state)
     resolve_raids(state)
     if battle_days:
@@ -1024,7 +1025,7 @@ def _week(state: GameState, battle_days: int) -> None:
     events.weekly(state)
     tech.invalidate()
     update_prestige(state)
-    tech.update_learning(state)
+    learning.update_learning(state)
     tech.invalidate()
     recompute_vision(state)
     _note_spotted_enemies(state)

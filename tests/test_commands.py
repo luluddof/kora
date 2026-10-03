@@ -7,6 +7,7 @@ from src.kora.commands import NOT_YOURS, apply, make
 from src.kora.sim import new_game
 from src.kora.types import OrderKind, Terrain
 from src.kora.world import make_filled_world, offset_to_axial
+from src.kora import learning
 
 
 def _mp():
@@ -81,7 +82,7 @@ def test_learn_honor_heir():
     st = _mp()
     # Un savoir devient disponible quand on l'a vu pratiquer : quelques semaines.
     for _ in range(104):
-        ready = next((t for t in tech.TECHS if tech.status(st, 1, t) == "disponible"), None)
+        ready = next((t for t in tech.TECHS if learning.status(st, 1, t) == "disponible"), None)
         if ready:
             break
         tick(st)

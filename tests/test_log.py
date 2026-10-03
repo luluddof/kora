@@ -1,7 +1,7 @@
 from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.globe import land_draw_stride
 from src.kora.clock import Clock
-from src.kora import tech
+from src.kora import learning, tech
 from src.kora.sim import collect_food, tick
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
@@ -90,10 +90,10 @@ def test_player_new_knowledge_logs_ai_does_not():
             world=world, clock=Clock(), tribes={tid: tribe}, bands={tid: Band(tid, tid, pos, 40, 200)}
         )
         if is_player:
-            assert tech.choose(st, tid, "fumage")
+            assert learning.choose(st, tid, "fumage")
         for week in range(40):
             st.tick_count = week
-            tech.update_learning(st)
+            learning.update_learning(st)
         assert "fumage" in tribe.knowledge
         logged = [e for e in st.log.entries if e.kind is LogKind.DECOUVERTE]
         assert bool(logged) is is_player

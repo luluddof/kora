@@ -3,7 +3,7 @@ croissance qui suit les vivres a venir ; onglet des villages."""
 
 import os
 
-from src.kora import chiefs, diplo, goods, sites, tech, villages
+from src.kora import chiefs, diplo, goods, learning, sites, tech, villages
 from src.kora.clock import Clock
 from src.kora.bands import stock_max
 from src.kora.gamestate import GameState
@@ -49,12 +49,12 @@ def test_a_started_knowledge_is_finished_even_if_its_conditions_go():
     tribe = st.tribes[1]
     # Chasse a l'epieu : 30 personnes et 6 semaines en plaine ou steppe.
     tribe.practice["plaine"] = 10
-    assert tech.status(st, 1, "epieu") == "disponible"
-    assert tech.choose(st, 1, "epieu")
+    assert learning.status(st, 1, "epieu") == "disponible"
+    assert learning.choose(st, 1, "epieu")
     tribe.practice["plaine"] = 0
-    assert tech.status(st, 1, "epieu") == "en_cours"
+    assert learning.status(st, 1, "epieu") == "en_cours"
     for _ in range(200):
-        tech.update_learning(st)
+        learning.update_learning(st)
         if "epieu" in tribe.knowledge:
             break
     assert "epieu" in tribe.knowledge
@@ -64,13 +64,13 @@ def test_a_knowledge_once_begun_can_be_taken_up_again():
     st, site, band = _village()
     tribe = st.tribes[1]
     tribe.practice["plaine"] = 10
-    tech.choose(st, 1, "epieu")
-    tech.update_learning(st)
+    learning.choose(st, 1, "epieu")
+    learning.update_learning(st)
     tribe.learning = None
     tribe.practice["plaine"] = 0
     assert tribe.progress.get("epieu", 0) > 0
-    assert tech.status(st, 1, "epieu") == "disponible"
-    assert tech.choose(st, 1, "epieu")
+    assert learning.status(st, 1, "epieu") == "disponible"
+    assert learning.choose(st, 1, "epieu")
 
 
 def test_a_village_lives_off_all_its_lands():
@@ -83,7 +83,7 @@ def test_a_village_lives_off_all_its_lands():
             world._terrains[row][col] = Terrain.FORET
     world._lands = {}
     tribe = st.tribes[1]
-    tech.update_practice(st)
+    learning.update_practice(st)
     assert tribe.practice.get("foret", 0) == 1
     assert tribe.practice.get("vallee", 0) == 1
     assert tribe.practice.get("res:argile", 0) == 1
@@ -93,9 +93,9 @@ def test_bands_the_people_had_still_count():
     st, site, band = _village()
     tribe = st.tribes[1]
     cond = tech.Cond("bands", 4)
-    assert tech.cond_progress(st, tribe, cond)[0] == 1
+    assert learning.cond_progress(st, tribe, cond)[0] == 1
     tribe.practice["bandes"] = 4
-    have, need, label = tech.cond_progress(st, tribe, cond)
+    have, need, label = learning.cond_progress(st, tribe, cond)
     assert have >= need and "eu" in label
 
 
@@ -481,11 +481,11 @@ def test_peoples_born_of_yours_count_for_knowledge():
     st, site, band = _village(pop=100)
     tribe = st.tribes[1]
     cond = tech.Cond("pop", 180)
-    assert tech.cond_progress(st, tribe, cond)[0] == 100
+    assert learning.cond_progress(st, tribe, cond)[0] == 100
     kin = Tribe(3, "Luel", 20, False, knowledge=set(tech.START_KNOWLEDGE), culture="souche", origin=1)
     st.tribes[3] = kin
     st.bands[9] = Band(9, 3, offset_to_axial(5, 5), 90, 100.0)
-    have, need, label = tech.cond_progress(st, tribe, cond)
+    have, need, label = learning.cond_progress(st, tribe, cond)
     assert have == 190 and have >= need and "nés du votre" in label
 
 
@@ -493,10 +493,10 @@ def test_imported_salt_teaches_what_salt_is():
     st, site, band = _village()
     tribe = st.tribes[1]
     st.world.set_resources({"sel": bytes(st.world.width * st.world.height)})
-    tech.update_practice(st)
+    learning.update_practice(st)
     assert tribe.practice.get("res:sel", 0) == 0
     tribe.goods["sel"] = 5.0
-    tech.update_practice(st)
+    learning.update_practice(st)
     assert tribe.practice.get("res:sel", 0) == 1
 
 

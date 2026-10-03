@@ -1189,3 +1189,12 @@ def _craft_name(cid: str) -> str:
 EVENT_CONDITIONS = {"craft_teams": _ev_craft_teams, "veins": _ev_veins}
 EVENT_EFFECTS = {"craft_team": _ev_craft_team}
 EVENT_TEXTS = {"craft_team": lambda a: f"une équipe de {_craft_name(a[0])} de plus"}
+
+
+def tech_lines(tech) -> list[str]:
+    """Les metiers qu'ouvre un savoir (systems.TECH_LINES)."""
+    return [
+        f"Métier du village : {craft.name.lower()} ({res_label(craft.id)} des terres)"
+        for craft in CRAFTS.values()
+        if craft.needs == tech.id
+    ]

@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from src.kora.commands import make
 from src.kora.sim import _default_world
-from src.kora import chiefs, money, orders, situations, tech, villages
+from src.kora import chiefs, learning, money, orders, situations, tech, villages
 
 
 def robot(state, issue, me: int, rng: random.Random) -> None:
@@ -30,7 +30,7 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
         return
     tribe = state.tribes[me]
     if not tribe.learning:
-        ready = sorted((tid for tid in tech.TECHS if tech.status(state, me, tid) == "disponible"), key=lambda t: (tech.TECHS[t].cost, t))
+        ready = sorted((tid for tid in tech.TECHS if learning.status(state, me, tid) == "disponible"), key=lambda t: (tech.TECHS[t].cost, t))
         if ready:
             issue(make(me, "learn", ready[0]))
     # Les nombres et l'argent : une base, un budget (ordres "base", "budget").

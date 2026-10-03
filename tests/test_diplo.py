@@ -1,6 +1,6 @@
 """Diplomatie : relations lisibles, pactes, propositions, diffusion."""
 
-from src.kora import chiefs, diplo, tech
+from src.kora import chiefs, diplo, learning, tech
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
 from src.kora.sim import new_game, fight_out
@@ -105,10 +105,10 @@ def test_neighbours_teach_what_they_know():
     diplo.monthly(st)
     assert diplo.teachers(st, 1, "epieu") == [2]
     assert diplo.diffusion_bonus(st, 1, "epieu") > 0
-    assert tech.learn_rate(st, 1, "epieu") > tech.learn_rate(st, 1)
+    assert learning.learn_rate(st, 1, "epieu") > learning.learn_rate(st, 1)
     # Semaines vecues divisees par deux : 3 semaines de plaine suffisent.
     st.tribes[1].practice["plaine"] = 3
-    assert tech.status(st, 1, "epieu") == "disponible"
+    assert learning.status(st, 1, "epieu") == "disponible"
 
 
 def test_a_disloyal_clan_nearby_can_be_invited():

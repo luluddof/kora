@@ -40,7 +40,7 @@ LAYERS = (
     # les outils des bandes que tous les systemes partagent
     ("bands",),
     # 6. les systemes (ils se parlent entre eux, de preference par systems.py)
-    ("diplo", "goods", "money", "numbers", "chiefdom", "villages", "battle", "situations", "events"),
+    ("learning", "diplo", "goods", "money", "numbers", "chiefdom", "villages", "battle", "situations", "events"),
     # 7. les donnees des evenements ; la semaine du monde (sim)
     ("events_data", "sim"),
     # 8. ce qui la mene : l'IA, les ordres des bandes, les ordres des joueurs

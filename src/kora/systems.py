@@ -17,6 +17,7 @@ part ailleurs, on dit ou il se branche sur le reste du jeu :
                  savoirs (lus par tech.bonuses) ; (tribe) -> ids
   EFFECT_SPECS   prefixe d'id -> fonction qui decrit ces effets ;
                  () -> {id: (nom, {effet: valeur})}
+  TECH_LINES     ce qu'un systeme dit d'un savoir (le metier qu'il ouvre)
   EVENT_VOCABULARY  les modules qui ajoutent des conditions et des effets
                  aux evenements (events.vocabulary)
 
@@ -82,6 +83,10 @@ EFFECT_SPECS = {
     "base:": "numbers.effect_specs",
     "op:": "numbers.effect_specs",
 }
+
+# Ce que dit un savoir, en plus de ses effets (tech.effect_lines) ;
+# (tech) -> [lignes].
+TECH_LINES = ("goods.tech_lines",)
 
 # Les modules qui ajoutent des conditions, des effets et leurs textes aux
 # evenements (EVENT_CONDITIONS, EVENT_EFFECTS, EVENT_TEXTS ; events.vocabulary).

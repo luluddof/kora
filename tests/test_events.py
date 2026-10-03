@@ -2,7 +2,7 @@
 
 import random
 
-from src.kora import chiefs, events, tech
+from src.kora import chiefs, events, learning, tech
 from src.kora.clock import Clock
 from src.kora.events import EVENTS, Follow
 from src.kora.persist import load_game, save_game
@@ -127,7 +127,7 @@ def test_the_wolves_can_give_dogs():
     events.choose(st, inst.uid, 0)
     assert "louveteaux" in st.tribes[1].flags
     st.tribes[1].knowledge.add("epieu")
-    assert tech.status(st, 1, "chiens") == "disponible"
+    assert learning.status(st, 1, "chiens") == "disponible"
 
 
 def test_outcome_chances_follow_knowledge():
