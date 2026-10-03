@@ -9,7 +9,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.kora import chiefs, diplo, events, goods, influence, population, sites, tech
+from src.kora import chiefs, diplo, events, influence, population, records, sites, systems, tech
 from src.kora.clock import Clock
 from src.kora.diplo import Diplomacy
 from src.kora.log import GameLog, LogKind, season_fr, terrain_fr
@@ -1628,46 +1628,12 @@ class _Snap:
     step: int = 0
 
 
-def _copy_tribe(tribe: Tribe) -> Tribe:
-    out = copy.copy(tribe)
-    out.knowledge = set(tribe.knowledge)
-    out.progress = dict(tribe.progress)
-    out.practice = dict(tribe.practice)
-    out.flags = dict(tribe.flags)
-    out.goods = dict(tribe.goods)
-    out.trade = copy.deepcopy(tribe.trade)
-    out.start_bonuses = list(tribe.start_bonuses)
-    out.situation_effects = [list(e) for e in tribe.situation_effects]
-    out.efficiency = dict(tribe.efficiency)
-    out.glut = dict(tribe.glut)
-    out.families = [dict(f) for f in tribe.families]
-    out.operations = list(tribe.operations)
-    out.math_effects = list(tribe.math_effects)
-    out.budget = dict(tribe.budget)
-    out.money_month = dict(tribe.money_month)
-    out.money_hist = [list(h[:5]) + [dict(h[5])] for h in tribe.money_hist]
-    return out
-
-
-def _copy_band(band: Band) -> Band:
-    # Hex et Order sont remplaces, jamais modifies sur place : une copie
-    # des listes suffit (deepcopy etait le poste le plus lent du tick).
-    out = copy.copy(band)
-    out.order = copy.copy(band.order)
-    out.path = list(band.path)
-    out.recent_goals = list(band.recent_goals)
-    out.leader = chiefs.copy_person(band.leader)
-    out.units = [list(u) for u in band.units]
-    out.notables = [chiefs.copy_person(p) for p in band.notables]
-    out.demo = dict(band.demo)
-    return out
-
-
 def snapshot(state: GameState) -> _Snap:
     return _Snap(
         clock=copy.copy(state.clock),
-        tribes={tid: _copy_tribe(t) for tid, t in state.tribes.items()},
-        bands={bid: _copy_band(b) for bid, b in state.bands.items()},
+        # Copies d'apres leurs champs (records.py) : rien de modifiable partage.
+        tribes={tid: records.copy(t) for tid, t in state.tribes.items()},
+        bands={bid: records.copy(b) for bid, b in state.bands.items()},
         tick_count=state.tick_count,
         rng=copy.deepcopy(state.rng),
         player_dead=state.player_dead,
@@ -1990,25 +1956,8 @@ def _week(state: GameState, battle_days: int) -> None:
         population.monthly(state)
     update_influence(state)
     if monthly:
-        tech.update_start_bonuses(state)
-        diplo.monthly(state)
-        goods.monthly(state)
-        from src.kora import production
-
-        production.monthly(state)
-        from src.kora import chiefdom
-
-        chiefdom.monthly(state)
-        from src.kora import money, numbers
-
-        numbers.monthly(state)
-        money.monthly(state)
-        chiefs.monthly(state)
-        diplo.ai_monthly(state)
-        events.monthly(state)
-        from src.kora import situations
-
-        situations.monthly(state)
+        # Le mois de chaque systeme, dans l'ordre du tableau (systems.py).
+        systems.run(systems.MONTHLY, state)
     events.weekly(state)
     tech.invalidate()
     update_prestige(state)

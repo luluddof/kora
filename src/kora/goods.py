@@ -407,17 +407,10 @@ def output(state, site, cid: str) -> float:
     _count, best = deposits(state, site, cid)
     rich = 0.5 + best
     shop = WORKSHOP if villages.has(site, "atelier") else 1.0
-    # Le savoir-faire du peuple (production.py).
-    from src.kora import production
+    # Le savoir-faire, la chefferie, les gages... (systems.CRAFT_OUTPUT).
+    from src.kora import money, systems
 
-    shop *= production.of(state, site.tribe_id, production.craft_kind(cid))
-    if not craft.food:
-        from src.kora import chiefdom
-
-        shop *= chiefdom.craft_mult(state, site.tribe_id)
-    from src.kora import money
-
-    shop *= money.wage_mult(state, site.tribe_id)
+    shop = systems.apply_mult(shop, systems.CRAFT_OUTPUT, state, site, craft)
     if craft.special == "argent":
         return n * money.SILVER_OUT * rich * shop
     if craft.food:

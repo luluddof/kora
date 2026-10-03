@@ -580,34 +580,33 @@ START_BONUSES: dict[str, StartBonus] = {
 }
 
 
-_MATH: dict = {}
+_SPECS: dict = {}
 
 
-def math_effect(eid: str):
-    """L'effet d'une base ou d'une operation (numbers.py), comme un savoir."""
-    if not (eid.startswith("base:") or eid.startswith("op:")):
-        return None
-    if not _MATH:
-        from src.kora.numbers import effect_specs
+def spec_effect(eid: str):
+    """L'effet d'une situation, d'une base, d'une operation... comme un
+    savoir : decrit par le systeme qui porte son prefixe
+    (systems.EFFECT_SPECS). None : ce n'en est pas un."""
+    if eid in _SPECS:
+        return _SPECS[eid]
+    from src.kora import systems
 
-        for k, (name, effects) in effect_specs().items():
-            _MATH[k] = StartBonus(k, name, "", effects)
-    return _MATH.get(eid)
+    prefix = next((p for p in systems.EFFECT_SPECS if eid.startswith(p)), None)
+    if prefix is not None:
+        for k, (name, effects) in systems.fn(systems.EFFECT_SPECS[prefix])().items():
+            if k.startswith(prefix) and k not in _SPECS:
+                _SPECS[k] = StartBonus(k, name, "", effects)
+    return _SPECS.setdefault(eid, None)
 
 
-_SIT: dict = {}
+# Les anciens noms (ecrans, tests).
+situation_effect = spec_effect
+math_effect = spec_effect
 
 
-def situation_effect(eid: str):
-    """L'effet d'une situation (situations.effect_specs), comme un savoir."""
-    if not eid.startswith("sit:"):
-        return None
-    if not _SIT:
-        from src.kora.situations import effect_specs
-
-        for k, (name, effects) in effect_specs().items():
-            _SIT[k] = StartBonus(k, name, "", effects)
-    return _SIT.get(eid)
+def start_bonus_ids(tribe) -> list:
+    """Les bonus de depart comptent comme des savoirs tant qu'ils durent."""
+    return getattr(tribe, "start_bonuses", None) or []
 
 
 def start_bonus_lines(bonus: StartBonus) -> list[str]:
@@ -757,7 +756,7 @@ def bonuses_of(known) -> Bonuses:
         if name not in ("food", "move")
     }
     for tid in sorted(key):
-        tech = TECHS.get(tid) or START_BONUSES.get(tid) or situation_effect(tid) or math_effect(tid)
+        tech = TECHS.get(tid) or START_BONUSES.get(tid) or spec_effect(tid)
         if tech is None:
             continue
         for name, value in tech.effects.items():
@@ -806,18 +805,14 @@ def bonuses(tribe) -> Bonuses:
         if hit is not None and hit[0] is tribe:
             return hit[1]
     known = getattr(tribe, "knowledge", None)
-    extra = getattr(tribe, "start_bonuses", None)
-    if extra:
-        # Les bonus de depart comptent comme des savoirs tant qu'ils durent.
-        known = set(known or ()) | set(extra)
-    sit = getattr(tribe, "situation_effects", None)
-    if sit:
-        # Les situations (crises, prix des conjonctures) aussi.
-        known = set(known or ()) | {e[0] for e in sit}
-    maths = getattr(tribe, "math_effects", None)
-    if maths:
-        # La base des nombres et les operations connues (numbers.py).
-        known = set(known or ()) | set(maths)
+    from src.kora import systems
+
+    for path in systems.EFFECT_FIELDS:
+        # Ce qui compte comme des savoirs : bonus de depart, situations,
+        # nombres... (systems.EFFECT_FIELDS).
+        extra = systems.fn(path)(tribe)
+        if extra:
+            known = set(known or ()) | set(extra)
     bonus = bonuses_of(known) if known else NO_BONUS
     if memo is not None:
         memo[id(tribe)] = (tribe, bonus)

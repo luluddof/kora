@@ -53,6 +53,11 @@ REFORM_WEEKS = 3 * 52
 REFORM_EVERY = 30 * 52
 
 
+def effect_ids(tribe) -> list:
+    """La base et les operations en vigueur (systems.EFFECT_FIELDS)."""
+    return getattr(tribe, "math_effects", None) or []
+
+
 def effect_specs() -> dict:
     out = {}
     for b, (name, _text, eff) in BASES.items():

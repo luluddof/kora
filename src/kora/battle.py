@@ -576,11 +576,11 @@ def _flee(state, bt, side: Side, morale: float, rng) -> int:
         return 0
     share = FLEE_RATE * (FLEE_MORALE - morale) / FLEE_MORALE * (0.5 + rng.random())
     gone = 0
-    from src.kora import money
+    from src.kora import systems
 
     for b in side.bands:
-        # La solde payee retient les hommes (money.py).
-        n = int(math.floor(side.now[b.id] * share * money.flee_mult(state, b.tribe_id)))
+        # Ce qui retient les hommes, ou les fait partir (systems.FLEE).
+        n = int(math.floor(systems.apply_mult(side.now[b.id] * share, systems.FLEE, state, b.tribe_id)))
         if n <= 0:
             continue
         if b.kind == "armee":

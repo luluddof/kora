@@ -7,11 +7,11 @@ import sys
 import time
 from pathlib import Path
 
-from src.kora import battle, chiefs, diplo, events, sites, situations
+from src.kora import battle, chiefs, diplo, events, records, sites, situations
 from src.kora.clock import Clock
 from src.kora.log import LOG_CAP, GameLog, LogEntry, LogKind
 from src.kora.sim import GameState
-from src.kora.types import Band, FightMark, Hex, Order, OrderKind, Season, Tribe
+from src.kora.types import Band, FightMark, Hex, Season, Tribe
 from src.kora.vision import PlayerVision, recompute_vision
 from src.kora.world import World, offset_to_axial
 
@@ -97,201 +97,6 @@ def _rng_from_json(data: dict) -> random.Random:
     gauss = data.get("gauss")
     rng.setstate((data["ver"], tuple(data["mt"]), gauss))
     return rng
-
-
-def _order_to_json(order: Order) -> dict:
-    payload = {
-        "kind": order.kind.value,
-        "target_hex": None if order.target_hex is None else _hex_to_list(order.target_hex),
-        "target_band_id": order.target_band_id,
-    }
-    return payload
-
-
-def _order_from_json(data: dict) -> Order:
-    kind = OrderKind(data["kind"])
-    target = data.get("target_hex")
-    return Order(
-        kind=kind,
-        target_hex=None if target is None else _hex_from_list(target),
-        target_band_id=data.get("target_band_id"),
-    )
-
-
-def _band_to_json(band: Band) -> dict:
-    return {
-        "id": band.id,
-        "tribe_id": band.tribe_id,
-        "position": _hex_to_list(band.position),
-        "population": band.population,
-        "stock": band.stock,
-        "order": _order_to_json(band.order),
-        "path": [_hex_to_list(h) for h in band.path],
-        "famine_in_period": band.famine_in_period,
-        "recent_goals": [_hex_to_list(h) for h in band.recent_goals],
-        "growth_acc": band.growth_acc,
-        "last_raid_tick": band.last_raid_tick,
-        "retreating": band.retreating,
-        "shield_until": band.shield_until,
-        "intent_prey": band.intent_prey,
-        "intent_until": band.intent_until,
-        "leader": chiefs.person_to_json(band.leader),
-        "loyalty": band.loyalty,
-        "honored": band.honored,
-        "famine_tick": band.famine_tick,
-        "village": band.village,
-        "kind": band.kind,
-        "home": band.home,
-        "raised": band.raised,
-        "units": [list(u) for u in band.units],
-        "homebound": band.homebound,
-        "notables": [chiefs.person_to_json(p) for p in band.notables],
-        "welded_until": band.welded_until,
-        "autonomy": band.autonomy,
-        "demo": dict(sorted(band.demo.items())),
-        "wounded": band.wounded,
-    }
-
-
-def _band_from_json(data: dict) -> Band:
-    return Band(
-        id=int(data["id"]),
-        tribe_id=int(data["tribe_id"]),
-        position=_hex_from_list(data["position"]),
-        population=int(data["population"]),
-        stock=float(data["stock"]),
-        order=_order_from_json(data["order"]),
-        path=[_hex_from_list(h) for h in data.get("path", [])],
-        famine_in_period=bool(data.get("famine_in_period", False)),
-        recent_goals=[_hex_from_list(h) for h in data.get("recent_goals", [])],
-        growth_acc=float(data.get("growth_acc", 0.0)),
-        last_raid_tick=int(data.get("last_raid_tick", -1000)),
-        retreating=bool(data.get("retreating", False)),
-        shield_until=int(data.get("shield_until", 0)),
-        intent_prey=int(data.get("intent_prey", 0)),
-        intent_until=int(data.get("intent_until", 0)),
-        leader=chiefs.person_from_json(data.get("leader")),
-        loyalty=float(data.get("loyalty", chiefs.START_LOYALTY)),
-        honored=int(data.get("honored", -1000)),
-        famine_tick=int(data.get("famine_tick", -1000)),
-        village=int(data.get("village", 0)),
-        kind=str(data.get("kind", "")),
-        home=int(data.get("home", 0)),
-        raised=int(data.get("raised", 0)),
-        units=[[str(u[0]), int(u[1]), int(u[2])] for u in data.get("units", [])],
-        homebound=bool(data.get("homebound", False)),
-        notables=[p for p in (chiefs.person_from_json(x) for x in data.get("notables", [])) if p is not None],
-        welded_until=int(data.get("welded_until", 0)),
-        autonomy=float(data.get("autonomy", 0.0)),
-        demo={str(k): float(v) for k, v in data.get("demo", {}).items()},
-        wounded=int(data.get("wounded", 0)),
-    )
-
-
-def _tribe_to_json(tribe: Tribe) -> dict:
-    return {
-        "id": tribe.id,
-        "name": tribe.name,
-        "prestige": tribe.prestige,
-        "is_player": tribe.is_player,
-        "famine_during_winter": tribe.famine_during_winter,
-        "cabotage": tribe.cabotage,
-        "shore_seen": tribe.shore_seen,
-        "coast_weeks": tribe.coast_weeks,
-        "troupeau": tribe.troupeau,
-        "steppe_seen": tribe.steppe_seen,
-        "steppe_weeks": tribe.steppe_weeks,
-        "knowledge": sorted(tribe.knowledge),
-        "learning": tribe.learning,
-        "progress": dict(tribe.progress),
-        "practice": dict(tribe.practice),
-        "culture": tribe.culture,
-        "color": list(tribe.color),
-        "minor": tribe.minor,
-        "origin": tribe.origin,
-        "founded": tribe.founded,
-        "flags": dict(tribe.flags),
-        "chief_band": tribe.chief_band,
-        "heir": tribe.heir,
-        "settled_at": tribe.settled_at,
-        "civ": tribe.civ,
-        "goods": {k: round(v, 3) for k, v in tribe.goods.items()},
-        "trade": tribe.trade,
-        "start_bonuses": list(tribe.start_bonuses),
-        "start_bonus_until": tribe.start_bonus_until,
-        "situation_effects": [list(e) for e in tribe.situation_effects],
-        "efficiency": dict(sorted(tribe.efficiency.items())),
-        "glut": dict(sorted(tribe.glut.items())),
-        "levy_rate": tribe.levy_rate,
-        "granary": tribe.granary,
-        "families": [dict(f) for f in tribe.families],
-        "feast_until": tribe.feast_until,
-        "base": tribe.base,
-        "base_changed": tribe.base_changed,
-        "base_reform_until": tribe.base_reform_until,
-        "operations": list(tribe.operations),
-        "math_progress": tribe.math_progress,
-        "math_effects": list(tribe.math_effects),
-        "money": tribe.money,
-        "budget": dict(sorted(tribe.budget.items())),
-        "money_month": dict(sorted(tribe.money_month.items())),
-        "money_hist": [list(h[:5]) + [dict(sorted(h[5].items()))] for h in tribe.money_hist],
-    }
-
-
-def _tribe_from_json(data: dict) -> Tribe:
-    return Tribe(
-        id=int(data["id"]),
-        name=str(data["name"]),
-        prestige=int(data["prestige"]),
-        is_player=bool(data["is_player"]),
-        famine_during_winter=bool(data.get("famine_during_winter", False)),
-        cabotage=bool(data.get("cabotage", False)),
-        shore_seen=bool(data.get("shore_seen", False)),
-        coast_weeks=int(data.get("coast_weeks", 0)),
-        troupeau=bool(data.get("troupeau", False)),
-        steppe_seen=bool(data.get("steppe_seen", False)),
-        steppe_weeks=int(data.get("steppe_weeks", 0)),
-        knowledge=set(data.get("knowledge", [])),
-        learning=data.get("learning"),
-        progress={str(k): float(v) for k, v in data.get("progress", {}).items()},
-        practice={str(k): int(v) for k, v in data.get("practice", {}).items()},
-        culture=str(data.get("culture", "")),
-        color=tuple(int(c) for c in data.get("color", ())),
-        minor=bool(data.get("minor", False)),
-        origin=int(data.get("origin", 0)),
-        founded=int(data.get("founded", 1)),
-        flags={str(k): int(v) for k, v in data.get("flags", {}).items()},
-        chief_band=int(data.get("chief_band", 0)),
-        heir=int(data.get("heir", 0)),
-        settled_at=int(data.get("settled_at", -1)),
-        civ=int(data.get("civ", 0)),
-        goods={str(k): float(v) for k, v in data.get("goods", {}).items()},
-        trade=data.get("trade", {}) if isinstance(data.get("trade", {}), dict) else {},
-        start_bonuses=[str(b) for b in data.get("start_bonuses", [])],
-        start_bonus_until=int(data.get("start_bonus_until", -1)),
-        situation_effects=[[str(e[0]), int(e[1])] for e in data.get("situation_effects", [])],
-        efficiency={str(k): float(v) for k, v in data.get("efficiency", {}).items()},
-        glut={str(k): int(v) for k, v in data.get("glut", {}).items()},
-        levy_rate=int(data.get("levy_rate", 10)),
-        granary=float(data.get("granary", 0.0)),
-        families=[
-            {"id": int(f["id"]), "name": str(f["name"]), "trait": str(f["trait"]), "charge": str(f.get("charge", "")),
-             "favour": float(f.get("favour", 50.0)), "village": int(f.get("village", 0))}
-            for f in data.get("families", [])
-        ],
-        feast_until=int(data.get("feast_until", -1)),
-        base=int(data.get("base", 0)),
-        base_changed=int(data.get("base_changed", -1000000)),
-        base_reform_until=int(data.get("base_reform_until", -1)),
-        operations=[str(o) for o in data.get("operations", [])],
-        math_progress=float(data.get("math_progress", 0.0)),
-        math_effects=[str(o) for o in data.get("math_effects", [])],
-        money=float(data.get("money", 0.0)),
-        budget={str(k): (v if isinstance(v, (bool, str)) else int(v)) for k, v in data.get("budget", {}).items()},
-        money_month={str(k): float(v) for k, v in data.get("money_month", {}).items()},
-        money_hist=[[int(h[0]), int(h[1]), float(h[2]), float(h[3]), float(h[4]), {str(k): float(v) for k, v in dict(h[5]).items()}] for h in data.get("money_hist", [])],
-    )
 
 
 def _log_to_json(log: GameLog) -> dict:
@@ -469,8 +274,9 @@ def game_to_json(state: GameState, view: dict | None = None) -> dict:
         # changeait la suite de la partie).
         "pressure": [[h.q, h.r, p] for h, p in state.last_pressure.items()],
         "events": events.to_json(state.events),
-        "tribes": [_tribe_to_json(t) for t in state.tribes.values()],
-        "bands": [_band_to_json(b) for b in state.bands.values()],
+        # Tribus et bandes : d'apres leurs champs (records.py, types.py).
+        "tribes": [records.to_json(t) for t in state.tribes.values()],
+        "bands": [records.to_json(b) for b in state.bands.values()],
         "explored": explored,
         "exhaustion": exhaustion,
         "influence": influence,
@@ -525,7 +331,7 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         clock._finished_winter = bool(ck.get("finished_winter", False))
         tribes = {}
         for raw in data["tribes"]:
-            tribe = _tribe_from_json(raw)
+            tribe = records.from_json(Tribe, raw)
             if "knowledge" not in raw:
                 # Sauvegarde d'avant les savoirs : feu, outils, et ce que les
                 # anciens drapeaux disaient.
@@ -539,7 +345,7 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
             tribes[tribe.id] = tribe
         bands = {}
         for raw in data["bands"]:
-            band = _band_from_json(raw)
+            band = records.from_json(Band, raw)
             bands[band.id] = band
         state = GameState(
             world=world,

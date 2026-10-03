@@ -76,6 +76,11 @@ def craft_kind(cid: str) -> str:
     return "peche" if cid == "pecheurs" else cid
 
 
+def craft_mult(state, site, craft) -> float:
+    """Le savoir-faire du peuple pour ce metier (systems.CRAFT_OUTPUT)."""
+    return of(state, site.tribe_id, craft_kind(craft.id))
+
+
 def adjust(tribe, kind: str, delta: float) -> None:
     """Changer un savoir-faire (borne a EFF_MIN..EFF_MAX)."""
     now = efficiency(tribe, kind)

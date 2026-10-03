@@ -1545,6 +1545,11 @@ EXTRA_EFFECTS = {
 }
 
 
+def effect_ids(tribe) -> list:
+    """Les effets en cours, lus par tech.bonuses (systems.EFFECT_FIELDS)."""
+    return [e[0] for e in (getattr(tribe, "situation_effects", None) or [])]
+
+
 def effect_specs() -> dict:
     """id -> (nom, effets) : les etapes de chaque situation, et les autres."""
     out = dict(EXTRA_EFFECTS)

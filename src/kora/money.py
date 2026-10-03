@@ -174,6 +174,11 @@ def wage_mult(state, tid: int, kind: str = "metier") -> float:
     return 1.0
 
 
+def craft_output(state, site, craft) -> float:
+    """Les gages payes (systems.CRAFT_OUTPUT)."""
+    return wage_mult(state, site.tribe_id)
+
+
 def solde_morale(state, tid: int) -> float:
     tribe = state.tribes.get(tid)
     s = _paid(tribe, "solde") if tribe is not None else ""

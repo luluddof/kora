@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import NamedTuple, Optional
+from typing import Any, NamedTuple, Optional
 
 
 class Terrain(Enum):
@@ -54,6 +54,30 @@ def stay_order() -> Order:
     return Order(kind=OrderKind.STAY)
 
 
+def _families(v) -> list:
+    """Familles d'une vieille partie : les cles qui manquaient."""
+    return [
+        {"id": int(f["id"]), "name": str(f["name"]), "trait": str(f["trait"]), "charge": str(f.get("charge", "")),
+         "favour": float(f.get("favour", 50.0)), "village": int(f.get("village", 0))}
+        for f in v
+    ]
+
+
+def _people(v) -> list:
+    from src.kora.chiefs import person_from_json
+
+    return [p for p in (person_from_json(x) for x in v) if p is not None]
+
+
+def _trade(v) -> dict:
+    return v if isinstance(v, dict) else {}
+
+
+# Les champs de Band et de Tribe se sauvent, se relisent et se copient
+# d'apres leur TYPE (records.py) : un champ nouveau = une ligne ici, avec
+# son type precis et sa valeur par defaut (celle des vieilles parties).
+
+
 @dataclass
 class Band:
     id: int
@@ -62,9 +86,9 @@ class Band:
     population: int
     stock: float
     order: Order = field(default_factory=stay_order)
-    path: list = field(default_factory=list)
+    path: list[Hex] = field(default_factory=list)
     famine_in_period: bool = False
-    recent_goals: list = field(default_factory=list)
+    recent_goals: list[Hex] = field(default_factory=list)
     growth_acc: float = 0.0
     last_raid_tick: int = -1000
     retreating: bool = False
@@ -88,16 +112,16 @@ class Band:
     raised: int = 0
     # Troupe : ses compagnies [type, hommes, village] (units.py) ; dissoute,
     # elle rentre a pied (homebound) et redevient villageoise a l'arrivee.
-    units: list = field(default_factory=list)
+    units: list[list] = field(default_factory=list)
     homebound: bool = False
     # Clan : les chefs des clans reunis (anciens) ; groupe pas encore soude.
-    notables: list = field(default_factory=list)
+    notables: list["Person"] = field(default_factory=list, metadata={"decode": _people})
     welded_until: int = 0
     # Clan nomade d'un peuple fixe : son independance (0 a 100, chiefs.py).
     autonomy: float = 0.0
     # Qui sont ses gens (population.py) : la part de chaque classe (vide :
     # la structure ordinaire), et ses blesses.
-    demo: dict = field(default_factory=dict)
+    demo: dict[str, float] = field(default_factory=dict)
     wounded: int = 0
 
 
@@ -108,7 +132,7 @@ class Person:
     pid: int
     name: str
     born: int
-    traits: tuple = ()
+    traits: tuple[str, ...] = ()
     renown: int = 0
 
 
@@ -126,19 +150,19 @@ class Tribe:
     steppe_seen: bool = False
     steppe_weeks: int = 0
     # Savoirs (voir tech.py) : connus, en cours, avancement, vecu.
-    knowledge: set = field(default_factory=set)
+    knowledge: set[str] = field(default_factory=set)
     learning: Optional[str] = None
-    progress: dict = field(default_factory=dict)
-    practice: dict = field(default_factory=dict)
+    progress: dict[str, float] = field(default_factory=dict)
+    practice: dict[str, int] = field(default_factory=dict)
     # Peuple (voir peoples.py) : culture, couleur, petit peuple, peuple
     # d'origine (secession), annee de naissance du peuple.
     culture: str = ""
-    color: tuple = ()
+    color: tuple[int, ...] = ()
     minor: bool = False
     origin: int = 0
     founded: int = 1
     # Memoire des evenements : drapeau -> semaine d'expiration (-1 = toujours).
-    flags: dict = field(default_factory=dict)
+    flags: dict[str, int] = field(default_factory=dict)
     # Chef de la tribu : la bande qu'il mene ; heritier designe (pid).
     chief_band: int = 0
     heir: int = 0
@@ -149,37 +173,38 @@ class Tribe:
     civ: int = 0
     # Biens du peuple (goods.py) : bien -> charges en reserve ; derniers
     # echanges : peuple (texte) -> {"in": {bien: n}, "out": {...}, "vivres": v}.
-    goods: dict = field(default_factory=dict)
-    trade: dict = field(default_factory=dict)
+    goods: dict[str, float] = field(default_factory=dict, metadata={"round": 3})
+    trade: dict = field(default_factory=dict, metadata={"decode": _trade})
     # Bonus de depart choisis a la creation (tech.START_BONUSES), jusqu'a la
     # semaine start_bonus_until (-1 : aucun).
-    start_bonuses: list = field(default_factory=list)
+    start_bonuses: list[str] = field(default_factory=list)
     start_bonus_until: int = -1
     # Effets des situations (situations.py) : [id, jusqu'a la semaine] ; -1 :
     # tant que la situation dure.
-    situation_effects: list = field(default_factory=list)
+    situation_effects: list[list] = field(default_factory=list)
     # Savoir-faire des villages (production.py) : genre de production ->
     # efficacite (1,0 au depart) ; et mois de surproduction par bien.
-    efficiency: dict = field(default_factory=dict)
-    glut: dict = field(default_factory=dict)
+    efficiency: dict[str, float] = field(default_factory=dict)
+    glut: dict[str, int] = field(default_factory=dict)
     # La chefferie (chiefdom.py) : prelevement du chef sur les recoltes (%),
     # son grenier commun, les familles qui comptent, la derniere fete.
     levy_rate: int = 10
     granary: float = 0.0
-    families: list = field(default_factory=list)
+    families: list[dict[str, Any]] = field(default_factory=list, metadata={"decode": _families})
     feast_until: int = -1
     # Les nombres (numbers.py) : la base, les operations, les points de
     # calcul, les effets en vigueur ; la derniere reforme.
     base: int = 0
     base_changed: int = -1000000
     base_reform_until: int = -1
-    operations: list = field(default_factory=list)
+    operations: list[str] = field(default_factory=list)
     math_progress: float = 0.0
-    math_effects: list = field(default_factory=list)
+    math_effects: list[str] = field(default_factory=list)
     # L'argent (money.py) : le tresor, le budget, le mois en cours, l'histoire.
     money: float = 0.0
-    budget: dict = field(default_factory=dict)
-    money_month: dict = field(default_factory=dict)
+    budget: dict[str, Any] = field(default_factory=dict)
+    money_month: dict[str, float] = field(default_factory=dict)
+    # [annee, semaine, rentrees, depenses, tresor, {poste: sicles}]
     money_hist: list = field(default_factory=list)
 
 

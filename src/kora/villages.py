@@ -718,15 +718,10 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
             parts.append((label, v))
     if oath_of(site) == "feu":
         parts.append(("Serment du feu", 10.0))
-    from src.kora import goods
+    from src.kora import systems
 
-    parts.extend(goods.stability_parts(state, band.tribe_id))
-    from src.kora import chiefdom
-
-    parts.extend(chiefdom.stability_parts(state, band.tribe_id))
-    from src.kora import money
-
-    parts.extend(money.stability_parts(state, band.tribe_id))
+    # Ce que chaque systeme fait a la stabilite (systems.STABILITY).
+    parts.extend(systems.parts(systems.STABILITY, state, band.tribe_id))
     if chiefs.is_chief_band(state, band):
         parts.append(("Le chef y gouverne", 10.0))
     else:
@@ -1393,9 +1388,10 @@ def army_quality(state, band) -> float:
 
 
 def army_morale(state, band) -> float:
-    from src.kora import chiefdom
+    from src.kora import systems
 
-    return WARRIORS_MORALE * _warrior_share(state, band) + chiefdom.army_morale(state, band.tribe_id)
+    # Et ce que chaque systeme y ajoute (systems.ARMY_MORALE).
+    return WARRIORS_MORALE * _warrior_share(state, band) + systems.total(systems.ARMY_MORALE, state, band.tribe_id)
 
 
 def levy_size(band, share: float) -> int:

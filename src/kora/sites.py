@@ -13,10 +13,10 @@ N'importe ni pygame ni render.
 
 from __future__ import annotations
 
-import copy
+
 from dataclasses import dataclass, field
 
-from src.kora import tech
+from src.kora import records, tech
 from src.kora.log import LogKind
 from src.kora.types import Hex, Terrain
 
@@ -45,26 +45,11 @@ class Site:
     # population : inutilise (les villageois sont une bande installee).
     population: int = 0
     # Village (villages.py) : bande, champs, sol, semences, palissade...
-    data: dict = field(default_factory=dict)
-
-
-def _copy_data(value):
-    """Copie d'une donnee de lieu (dicts, listes, nombres, textes) : meme
-    resultat que deepcopy, bien plus vite (la sauvegarde du tick en fait
-    une par lieu, chaque semaine)."""
-    if isinstance(value, dict):
-        return {k: _copy_data(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_copy_data(v) for v in value]
-    if isinstance(value, (int, float, str, bool, type(None))):
-        return value
-    return copy.deepcopy(value)
+    data: dict = field(default_factory=dict, metadata={"decode": dict})
 
 
 def copy_site(site: Site) -> Site:
-    out = copy.copy(site)
-    out.data = _copy_data(site.data)
-    return out
+    return records.copy(site)
 
 
 def _bonus(state, tribe_id: int):
@@ -408,30 +393,8 @@ def site_lines(state, site: Site) -> list[str]:
 
 
 def to_json(site: Site) -> dict:
-    return {
-        "id": site.id,
-        "kind": site.kind,
-        "tribe_id": site.tribe_id,
-        "hex": [site.hex.q, site.hex.r],
-        "store": site.store,
-        "founded": site.founded,
-        "visited": site.visited,
-        "name": site.name,
-        "population": site.population,
-        "data": site.data,
-    }
+    return records.to_json(site)
 
 
 def from_json(data: dict) -> Site:
-    return Site(
-        id=int(data["id"]),
-        kind=str(data["kind"]),
-        tribe_id=int(data["tribe_id"]),
-        hex=Hex(int(data["hex"][0]), int(data["hex"][1])),
-        store=float(data.get("store", 0.0)),
-        founded=int(data.get("founded", 0)),
-        visited=int(data.get("visited", 0)),
-        name=str(data.get("name", "")),
-        population=int(data.get("population", 0)),
-        data=dict(data.get("data", {})),
-    )
+    return records.from_json(Site, data)

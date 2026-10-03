@@ -204,6 +204,12 @@ def craft_mult(state, tid: int) -> float:
     return 1.0 + _effect(state, tid, "metiers", 0.05, 0.12)
 
 
+def craft_output(state, site, craft) -> float:
+    """Le maitre des metiers aide les artisans, pas les pecheurs
+    (systems.CRAFT_OUTPUT)."""
+    return 1.0 if craft.food else craft_mult(state, site.tribe_id)
+
+
 def _make_families(state, tribe) -> None:
     """Les familles qui comptent naissent avec les villages (2, puis une de
     plus tous les deux villages, 4 au plus)."""
@@ -361,12 +367,9 @@ def stability_parts(state, tid: int) -> list[tuple[str, float]]:
 
 
 def army_morale(state, tid: int) -> float:
-    from src.kora import money
-
+    """Un chef qui preleve beaucoup nourrit bien ses guerriers."""
     tribe = state.tribes.get(tid)
-    levy = 5.0 if tribe is not None and getattr(tribe, "levy_rate", 0) >= 20 else 0.0
-    # La solde payee (ou promise et pas payee) : money.py.
-    return levy + money.solde_morale(state, tid)
+    return 5.0 if tribe is not None and getattr(tribe, "levy_rate", 0) >= 20 else 0.0
 
 
 # --- tributaires -----------------------------------------------------------------------
