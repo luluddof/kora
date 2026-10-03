@@ -10,10 +10,13 @@ from src.kora import (
     events,
     goods,
     money,
+    net,
     orders,
     places,
     screens,
+    session,
     situations,
+    tech,
     units,
     villages,
 )
@@ -328,7 +331,8 @@ def _remember(setup: dict) -> None:
 
 
 def _prefilled(setup: dict) -> dict:
-    from src.kora import render_menu, tech
+    from src.kora import render_menu
+
     prefs = load_prefs()
     if isinstance(prefs.get("name"), str) and prefs["name"].strip():
         setup["name"] = prefs["name"][: render_menu.NAME_MAX]
@@ -350,6 +354,7 @@ def title_screen(renderer, clock, worlds, message: str = ""):
     import random
 
     from src.kora import render_menu
+
     scene = render_menu.TitleScene(worlds.shown)
     info = peek_save(default_save_path())
     multi = peek_save(multi_save_path())
@@ -443,7 +448,8 @@ def _multiplayer(renderer, clock, worlds, choice):
     Rend ("play", session, state), ("back", message) ou ("quit",)."""
     import threading
 
-    from src.kora import net, render_menu, session
+    from src.kora import render_menu
+
     scene = render_menu.TitleScene(worlds.shown)
     mp = None
     connecting = None

@@ -46,8 +46,6 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
     # Tours de guet des villages : on voit plus loin autour.
     towers: list = []
     if state.sites:
-        from src.kora import villages
-
         towers = places.watch_spots(state, tid)
     key = (id(state.world), radius, tuple(spots), tuple(towers))
     if vis.key == key:

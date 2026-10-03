@@ -646,6 +646,7 @@ def draw_mp_overlay(r, mp, state, chat_text) -> None:
     import time as _time
 
     from src.kora.render import HUD_HEIGHT
+
     screen = r.screen
     w, h = screen.get_size()
     chips = []

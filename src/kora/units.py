@@ -204,8 +204,6 @@ def attack_mult(band, terrain) -> float:
 
 
 def lines(state, band) -> list[str]:
-    from src.kora import villages
-
     if band.kind != "armee":
         return []
     parts = []

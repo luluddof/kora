@@ -329,6 +329,7 @@ class HostSession(_Base):
         """Lance la partie : la meme pour tous (la partie en texte, rechargee
         aussi par l'hote)."""
         from src.kora.persist import dumps_game, loads_game
+
         if self.resume is not None:
             base = self.resume
         else:

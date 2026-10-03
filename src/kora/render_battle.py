@@ -160,6 +160,7 @@ def draw_on_map(r, state, yaw, pitch, zoom) -> None:
     """Des epees qui battent sur chaque bataille en cours que l'on voit."""
     from src.kora.globe import hex_to_globe_screen
     from src.kora.render import HUD_HEIGHT, view_params
+
     w, h = r.screen.get_size()
     gcx, gcy, focal, dist = view_params(zoom, w, h, HUD_HEIGHT)
     t = pygame.time.get_ticks() / 1000.0

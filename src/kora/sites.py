@@ -371,7 +371,6 @@ def site_lines(state, site: Site) -> list[str]:
         lines = [f"Campement ({who})", f"Réserve : {site.store:.0f} / {capacity(state, site):.0f}"]
         lines.append(f"Tenu depuis {years} an{'s' if years > 1 else ''}" if years else "Établi cette année")
         return lines
-    from src.kora import villages
 
     band = places.band_of(state, site)
     people = band.population if band is not None else 0

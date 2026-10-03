@@ -336,7 +336,7 @@ def check(state, inst, cond) -> bool:
         return extra(state, inst, tribe, band, *args)
     if kind == "crafts":
         # Des gens de metier au village (goods.py).
-        from src.kora import goods, villages
+        from src.kora import goods
 
         return goods.total_teams(places.site_of(state, band)) > 0
     if kind == "trade_partner":
@@ -405,7 +405,8 @@ def _deaths(state, band, lo: int, hi: int) -> int:
 
 
 def apply(state, inst, effect) -> None:
-    from src.kora import chiefs, diplo, sites, tech
+    from src.kora import diplo
+
     kind, *args = effect
     tribe = state.tribes.get(inst.tribe_id)
     band = _band(state, inst)

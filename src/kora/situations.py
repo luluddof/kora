@@ -668,8 +668,6 @@ def _villages(state, tid=None):
 
 
 def _village_band(state, site):
-    from src.kora import villages
-
     return places.band_of(state, site)
 
 
@@ -762,8 +760,6 @@ class MalDesBetes(Spec):
     natural = 3.0
 
     def candidates(self, state):
-        from src.kora import villages
-
         out = []
         for site in _villages(state):
             band = _village_band(state, site)
@@ -903,7 +899,7 @@ class GrandsTravaux(Spec):
             inst.participants[tid]["score"] = round(score, 3)
 
     def act(self, state, inst, tid, action):
-        from src.kora import diplo, villages
+        from src.kora import diplo
 
         if action == "corvee":
             for site in _villages(state, tid):
@@ -1132,6 +1128,7 @@ class Surproduction(Spec):
 
     def act(self, state, inst, tid, action):
         from src.kora import diplo, goods
+
         good = self._good(inst)
         cid = goods.GOOD_CRAFT.get(good)
         tribe = state.tribes[tid]
@@ -1487,8 +1484,6 @@ def _risk_rouille(self, state, tid):
 
 
 def _risk_mal_betes(self, state, tid):
-    from src.kora import villages
-
     for site in _villages(state, tid):
         band = _village_band(state, site)
         if band is not None and band.population >= 100 and places.has(site, "enclos"):

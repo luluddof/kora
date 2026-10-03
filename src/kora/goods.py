@@ -44,7 +44,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.kora import places, population, tech, villages
+from src.kora import places, population, systems, tech, villages
 from src.kora.log import LogKind
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.types import TradeRoute
@@ -322,8 +322,6 @@ def craft_status(state, site, cid: str) -> str:
 
 
 def add_block(state, site, cid: str) -> str:
-    from src.kora import villages
-
     if cid not in CRAFTS:
         return "?"
     craft = CRAFTS[cid]
@@ -389,8 +387,6 @@ def _fit_teams(state, site, band) -> None:
 
 def output(state, site, cid: str) -> float:
     """Production d'une semaine : charges (ou vivres pour les pecheurs)."""
-    from src.kora import villages
-
     n = teams_of(site, cid)
     if n <= 0:
         return 0.0
@@ -404,7 +400,7 @@ def output(state, site, cid: str) -> float:
     rich = 0.5 + best
     shop = WORKSHOP if places.has(site, "atelier") else 1.0
     # Le savoir-faire, la chefferie, les gages... (systems.CRAFT_OUTPUT).
-    from src.kora import money, systems
+    from src.kora import money
 
     shop = systems.apply_mult(shop, systems.CRAFT_OUTPUT, state, site, craft)
     if craft.special == "argent":
@@ -430,8 +426,6 @@ def supplied(state, tribe_id: int, good: str) -> bool:
 
 
 def villagers(state, tribe_id: int) -> int:
-    from src.kora import villages
-
     total = 0
     for site in state.sites.values():
         if site.kind == "village" and site.tribe_id == tribe_id:
@@ -456,7 +450,6 @@ def made(state, tribe_id: int, good: str) -> float:
 
 def update(state) -> None:
     """Chaque semaine : les equipes produisent, les villages consomment."""
-    from src.kora import villages
     users: dict[int, int] = {}
     for site in sorted(state.sites.values(), key=lambda s: s.id):
         if site.kind != "village":
@@ -555,8 +548,6 @@ def forage_mult(site, band) -> float:
 
 
 def _village_sites(state, tribe_id: int) -> list:
-    from src.kora import villages
-
     return [
         s
         for s in sorted(state.sites.values(), key=lambda s: s.id)
@@ -823,8 +814,6 @@ def preview(state, tribe_id: int, partner: int, good: str, sell: bool, level: in
 
 
 def _food_spare(state, tribe_id: int) -> list:
-    from src.kora import villages
-
     out = []
     for site in _village_sites(state, tribe_id):
         band = places.band_of(state, site)
@@ -1095,8 +1084,6 @@ def ai_crafts(state, site, band, weeks: float) -> None:
     besoin ; les pecheurs quand le grenier est bas."""
     import math
 
-    from src.kora import villages
-
     fields = min(villages.MAX_FIELDS, max(1, math.ceil(band.population / villages.FIELD_WORKERS)))
     free = int(band.population - fields * villages.FIELD_HANDS) // TEAM
     cap = min(team_cap(band), free)
@@ -1156,8 +1143,6 @@ def lines(state, site, band) -> list[str]:
 
 
 def _ev_site(state, band):
-    from src.kora import villages
-
     return places.site_of(state, band)
 
 

@@ -1116,7 +1116,6 @@ class Renderer:
         a en reserve (pastilles ; plus grosses quand il en a de trop) ; vos
         partenaires entoures d'or ; la portee de vos porteurs autour de vos
         villages."""
-        from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
         world = state.world
         w, h = self.screen.get_size()
         partners = set(goods.partners(state, state.viewer))
@@ -1182,6 +1181,7 @@ class Renderer:
         if dist > 2.9:
             return
         from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
+
         world = state.world
         homes: dict = {}
         for site in sorted(state.sites.values(), key=lambda s: s.id):
@@ -1218,6 +1218,7 @@ class Renderer:
         if d is None or not getattr(d, "routes", None):
             return
         from src.kora.globe import offset_to_xyz, project_xyz, rotate_xyz
+
         world = state.world
         homes: dict = {}
         for site in state.sites.values():

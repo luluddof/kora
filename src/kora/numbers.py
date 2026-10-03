@@ -148,7 +148,7 @@ def ai_base(state, tribe) -> int:
 def points(state, tid: int) -> float:
     """Points de calcul par mois : les equipes de calculateurs du peuple (et
     la base dix, les gages payes)."""
-    from src.kora import goods, money, tech
+    from src.kora import goods, money
 
     tribe = state.tribes.get(tid)
     if tribe is None:

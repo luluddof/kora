@@ -848,7 +848,7 @@ def hands_mult(band, fields: int, busy: int = 0) -> float:
 def field_hands_mult(site, band, state=None) -> float:
     """Assez de bras aux champs ? Les adultes valides qui ne sont pas aux
     metiers (villages.occupations) ; les hommes partis a la guerre manquent."""
-    from src.kora import goods, population
+    from src.kora import goods
 
     fields = len(site.data.fields)
     need = fields * FIELD_HANDS * population.ACTIVE_NORM
@@ -1112,7 +1112,8 @@ def ai_oath(state, tribe_id: int) -> str:
 def found_preview(state, band_id: int) -> dict:
     """Ce que la fenetre de fondation montre : le lieu, ses terres, ses
     dangers, le nom propose, et si c'est le premier village du peuple."""
-    from src.kora import diplo, sites
+    from src.kora import diplo
+
     band = state.bands[band_id]
     camp = sites.own_site_at(state, band)
     world = state.world

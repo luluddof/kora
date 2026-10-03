@@ -182,8 +182,6 @@ def cover_parts(state, band: Band, h) -> list[tuple[str, float]]:
     if know.home_defense != 1.0 and influence.is_home(state.world, h, band.tribe_id):
         out.append(("Pays connu (guetteurs)", know.home_defense))
     if band.village:
-        from src.kora import villages
-
         out.extend(villages.defense_parts(state, band))
     return out
 
@@ -192,14 +190,11 @@ def start_morale(state, band: Band, attacker: bool, h) -> tuple[float, list[tupl
     parts: list[tuple[str, float]] = []
     tribe = state.tribes[band.tribe_id]
     if band.kind == "armee":
-        from src.kora import villages
-
         parts.append(("Troupe aguerrie", ARMY_MORALE + villages.army_morale(state, band)))
     elif not attacker:
         parts.append(("Défend les siens", KIN_MORALE))
     if band.village and not attacker:
         parts.append(("Défend son village", VILLAGE_MORALE))
-        from src.kora import villages
 
         site = places.site_of(state, band)
         if site is not None:
@@ -404,7 +399,6 @@ def general(state, bands) -> tuple[str, int]:
     if lead is not None:
         name = lead.name
         skill = 1 + (2 if "guerrier" in lead.traits else 0) + min(2, lead.renown // 40)
-    from src.kora import chiefdom
 
     skill += chiefdom.war_chief_bonus(state, main.tribe_id)
     return name, min(6, skill)
@@ -578,8 +572,6 @@ def day(state, bt) -> bool:
 def _flee(state, bt, side: Side, morale: float, rng) -> int:
     """Sous FLEE_MORALE, une part des combattants s'enfuit (plus le moral est
     bas, plus ils sont nombreux ; jamais tous, pas chaque jour pareil)."""
-    from src.kora import population, villages
-
     if morale >= FLEE_MORALE or not side.bands:
         return 0
     share = FLEE_RATE * (FLEE_MORALE - morale) / FLEE_MORALE * (0.5 + rng.random())
@@ -667,8 +659,6 @@ def ask_retreat(state, tid: int, band_id: int) -> str:
 
 def _end(state, bt, a: Side, d: Side, broken: Side, outcome: str) -> None:
     """La fin de la bataille : poursuite, repli, butin, village pris."""
-    from src.kora import chiefdom, diplo, population
-
     h = bt.hex
     lose, win = (a, d) if broken is a else (d, a)
     winner = win.main or _alive(state, bt.defenders if broken is a else bt.attackers)[:1] or None
@@ -766,7 +756,6 @@ def _end(state, bt, a: Side, d: Side, broken: Side, outcome: str) -> None:
     bt.result = res
     if attacker is not None and defender is not None:
         after_battle(state, attacker, defender, h, res, bt.hunted)
-    del diplo
 
 
 def fight(state, attacker: Band, defender: Band, h) -> Result:
@@ -811,8 +800,6 @@ def _kind(band: Band) -> str:
 
 
 def place_of(state, h) -> str:
-    from src.kora import villages
-
     best = None
     for site in state.sites.values():
         if site.kind != "village":
@@ -1281,6 +1268,7 @@ def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, 
     """La fin d'une bataille (battle._end) : le journal des joueurs, le
     prestige, les relations, la marque sur la carte."""
     from src.kora import battle
+
     a_t, d_t = attacker.tribe_id, defender.tribe_id
     told = [t for t in humans(state) if t in (a_t, d_t) or is_visible(state, h, t)]
     winner, loser = res.winner, res.loser

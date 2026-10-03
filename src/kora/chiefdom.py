@@ -33,7 +33,7 @@ from __future__ import annotations
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
-from src.kora import chiefs, places, tech
+from src.kora import chiefs, places, population, tech
 from src.kora.bands import gain_prestige, stock_max
 
 RATES = (0, 10, 20, 30)
@@ -98,7 +98,8 @@ def kin_of(state, tid: int) -> set:
     """Les peuples freres d'un peuple qui connait Villages freres : ceux de
     sa civilisation qui ne se sont pas razzies l'un l'autre depuis un an, et
     ses tributaires. (Pas la relation : elle compte deja les freres.)"""
-    from src.kora import diplo, tech
+    from src.kora import diplo
+
     tribe = state.tribes.get(tid)
     if tribe is None or not tech.bonuses(tribe).kin:
         return set()
@@ -117,8 +118,6 @@ def split_extra_villages(state) -> None:
     """En cet age, un peuple ne tient qu'un village (anciennes parties : il en
     avait plusieurs). Le village du chef reste le sien ; chacun des autres
     devient un peuple frere, tributaire du premier."""
-    from src.kora import chiefs, villages
-
     for tid in sorted(state.tribes):
         mine = _village_bands(state, tid)
         if len(mine) <= 1:
@@ -148,8 +147,6 @@ def _villages(state, tid: int) -> list:
 
 
 def _village_bands(state, tid: int) -> list:
-    from src.kora import villages
-
     out = []
     for site in _villages(state, tid):
         band = places.band_of(state, site)
@@ -368,8 +365,6 @@ def army_morale(state, tid: int) -> float:
 
 
 def overlord_of(state, tid: int) -> int:
-    from src.kora import diplo
-
     for (a, b), pacts in getattr(state.diplo, "pacts", {}).items():
         for p in pacts:
             if p.kind == "vassal" and p.payer == tid and tid in (a, b):
@@ -431,6 +426,7 @@ def village_taken(state, winner, loser, site_id: int) -> str:
     choisit (carte : soumettre ou piller) ; l'IA decide. Rend le batiment
     perdu (pillage tout de suite)."""
     from src.kora import events
+
     w, l = winner.tribe_id, loser.tribe_id
     if overlord_of(state, l) == w:
         # Deja son tributaire (il s'etait dresse contre lui) : on pille.
@@ -453,6 +449,7 @@ def ai_choice(state, w: int, l: int) -> str:
 def conquer(state, w: int, l: int, site_id: int, choice: str) -> str:
     """Soumettre (tributaire) ou piller le village pris."""
     from src.kora import villages
+
     site = state.sites.get(site_id)
     band = places.band_of(state, site) if site is not None else None
     if l not in state.tribes or w not in state.tribes:
@@ -540,7 +537,8 @@ def _revolt(state, vassal: int, lord: int) -> None:
 
 
 def monthly(state) -> None:
-    from src.kora import diplo, villages
+    from src.kora import villages
+
     split_extra_villages(state)
     for tid in sorted(state.tribes):
         tribe = state.tribes[tid]
@@ -603,15 +601,12 @@ def monthly(state) -> None:
             if paid and state.tick_count % 12 == 0:
                 _note(state, lord, LogKind.POLITIQUE, f"Le tribut des {state.tribes[vassal].name} : {paid:.0f} vivres.")
             # Qui gronde : une crise du suzerain (situations.RevolteTributaires).
-    del diplo
 
 
 def overthrow(state, tid: int) -> None:
     """Une revolte ratee, dans un peuple d'un seul village : le chef est
     renverse. Un autre prend sa place ; le prelevement est aboli, la moitie
     du grenier revient au village ; le peuple perd du prestige."""
-    from src.kora import chiefs, villages
-
     tribe = state.tribes.get(tid)
     if tribe is None:
         return
@@ -634,8 +629,6 @@ def overthrow(state, tid: int) -> None:
 def village_secedes(state, tid: int) -> int:
     """Une revolte ratee : le plus grand village qui n'est pas celui du chef
     fait secession, avec ses familles. Rend le peuple ne (0 : aucun)."""
-    from src.kora import chiefs, villages
-
     tribe = state.tribes.get(tid)
     cands = [b for b in _village_bands(state, tid) if not chiefs.is_chief_band(state, b)]
     if tribe is None or not cands:
@@ -652,8 +645,6 @@ def village_secedes(state, tid: int) -> int:
 
 
 def _family_leaves(state, tribe, fam) -> None:
-    from src.kora import population, villages
-
     site = state.sites.get(fam.get("village", 0))
     band = places.band_of(state, site) if site is not None else None
     tribe.families = [f for f in tribe.families if f["id"] != fam["id"]]

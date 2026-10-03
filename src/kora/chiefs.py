@@ -612,6 +612,7 @@ def secede(state, band_id: int, hostile: bool = False, independence: bool = Fals
     rejoint pas un peuple etranger, il fonde le sien, de la meme
     civilisation (le monde plein : il attend)."""
     from src.kora import diplo, influence
+
     band = state.bands.get(band_id)
     if band is None or is_chief_band(state, band):
         # Le chef ne quitte pas son peuple (une carte "le clan veut partir"

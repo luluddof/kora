@@ -234,7 +234,8 @@ def pay_route(state, payer: int, receiver: int, vivres: float) -> float:
 def toll_owner(state, route) -> int:
     """Le peuple qui tient le passage d'une route : celui qui domine le
     milieu du chemin entre les deux villages (Droits de passage)."""
-    from src.kora import goods, influence, tech
+    from src.kora import goods, influence
+
     ends = goods.trade_ends(state, route.exporter, route.importer)
     if ends is None:
         return 0

@@ -499,6 +499,7 @@ def bake(seed: int = 42, path=None, width: int = PLANET_WIDTH, height: int = PLA
     from pathlib import Path
 
     from src.kora.atlas import build_atlas_labels
+
     world = generate_world(seed, width, height, resources=True)
     if path is None:
         path = Path(__file__).resolve().parents[2] / "data" / "kora_map.json"
