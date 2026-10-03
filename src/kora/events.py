@@ -31,6 +31,7 @@ from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.types import stay_order
 from src.kora.vision import vision_of
 from src.kora import chiefs, sites, systems, tech
+from src.kora.bands import gain_prestige, max_bands_of, set_goto, split_band, stock_max, tribe_band_count
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
 PLAYER_GAP = 16
@@ -232,8 +233,7 @@ def _fmt(state, inst, text: str) -> str:
 
 def check(state, inst, cond) -> bool:
     """Une condition (nom, arguments...) sur la portee de l'evenement."""
-    from src.kora.sim import local_winter_weeks, max_bands_of, tribe_band_count
-
+    from src.kora.sim import local_winter_weeks
     kind, *args = cond
     tribe = state.tribes.get(inst.tribe_id)
     if tribe is None:
@@ -401,8 +401,6 @@ def _deaths(state, band, lo: int, hi: int) -> int:
 
 def apply(state, inst, effect) -> None:
     from src.kora import chiefs, diplo, sites, tech
-    from src.kora.sim import set_goto, split_band, stock_max
-
     kind, *args = effect
     tribe = state.tribes.get(inst.tribe_id)
     band = _band(state, inst)
@@ -410,8 +408,6 @@ def apply(state, inst, effect) -> None:
         return
     if kind == "prestige":
         if args[0] > 0:
-            from src.kora.sim import gain_prestige
-
             gain_prestige(state, tribe, args[0])
         else:
             tribe.prestige = max(0, min(100, tribe.prestige + args[0]))

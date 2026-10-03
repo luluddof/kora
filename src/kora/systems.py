@@ -10,6 +10,7 @@ part ailleurs, on dit ou il se branche sur le reste du jeu :
                  [(raison, valeur)] (villages.stability_parts les ajoute)
   ARMY_MORALE    le moral d'une troupe ; (state, tid) -> points
   FLEE           les fuyards d'une bataille ; (state, tid) -> multiplicateur
+  STOCK_WEEKS    les semaines de reserve d'une bande ; (state, band) -> semaines
   CRAFT_OUTPUT   la production d'un metier ; (state, site, craft) ->
                  multiplicateur (1.0 si le systeme ne s'en mele pas)
   EFFECT_FIELDS  les champs de Tribe qui portent des effets comme des
@@ -56,6 +57,10 @@ ARMY_MORALE = (
 )
 
 FLEE = ("money.flee_mult",)
+
+# Semaines de reserve d'une bande, en plus de ses savoirs (bands.stock_max) ;
+# (state, band) -> semaines (0 si le systeme ne s'en mele pas).
+STOCK_WEEKS = ("villages.stock_weeks",)
 
 CRAFT_OUTPUT = (
     "production.craft_mult",
@@ -106,8 +111,9 @@ def parts(table, *args) -> list:
     return out
 
 
-def total(table, *args) -> float:
-    value = 0.0
+def total(table, *args):
+    """La somme de ce que rend chaque systeme (0 s'il n'y en a pas)."""
+    value = 0
     for path in table:
         value += fn(path)(*args)
     return value

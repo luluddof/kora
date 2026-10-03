@@ -6,7 +6,8 @@ import os
 from src.kora import chiefs, sites, tech, villages
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
-from src.kora.sim import apply_movement, set_goto
+from src.kora.sim import apply_movement
+from src.kora.bands import set_goto
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial

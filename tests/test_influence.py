@@ -2,7 +2,8 @@
 
 from src.kora import influence, tech
 from src.kora.clock import Clock
-from src.kora.sim import collect_food, defense_force, update_influence
+from src.kora.sim import collect_food, update_influence
+from src.kora.battle import defense_force
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial

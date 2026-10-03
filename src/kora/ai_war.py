@@ -17,17 +17,8 @@ from __future__ import annotations
 from src.kora import battle, chiefs, diplo
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
-from src.kora.sim import (
-    band_force,
-    bands_near,
-    bonus_of,
-    costs_of,
-    defense_force,
-    is_shielded,
-    set_goto,
-    set_march_to_band,
-    side_force,
-)
+from src.kora.battle import band_force, defense_force, side_force
+from src.kora.bands import bands_near, bonus_of, costs_of, is_shielded, set_goto, set_march_to_band
 from src.kora.gamestate import GameState, humans, note
 from src.kora.types import Band, OrderKind, stay_order
 from src.kora.vision import is_visible

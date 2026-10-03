@@ -50,6 +50,7 @@ from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.types import TradeRoute
 from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.gamestate import note
+from src.kora.bands import stock_max
 
 TEAM = 10
 TEAM_POP = 30
@@ -456,8 +457,6 @@ def made(state, tribe_id: int, good: str) -> float:
 def update(state) -> None:
     """Chaque semaine : les equipes produisent, les villages consomment."""
     from src.kora import villages
-    from src.kora.sim import stock_max
-
     users: dict[int, int] = {}
     for site in sorted(state.sites.values(), key=lambda s: s.id):
         if site.kind != "village":
@@ -840,8 +839,6 @@ def _can_pay(state, tribe_id: int) -> float:
 
 
 def _pay(state, payer: int, receiver: int, amount: float) -> float:
-    from src.kora.sim import stock_max
-
     paid = 0.0
     for band in sorted(_food_spare(state, payer), key=lambda b: (-(b.stock - PAY_KEEP_WEEKS * b.population), b.id)):
         take = min(amount - paid, max(0.0, band.stock - PAY_KEEP_WEEKS * band.population))

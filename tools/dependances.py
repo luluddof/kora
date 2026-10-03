@@ -37,6 +37,8 @@ LAYERS = (
     ("tech", "units", "vision"),
     # 5. les gens et les lieux : population, savoir-faire, lieux, chefs, influence
     ("population", "production", "sites", "chiefs", "influence"),
+    # les outils des bandes que tous les systemes partagent
+    ("bands",),
     # 6. les systemes (ils se parlent entre eux, de preference par systems.py)
     ("diplo", "goods", "money", "numbers", "chiefdom", "villages", "battle", "situations", "events"),
     # 7. les donnees des evenements ; la semaine du monde (sim)

@@ -82,7 +82,7 @@ def test_the_chief_goes_to_govern_the_first_village():
 
 
 def test_a_civilisation_shares_one_band_cap_between_all_its_peoples():
-    from src.kora.sim import civ_band_cap, civ_band_count, max_bands_of
+    from src.kora.bands import civ_band_cap, civ_band_count, max_bands_of
 
     st = _tribe(settled=False)
     cap = civ_band_cap(st, 1)
@@ -106,7 +106,7 @@ def test_a_civilisation_shares_one_band_cap_between_all_its_peoples():
         st.bands[50 + k] = Band(50 + k, kin, offset_to_axial(10 + 2 * k, 5), 30, 100.0)
     assert civ_band_count(st, 1) == 12
     st.bands[1].population = 120
-    from src.kora.sim import can_split
+    from src.kora.bands import can_split
 
     assert not can_split(st, 1) and max_bands_of(st, 1) == 2
 
@@ -230,7 +230,7 @@ def test_an_old_save_seats_the_chief_in_its_village(tmp_path):
 
 
 def test_a_people_born_from_us_frees_its_places_when_it_dies():
-    from src.kora.sim import civ_band_count, max_bands_of
+    from src.kora.bands import civ_band_count, max_bands_of
 
     st = _tribe()
     before = max_bands_of(st, 1)
@@ -246,7 +246,7 @@ def test_a_people_born_from_us_frees_its_places_when_it_dies():
 
 def test_a_full_civilisation_sends_its_restless_families_to_a_kin_village():
     from src.kora import villages as v
-    from src.kora.sim import civ_band_cap, civ_band_count
+    from src.kora.bands import civ_band_cap, civ_band_count
 
     st = _tribe()
     village = st.bands[1]
@@ -339,7 +339,7 @@ def test_a_troubled_village_loses_families():
 
 def test_a_settled_civilisation_stops_making_tribes():
     from src.kora import ai
-    from src.kora.sim import can_split, max_bands_of
+    from src.kora.bands import can_split, max_bands_of
 
     st = _tribe()
     # Un clan parti fonder son peuple : une seule bande tant qu'il n'a pas

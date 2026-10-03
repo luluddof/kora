@@ -32,6 +32,7 @@ from src.kora.log import LogKind
 from src.kora.types import Hex, Season, Terrain
 from src.kora.gamestate import humans, is_human, note
 from src.kora.world import axial_to_offset, enter_cost_for
+from src.kora.bands import gain_prestige, set_goto
 
 MONTH = 4
 YEAR = 52
@@ -358,8 +359,6 @@ class MalQuiCourt(Spec):
         elif action == "rites" and _rand(state, inst.uid, "rites", tid) < 0.5:
             inst.progress += 10
         elif action == "fuir":
-            from src.kora.sim import set_goto
-
             for b in zone_bands(state, inst, tid, village=False):
                 spot = _away(state, b.position, inst.center, 8)
                 if spot is not None:
@@ -1133,8 +1132,6 @@ class Surproduction(Spec):
 
     def act(self, state, inst, tid, action):
         from src.kora import diplo, goods
-        from src.kora.sim import gain_prestige
-
         good = self._good(inst)
         cid = goods.GOOD_CRAFT.get(good)
         tribe = state.tribes[tid]

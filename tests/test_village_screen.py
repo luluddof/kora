@@ -4,7 +4,8 @@ import os
 
 from src.kora import chiefs, influence, orders, sites, tech, villages
 from src.kora.clock import Clock
-from src.kora.sim import stock_max, update_prestige
+from src.kora.sim import update_prestige
+from src.kora.bands import stock_max
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial

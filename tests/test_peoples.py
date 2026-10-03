@@ -4,7 +4,8 @@ import random
 
 from src.kora import peoples
 from src.kora.peoples import CULTURES, culture_of, color_of, make_name
-from src.kora.sim import _default_world, can_split, new_game, split_band
+from src.kora.sim import _default_world, new_game
+from src.kora.bands import can_split, split_band
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 

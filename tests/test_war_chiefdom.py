@@ -6,7 +6,8 @@ import copy
 
 from src.kora import battle, chiefdom, chiefs, diplo, events, persist, population, sites, situations, tech, villages
 from src.kora.clock import Clock
-from src.kora.sim import fight_out, helpers_of, resolve_raids, tick, update_population
+from src.kora.sim import fight_out, tick, update_population
+from src.kora.battle import helpers_of, resolve_raids
 from src.kora.gamestate import PLAYER_TRIBE_ID, GameState
 from src.kora.types import Band, Order, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial

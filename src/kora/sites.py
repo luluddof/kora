@@ -207,7 +207,7 @@ def deposit(state, band_id: int) -> float:
 
 
 def withdraw_block(state, band_id: int) -> str:
-    from src.kora.sim import stock_max
+    from src.kora.bands import stock_max
 
     band = state.bands.get(band_id)
     if band is None:
@@ -221,7 +221,7 @@ def withdraw_block(state, band_id: int) -> str:
 
 
 def withdraw(state, band_id: int) -> float:
-    from src.kora.sim import stock_max
+    from src.kora.bands import stock_max
 
     if withdraw_block(state, band_id):
         return 0.0
@@ -301,7 +301,7 @@ def _strike_camp(state, site: Site) -> None:
 
 
 def _maybe_found(state, site: Site, foes: list) -> None:
-    from src.kora.sim import stock_max
+    from src.kora.bands import stock_max
 
     for foe in sorted(foes, key=lambda b: b.id):
         foe_tribe = state.tribes.get(foe.tribe_id)

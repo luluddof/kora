@@ -1,5 +1,6 @@
 from src.kora.clock import Clock
-from src.kora.sim import FAMINE_RATE, STOCK_MAX_FACTOR, apply_movement, collect_food, famine_loss, new_game, fight_out, update_population, update_prestige
+from src.kora.sim import FAMINE_RATE, apply_movement, collect_food, famine_loss, new_game, fight_out, update_population, update_prestige
+from src.kora.bands import STOCK_MAX_FACTOR
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Order, OrderKind, Terrain, Tribe
 from src.kora.world import (

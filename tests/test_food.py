@@ -1,5 +1,6 @@
 from src.kora.clock import Clock
-from src.kora.sim import collect_food, forage_hexes
+from src.kora.sim import collect_food
+from src.kora.bands import forage_hexes
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe, stay_order
 from src.kora.world import make_filled_world, offset_to_axial

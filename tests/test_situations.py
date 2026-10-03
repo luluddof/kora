@@ -131,7 +131,7 @@ def test_isolating_the_sick_blocks_merging_for_a_while():
     st = _state()
     band = next(b for b in st.bands.values() if b.tribe_id == PLAYER_TRIBE_ID)
     band.population = 80
-    from src.kora.sim import split_band
+    from src.kora.bands import split_band
 
     split_band(st, band.id)
     inst = _start(st, "mal", band.position, 8)

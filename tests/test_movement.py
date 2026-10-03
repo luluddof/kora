@@ -1,5 +1,6 @@
 from src.kora.clock import Clock
-from src.kora.sim import apply_movement, set_goto, set_march_to_band
+from src.kora.sim import apply_movement
+from src.kora.bands import set_goto, set_march_to_band
 from src.kora.gamestate import GameState
 from src.kora.types import Band, OrderKind, Terrain, Tribe
 from src.kora.world import hex_distance, make_filled_world, offset_to_axial

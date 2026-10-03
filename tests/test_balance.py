@@ -13,7 +13,9 @@ import random
 
 import pytest
 
-from src.kora.sim import _default_world, _herd_ok, new_game, set_goto, side_force, split_band, tick
+from src.kora.sim import _default_world, new_game, tick
+from src.kora.battle import side_force
+from src.kora.bands import _herd_ok, set_goto, split_band
 from src.kora.gamestate import PLAYER_TRIBE_ID
 from src.kora import tech
 from src.kora.types import Season

@@ -7,7 +7,8 @@ from src.kora.render import (
     band_screen_positions,
     wrap_text,
 )
-from src.kora.sim import band_lines, band_summary, new_game, split_band
+from src.kora.sim import band_lines, band_summary, new_game
+from src.kora.bands import split_band
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world
 

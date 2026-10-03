@@ -184,7 +184,7 @@ def test_the_monument_rises_in_stages_and_only_the_winner_keeps_it():
     assert villages.monument_stages(s1) == 3 and villages.has(s1, "monument")
     assert villages.monument_stages(s2) == 0 and not villages.has(s2, "monument"), "le monument du vaincu est abattu"
     assert tech.bonuses(st.tribes[1]).prestige_gain > 1.0
-    from src.kora.sim import gain_prestige
+    from src.kora.bands import gain_prestige
 
     st.tribes[1].prestige = 10
     assert gain_prestige(st, st.tribes[1], 10) == 13

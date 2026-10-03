@@ -11,7 +11,7 @@ N'importe ni pygame ni render.
 from __future__ import annotations
 
 from src.kora import battle, chiefs, sites, villages
-from src.kora.sim import (
+from src.kora.bands import (
     SPLIT_MIN_POP,
     can_split,
     civ_band_cap,

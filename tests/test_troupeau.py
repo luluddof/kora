@@ -1,6 +1,7 @@
 from src.kora.clock import Clock
 from src.kora import tech
-from src.kora.sim import collect_food, forage_hexes, update_exhaustion
+from src.kora.sim import collect_food, update_exhaustion
+from src.kora.bands import forage_hexes
 from src.kora.gamestate import GameState
 
 TROUPEAU_STEPPE_WEEKS = tech.TROUPEAU_STEPPE_WEEKS

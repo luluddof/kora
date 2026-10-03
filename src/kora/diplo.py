@@ -29,6 +29,7 @@ from src.kora.types import stay_order
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.peoples import culture_of, living_tribe_ids
 from src.kora.vision import is_visible
+from src.kora.bands import gain_prestige, stock_max
 
 CONTACT_RANGE = 16
 NEIGHBOR_RANGE = 40
@@ -458,8 +459,6 @@ def break_pact(state, actor: int, other: int, kind: str | None = None) -> bool:
 def _pay_tribute(state, pact: Pact, a: int, b: int) -> None:
     payer = pact.payer
     receiver = b if payer == a else a
-    from src.kora.sim import stock_max
-
     payer_bands = [x for x in state.bands.values() if x.tribe_id == payer and x.population > 0]
     recv_bands = [x for x in state.bands.values() if x.tribe_id == receiver and x.population > 0]
     if not payer_bands or not recv_bands:
@@ -606,7 +605,7 @@ def diffusion_bonus(state, tid: int, tech_id: str) -> float:
 
 
 def power(state, tid: int) -> float:
-    from src.kora.sim import band_force
+    from src.kora.battle import band_force
 
     return sum(band_force(state, b) for b in state.bands.values() if b.tribe_id == tid and b.population > 0)
 
@@ -870,8 +869,6 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
     human = state.tribes[target].is_player and actor != target
     if action == "cadeau":
         carrier, receiver = gift_carrier(state, actor, target)
-        from src.kora.sim import stock_max
-
         amount = min(amount, max(0.0, carrier.stock - 2 * carrier.population))
         if amount <= 0:
             return "Pas assez de vivres à donner"
@@ -1012,8 +1009,6 @@ def absorb(state, actor: int, target: int) -> None:
     a, t = state.tribes[actor], state.tribes[target]
     for tid in sorted(t.knowledge - a.knowledge):
         a.progress[tid] = max(a.progress.get(tid, 0.0), tech.TECHS[tid].cost * 0.5)
-    from src.kora.sim import gain_prestige
-
     gain_prestige(state, a, 8)
     chiefs.after_absorb(state, actor, target)
     forget(state, target)
@@ -1129,8 +1124,6 @@ def _propose_to_player(state, ai: int, player: int) -> None:
         carrier, receiver = gift_carrier(state, ai, player)
         spare = carrier.stock - 6 * carrier.population
         if spare >= 40:
-            from src.kora.sim import stock_max
-
             amount = min(150.0, spare)
             carrier.stock -= amount
             receiver.stock = min(stock_max(receiver, state), receiver.stock + amount)

@@ -29,7 +29,7 @@ from src.kora import (
     villages,
 )
 from src.kora.types import Hex
-from src.kora.sim import set_goto, set_march_to_band
+from src.kora.bands import set_goto, set_march_to_band
 
 KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",

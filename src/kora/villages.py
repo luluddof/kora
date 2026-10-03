@@ -41,6 +41,16 @@ from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.world import offset_to_axial
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.peoples import CULTURES, civ_of, culture_of, make_name
+from src.kora.bands import (
+    _absorb,
+    _ai_caches_changed,
+    civ_band_cap,
+    civ_band_count,
+    gain_prestige,
+    new_band_id,
+    set_goto,
+    stock_max,
+)
 
 FIELD_WORKERS = 25
 MAX_FIELDS = 12
@@ -478,6 +488,12 @@ def _advance_works(state, site, band) -> None:
 # --- effets des batiments et du serment ------------------------------------------------
 
 
+def stock_weeks(state, band) -> int:
+    """Le grenier compte dans la reserve d'une bande installee
+    (systems.STOCK_WEEKS)."""
+    return store_weeks(state, band) if band.village else 0
+
+
 def store_weeks(state, band) -> float:
     """Semaines de reserve propres au village (stock_max) : grenier de base,
     savoirs, Grenier sureleve, serment."""
@@ -762,7 +778,6 @@ def stability_growth(state, band) -> float:
 
 def _unrest(state, site, band) -> None:
     """Village agite : des familles s'en vont former un clan nomade."""
-    from src.kora.sim import _ai_caches_changed, new_band_id
     if band.population < UNREST_MIN_POP:
         return
     value = stability(state, site, band)
@@ -770,8 +785,6 @@ def _unrest(state, site, band) -> None:
         return
     moved = max(10, int(band.population * UNREST_SHARE))
     stock = band.stock * moved / band.population
-    from src.kora.sim import civ_band_cap, civ_band_count, stock_max
-
     civ = civ_of(state, state.tribes[band.tribe_id])
     if civ_band_count(state, civ) >= civ_band_cap(state, civ):
         # La civilisation est au complet : pas de nouvelle tribu. Les familles
@@ -959,8 +972,6 @@ def sow(state, site, band, late: bool = False) -> None:
     site.data["seed"] = seed - sown
     # Ce qui reste des semences retourne au grenier.
     if site.data["seed"] > 0:
-        from src.kora.sim import stock_max
-
         band.stock = min(stock_max(band, state), band.stock + site.data["seed"])
         site.data["seed"] = 0.0
     site.data["fields"] = fields if sown > 0 else []
@@ -981,8 +992,6 @@ def sow(state, site, band, late: bool = False) -> None:
 
 
 def harvest(state, site, band) -> float:
-    from src.kora.sim import stock_max
-
     bonus = _bonus(state, site.tribe_id)
     luck = state.story_rng.uniform(0.8, 1.2)
     crop = expected_harvest(state, site, band) * luck
@@ -1104,8 +1113,6 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
         }
     )
     # Les reserves du campement et une part du stock deviennent semences.
-    from src.kora.sim import stock_max
-
     band.stock = min(stock_max(band, state), band.stock + camp.store)
     camp.store = 0.0
     need = SEED * min(MAX_FIELDS, max(1, math.ceil(band.population / FIELD_WORKERS)))
@@ -1120,8 +1127,6 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
         # L'age des villages : prestige, les premieres troupes, et les clans
         # restes nomades qui s'eloignent (chiefs.loyalty_parts).
         tribe.flags["age_villages"] = -1
-        from src.kora.sim import gain_prestige
-
         gain_prestige(state, tribe, FIRST_VILLAGE_PRESTIGE)
     if tribe.settled_at < 0:
         tribe.settled_at = state.tick_count
@@ -1246,8 +1251,6 @@ def leave_block(state, band_id: int) -> str:
 def leave(state, band_id: int) -> bool:
     """Le village est abandonne : la bande reprend la route, le lieu redevient
     un campement (avec ce qui ne tient pas dans le stock). Batiments perdus."""
-    from src.kora.sim import stock_max
-
     band = state.bands.get(band_id)
     site = site_of(state, band)
     if site is None:
@@ -1397,7 +1400,6 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     """Le village leve une compagnie : ses hommes partent avec des vivres du
     grenier. Une troupe du village est au village : la compagnie la rejoint ;
     sinon, c'est une nouvelle troupe, menee par un chef de guerre."""
-    from src.kora.sim import _ai_caches_changed, new_band_id, stock_max
     if army_block(state, band_id, share, type_id):
         return None
     band = state.bands[band_id]
@@ -1456,7 +1458,6 @@ def detach_block(state, band_id: int) -> str:
 
 def _split_units(state, band, comps: list, leader=None, homebound: bool = False):
     """Une nouvelle troupe faite de ces compagnies (retirees de band)."""
-    from src.kora.sim import _ai_caches_changed, new_band_id
     men = sum(u[1] for u in comps)
     share = men / max(1, band.population)
     stock = band.stock * share
@@ -1522,8 +1523,6 @@ def _village_near(state, band):
 
 def _join_village(state, army, site) -> None:
     """Les hommes de la troupe redeviennent villageois de ce village."""
-    from src.kora.sim import _absorb
-
     home = band_of(state, site)
     keep = home.loyalty
     n = army.population
@@ -1553,8 +1552,6 @@ def _to_clan(state, band) -> None:
         if state.world.distance(site.hex, band.position) <= ARMY_HOME:
             _join_village(state, band, site)
             return
-        from src.kora.sim import set_goto
-
         set_goto(state, band.id, site.hex, max_nodes=8000, max_cost=40000)
         if band.path:
             band.homebound = True
@@ -1579,8 +1576,6 @@ def _to_clan(state, band) -> None:
 
 
 def _send_home(state, band, site) -> None:
-    from src.kora.sim import set_goto
-
     band.homebound = False
     set_goto(state, band.id, site.hex, max_nodes=1200, max_cost=4000)
     if not band.path and state.world.distance(site.hex, band.position) > ARMY_HOME:
@@ -1794,8 +1789,6 @@ def update(state) -> None:
 
 
 def eat_seed(state, band) -> float:
-    from src.kora.sim import stock_max
-
     site = site_of(state, band)
     if site is None:
         return 0.0

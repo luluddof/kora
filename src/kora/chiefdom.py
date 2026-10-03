@@ -22,7 +22,7 @@ pris, on ne tue pas ses familles) peut etre SOUMIS : il devient tributaire
 (diplo, pacte "vassal") ; ou PILLE. Un peuple faible peut aussi se placer
 sous la protection d'un plus grand (diplo "proteger" : la force, le
 prestige, les mariages). Le tributaire paie chaque mois une part de ses
-reserves, suit son suzerain a la guerre (sim.helpers_of) et peut se
+reserves, suit son suzerain a la guerre (battle.helpers_of) et peut se
 revolter quand le suzerain faiblit.
 
 N'importe pas pygame.
@@ -34,6 +34,7 @@ from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
 from src.kora import chiefs, tech
+from src.kora.bands import gain_prestige, stock_max
 
 RATES = (0, 10, 20, 30)
 DEFAULT_RATE = 10
@@ -326,8 +327,6 @@ def feast(state, tid: int) -> str:
     why = feast_block(state, tid)
     if why:
         return why
-    from src.kora.sim import gain_prestige
-
     tribe = state.tribes[tid]
     tribe.granary -= feast_cost(state, tid)
     tribe.feast_until = state.tick_count + FEAST_TERM
@@ -454,8 +453,6 @@ def ai_choice(state, w: int, l: int) -> str:
 def conquer(state, w: int, l: int, site_id: int, choice: str) -> str:
     """Soumettre (tributaire) ou piller le village pris."""
     from src.kora import villages
-    from src.kora.sim import gain_prestige
-
     site = state.sites.get(site_id)
     band = villages.band_of(state, site) if site is not None else None
     if l not in state.tribes or w not in state.tribes:
@@ -521,8 +518,6 @@ def _pay_vassal(state, vassal: int, lord: int) -> float:
         if has_chiefdom(state, lord):
             lord_t.granary = getattr(lord_t, "granary", 0.0) + paid
         else:
-            from src.kora.sim import stock_max
-
             mine = [b for b in state.bands.values() if b.tribe_id == lord and b.population > 0]
             if mine:
                 t = max(mine, key=lambda b: (stock_max(b, state) - b.stock, -b.id))
@@ -546,7 +541,6 @@ def _revolt(state, vassal: int, lord: int) -> None:
 
 def monthly(state) -> None:
     from src.kora import diplo, villages
-    from src.kora.sim import gain_prestige
     split_extra_villages(state)
     for tid in sorted(state.tribes):
         tribe = state.tribes[tid]
@@ -565,8 +559,6 @@ def monthly(state) -> None:
             if margin < RELIEF_WEEKS:
                 give = min(tribe.granary, RELIEF_GIVE * band.population)
                 if give > 1:
-                    from src.kora.sim import stock_max
-
                     room = max(0.0, stock_max(band, state) - band.stock)
                     give = min(give, room)
                     band.stock += give

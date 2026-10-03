@@ -9,14 +9,12 @@ from src.kora.ai_war import (
 )
 from src.kora import chiefs, diplo, goods, sites, units, villages
 from src.kora.peoples import culture_of
-from src.kora.sim import (
-    band_force,
-    band_quality,
+from src.kora.battle import band_force, band_quality, defense_force
+from src.kora.bands import (
     bands_near,
     bonus_of,
     build_band_grid,
     can_split,
-    defense_force,
     forage_hexes,
     is_shielded,
     set_goto,
@@ -546,7 +544,7 @@ def _regroup(state: GameState, band: Band, weeks: float) -> bool:
 
 def decide_ai(state: GameState) -> None:
     # Pendant les decisions, les bandes ne bougent pas : grille de voisinage
-    # et forces calculees une fois (voir sim.bands_near, sim.side_force).
+    # et forces calculees une fois (voir bands.bands_near, battle.side_force).
     state.band_grid = build_band_grid(state)
     state.force_memo = {}
     try:

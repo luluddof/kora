@@ -3,7 +3,8 @@ villages freres, les chaines de tributaires, qui fait quoi dans un village,
 la fuite des demoralises, le repli de l'IA, les loups des troupes en marche."""
 
 from src.kora import battle, chiefdom, chiefs, diplo, events, goods, population, sites, tech, villages
-from src.kora.sim import fight_out, helpers_of, resolve_raids
+from src.kora.sim import fight_out
+from src.kora.battle import helpers_of, resolve_raids
 from src.kora.types import Band, Order, OrderKind, Terrain
 from test_war_chiefdom import _attack, _band, _state, _village
 

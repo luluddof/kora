@@ -701,7 +701,7 @@ class Bonuses:
     prestige_gain: float = 1.0
     trade_price: float = 1.0
     # Villages freres : les villages de sa civilisation et ses tributaires
-    # sont des freres (diplo, sim.helpers_of).
+    # sont des freres (diplo, battle.helpers_of).
     kin: bool = False
     # Les nombres et l'argent (numbers.py, money.py).
     math: bool = False

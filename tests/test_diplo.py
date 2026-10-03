@@ -3,7 +3,9 @@
 from src.kora import chiefs, diplo, tech
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import new_game, fight_out, set_march_to_band, side_force
+from src.kora.sim import new_game, fight_out
+from src.kora.battle import side_force
+from src.kora.bands import set_march_to_band
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial

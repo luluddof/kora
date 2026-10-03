@@ -3,7 +3,9 @@
 from src.kora import battle, chiefs, orders, sites, tech, units, villages
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import apply_movement, band_force, merge_bands, new_game, fight_out
+from src.kora.sim import apply_movement, new_game, fight_out
+from src.kora.battle import band_force
+from src.kora.bands import merge_bands
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Order, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial

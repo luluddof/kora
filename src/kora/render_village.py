@@ -56,7 +56,9 @@ from src.kora.render_tech import (
 )
 from src.kora.types import Hex
 from src.kora.theme import C
-from src.kora.sim import GROWTH_RATE, band_force, bonus_of, stock_max
+from src.kora.sim import GROWTH_RATE
+from src.kora.battle import band_force
+from src.kora.bands import bonus_of, stock_max
 
 WARN = C.alerte
 CARD = {

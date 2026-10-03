@@ -5,7 +5,7 @@ import os
 
 from src.kora import chiefs, diplo, goods, sites, tech, villages
 from src.kora.clock import Clock
-from src.kora.sim import stock_max
+from src.kora.bands import stock_max
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial

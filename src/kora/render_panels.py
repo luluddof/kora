@@ -25,7 +25,7 @@ from src.kora import (
     villages,
 )
 from src.kora.peoples import civ_name, civ_of, color_of, label_of, living_tribe_ids
-from src.kora.sim import civ_band_cap, civ_band_count, max_bands_of, tribe_band_count
+from src.kora.bands import civ_band_cap, civ_band_count, max_bands_of, tribe_band_count
 
 from src.kora.theme import C
 # L'icone d'un evenement : un mot de son nom, sinon son humeur.

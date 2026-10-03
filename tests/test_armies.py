@@ -4,7 +4,8 @@ from src.kora import chiefs, orders, sites, tech, villages
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
-from src.kora.sim import can_split, merge_bands, new_game, resolve_joins, set_march_to_band, tribe_band_count, update_population
+from src.kora.sim import new_game, resolve_joins, update_population
+from src.kora.bands import can_split, merge_bands, set_march_to_band, tribe_band_count
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
@@ -178,18 +179,18 @@ def test_an_ai_village_raises_a_troop_when_threatened():
 def test_a_dissolved_troop_never_becomes_a_nomad_clan_of_a_settled_people():
     """Un peuple sedentaire ne refait pas de tribu : une troupe dissoute loin,
     sans chemin praticable, rentre quand meme au village (par d'autres voies)."""
-    from src.kora import population, sim
+    from src.kora import population
 
     st, village, site = _village(pop=120)
     army = villages.raise_army(st, 1)
     n = army.population
     army.position = offset_to_axial(55, 15)
-    real = sim.set_goto
-    sim.set_goto = lambda state, bid, goal, **kw: setattr(state.bands[bid], "path", [])
+    real = villages.set_goto
+    villages.set_goto = lambda state, bid, goal, **kw: setattr(state.bands[bid], "path", [])
     try:
         assert villages.dissolve(st, army.id)
     finally:
-        sim.set_goto = real
+        villages.set_goto = real
     assert army.id not in st.bands, "la troupe a rejoint son village"
     assert village.population == 120 and not any(b.kind == "" and not b.village and b.tribe_id == 1 for b in st.bands.values())
     assert population.counts(village)["hommes"] >= n

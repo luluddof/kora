@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from src.kora import (
+    battle,
     chiefdom,
     chiefs,
     diplo,
@@ -73,11 +74,32 @@ from src.kora.peoples import (
 )
 from src.kora.mapgen import generate_world
 from src.kora.villages import food_mult, growth_mult, note_forage, site_of, store_weeks, winter_famine_mult
+from src.kora.bands import (  # noqa: F401
+    SPLIT_MIN_POP,
+    _absorb,
+    _herd_ok,
+    _water_ok,
+    bands_near,
+    bonus_of,
+    can_split,
+    costs_of,
+    fighters,
+    forage_hexes,
+    gain_prestige,
+    is_shielded,
+    max_bands_of,
+    merge_text,
+    new_band_id,
+    set_goto,
+    stock_max,
+    tribe_band_count,
+)
+from src.kora.battle import (  # noqa: F401
+    band_force,
+    prune_fight_marks,
+    resolve_raids,
+)
 
-FORAGE_RADIUS = 2
-STOCK_MAX_FACTOR = 10
-COMBAT_MARK_WEEKS = 26
-COMBAT_MARK_MAX = 8
 # Famine progressive : part de la bande qui meurt par semaine
 # = part de nourriture manquante x FAMINE_RATE (minimum 1 mort).
 FAMINE_RATE = 0.15
@@ -85,75 +107,6 @@ FAMINE_RATE = 0.15
 WINTER_TAIL_WEEK = 49
 # Par mois ; une partie longue : les peuples grandissent lentement.
 GROWTH_RATE = 0.018
-SPLIT_MIN_POP = 20
-MAX_BANDS_PER_TRIBE = 8
-REINFORCE_RADIUS = 2
-# Repli apres une defaite : la bande marche (pas de teleportation) vers
-# une bande amie, sinon vers une case sure et nourriciere. Pendant le
-# repli elle n'obeit plus et ne peut pas etre attaquee.
-RETREAT_ALLY_RANGE = 30
-RETREAT_SEARCH_RADIUS = 12
-RETREAT_SAFE_DIST = 16
-RETREAT_MIN_SHIELD = 4
-
-
-GRID = 8
-
-
-def build_band_grid(state: GameState) -> dict:
-    grid: dict = {}
-    world = state.world
-    for b in state.bands.values():
-        if b.population <= 0:
-            continue
-        idx = world._index(b.position)
-        if idx is None:
-            continue
-        grid.setdefault((idx[0] // GRID, idx[1] // GRID), []).append(b)
-    return grid
-
-
-def bands_near(state: GameState, h: Hex, radius: int) -> list[Band]:
-    """Bandes vivantes a `radius` cases ou moins de h (grille pendant l'IA,
-    sinon parcours complet). Ordre : par id."""
-    world = state.world
-    grid = state.band_grid
-    if grid is None:
-        found = [b for b in state.bands.values() if b.population > 0 and world.distance(b.position, h) <= radius]
-        found.sort(key=lambda b: b.id)
-        return found
-    idx = world._index(h)
-    if idx is None:
-        return []
-    col, row = idx
-    nbx = -(-world.width // GRID)
-    found = []
-    for by in range((row - radius) // GRID, (row + radius) // GRID + 1):
-        if by < 0 or by * GRID >= world.height:
-            continue
-        seen_x = set()
-        for bx in range((col - radius - 1) // GRID, (col + radius + 1) // GRID + 1):
-            key_x = bx % nbx if world.wrap_x else bx
-            if key_x in seen_x:
-                continue
-            seen_x.add(key_x)
-            for b in grid.get((key_x, by), ()):
-                if world.distance(b.position, h) <= radius:
-                    found.append(b)
-    found.sort(key=lambda b: b.id)
-    return found
-
-
-def new_band_id(state: GameState) -> int:
-    # Jamais reutiliser l'id d'une bande morte : un ordre "marcher vers"
-    # ou un marqueur de combat pourrait viser la mauvaise bande.
-    nid = max(state.next_band_id, max(state.bands, default=0) + 1)
-    state.next_band_id = nid + 1
-    return nid
-
-
-def is_shielded(state: GameState, band: Band) -> bool:
-    return band.retreating or state.tick_count < band.shield_until
 
 
 def hex_inspect(state: GameState, h: Hex) -> dict | None:
@@ -312,8 +265,6 @@ def _raid_lines(state: GameState, band: Band) -> list[str]:
     prey = state.bands.get(band.order.target_band_id)
     if prey is None or prey.tribe_id == band.tribe_id:
         return []
-    from src.kora import battle
-
     ratio, word = battle.odds(state, band, prey)
     tribe = state.tribes.get(prey.tribe_id)
     who = tribe.name if tribe else "?"
@@ -401,63 +352,6 @@ def _note_spotted_enemies(state: GameState) -> None:
             tribe = state.tribes.get(band.tribe_id)
             name = tribe.name if tribe else "ennemie"
             note(state, LogKind.DECOUVERTE, f"Des {name} ont été aperçus.", to=me)
-
-
-def _water_ok(state: GameState, tribe_id: int) -> bool:
-    tribe = state.tribes.get(tribe_id)
-    return bool(tribe and tribe.cabotage)
-
-
-def _herd_ok(state: GameState, tribe_id: int) -> bool:
-    tribe = state.tribes.get(tribe_id)
-    return bool(tribe and tribe.troupeau)
-
-
-def gain_prestige(state, tribe, amount: int) -> int:
-    """Un peuple gagne du prestige (plafond 100) ; le bonus prestige_gain
-    (le grand monument) le multiplie. Rend ce qui a ete gagne."""
-    if tribe is None or amount <= 0:
-        return 0
-    mult = tech.bonuses(tribe).prestige_gain
-    if mult != 1.0:
-        amount = max(1, round(amount * mult))
-    before = tribe.prestige
-    tribe.prestige = min(100, tribe.prestige + amount)
-    return tribe.prestige - before
-
-
-def bonus_of(state: GameState, tribe_id: int) -> tech.Bonuses:
-    tribe = state.tribes.get(tribe_id)
-    return tech.bonuses(tribe) if tribe is not None else tech.NO_BONUS
-
-
-def costs_of(state: GameState, tribe_id: int) -> dict:
-    tribe = state.tribes.get(tribe_id)
-    return tech.move_costs(tribe) if tribe is not None else tech.BASE_MOVE_COST
-
-
-def _tribe_pop(state: GameState, tribe_id: int) -> int:
-    return sum(
-        b.population
-        for b in state.bands.values()
-        if b.tribe_id == tribe_id and b.population > 0
-    )
-
-
-def stock_max(band: Band, state: GameState | None = None) -> float:
-    # Semaines de reserve : 10 de base, plus les savoirs (fumage, poterie) ;
-    # un village a son grenier (villages.STORE_WEEKS, Greniers).
-    if state is None:
-        return STOCK_MAX_FACTOR * band.population
-    know = bonus_of(state, band.tribe_id)
-    weeks = know.stock_weeks
-    if band.village:
-        weeks += store_weeks(state, band)
-    return weeks * band.population
-
-
-def forage_hexes(state: GameState, band: Band) -> list[Hex]:
-    return state.world.hexes_in_radius(band.position, FORAGE_RADIUS)
 
 
 def famine_loss(population: int, missing_share: float) -> int:
@@ -602,306 +496,6 @@ def remove_dead_bands(state: GameState) -> None:
         state.player_dead = True
 
 
-def set_goto(
-    state: GameState,
-    band_id: int,
-    goal: Hex,
-    max_nodes: int | None = None,
-    max_cost: int | None = None,
-) -> None:
-    band = state.bands.get(band_id)
-    if band is None or band.retreating or band.village or band.homebound:
-        return
-    goal_c = state.world.canonicalize(goal)
-    water_ok = _water_ok(state, band.tribe_id)
-    costs = costs_of(state, band.tribe_id)
-    if goal_c is None or enter_cost_for(state.world, goal_c, water_ok, costs) is None:
-        return
-    if (
-        band.order.kind is OrderKind.GOTO
-        and band.order.target_hex == goal_c
-        and band.path
-    ):
-        return
-    dist = state.world.distance(band.position, goal_c)
-    if max_nodes is None:
-        max_nodes = min(1200, max(180, dist * 18 + 60))
-    if max_cost is None:
-        max_cost = dist * 30 + 120
-    path = astar(
-        state.world,
-        band.position,
-        goal_c,
-        max_cost=max_cost,
-        max_nodes=max_nodes,
-        water_ok=water_ok,
-        costs=costs,
-    )
-    if path is None:
-        return
-    band.order = Order(kind=OrderKind.GOTO, target_hex=goal_c)
-    band.path = path
-
-
-def set_march_to_band(state: GameState, band_id: int, target_band_id: int) -> None:
-    if (
-        band_id not in state.bands
-        or target_band_id not in state.bands
-        or band_id == target_band_id
-    ):
-        return
-    band = state.bands[band_id]
-    if band.retreating or band.village or band.homebound:
-        return
-    target = state.bands[target_band_id]
-    dist = state.world.distance(band.position, target.position)
-    water_ok = _water_ok(state, band.tribe_id)
-    path = astar(
-        state.world,
-        band.position,
-        target.position,
-        max_cost=dist * 30 + 120,
-        max_nodes=min(800, max(180, dist * 18 + 60)),
-        water_ok=water_ok,
-        costs=costs_of(state, band.tribe_id),
-    )
-    if path is None:
-        return
-    band.order = Order(kind=OrderKind.MARCH_TO_BAND, target_band_id=target_band_id)
-    band.path = path
-    if target.tribe_id != band.tribe_id:
-        # Choisir d'attaquer met fin au repit d'apres-combat.
-        band.shield_until = 0
-
-
-def tribe_band_count(state: GameState, tribe_id: int) -> int:
-    # Les troupes ne comptent pas : ce sont des guerriers, pas des clans.
-    return sum(
-        1
-        for b in state.bands.values()
-        if b.tribe_id == tribe_id and b.population > 0 and b.kind != "armee"
-    )
-
-
-def can_split(state: GameState, band_id: int) -> bool:
-    band = state.bands.get(band_id)
-    if band is None or band.population < SPLIT_MIN_POP or band.retreating or band.kind == "armee":
-        return False
-    if welded_left(state, band):
-        return False
-    return tribe_band_count(state, band.tribe_id) < max_bands_of(state, band.tribe_id)
-
-
-def civ_band_cap(state: GameState, civ: int) -> int:
-    """Le plafond COMMUN d'une civilisation (bandes et villages de tous ses
-    peuples, le joueur compris) : celui de son peuple d'origine, selon ses
-    savoirs (8, 12 avec la Chefferie ; un petit peuple 4 de moins). Le
-    peuple d'origine disparu : le mieux loti de ses peuples."""
-    def cap_of(t) -> int:
-        cut = MINOR_BAND_CUT if t.minor and not t.origin else 0
-        return bonus_of(state, t.id).max_bands - cut
-
-    alive = {b.tribe_id for b in state.bands.values() if b.population > 0}
-    root = state.tribes.get(civ)
-    if root is not None and root.id in alive:
-        return max(1, cap_of(root))
-    members = [t for t in state.tribes.values() if t.id in alive and civ_of(state, t) == civ]
-    return max(1, max((cap_of(t) for t in members), default=1))
-
-
-def civ_band_count(state: GameState, civ: int) -> int:
-    """Bandes (clans et villages, pas les troupes) de tous les peuples d'une
-    civilisation."""
-    civs: dict = {}
-    n = 0
-    for b in state.bands.values():
-        if b.population <= 0 or b.kind == "armee":
-            continue
-        c = civs.get(b.tribe_id)
-        if c is None:
-            tribe = state.tribes.get(b.tribe_id)
-            c = civs[b.tribe_id] = civ_of(state, tribe) if tribe is not None else 0
-        if c == civ:
-            n += 1
-    return n
-
-
-def max_bands_of(state: GameState, tribe_id: int) -> int:
-    """Bandes que ce peuple peut avoir : les siennes, plus les places libres
-    de sa civilisation (plafond commun : les peuples independants d'une
-    culture le partagent avec le peuple d'origine, joueur compris)."""
-    tribe = state.tribes.get(tribe_id)
-    own = tribe_band_count(state, tribe_id)
-    if tribe is None:
-        return max(1, own)
-    if settler_people(state, tribe):
-        # Ne d'une civilisation qui a des villages, sans village a lui : il
-        # n'a qu'a fonder le sien, il ne se divise plus en tribus.
-        return max(1, own)
-    civ = civ_of(state, tribe)
-    free = civ_band_cap(state, civ) - civ_band_count(state, civ)
-    return max(1, own + max(0, free))
-
-
-def settler_people(state: GameState, tribe) -> bool:
-    """Un peuple ne d'un autre (clan emancipe, secession), dont la
-    civilisation a des villages, et qui n'a pas encore le sien."""
-    if not tribe.origin or tribe.is_player:
-        return False
-    if civ_villages(state, civ_of(state, tribe)) <= 0:
-        return False
-    return not any(s.kind == "village" and s.tribe_id == tribe.id for s in state.sites.values())
-
-
-def split_band(state: GameState, band_id: int) -> int | None:
-    if not can_split(state, band_id):
-        return None
-    band = state.bands[band_id]
-    moved = band.population // 2
-    stock = band.stock * moved / band.population
-    nid = new_band_id(state)
-    state.bands[nid] = Band(
-        nid,
-        band.tribe_id,
-        band.position,
-        moved,
-        stock,
-        famine_in_period=band.famine_in_period,
-    )
-    population.split_wounded(band, state.bands[nid], moved, band.population)
-    band.population -= moved
-    band.stock -= stock
-    chiefs.on_split(state, band, state.bands[nid])
-    _ai_caches_changed(state)
-    if is_human(state, band.tribe_id):
-        note(
-            state,
-            LogKind.SURVIE,
-            f"La bande se scinde : {band.population} et {moved}.",
-            to=band.tribe_id,
-        )
-    return nid
-
-
-def _ai_caches_changed(state: GameState) -> None:
-    if state.force_memo is not None:
-        state.force_memo.clear()
-    if state.band_grid is not None:
-        state.band_grid = build_band_grid(state)
-
-
-# Un groupe reuni n'est pas soude tout de suite (moral, pas de scission).
-WELD_WEEKS = 4
-WELD_MIN = 10
-
-
-def welded_left(state: GameState, band: Band) -> int:
-    return max(0, band.welded_until - state.tick_count)
-
-
-def _absorb(state: GameState, keep: Band, gone: Band) -> None:
-    if keep.kind == "armee" and gone.kind == "armee":
-        # Deux troupes : une seule pile de compagnies (units.py).
-        units.normalize(keep)
-        for type_id, men, home in units.normalize(gone):
-            units.add(keep, type_id, men, home)
-        keep.population -= gone.population
-        keep.raised = min(keep.raised, gone.raised)
-    elif keep.kind != "armee" and gone.kind != "armee" and gone.population >= WELD_MIN:
-        # Reunies pour un meme raid : elles savent pourquoi, pas de temps mort.
-        if not (keep.intent_prey and keep.intent_prey == gone.intent_prey):
-            keep.welded_until = max(keep.welded_until, state.tick_count + WELD_WEEKS)
-    population.mix(keep, gone)
-    keep.population += gone.population
-    keep.stock = min(stock_max(keep, state), keep.stock + gone.stock)
-    keep.famine_in_period = keep.famine_in_period or gone.famine_in_period
-    keep.growth_acc += gone.growth_acc
-    keep.famine_tick = max(keep.famine_tick, gone.famine_tick)
-    chiefs.on_merge(state, keep, gone)
-    del state.bands[gone.id]
-    _ai_caches_changed(state)
-    for b in state.bands.values():
-        if b.order.kind is OrderKind.MARCH_TO_BAND and b.order.target_band_id == gone.id:
-            if b.id == keep.id:
-                b.order = stay_order()
-                b.path = []
-            else:
-                b.order = Order(kind=OrderKind.MARCH_TO_BAND, target_band_id=keep.id)
-
-
-# Regrouper sans compter les cases : les bandes proches se reunissent tout de
-# suite, celles un peu plus loin viennent a pied (resolve_joins).
-MERGE_NEAR = 2
-MERGE_CALL = 5
-
-
-def merge_mates(state: GameState, band: Band, radius: int = MERGE_CALL) -> list:
-    """Bandes de son peuple, du meme genre (clan / troupe), qui obeissent et
-    sont a `radius` cases ou moins."""
-    world = state.world
-    return sorted(
-        (
-            b
-            for b in state.bands.values()
-            if b.id != band.id
-            and b.tribe_id == band.tribe_id
-            and b.population > 0
-            and not b.retreating
-            and not b.homebound
-            and (b.kind == "armee") == (band.kind == "armee")
-            and chiefs.obeys(state, b)
-            and world.distance(b.position, band.position) <= radius
-        ),
-        key=lambda b: (world.distance(b.position, band.position), b.id),
-    )
-
-
-def merge_bands(state: GameState, band_id: int) -> int:
-    """Reunir [F] : les bandes proches rejoignent celle-ci (son chef mene) ;
-    un village accueille les bandes de sa case ou d'a cote. Rend le nombre
-    de bandes reunies ou en route."""
-    band = state.bands.get(band_id)
-    if band is None or band.retreating or band.homebound:
-        return 0
-    mates = merge_mates(state, band)
-    keep = band
-    # Sur son village (ou juste a cote), c'est le village qui accueille.
-    home = next((b for b in mates if b.village and state.world.distance(b.position, band.position) <= 1), None)
-    if home is not None and not band.village:
-        keep = home
-        mates = [b for b in mates if b is not home] + [band]
-    elif not band.village:
-        # Loin de la case, un village ne vient pas : on ne le compte pas.
-        mates = [b for b in mates if not b.village]
-    near = [m for m in mates if m.village == 0 and state.world.distance(m.position, keep.position) <= MERGE_NEAR]
-    if keep is not band and band not in near:
-        near.append(band)
-    far = [m for m in mates if m not in near and not m.village]
-    names = [m.leader.name for m in near if m.leader is not None]
-    for mate in near:
-        _absorb(state, keep, mate)
-    for mate in far:
-        set_march_to_band(state, mate.id, keep.id)
-    walking = [m for m in far if m.order.kind is OrderKind.MARCH_TO_BAND]
-    if is_human(state, keep.tribe_id):
-        if near:
-            note(state, LogKind.SURVIE, merge_text(keep, names), to=keep.tribe_id)
-        if walking:
-            n = len(walking)
-            note(state, LogKind.SURVIE, f"{n} bande{'s' if n > 1 else ''} proche{'s' if n > 1 else ''} vien{'nent' if n > 1 else 't'} vous rejoindre.", keep.position, to=keep.tribe_id)
-    return len(near) + len(walking)
-
-
-def merge_text(band: Band, names: list) -> str:
-    lead = band.leader.name if band.leader is not None else "la bande"
-    if band.kind == "armee":
-        return f"Troupes réunies sous {lead} : {band.population} guerriers."
-    if not names:
-        return f"Bandes réunies : {band.population} personnes."
-    who = ", ".join(names)
-    return f"Bandes réunies sous {lead} : {band.population} personnes ; {who} rejoint les anciens du clan."
-
-
 def resolve_joins(state: GameState) -> None:
     # "Marcher vers" une bande amie = la rejoindre a l'arrivee.
     for band in list(state.bands.values()):
@@ -928,8 +522,6 @@ def resolve_joins(state: GameState) -> None:
 
 
 def apply_movement(state: GameState) -> None:
-    from src.kora import battle
-
     # Une bande engagee dans une bataille ne marche pas (sauf le repli, a la fin).
     fighting = {b for bt in battle.battles(state) if not bt.outcome for b in bt.attackers + bt.defenders}
     for band in state.bands.values():
@@ -1020,191 +612,6 @@ def update_influence(state: GameState) -> None:
         influence.update(state)
 
 
-# Un clan se bat avec ses adultes valides, pas avec ses familles ; une
-# troupe (villages.py) se bat tout entiere.
-CLAN_SHARE = 0.4
-
-
-def is_army(band: Band) -> bool:
-    return band.kind == "armee"
-
-
-def fighters(band: Band) -> float:
-    """Ceux qui se battent : les hommes valides d'un clan (population.py),
-    toute une troupe sauf ses blesses."""
-    return population.men_force(band)
-
-
-def band_quality(state: GameState, band: Band) -> float:
-    """Valeur d'un combattant : prestige, savoirs, chef, troupe aguerrie."""
-    tribe = state.tribes[band.tribe_id]
-    q = (1.0 + tribe.prestige / 200.0) * tech.bonuses(tribe).combat
-    if band.leader is not None:
-        q *= chiefs.band_combat(band)
-    if band.kind == "armee":
-        q *= villages.army_quality(state, band)
-    return q
-
-
-def band_force(state: GameState, band: Band) -> float:
-    force = fighters(band) * band_quality(state, band)
-    if band.kind == "armee":
-        # Estimation d'une pile (units.py) : attaque, tenue, volee.
-        p = units.profile(band)
-        force *= p["attack"] * math.sqrt(p["defense"]) + 0.3 * p["ranged"]
-    return force
-
-
-def helpers_of(state: GameState, band: Band) -> list[Band]:
-    """Bandes qui viendraient en renfort : les clans soeurs obeissants et les
-    bandes des peuples allies, a portee de renfort."""
-    out = []
-    tid = band.tribe_id
-    reach = bonus_of(state, tid).reinforce
-    friends = {tid}
-    for a, b in state.diplo.pacts:
-        if tid in (a, b) and diplo.allied(state, a, b):
-            friends.add(b if a == tid else a)
-    # Les tributaires suivent leur suzerain a la guerre ; avec Villages
-    # freres, les villages de sa civilisation viennent aussi.
-    friends.update(chiefdom.vassals_of(state, tid))
-    friends.update(chiefdom.kin_of(state, tid))
-    world = state.world
-    pool = bands_near(state, band.position, reach) if state.band_grid is not None else state.bands.values()
-    for ally in pool:
-        if ally.tribe_id not in friends or ally.id == band.id or ally.population <= 0:
-            continue
-        if world.distance(ally.position, band.position) > reach:
-            continue
-        if ally.tribe_id == tid and not chiefs.helps(state, ally):
-            continue
-        out.append(ally)
-    return out
-
-
-def side_force(state: GameState, band: Band) -> float:
-    # La bande + les bandes amies (rayon de renfort). Seule la bande
-    # engagee subit les pertes.
-    memo = state.force_memo
-    if memo is not None:
-        hit = memo.get(band.id)
-        if hit is not None:
-            return hit
-    force = band_force(state, band)
-    for ally in helpers_of(state, band):
-        force += band_force(state, ally)
-    if memo is not None:
-        memo[band.id] = force
-    return force
-
-
-def defense_force(state: GameState, band: Band) -> float:
-    """Force estimee d'une bande attaquee chez elle (pour l'IA) : renforts,
-    abri (terrain, palissade, pays connu) et moral (battle.py)."""
-    from src.kora import battle
-
-    force = side_force(state, band)
-    if band.village and band.kind != "armee":
-        # Au mur : les hommes valides, et une part des femmes (battle.WALL_WOMEN).
-        force += battle.WALL_WOMEN * population.women_force(band) * band_quality(state, band)
-    cover = 1.0
-    for _label, mult in battle.cover_parts(state, band, band.position):
-        cover *= mult
-    morale, _parts = battle.start_morale(state, band, attacker=False, h=band.position)
-    return force * cover * morale / (battle.MORALE_BASE + battle.KIN_MORALE)
-
-
-def _retreat_sites(state: GameState, band: Band, winner: Band) -> list[Hex]:
-    # Cases candidates, meilleures d'abord : loin des autres tribus ET
-    # nourricieres. Le joueur ne se replie que sur des cases explorees.
-    world = state.world
-    herd = _herd_ok(state, band.tribe_id)
-    bonus = bonus_of(state, band.tribe_id)
-    water_ok = _water_ok(state, band.tribe_id)
-    player = is_human(state, band.tribe_id)
-    # Seuls les etrangers assez proches peuvent changer le score d'une case.
-    span = RETREAT_SEARCH_RADIUS + RETREAT_SAFE_DIST
-    foes = [
-        b.position
-        for b in state.bands.values()
-        if b.tribe_id != band.tribe_id
-        and b.population > 0
-        and not diplo.at_peace(state, b.tribe_id, band.tribe_id)
-        and world.distance(b.position, band.position) <= span
-    ]
-    scored: list[tuple[float, Hex]] = []
-    for h in world.hexes_in_radius(band.position, RETREAT_SEARCH_RADIUS)[::2]:
-        if h == band.position or enter_cost_for(world, h, water_ok) is None:
-            continue
-        if player and not is_explored(state, h, band.tribe_id):
-            continue
-        near = min((world.distance(h, f) for f in foes), default=RETREAT_SAFE_DIST)
-        if near < 3 or world.distance(h, winner.position) < 4:
-            continue
-        safety = min(near, RETREAT_SAFE_DIST) / RETREAT_SAFE_DIST
-        food = sum(
-            food_production(world, x, world.hex_season(x), herd=herd, bonus=bonus)
-            for x in world.hexes_in_radius(h, 2)
-        )
-        scored.append((food * safety - 0.5 * world.distance(band.position, h), h))
-    scored.sort(key=lambda it: it[0], reverse=True)
-    return [h for _score, h in scored[:6]]
-
-
-def _retreat(state: GameState, loser: Band, winner: Band) -> bool:
-    """Le vaincu part a pied vers ses soeurs, un de ses lieux, sinon une case
-    sure. Rend False s'il n'a nulle part ou aller (encercle, battle.py)."""
-    loser.order = stay_order()
-    loser.path = []
-    loser.shield_until = state.tick_count + RETREAT_MIN_SHIELD
-    allies = sorted(
-        (
-            b
-            for b in state.bands.values()
-            if b.id != loser.id
-            and b.tribe_id == loser.tribe_id
-            and b.population > 0
-            and not b.retreating
-            and state.world.distance(b.position, winner.position) >= 2
-            and state.world.distance(b.position, loser.position) <= RETREAT_ALLY_RANGE
-        ),
-        key=lambda b: state.world.distance(b.position, loser.position),
-    )
-    camps = sorted(
-        (
-            s.hex
-            for s in sites.of_tribe(state, loser.tribe_id)
-            if s.kind in ("camp", "village")
-            and state.world.distance(s.hex, winner.position) >= 4
-            and state.world.distance(s.hex, loser.position) <= RETREAT_ALLY_RANGE
-        ),
-        key=lambda h: state.world.distance(h, loser.position),
-    )
-    for goal in [a.position for a in allies] + camps + _retreat_sites(state, loser, winner):
-        set_goto(state, loser.id, goal)
-        if loser.path:
-            loser.retreating = True
-            return True
-    return False
-
-
-def prune_fight_marks(state: GameState) -> None:
-    keep = [
-        m
-        for m in state.fights
-        if state.tick_count - m.tick < COMBAT_MARK_WEEKS
-    ]
-    if len(keep) > COMBAT_MARK_MAX:
-        keep = keep[-COMBAT_MARK_MAX:]
-    state.fights = keep
-
-
-def add_fight_mark(state: GameState, mark: FightMark) -> None:
-    state.fights = [m for m in state.fights if m.hex != mark.hex]
-    state.fights.append(mark)
-    prune_fight_marks(state)
-
-
 def player_home_hex(state: GameState) -> Hex | None:
     for band in state.bands.values():
         if band.tribe_id == state.viewer and band.population > 0:
@@ -1237,177 +644,12 @@ def fight_lines(mark: FightMark, me: int = PLAYER_TRIBE_ID) -> list[str]:
     ]
 
 
-def _raid_sides(a: Band, b: Band) -> tuple[Band, Band]:
-    # L'attaquant est celui qui marchait vers l'autre. A defaut
-    # (rencontre fortuite) : jamais un village, plutot une troupe, sinon la
-    # bande d'id le plus bas.
-    a_hunts = a.order.kind is OrderKind.MARCH_TO_BAND and a.order.target_band_id == b.id
-    b_hunts = b.order.kind is OrderKind.MARCH_TO_BAND and b.order.target_band_id == a.id
-    if b_hunts and not a_hunts:
-        return b, a
-    if a_hunts:
-        return a, b
-    if a.village and not b.village:
-        return b, a
-    if b.kind == "armee" and a.kind != "armee" and not b.village:
-        return b, a
-    return a, b
-
-
-def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band, me: int = PLAYER_TRIBE_ID, hunted: bool | None = None) -> str:
-    """Le raid raconte au joueur `me` (hunted : l'attaquant etait venu
-    l'attaquer ; par defaut, son ordre de marche le dit)."""
-
-    def name(band: Band) -> str:
-        tribe = state.tribes.get(band.tribe_id)
-        return tribe.name if tribe else "ennemi"
-
-    if hunted is None:
-        hunted = attacker.order.kind is OrderKind.MARCH_TO_BAND
-    player_won = winner.tribe_id == me
-    if me not in (attacker.tribe_id, defender.tribe_id):
-        return f"Un raid a été aperçu : {name(attacker)} contre {name(defender)}."
-    if not hunted:
-        other = defender if attacker.tribe_id == me else attacker
-        result = "vous l'emportez" if player_won else "vous perdez"
-        return f"Accrochage avec {name(other)} : {result}."
-    if attacker.tribe_id == me:
-        result = "victoire" if player_won else "echec"
-        return f"Raid contre {name(defender)} : {result}."
-    result = "repousse" if player_won else "vous perdez"
-    return f"Raid de {name(attacker)} contre vous : {result}."
-
-
-def resolve_raids(state: GameState) -> None:
-    """Combats de la semaine : deux bandes ennemies sur la meme case
-    COMMENCENT une bataille (battle.py), qui dure des jours. Les bandes d'un
-    camp (ou de ses allies) qui arrivent sur la case d'une bataille en cours
-    la rejoignent. Une bande ne livre qu'une bataille a la fois."""
-    from collections import defaultdict
-
-    from src.kora import battle
-
-    by_hex: dict[Hex, list[Band]] = defaultdict(list)
-    for band in state.bands.values():
-        if band.population <= 0:
-            continue
-        by_hex[band.position].append(band)
-    busy = {b for bt in battle.battles(state) if not bt.outcome for b in bt.attackers + bt.defenders}
-    # Les renforts.
-    for bt in sorted(battle.battles(state), key=lambda b: b.uid):
-        if bt.outcome:
-            continue
-        a_tribes = {state.bands[b].tribe_id for b in bt.attackers if b in state.bands}
-        d_tribes = {state.bands[b].tribe_id for b in bt.defenders if b in state.bands}
-        for band in sorted(by_hex.get(bt.hex, []), key=lambda b: b.id):
-            if band.id in busy or is_shielded(state, band) or band.retreating:
-                continue
-            if band.tribe_id in a_tribes or any(diplo.allied(state, band.tribe_id, t) for t in a_tribes):
-                battle.join(state, bt, band, True)
-                busy.add(band.id)
-            elif band.tribe_id in d_tribes or any(diplo.allied(state, band.tribe_id, t) for t in d_tribes):
-                battle.join(state, bt, band, False)
-                busy.add(band.id)
-    for h, group in by_hex.items():
-        while True:
-            # Une bande en repli (ou dans son repit) ne se bat pas : c'est ce
-            # qui empeche d'attaquer plusieurs fois la meme bande.
-            present = sorted(
-                (
-                    b
-                    for b in group
-                    if b.position == h and b.population > 0 and not is_shielded(state, b) and b.id not in busy
-                ),
-                key=lambda b: b.id,
-            )
-            # Celle qui est venue attaquer livre sa bataille d'abord (sinon
-            # une bande soeur sur la meme case la livrerait a sa place).
-            pairs = [
-                (a, foe)
-                for i, a in enumerate(present)
-                for foe in present[i + 1 :]
-                if foe.tribe_id != a.tribe_id and _will_fight(state, a, foe)
-            ]
-            pair = next((p for p in pairs if _hunts(*p) or _hunts(p[1], p[0])), pairs[0] if pairs else None)
-            if pair is None:
-                break
-            a, foe = pair
-            attacker, defender = _raid_sides(a, foe)
-            bt = battle.start(state, attacker, defender, h, _hunts(attacker, defender))
-            busy.update(bt.attackers)
-            busy.update(bt.defenders)
-            for me in humans(state):
-                if me in (attacker.tribe_id, defender.tribe_id):
-                    them = defender if attacker.tribe_id == me else attacker
-                    other = state.tribes.get(them.tribe_id)
-                    note(state, LogKind.COMBAT, f"Bataille contre les {other.name if other else 'ennemis'} : le temps passe en jours.", where=h, to=me)
-
-
 def fight_out(state: GameState) -> None:
     """Les rencontres de la semaine, et chaque bataille jusqu'a sa fin
     (essais ; une partie passe par tick)."""
-    from src.kora import battle
-
     resolve_raids(state)
     battle.advance(state, battle.MAX_DAYS + 1, humans=True)
     remove_dead_bands(state)
-
-
-def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, hunted: bool) -> None:
-    """La fin d'une bataille (battle._end) : le journal des joueurs, le
-    prestige, les relations, la marque sur la carte."""
-    from src.kora import battle
-    a_t, d_t = attacker.tribe_id, defender.tribe_id
-    told = [t for t in humans(state) if t in (a_t, d_t) or is_visible(state, h, t)]
-    winner, loser = res.winner, res.loser
-    for me in told:
-        note(state, LogKind.COMBAT, _raid_text(state, attacker, defender, winner, me, hunted) + battle.log_suffix(state, res, me), where=h, to=me)
-    wt = state.tribes[winner.tribe_id]
-    lt = state.tribes[loser.tribe_id]
-    gain_prestige(state, wt, 10 if res.wiped else 5)
-    lt.prestige = max(0, lt.prestige - (8 if res.wiped else 4))
-    winner.last_raid_tick = state.tick_count
-    loser.last_raid_tick = state.tick_count
-    diplo.on_fight(state, a_t, d_t, winner is attacker, hunted)
-    if winner.leader is not None:
-        winner.leader.renown += 10 if res.wiped else 5
-    if winner.order.kind is OrderKind.MARCH_TO_BAND:
-        winner.order = stay_order()
-        winner.path = []
-    if told:
-        add_fight_mark(
-            state,
-            FightMark(
-                hex=h,
-                tick=state.tick_count,
-                year=state.clock.year,
-                week=state.clock.week,
-                winner_tribe=winner.tribe_id,
-                loser_tribe=loser.tribe_id,
-                winner_name=wt.name,
-                loser_name=lt.name,
-                winner_before=res.winner_before,
-                loser_before=res.loser_before,
-                winner_loss=res.winner_loss,
-                loser_loss=res.loser_loss,
-                loot=res.loot,
-                report=res.report,
-            ),
-        )
-    if res.building and is_human(state, loser.tribe_id):
-        note(state, LogKind.COMBAT, f"Le village a perdu : {res.building}.", where=h, to=loser.tribe_id)
-
-
-def _hunts(a: Band, b: Band) -> bool:
-    return a.order.kind is OrderKind.MARCH_TO_BAND and a.order.target_band_id == b.id
-
-
-def _will_fight(state: GameState, a: Band, b: Band) -> bool:
-    """Deux bandes etrangeres sur la meme case se battent, sauf pacte
-    (treve, alliance, tribut) - a moins que l'une ne soit venue attaquer."""
-    if diplo.hostile_intent(state, a.tribe_id, b.tribe_id):
-        return True
-    return _hunts(a, b) or _hunts(b, a)
 
 
 def update_prestige(state: GameState) -> None:
@@ -1722,8 +964,6 @@ def tick(state: GameState) -> None:
     """Un pas de la partie : une SEMAINE ; ou un JOUR quand une bataille touche
     un joueur (battle.slow : le temps ralentit en bataille). Sept jours font la
     semaine. state.step compte les pas (le multijoueur s'y cale)."""
-    from src.kora import battle
-
     saved = snapshot(state)
     tech.begin_tick()
     try:
@@ -1751,7 +991,6 @@ def tick(state: GameState) -> None:
 def _week(state: GameState, battle_days: int) -> None:
     """La semaine du monde. Les batailles sans joueur y font `battle_days`
     jours."""
-    from src.kora import battle
     from src.kora.ai import decide_ai
     prev_season = state.clock.season()
     state.clock.advance_week()
