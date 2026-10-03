@@ -379,3 +379,24 @@ def test_the_money_and_numbers_modules_stay_pure():
         tree = ast.parse(pathlib.Path(f"src/kora/{name}.py").read_text(encoding="utf-8"))
         mods = {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)} | {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
         assert not any(m and m.startswith("pygame") for m in mods), name
+
+
+def test_money_events_speak_through_the_systems_vocabulary():
+    from src.kora import events
+
+    st, site, band = _village(MONEY + ("argent_pese",), pop=200, res={"argent": (230, 3)})
+    tribe = st.tribes[1]
+    tribe.money = 20.0
+    inst = events._new_instance(st, events.EVENTS["pierre_blanche"], 1, band.id)
+    assert events.conds_ok(st, inst, (("has_money",), ("money_ge", 10), ("veins", "mineurs")))
+    assert not events.check(st, inst, ("money_ge", 50))
+    assert not events.check(st, inst, ("craft_teams", "mineurs"))
+    events.apply(st, inst, ("craft_team", "mineurs"))
+    assert events.check(st, inst, ("craft_teams", "mineurs"))
+    events.apply(st, inst, ("money", 4))
+    events.apply(st, inst, ("money_pct", -0.5))
+    events.apply(st, inst, ("math_points", 8))
+    assert tribe.money == 12.0 and tribe.math_progress == 8.0
+    assert tribe.money_month["evenements"] == 4 - 12.0
+    assert events.effect_text(("money", 4)) == "+4 sicles au trésor"
+    assert "mineurs" in events.effect_text(("craft_team", "mineurs"))

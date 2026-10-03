@@ -1169,3 +1169,41 @@ def lines(state, site, band) -> list[str]:
             craft = CRAFTS[cid]
             out.append(f"{craft.name} : {n} équipe{'s' if n > 1 else ''}")
     return out
+
+
+# --- ce que les metiers ajoutent aux evenements (events.vocabulary) -------------------
+
+
+def _ev_site(state, band):
+    from src.kora import villages
+
+    return villages.site_of(state, band)
+
+
+def _ev_craft_teams(state, inst, tribe, band, cid) -> bool:
+    """Des equipes de ce metier au village (calculateurs, mineurs...)."""
+    site = _ev_site(state, band)
+    return site is not None and teams_of(site, cid) > 0
+
+
+def _ev_veins(state, inst, tribe, band, cid) -> bool:
+    """Le village a dans ses terres de quoi faire ce metier (des filons)."""
+    site = _ev_site(state, band)
+    return site is not None and deposits(state, site, cid)[0] > 0
+
+
+def _ev_craft_team(state, inst, tribe, band, cid) -> None:
+    """Une equipe de plus a ce metier, s'il y a la place."""
+    site = _ev_site(state, band)
+    if site is not None and not add_block(state, site, cid):
+        set_teams(state, site, cid, teams_of(site, cid) + 1)
+
+
+def _craft_name(cid: str) -> str:
+    craft = CRAFTS.get(cid)
+    return craft.name.lower() if craft is not None else cid
+
+
+EVENT_CONDITIONS = {"craft_teams": _ev_craft_teams, "veins": _ev_veins}
+EVENT_EFFECTS = {"craft_team": _ev_craft_team}
+EVENT_TEXTS = {"craft_team": lambda a: f"une équipe de {_craft_name(a[0])} de plus"}

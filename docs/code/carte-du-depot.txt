@@ -1,7 +1,8 @@
 CARTE DU DEPOT — KORA
 (doc de code, pas de design de jeu)
 
-Date    : 2026-09-27
+Date    : 2026-10-03 (architecture : fiches, tableau des systemes,
+          grands ecrans, tests de contrat)
 Statut  : a jour avec le proto actuel (tribus vivantes : peuples,
           zone d'influence, campements, chefs, diplomatie, evenements,
           ressources du pays, villages du neolithique ; fondation,
@@ -36,6 +37,10 @@ Le design de jeu (nourriture, raids, prestige, etc.) est ailleurs :
 
 Ce qui n'est pas encore dans le proto, et ce qui pourrait venir :
   docs/code/suite-possible.txt
+
+AJOUTER UNE FONCTIONNALITE : lire d'abord docs/code/ajouter-un-systeme.txt
+(la recette, les regles, la dette connue) ; tests/test_architecture.py les
+verifie.
 
 
 1. LIRE LE DEPOT EN 30 SECONDES
@@ -72,13 +77,10 @@ ni la nourriture ni les raids.
                           (exe : %APPDATA%\Kora\saves\kora.json)
 
 Regle dure :
-  sim.py, world.py, path.py, clock.py, ai.py, ai_war.py, tech.py,
-  vision.py, persist.py, peoples.py, influence.py, sites.py, chiefs.py,
-  diplo.py, events.py, events_data.py, resources.py, villages.py,
-  orders.py, battle.py, units.py, goods.py, situations.py, commands.py,
-  francais.py, production.py, population.py, chiefdom.py, numbers.py,
-  money.py n'importent
-  JAMAIS pygame ni render.py.
+  tout module de src/kora qui n'est pas de la PRESENTATION (app, render,
+  render_*, theme, look, globe, globe_draw, screens) n'importe JAMAIS
+  pygame ni un module de presentation (tests/test_architecture.py le
+  verifie fichier par fichier).
   numpy : seulement dans globe_draw.py (rendu), mapgen.py et
   resources.generate_layers (cuisson de la carte, hors jeu).
   La simulation reste en python pur (petits calculs par bande).
@@ -346,8 +348,30 @@ src/kora/ai_war.py
   start_plan, advance_plans). recheck_hunts annule un raid devenu
   perdant. Band.intent_prey / intent_until : plan en cours.
 
+src/kora/records.py  (pas de pygame)
+  Les FICHES : to_json / from_json / copy d'un dataclass d'apres le TYPE de
+  ses champs (types.py : Tribe, Band ; sites.Site). Codecs de Hex, Order,
+  Person (register) ; metadata d'un champ : "round", "decode", "save",
+  "copy" ; json_copy (copie rapide de JSON). persist.py et sim.snapshot
+  s'en servent : un champ nouveau ne s'ecrit qu'une fois, dans types.py.
+
+src/kora/systems.py  (pas de pygame)
+  LE TABLEAU DES SYSTEMES : MONTHLY (le mois du monde, dans l'ordre),
+  STABILITY, ARMY_MORALE, FLEE, CRAFT_OUTPUT (ce que chaque systeme ajoute
+  a ces calculs), EFFECT_FIELDS / EFFECT_SPECS (effets comme des savoirs,
+  lus par tech.bonuses et tech.spec_effect), EVENT_VOCABULARY (modules qui
+  ajoutent conditions et effets aux evenements : events.vocabulary).
+  fn("module.fonction"), run, parts, total, apply_mult.
+
+src/kora/screens.py
+  Les GRANDS ECRANS (village, commerce, tresor) : SCREENS (cle de ui,
+  mise en page du renderer, dessin, visee) ; open / toggle / close_all /
+  opened / under_mouse / hit / draw. Un seul ouvert a la fois ; app.play y
+  route les clics (screen_clicks), render.py y dessine.
+
 src/kora/persist.py
   saves/kora.json. Version = 1 (champs nouveaux : defaut au chargement).
+  Tribus, bandes, lieux : records.py.
   Le rapport de bataille (FightMark.report) est un dict JSON tel quel.
   Refuse de charger si largeur / hauteur / wrap_x different.
   Chemin : %APPDATA%\Kora\saves si frozen, sinon racine du depot.
@@ -752,6 +776,9 @@ Ce que voit l'ecran                 state.viewer (jamais PLAYER_TRIBE_ID
 Taille / forme de la planete        mapgen.py PLANET_WIDTH / HEIGHT
                                     puis recuire data/kora_map.json
 Tests d'une regle                   tests/test_<sujet>.py
+Regles du code (contrat)            tests/test_architecture.py
+Clics dans le vrai jeu              tests/test_app_clicks.py (app.play
+                                    sans fenetre, scenario image par image)
                                     (sans pygame, sauf test_app_import)
 Exe Windows                         Kora.spec puis
                                     python -m PyInstaller --noconfirm Kora.spec

@@ -8,6 +8,8 @@ L'auteur est francophone : répondre en français.
    toutes ses demandes dans l'ordre et leur état, les règles de travail.
 2. Lire la dernière spec (docs/superpowers/specs/, la plus récente) et
    docs/code/carte-du-depot.txt (où est quoi).
+3. Avant d'ajouter ou de changer une fonctionnalité : docs/code/ajouter-un-systeme.txt
+   (la recette, les règles ; tests/test_architecture.py les vérifie).
 
 ## Exigence de l'auteur (2026-09-25)
 Il a été mécontent qu'on fasse « le minimum ». Il attend le maximum : chaque demande

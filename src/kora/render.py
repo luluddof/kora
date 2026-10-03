@@ -1061,28 +1061,14 @@ class Renderer:
         # Le rapport de bataille ouvert passe par-dessus les cartes et le bandeau.
         self.draw_fight_panel(open_fight, state)
         self.draw_side(state, side_panel, log_filter, log_newest, tech_pick, ui)
-        from src.kora import render_village
+        from src.kora import render_village, screens
 
-        if ui.get("village_open") is not None:
-            render_village.draw_village(self, state, ui)
-        else:
-            self.village_hits = {}
+        # Le grand ecran ouvert : village, commerce ou tresor (screens.py).
+        screens.draw(self, state, ui)
         if ui.get("found") is not None:
             render_village.draw_found(self, state, ui)
         else:
             self.found_hits = {}
-        if ui.get("trade_open"):
-            from src.kora import render_trade
-
-            render_trade.draw_trade(self, state, ui)
-        else:
-            self.trade_hits = {}
-        if ui.get("treasury_open"):
-            from src.kora import render_treasury
-
-            render_treasury.draw_treasury(self, state, ui)
-        else:
-            self.treasury_hits = {}
         if ui.get("situation_open") is not None:
             render_situations.draw_window(self, state, ui)
         else:

@@ -390,3 +390,38 @@ KEY_NAMES = {
     "evenements": "Événements",
     "dons": "Présents aux familles",
 }
+
+
+# --- ce que l'argent ajoute aux evenements (events.vocabulary) ----------------------
+
+
+def _ev_has_money(state, inst, tribe, band) -> bool:
+    return has_money(state, tribe.id)
+
+
+def _ev_money_ge(state, inst, tribe, band, n) -> bool:
+    return getattr(tribe, "money", 0.0) >= n
+
+
+def _ev_money(state, inst, tribe, band, amount) -> None:
+    if amount > 0:
+        earn(state, tribe.id, "evenements", amount)
+    else:
+        take = min(getattr(tribe, "money", 0.0), -amount)
+        tribe.money -= take
+        book(state, tribe.id, "evenements", -take)
+
+
+def _ev_money_pct(state, inst, tribe, band, pct) -> None:
+    take = getattr(tribe, "money", 0.0) * -pct
+    if take > 0:
+        tribe.money -= take
+        book(state, tribe.id, "evenements", -take)
+
+
+EVENT_CONDITIONS = {"has_money": _ev_has_money, "money_ge": _ev_money_ge}
+EVENT_EFFECTS = {"money": _ev_money, "money_pct": _ev_money_pct}
+EVENT_TEXTS = {
+    "money": lambda a: f"{'+' if a[0] >= 0 else ''}{a[0]:g} sicles au trésor",
+    "money_pct": lambda a: f"{round(a[0] * 100)} % du trésor",
+}

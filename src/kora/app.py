@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import chiefs, commands, diplo, events, orders, situations
+from src.kora import chiefs, commands, diplo, events, orders, screens, situations
 from src.kora.globe import (
     FOCUS_ZOOM,
     clamp_pitch,
@@ -698,11 +698,18 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
 
     def open_village(site_id) -> None:
         nonlocal side_panel
-        ui["village_open"] = site_id
+        screens.open(ui, "village", site_id)
         ui["village_pick"] = None
         ui["leave_confirm"] = 0.0
-        ui["trade_open"] = False
-        ui["treasury_open"] = False
+        side_panel = None
+
+    def open_screen(name: str, toggle: bool = False) -> None:
+        """Un grand ecran (screens.py) : les autres et les panneaux se ferment."""
+        nonlocal side_panel
+        if toggle:
+            screens.toggle(ui, name)
+        else:
+            screens.open(ui, name)
         side_panel = None
 
     def treasury_click(choice) -> None:
@@ -710,7 +717,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         from src.kora import money
 
         if choice == "mclose":
-            ui["treasury_open"] = False
+            screens.close_all(ui)
             return
         if choice.startswith("mtax:"):
             issue(commands.make(me(), "budget", "tax", int(choice.split(":")[1])))
@@ -726,7 +733,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         from src.kora import goods
 
         if choice == "tclose":
-            ui["trade_open"] = False
+            screens.close_all(ui)
             return
         if choice.startswith("tpartner:"):
             ui["trade_partner"] = int(choice.split(":")[1])
@@ -784,7 +791,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
         site = state.sites.get(ui["village_open"])
         home = villages.band_of(state, site) if site is not None and site.kind == "village" else None
         if home is None or choice == "vclose":
-            ui["village_open"] = None
+            screens.close_all(ui)
             return
         if choice == "vleave":
             if now > ui["leave_confirm"]:
@@ -820,8 +827,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                 issue(commands.make(me(), "charge", fams[int(idx)]["id"], charge))
             return
         if choice == "vtrade":
-            ui["village_open"] = None
-            ui["trade_open"] = True
+            screens.open(ui, "commerce")
             return
         if choice.startswith(("vteam+:", "vteam-:")):
             from src.kora import goods
@@ -1118,27 +1124,16 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             return True
         if choice.startswith("tab_"):
             key = choice[4:]
-            if key == "commerce":
-                ui["trade_open"] = not ui["trade_open"]
-                ui["village_open"] = None
-                ui["treasury_open"] = False
-                side_panel = None
-                return True
-            if key == "tresor":
-                ui["treasury_open"] = not ui["treasury_open"]
-                ui["village_open"] = None
-                ui["trade_open"] = False
-                side_panel = None
+            if key in screens.BY_NAME:
+                # Commerce, Tresor : des onglets qui ouvrent un grand ecran.
+                open_screen(key, toggle=True)
                 return True
             side_panel = None if side_panel == key else key
-            ui["village_open"] = None
-            ui["trade_open"] = False
-            ui["treasury_open"] = False
+            screens.close_all(ui)
             return True
         if choice == "trade_with":
-            ui["trade_open"] = True
+            open_screen("commerce")
             ui["trade_partner"] = ui.get("people_pick")
-            side_panel = None
             return True
         if choice.startswith(("vil_open:", "vil_see:", "vil_row:")):
             sid = int(choice.split(":")[1])
@@ -1245,6 +1240,10 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             return True
         return choice == "panel"
 
+    # Les clics de chaque grand ecran (screens.SCREENS).
+    screen_clicks = {"village": village_click, "commerce": trade_click, "tresor": treasury_click}
+    assert set(screen_clicks) == set(screens.BY_NAME)
+
     while True:
         dt = clock.tick(60) / 1000.0
         now += dt
@@ -1277,12 +1276,8 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         close_situation()
                     elif ui["found"] is not None:
                         close_found()
-                    elif ui["village_open"] is not None:
-                        ui["village_open"] = None
-                    elif ui["trade_open"]:
-                        ui["trade_open"] = False
-                    elif ui["treasury_open"]:
-                        ui["treasury_open"] = False
+                    elif screens.opened(ui) is not None:
+                        screens.close_all(ui)
                     elif open_fight is not None:
                         open_fight = None
                     elif side_panel:
@@ -1327,28 +1322,21 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         toast("L'armée vient avec le premier village.")
                         continue
                     side_panel = None if side_panel == key else key
-                    ui["village_open"] = None
-                    ui["treasury_open"] = False
+                    screens.close_all(ui)
                 elif event.key == pygame.K_m:
                     from src.kora.render_panels import commerce_ready
 
                     if not commerce_ready(state):
                         toast("Le commerce vient avec le premier village.")
                         continue
-                    ui["trade_open"] = not ui["trade_open"]
-                    ui["village_open"] = None
-                    ui["treasury_open"] = False
-                    side_panel = None
+                    open_screen("commerce", toggle=True)
                 elif event.key == pygame.K_g:
                     from src.kora import money
 
                     if not money.has_money(state, state.viewer):
                         toast("Le trésor vient avec Valeurs d'échange.")
                         continue
-                    ui["treasury_open"] = not ui["treasury_open"]
-                    ui["village_open"] = None
-                    ui["trade_open"] = False
-                    side_panel = None
+                    open_screen("tresor", toggle=True)
                 elif event.key == pygame.K_z:
                     renderer.map_mode = "relief" if renderer.map_mode == "zones" else "zones"
                 elif event.key == pygame.K_r:
@@ -1449,10 +1437,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                     continue
                 if event.button in (2, 3):
                     mx, my = event.pos
-                    in_village = (ui["village_open"] is not None and bool(renderer.village_hits) and _in_rect(renderer.village_hits["box"], mx, my)) or (
-                        ui["trade_open"] and bool(renderer.trade_hits) and _in_rect(renderer.trade_hits["box"], mx, my)
-                    ) or (ui["treasury_open"] and bool(renderer.treasury_hits) and _in_rect(renderer.treasury_hits["box"], mx, my))
-                    if side_hit(renderer.side_hits, mx, my) is None and not in_village:
+                    if side_hit(renderer.side_hits, mx, my) is None and not screens.under_mouse(renderer, ui, mx, my):
                         dragging = True
                         drag_button = event.button
                         last_mouse = event.pos
@@ -1467,39 +1452,16 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
                         continue
                     if ui_hit == "bar":
                         continue
-                    if ui["treasury_open"] and renderer.treasury_hits:
-                        from src.kora.render_treasury import treasury_hit
-
-                        mchoice = treasury_hit(renderer.treasury_hits, mx, my)
-                        if mchoice is not None:
-                            if mchoice != "panel":
-                                treasury_click(mchoice)
+                    scr, schoice = screens.hit(renderer, ui, mx, my)
+                    if scr is not None:
+                        # Le grand ecran ouvert (screens.py) prend le clic ;
+                        # un clic hors de lui (et des onglets) le ferme.
+                        if schoice is not None:
+                            if schoice != "panel":
+                                screen_clicks[scr.name](schoice)
                             continue
                         if side_hit(renderer.side_hits, mx, my) is None:
-                            ui["treasury_open"] = False
-                            continue
-                    if ui["trade_open"] and renderer.trade_hits:
-                        from src.kora.render_trade import trade_hit
-
-                        tchoice = trade_hit(renderer.trade_hits, mx, my, renderer.trade_partners, len(renderer.trade_routes), renderer.trade_candidates)
-                        if tchoice is not None:
-                            if tchoice != "panel":
-                                trade_click(tchoice)
-                            continue
-                        if side_hit(renderer.side_hits, mx, my) is None:
-                            ui["trade_open"] = False
-                            continue
-                    if ui["village_open"] is not None:
-                        from src.kora.render_village import village_hit
-
-                        vchoice = village_hit(renderer.village_hits, mx, my, renderer.village_armies)
-                        if vchoice is not None:
-                            if vchoice != "panel":
-                                village_click(vchoice)
-                            continue
-                        if side_hit(renderer.side_hits, mx, my) is None:
-                            # Un clic hors de l'ecran du village le ferme.
-                            ui["village_open"] = None
+                            screens.close_all(ui)
                             continue
                     choice = side_hit(renderer.side_hits, mx, my)
                     if side_panel == "savoirs" and isinstance(choice, str) and (choice.startswith("tech:") or choice == "tview"):
@@ -1698,9 +1660,7 @@ def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
             or ui["event_open"] is not None
             or ui["found"] is not None
             or ui["situation_open"] is not None
-            or (ui["village_open"] is not None and bool(renderer.village_hits) and _in_rect(renderer.village_hits["box"], mx, my))
-            or (ui["trade_open"] and bool(renderer.trade_hits) and _in_rect(renderer.trade_hits["box"], mx, my))
-            or (ui["treasury_open"] and bool(renderer.treasury_hits) and _in_rect(renderer.treasury_hits["box"], mx, my))
+            or screens.under_mouse(renderer, ui, mx, my)
             or my < HUD_HEIGHT
             or band_card_hit(renderer.band_hits, mx, my) is not None
         )

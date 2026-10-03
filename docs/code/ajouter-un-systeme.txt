@@ -1,0 +1,127 @@
+AJOUTER UN SYSTEME A KORA (et garder le jeu coherent)
+=====================================================
+Date : 2026-10-03. A lire avant d'ajouter une fonctionnalite.
+Les regles ci-dessous sont VERIFIEES par tests/test_architecture.py : un
+oubli fait casser un test qui dit quoi faire.
+
+Un "systeme", c'est une mecanique de jeu entiere : la chefferie, le
+commerce, l'argent, les nombres, les situations, bientot les lois... Il vit
+dans SON module ; il se branche sur le reste du jeu par quelques points
+d'entree connus, jamais en allant modifier le coeur des autres modules.
+
+
+1. LES DEUX COUCHES
+-------------------
+  SIMULATION  (python pur : jamais pygame, jamais un render_*.py)
+      types.py, world.py, sim.py, tech.py, villages.py, goods.py, money.py,
+      ... et records.py, systems.py, commands.py
+      Elle ne lit JAMAIS state.viewer (c'est l'interface qui regarde).
+  PRESENTATION  (pygame)
+      app.py (la boucle, les clics), render.py et render_*.py (le dessin),
+      theme.py (la charte), screens.py (les grands ecrans)
+      Elle ne change la partie QUE par un ordre de commands.py, et lit
+      state.viewer (multijoueur : chacun voit son peuple).
+
+
+2. LA RECETTE (exemple : un systeme de LOIS)
+--------------------------------------------
+  a) Le module : src/kora/lois.py. En tete, sa docstring (ce que fait le
+     systeme, ses chiffres) et ses constantes ; "N'importe pas pygame."
+
+  b) Ses donnees : des champs de Tribe dans types.py, avec un TYPE PRECIS
+     et une valeur par defaut (celle des vieilles parties) :
+         laws: dict[str, str] = field(default_factory=dict)
+     C'est tout : la sauvegarde, la relecture et la copie (sim.snapshot, a
+     chaque pas) s'en deduisent (records.py). Types connus : int, float,
+     str, bool, Optional[T], set[T], tuple[T, ...], list[T], dict[str, T],
+     Hex, Order, Person ; Any = une valeur JSON simple ; list[list] = des
+     rangees de valeurs simples ; dict / list nus = du JSON quelconque.
+     Une vieille partie au champ special : field(metadata={"decode": f}).
+     (Les donnees d'un VILLAGE vont aujourd'hui dans site.data, un dict
+     libre : nommer ses cles dans la docstring du module.)
+
+  c) Son mois : une ligne dans systems.MONTHLY, a sa place dans l'ordre
+     ("lois.monthly"). Ce qu'il fait a la stabilite, au moral, aux fuyards,
+     a la production : une ligne dans systems.STABILITY, ARMY_MORALE,
+     FLEE, CRAFT_OUTPUT (la fonction attendue est decrite en tete de
+     systems.py). Le reste du jeu n'a pas a l'importer.
+
+  d) Des effets "comme des savoirs" (bonus, malus d'une loi) : un champ de
+     Tribe qui porte des ids ("loi:corvee"), une fonction qui les rend
+     (systems.EFFECT_FIELDS) et une qui les decrit (systems.EFFECT_SPECS,
+     par prefixe "loi:"). Chaque effet doit etre un champ de tech.Bonuses
+     (un effet nouveau : le champ, sa place dans _MULT ou _FLAGS, son texte
+     dans tech.effect_lines).
+
+  e) Les actions du joueur : un genre d'ordre dans commands.py (KINDS +
+     sa fonction, qui verifie que le joueur commande ce qui est a lui). Pas
+     d'autre chemin : sinon le multijoueur diverge.
+
+  f) Les evenements : les cartes dans events_data.py ; ses conditions et
+     effets propres dans SON module (EVENT_CONDITIONS, EVENT_EFFECTS,
+     EVENT_TEXTS : voir money.py) et son nom dans systems.EVENT_VOCABULARY.
+
+  g) Les savoirs qui l'ouvrent : tech.py (Tech, branche, palier ; le
+     palier d'un prerequis toujours plus bas ; ages : 0-3 tribal, 4-5
+     neolithique).
+
+  h) L'IA : une fonction _ai pour les peuples qui ne sont pas des joueurs
+     (sim.is_human ; le peuple 1 est toujours traite en joueur).
+
+  i) L'interface :
+       - un panneau ou un onglet : render_<x>.py, avec une mise en page
+         PURE (<x>_layout, <x>_hit : testables) et un draw ;
+       - un GRAND ECRAN (comme le commerce, le tresor) : une ligne dans
+         screens.SCREENS et sa fonction de clic dans app.play
+         (screen_clicks) ; ouvrir, fermer, Echap, la souris : deja faits ;
+       - tout dessin passe par theme.py (couleurs C, theme.font(role),
+         boutons, fiches theme.tooltip avec avoid=le bouton) ;
+       - tout texte affiche en francais ACCENTUE (tools/accents.py) ;
+       - une icone : theme.ICON_FILES puis tools/recuperer_assets.py.
+
+  j) Les regles du jeu a respecter partout :
+       - le hasard : state.rng (simulation), _rand de situations.py (tirage
+         tire de la semaine et de cles), story_rng pour les evenements
+         seulement ; jamais le module random directement ;
+       - un message au joueur : sim.note(state, kind, texte, to=peuple),
+         seulement si sim.is_human ;
+       - le prestige gagne : sim.gain_prestige ; un sicle : money.earn /
+         money.book ; la population d'une classe : population.py ;
+       - le temps : state.tick_count compte les SEMAINES, state.step les
+         pas (un jour en bataille d'un joueur) ; le mois = tick_count % 4.
+
+  k) Les verifications (dans cet ordre) :
+       - ses tests (tests/test_lois.py) et la suite : python -m pytest -q
+         (tests/test_architecture.py verifie les regles ci-dessus) ;
+       - la souris : ajouter l'ecran a tests/test_ui_hover.py ; un scenario
+         de clics dans tests/test_app_clicks.py ;
+       - un essai long (30-50 ans, IA seules et sur une COPIE de la partie
+         du joueur) : le systeme ne doit pas s'emballer (tresors, plafonds,
+         attentes sans fin) ;
+       - l'empreinte : tools/empreinte.py check empreinte.json ; le jeu a
+         change volontairement : record ;
+       - le multijoueur : tools/essai_reseau.py 6 (et --exe) ;
+       - les notes : la spec du chantier, docs/VISION-KORA.txt (3 et 5),
+         docs/code/carte-du-depot.txt.
+
+  l) Un REFACTORING (le jeu ne doit pas changer) : tools/empreinte.py
+     check, et la partie du joueur relue puis jouee 20 semaines doit etre
+     identique a avant (la sauvegarde ecrite, comparee en JSON).
+
+
+3. CE QUI RESTE A AMELIORER (dette connue, par ordre d'interet)
+---------------------------------------------------------------
+  - site.data : les donnees d'un village sont un dict libre (champs,
+    semences, equipes, batiments...). En faire une fiche typee (Village),
+    comme Tribe, rendrait chaque cle visible et verifiee.
+  - app.play : une fonction de 1100 lignes (fermetures) ; la decouper en un
+    objet "partie a l'ecran" avec un routeur de clics, ecran par ecran.
+  - Les imports en cercle : 650 imports faits a l'interieur des fonctions
+    pour eviter les cycles. Le tableau des systemes evite d'en creer de
+    nouveaux ; on les reduira en sortant les petites fonctions partagees
+    (lieux, bandes d'un peuple) dans des modules de base.
+  - events.check / events.apply : les conditions et effets du coeur sont
+    encore une longue suite de "if" ; les systemes, eux, ont leur
+    vocabulaire (f).
+  - render.py (1900 lignes) : la carte, le bandeau, les panneaux lateraux
+    melanges ; les separer comme render_trade / render_treasury.

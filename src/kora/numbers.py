@@ -242,3 +242,14 @@ def page(state, tid: int) -> dict:
         "points": points(state, tid),
         "teams": teams(state, tid),
     }
+
+
+# --- ce que les nombres ajoutent aux evenements (events.vocabulary) -------------------
+
+
+def _ev_math_points(state, inst, tribe, band, n) -> None:
+    tribe.math_progress = getattr(tribe, "math_progress", 0.0) + n
+
+
+EVENT_EFFECTS = {"math_points": _ev_math_points}
+EVENT_TEXTS = {"math_points": lambda a: f"+{a[0]:g} points de calcul"}

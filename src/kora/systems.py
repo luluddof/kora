@@ -16,6 +16,8 @@ part ailleurs, on dit ou il se branche sur le reste du jeu :
                  savoirs (lus par tech.bonuses) ; (tribe) -> ids
   EFFECT_SPECS   prefixe d'id -> fonction qui decrit ces effets ;
                  () -> {id: (nom, {effet: valeur})}
+  EVENT_VOCABULARY  les modules qui ajoutent des conditions et des effets
+                 aux evenements (events.vocabulary)
 
 Un systeme nouveau : son module, puis UNE ligne dans chaque tableau ou il
 intervient ; le reste du jeu n'a pas a l'importer. L'ordre des tableaux
@@ -75,6 +77,10 @@ EFFECT_SPECS = {
     "base:": "numbers.effect_specs",
     "op:": "numbers.effect_specs",
 }
+
+# Les modules qui ajoutent des conditions, des effets et leurs textes aux
+# evenements (EVENT_CONDITIONS, EVENT_EFFECTS, EVENT_TEXTS ; events.vocabulary).
+EVENT_VOCABULARY = ("goods", "money", "numbers")
 
 _FN: dict = {}
 

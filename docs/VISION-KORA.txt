@@ -371,6 +371,26 @@ lente, bandes dessinees petites a taille fixe.
     budget sans thesauriser. Spec : 2026-10-02-nombres-et-argent.txt.
     A FAIRE plus tard (sa demande) : la numeration de position, a un age
     suivant (l'onglet la montre deja, grisee).
+  - SignPath (signer l'exe) : "en vrai ce n'est pas si grave, je ne mettrai
+    pas de SignPath." NOTE : pas de signature ; l'astuce du README (curl,
+    Debloquer) reste la reponse a l'alerte Windows.
+  - "Vois au niveau de l'architecture si tu peux faire mieux, pour que le
+    jeu soit plus simple a etendre, a maintenir, et que les fonctionnalites
+    a venir soient coherentes entre elles et avec le jeu." FAIT (0.7.1,
+    sans changer le jeu : empreinte et sa partie identiques) : les FICHES
+    (records.py : un champ de Tribe, Band, Site se sauve, se relit, se copie
+    d'apres son type) ; le TABLEAU DES SYSTEMES (systems.py : le mois, la
+    stabilite, le moral, les fuyards, la production, les effets, le
+    vocabulaire des evenements) ; les GRANDS ECRANS (screens.py : un seul
+    ouvert a la fois, corrige : B ou T laissait le commerce ouvert sous le
+    panneau) ; des TESTS DE CONTRAT (test_architecture.py) et le jeu joue au
+    clic sans fenetre (test_app_clicks.py) ; la recette pour ajouter un
+    systeme : docs/code/ajouter-un-systeme.txt. Mesure : l'argent avait
+    touche 24 fichiers existants ; un systeme pareil en toucherait
+    aujourd'hui une dizaine, chacun pour une raison propre (types.py,
+    systems.py, commands.py, tech.py, events_data.py, screens.py, app.py
+    pour son clic, render.py pour son onglet...), et plus aucun des
+    calculs des autres (sim, villages, battle, chiefdom, persist).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -423,7 +443,6 @@ lente, bandes dessinees petites a taille fixe.
   prestige GAGNE passe par sim.gain_prestige (bonus prestige_gain) ; une
   crise nouvelle dit son risque (Spec.risk) quand on peut la voir venir ;
   une fiche au survol d'un bouton passe avoid=rect (theme.tooltip).
-  En attente de SON choix : signer l'exe (SignPath, licence du depot).
   Fait le 2026-10-02 (suite, 0.5.0) : chefferie, population en classes,
   batailles en jours, conquete et tributaires. REGLES NOUVELLES : changer la
   population d'une classe passe par population.py (grow, take_men, kill,
@@ -447,6 +466,14 @@ lente, bandes dessinees petites a taille fixe.
   un tresor d'IA doit avoir ou aller (reserve, presents) : verifier par un
   essai long qu'il ne gonfle pas. A FAIRE (sa demande) : la numeration de
   position a un age suivant.
+  Fait le 2026-10-03 (0.7.1) : architecture (fiches, tableau des systemes,
+  grands ecrans, tests de contrat). REGLE NOUVELLE : avant tout ajout, lire
+  docs/code/ajouter-un-systeme.txt ; un systeme se branche par systems.py
+  (jamais en ajoutant ses appels dans sim, villages, battle...), ses donnees
+  sont des champs TYPES de types.py, un grand ecran passe par screens.py ;
+  tests/test_architecture.py doit rester vert. Dette suivante (proposee) :
+  site.data en fiche typee, app.play decoupe, imports en cercle.
+  SignPath : il n'en veut pas (2026-10-03).
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes
