@@ -1,8 +1,9 @@
 AJOUTER UN SYSTEME A KORA (et garder le jeu coherent)
 =====================================================
-Date : 2026-10-03. A lire avant d'ajouter une fonctionnalite.
-Les regles ci-dessous sont VERIFIEES par tests/test_architecture.py : un
-oubli fait casser un test qui dit quoi faire.
+Date : 2026-10-03 (mis a jour : etages, imports, fiche du village, Play).
+A lire avant d'ajouter une fonctionnalite. Les regles ci-dessous sont
+VERIFIEES par tests/test_architecture.py : un oubli fait casser un test qui
+dit quoi faire.
 
 Un "systeme", c'est une mecanique de jeu entiere : la chefferie, le
 commerce, l'argent, les nombres, les situations, bientot les lois... Il vit
@@ -10,48 +11,79 @@ dans SON module ; il se branche sur le reste du jeu par quelques points
 d'entree connus, jamais en allant modifier le coeur des autres modules.
 
 
-1. LES DEUX COUCHES
--------------------
-  SIMULATION  (python pur : jamais pygame, jamais un render_*.py)
-      types.py, world.py, sim.py, tech.py, villages.py, goods.py, money.py,
-      ... et records.py, systems.py, commands.py
-      Elle ne lit JAMAIS state.viewer (c'est l'interface qui regarde).
-  PRESENTATION  (pygame)
-      app.py (la boucle, les clics), render.py et render_*.py (le dessin),
-      theme.py (la charte), screens.py (les grands ecrans)
-      Elle ne change la partie QUE par un ordre de commands.py, et lit
-      state.viewer (multijoueur : chacun voit son peuple).
+1. LES ETAGES (tools/dependances.py : LAYERS)
+---------------------------------------------
+Un module n'importe que son etage ou plus bas, EN TETE du fichier. Du plus
+bas au plus haut :
+
+  0  briques          types, francais, net, systems
+  1  temps, fiches    clock, log, resources, records
+  2  la planete       world
+  3  ce qui s'y pose  path, atlas, mapgen, gamestate (l'etat de la partie,
+                      les joueurs, le journal), peoples, places (les lieux,
+                      la fiche du village, les lectures simples d'un village)
+  4  savoirs, gens    tech (l'arbre et ses effets), units, vision, population
+  5  LES SYSTEMES     learning (comment on apprend), bands (les outils des
+                      bandes), chiefs, sites, influence, production, diplo,
+                      goods, money, numbers, chiefdom, villages, battle,
+                      situations, events, events_data
+  6  l'IA             ai_war, orders, puis ai
+  7  la semaine       sim
+  8  les ordres       commands
+  9  au-dessus        persist, session, essai
+  -  l'interface      layout (mises en page pures), theme, look, globe,
+                      globe_draw, render_*, render, screens, app
+
+  - Les systemes (etage 5) s'appellent entre eux : ils s'importent alors
+    EN ENTIER ("from src.kora import goods", puis goods.xxx), jamais par nom
+    ("from src.kora.goods import xxx") quand ils sont en cercle (le module
+    vise serait encore en chargement).
+  - Un etage bas qui doit faire reagir un etage plus haut (une bande qui se
+    scinde -> les chefs ; un clan emancipe -> l'IA) passe par systems.py.
+  - Un import dans une fonction : seulement s'il ne peut pas etre en tete,
+    avec le commentaire "# paresseux : raison" (il en reste UN dans tout le
+    jeu : les donnees des evenements importent le moteur).
+  - La simulation (tout sauf l'interface) n'importe jamais pygame et ne lit
+    jamais state.viewer. L'interface ne change la partie QUE par un ordre
+    de commands.py.
+  Voir ou en est le code : python tools/dependances.py (resume, cercles,
+  caches, "qui MODULE").
 
 
 2. LA RECETTE (exemple : un systeme de LOIS)
 --------------------------------------------
-  a) Le module : src/kora/lois.py. En tete, sa docstring (ce que fait le
-     systeme, ses chiffres) et ses constantes ; "N'importe pas pygame."
+  a) Le module : src/kora/lois.py, a l'etage 5 (l'ajouter a LAYERS). En
+     tete, sa docstring (ce que fait le systeme, ses chiffres) et ses
+     constantes ; "N'importe pas pygame."
 
-  b) Ses donnees : des champs de Tribe dans types.py, avec un TYPE PRECIS
-     et une valeur par defaut (celle des vieilles parties) :
+  b) Ses donnees : des champs de Tribe (types.py), ou du village
+     (places.VillageData), avec un TYPE PRECIS et une valeur par defaut
+     (celle des vieilles parties) :
          laws: dict[str, str] = field(default_factory=dict)
      C'est tout : la sauvegarde, la relecture et la copie (sim.snapshot, a
      chaque pas) s'en deduisent (records.py). Types connus : int, float,
      str, bool, Optional[T], set[T], tuple[T, ...], list[T], dict[str, T],
-     Hex, Order, Person ; Any = une valeur JSON simple ; list[list] = des
-     rangees de valeurs simples ; dict / list nus = du JSON quelconque.
-     Une vieille partie au champ special : field(metadata={"decode": f}).
-     (Les donnees d'un VILLAGE vont aujourd'hui dans site.data, un dict
-     libre : nommer ses cles dans la docstring du module.)
+     Hex, Order, Person, un autre dataclass (fiche imbriquee) ; Any = une
+     valeur JSON simple ; list[list] = des rangees de valeurs simples ;
+     dict / list nus = du JSON quelconque. Une vieille partie au champ
+     special : field(metadata={"decode": f}). VillageData ne sauve que ce
+     qui differe du defaut (COMPACT).
 
   c) Son mois : une ligne dans systems.MONTHLY, a sa place dans l'ordre
      ("lois.monthly"). Ce qu'il fait a la stabilite, au moral, aux fuyards,
-     a la production : une ligne dans systems.STABILITY, ARMY_MORALE,
-     FLEE, CRAFT_OUTPUT (la fonction attendue est decrite en tete de
-     systems.py). Le reste du jeu n'a pas a l'importer.
+     aux reserves, a la production : une ligne dans systems.STABILITY,
+     ARMY_MORALE, FLEE, STOCK_WEEKS, CRAFT_OUTPUT. Ses reactions aux bandes
+     (BAND_SPLIT, BAND_MERGE, MERGE_ALLOWED), aux clans emancipes
+     (EMANCIPATED), ce qu'il dit d'un savoir (TECH_LINES). La fonction
+     attendue par chaque tableau est decrite en tete de systems.py ; un
+     tableau nouveau y est verifie d'office (test_every_system_hook_exists).
 
   d) Des effets "comme des savoirs" (bonus, malus d'une loi) : un champ de
      Tribe qui porte des ids ("loi:corvee"), une fonction qui les rend
      (systems.EFFECT_FIELDS) et une qui les decrit (systems.EFFECT_SPECS,
      par prefixe "loi:"). Chaque effet doit etre un champ de tech.Bonuses
      (un effet nouveau : le champ, sa place dans _MULT ou _FLAGS, son texte
-     dans tech.effect_lines).
+     dans tech.effect_lines) : test_every_effect_names_a_real_bonus.
 
   e) Les actions du joueur : un genre d'ordre dans commands.py (KINDS +
      sa fonction, qui verifie que le joueur commande ce qui est a lui). Pas
@@ -60,20 +92,25 @@ d'entree connus, jamais en allant modifier le coeur des autres modules.
   f) Les evenements : les cartes dans events_data.py ; ses conditions et
      effets propres dans SON module (EVENT_CONDITIONS, EVENT_EFFECTS,
      EVENT_TEXTS : voir money.py) et son nom dans systems.EVENT_VOCABULARY.
+     Signature : (state, inst, tribe, band, *args), la meme que celles du
+     moteur (events._TRIBE_CONDITIONS, _BAND_CONDITIONS, _TRIBE_EFFECTS,
+     _BAND_EFFECTS ; band peut etre None pour les premieres).
 
   g) Les savoirs qui l'ouvrent : tech.py (Tech, branche, palier ; le
      palier d'un prerequis toujours plus bas ; ages : 0-3 tribal, 4-5
-     neolithique).
+     neolithique). Ce qui fait avancer un savoir : learning.py.
 
   h) L'IA : une fonction _ai pour les peuples qui ne sont pas des joueurs
-     (sim.is_human ; le peuple 1 est toujours traite en joueur).
+     (gamestate.is_human ; le peuple 1 est toujours traite en joueur).
 
   i) L'interface :
-       - un panneau ou un onglet : render_<x>.py, avec une mise en page
-         PURE (<x>_layout, <x>_hit : testables) et un draw ;
+       - un panneau ou un onglet : sa mise en page PURE dans layout.py (ou
+         render_<x>.py : <x>_layout, <x>_hit, testables sans fenetre) et
+         son dessin dans render_<x>.py ;
        - un GRAND ECRAN (comme le commerce, le tresor) : une ligne dans
-         screens.SCREENS et sa fonction de clic dans app.play
-         (screen_clicks) ; ouvrir, fermer, Echap, la souris : deja faits ;
+         screens.SCREENS et sa methode de clic dans app.Play (screen_clicks) ;
+         ouvrir, fermer, Echap, la souris : deja faits ;
+       - une touche : Play._on_key ; un clic sur la carte : Play._on_click ;
        - tout dessin passe par theme.py (couleurs C, theme.font(role),
          boutons, fiches theme.tooltip avec avoid=le bouton) ;
        - tout texte affiche en francais ACCENTUE (tools/accents.py) ;
@@ -83,9 +120,9 @@ d'entree connus, jamais en allant modifier le coeur des autres modules.
        - le hasard : state.rng (simulation), _rand de situations.py (tirage
          tire de la semaine et de cles), story_rng pour les evenements
          seulement ; jamais le module random directement ;
-       - un message au joueur : sim.note(state, kind, texte, to=peuple),
-         seulement si sim.is_human ;
-       - le prestige gagne : sim.gain_prestige ; un sicle : money.earn /
+       - un message au joueur : gamestate.note(state, kind, texte, to=peuple),
+         seulement si gamestate.is_human ;
+       - le prestige gagne : bands.gain_prestige ; un sicle : money.earn /
          money.book ; la population d'une classe : population.py ;
        - le temps : state.tick_count compte les SEMAINES, state.step les
          pas (un jour en bataille d'un joueur) ; le mois = tick_count % 4.
@@ -94,7 +131,8 @@ d'entree connus, jamais en allant modifier le coeur des autres modules.
        - ses tests (tests/test_lois.py) et la suite : python -m pytest -q
          (tests/test_architecture.py verifie les regles ci-dessus) ;
        - la souris : ajouter l'ecran a tests/test_ui_hover.py ; un scenario
-         de clics dans tests/test_app_clicks.py ;
+         de clics dans tests/test_app_clicks.py (la vraie boucle, sans
+         fenetre) ;
        - un essai long (30-50 ans, IA seules et sur une COPIE de la partie
          du joueur) : le systeme ne doit pas s'emballer (tresors, plafonds,
          attentes sans fin) ;
@@ -105,23 +143,25 @@ d'entree connus, jamais en allant modifier le coeur des autres modules.
          docs/code/carte-du-depot.txt.
 
   l) Un REFACTORING (le jeu ne doit pas changer) : tools/empreinte.py
-     check, et la partie du joueur relue puis jouee 20 semaines doit etre
-     identique a avant (la sauvegarde ecrite, comparee en JSON).
+     check, et la partie du joueur relue puis jouee (20 semaines a 2 ans)
+     doit etre identique a avant (tribus, bandes, diplomatie et lieux
+     compares).
 
 
-3. CE QUI RESTE A AMELIORER (dette connue, par ordre d'interet)
----------------------------------------------------------------
-  - site.data : les donnees d'un village sont un dict libre (champs,
-    semences, equipes, batiments...). En faire une fiche typee (Village),
-    comme Tribe, rendrait chaque cle visible et verifiee.
-  - app.play : une fonction de 1100 lignes (fermetures) ; la decouper en un
-    objet "partie a l'ecran" avec un routeur de clics, ecran par ecran.
-  - Les imports en cercle : 650 imports faits a l'interieur des fonctions
-    pour eviter les cycles. Le tableau des systemes evite d'en creer de
-    nouveaux ; on les reduira en sortant les petites fonctions partagees
-    (lieux, bandes d'un peuple) dans des modules de base.
-  - events.check / events.apply : les conditions et effets du coeur sont
-    encore une longue suite de "if" ; les systemes, eux, ont leur
-    vocabulaire (f).
-  - render.py (1900 lignes) : la carte, le bandeau, les panneaux lateraux
-    melanges ; les separer comme render_trade / render_treasury.
+3. CE QUI RESTE A AMELIORER (dette connue)
+------------------------------------------
+  Fait le 2026-10-03 : la fiche typee du village (places.VillageData) ;
+  app.play -> la classe app.Play (run, _on_event, _on_key, _on_click,
+  _frame, une methode par clic) ; 734 imports caches -> 1 ; les etages ;
+  events.check / apply en tables ; render.py allege (layout.py : 800
+  lignes de mises en page pures).
+  Reste :
+  - Les plus gros modules : villages.py (1900 lignes), situations.py
+    (1800), app.py (1700), events.py (1550), render_village.py (1400),
+    battle.py (1300). Les decouper quand un chantier y touche : villages
+    en champs / batiments / troupes, situations une classe par fichier.
+  - Les 12 systemes de l'etage 5 forment encore un cercle (ils
+    s'importent en entier, sans danger) : on le reduira en passant par
+    systems.py les reactions d'un systeme a un autre, au fil des chantiers.
+  - Les "noms prives" importes d'un autre module (_gradient_card, _rand,
+    _frame...) : a rendre publics quand on y touche.

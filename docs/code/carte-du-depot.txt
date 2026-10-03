@@ -61,6 +61,9 @@ ni la nourriture ni les raids.
   docs/charte-graphique.txt  la charte « Feu et ocre » (a lire avant tout
                           dessin) ; docs/charte/planche.png sa planche
   tools/empreinte.py      preuve qu'un refactoring ne change pas le jeu
+  tools/dependances.py    qui importe qui : les ETAGES (LAYERS), les imports
+                          caches, les cercles ; "qui MODULE" (test_architecture
+                          s'en sert)
   tools/arbre_savoirs.py  ecrit l'arbre des savoirs dans sa spec
   tools/essai_reseau.py   multijoueur : deux PROCESSUS (hote, ami), la vraie
                           carte, des robots qui donnent des ordres ; les
@@ -78,9 +81,12 @@ ni la nourriture ni les raids.
 
 Regle dure :
   tout module de src/kora qui n'est pas de la PRESENTATION (app, render,
-  render_*, theme, look, globe, globe_draw, screens) n'importe JAMAIS
-  pygame ni un module de presentation (tests/test_architecture.py le
-  verifie fichier par fichier).
+  render_*, theme, look, globe, globe_draw, screens, layout) n'importe
+  JAMAIS pygame ni un module de presentation (tests/test_architecture.py
+  le verifie fichier par fichier).
+  Les ETAGES (tools/dependances.LAYERS, docs/code/ajouter-un-systeme.txt) :
+  un module n'importe que son etage ou plus bas, en tete du fichier ; un
+  seul import cache dans tout le jeu (events -> events_data, commente).
   numpy : seulement dans globe_draw.py (rendu), mapgen.py et
   resources.generate_layers (cuisson de la carte, hors jeu).
   La simulation reste en python pur (petits calculs par bande).
@@ -116,28 +122,68 @@ Ici c'est plus petit, mais le meme decoupage :
                     render_treasury.py, app.py
                     "on dessine et on recoit la souris"
 
-Dependances autorisees (fleche = "importe") :
+Dependances autorisees : les ETAGES (du plus bas au plus haut ; un module
+n'importe que son etage ou plus bas) :
 
-  types
-    <- world, clock, mapgen
-         <- path
-              <- sim
-                   <- vision, ai, persist
-                        <- app, render
-  look, atlas, globe, globe_draw  <- render
-  pygame              <- app, render seulement
+  0 types, francais, net, systems        1 clock, log, resources, records
+  2 world                                 3 path, atlas, mapgen, gamestate,
+                                            peoples, places
+  4 tech, units, vision, population      5 les systemes : learning, bands,
+                                            chiefs, sites, influence,
+                                            production, diplo, goods, money,
+                                            numbers, chiefdom, villages,
+                                            battle, situations, events,
+                                            events_data
+  6 ai_war, orders, ai                    7 sim (la semaine)
+  8 commands                              9 persist, session, essai
+  interface : layout, theme, look, globe, globe_draw, render_*, render,
+  screens, app ; pygame seulement la.
 
-world.py reexporte generate_world (qui vit dans mapgen.py)
-et pick_spawn_hexes. Ne pas chercher le generateur dans sim.
+La generation de la carte vit dans mapgen.py (generate_world) ; world.py ne
+la connait pas.
 
 
 3. FICHIERS : QUI POSSEDE QUOI
 ------------------------------
 
 src/kora/types.py
-  Terrain, Season, Hex, Band, Tribe, Order, FightMark.
-  Rien d'autre. Si tu ajoutes un champ a Band, pense a persist.py
-  (save + load) et aux tests de sauvegarde.
+  Terrain, Season, Hex, Band, Tribe, Order, Person (et ses codecs),
+  FightMark ; les donnees de la diplomatie (Diplomacy, Mod, Pact,
+  TradeRoute). Un champ ajoute a Band ou Tribe, avec son type : il se
+  sauve, se relit et se copie tout seul (records.py).
+
+src/kora/gamestate.py  (pas de pygame)
+  GameState (l'etat de la partie), Pov ; les peuples joueurs : humans,
+  is_human, pov_of, log_of, seen_of, human_dead, note, note_all ;
+  PLAYER_TRIBE_ID et les ids de depart. (sim.py les reexporte.)
+
+src/kora/places.py  (pas de pygame)
+  Les lieux : Site, VillageData (l'etat d'un village : bande, serment,
+  champs, sol, semences, batiments, chantier, monument, recoltes, saison,
+  collecte, equipes de metier, alertes ; sauve compact), _village_data
+  (vieilles parties : palissade) ; les lectures : site_of, band_of, name,
+  rank_name, oath_of, built, has, monument_stages, works, watch_spots,
+  influence_radius. (sites.py et villages.py les reexportent.)
+
+src/kora/bands.py  (pas de pygame)
+  Les outils des bandes partages par tous : grille et bandes proches,
+  new_band_id, stock_max (+ systems.STOCK_WEEKS), gain_prestige,
+  bonus_of, costs_of, set_goto, set_march_to_band, combien de bandes
+  (max_bands_of, civ_band_cap...), split_band, merge_bands (les chefs y
+  reagissent par systems.BAND_SPLIT / BAND_MERGE / MERGE_ALLOWED),
+  fighters, CLAN_SHARE.
+
+src/kora/learning.py  (pas de pygame)
+  Comment un peuple apprend : cond_progress, status, available, choose,
+  auto_choose, learn_rate, weeks_left, update_practice (le vecu),
+  update_learning (la semaine), detail_lines (la fiche d'un savoir).
+
+src/kora/layout.py
+  Les mises en page PURES de l'interface (sans dessin) : barre du haut,
+  menu, cartes de bande, nouvelles, onglets et panneaux lateraux
+  (side_layout / side_hit), toile de l'arbre (tech_world, cam_on, zoom_at,
+  pan, tech_panel_layout), onglet des nombres, projection hex / pixel.
+  render.py les reexporte.
 
 src/kora/clock.py
   Annee, semaine 1-52, pause, vitesse 1 a 5.
@@ -168,19 +214,15 @@ src/kora/path.py
   Cout d'entree dans world.MOVE_COST (plaine 10 => 4 hex/semaine).
 
 src/kora/sim.py
-  GameState, new_game, tick, consume_ticks.
-  Ordres joueur : set_goto, set_march_to_band,
-  split_band, merge_bands (les bandes a 2 cases se reunissent, celles a
-  5 cases viennent ; "marcher vers" un allie = le rejoindre a 1 case).
-  Economie : FAMINE_RATE, STOCK_MAX_FACTOR, GROWTH_RATE en tete.
-  Combat : resolve_raids (qui se bat, une bataille par bande et par
-  semaine, prestige, journal, marque d'epee ; la bataille elle-meme :
-  battle.py), fighters / band_quality / band_force (un clan se bat a
-  40 % : CLAN_SHARE ; une troupe entiere), side_force (renforts),
-  defense_force (estimation pour l'IA : abri et moral compris),
-  _retreat (repli a pied vers un allie ou une case sure ; ordres
-  bloques, bande protegee ; False = encercle).
-  Lecture : band_summary / band_lines (fiche), local_winter_weeks.
+  LA SEMAINE DU MONDE : new_game, tick, _week (dans l'ordre : saisons,
+  marche, raids, collecte, puis systems.MONTHLY chaque mois), snapshot /
+  _restore, consume_ticks.
+  Economie : FAMINE_RATE, GROWTH_RATE en tete ; collect_food,
+  update_exhaustion, update_population, update_prestige.
+  Les outils des bandes : bands.py ; les combats (resolve_raids,
+  band_quality, band_force, side_force, defense_force, _retreat,
+  after_battle) : battle.py ; local_winter_weeks : world.py.
+  Lecture : band_summary / band_lines (fiche).
   IDs : PLAYER_TRIBE_ID=1, AI_STEPPE=2, AI_FOREST=3, AI_COAST=4.
   Snapshot interne si un tick explose : pause + last_error,
   etat d'avant le tick restaure.
@@ -188,13 +230,13 @@ src/kora/sim.py
   GameLog + seen_enemy_tribes : evenements joueur.
 
 src/kora/tech.py
-  Savoirs : TECHS (26 de l'age tribal, 14 du neolithique ; ERAS = les
-  ages d'un seul arbre vertical, colonne = branche, noms de colonnes
-  par age), Bonuses (somme des effets d'une tribu, gardee pendant le
-  tick : begin_tick / invalidate / end_tick), update_practice (vecu,
-  ressources proches comprises), update_learning, choose, effect_lines
-  / detail_lines (texte tire des donnees). Pirogue et troupeau posent
-  tribe.cabotage / tribe.troupeau.
+  L'ARBRE : TECHS (ERAS = les ages d'un seul arbre vertical, colonne =
+  branche, noms de colonnes par age), Bonuses (somme des effets d'une
+  tribu, gardee pendant le tick : begin_tick / invalidate / end_tick ;
+  sources : savoirs, bonus de depart, systems.EFFECT_FIELDS), spec_effect,
+  effect_lines (+ systems.TECH_LINES), grant. Pirogue et troupeau posent
+  tribe.cabotage / tribe.troupeau. Ce qui fait avancer un savoir :
+  learning.py.
 
 src/kora/peoples.py
   Cultures (depart, gout de l'IA, audace, savoirs, syllabes des noms),
@@ -305,12 +347,15 @@ src/kora/diplo.py
 
 src/kora/events.py, events_data.py
   Moteur d'evenements (conditions, effets, issues, suites, cartes du
-  joueur, echeances) et les 44 evenements en donnees.
+  joueur, echeances) et les evenements en donnees. check / apply lisent
+  des tables : _TRIBE_CONDITIONS, _BAND_CONDITIONS, _TRIBE_EFFECTS,
+  _BAND_EFFECTS (fonctions (state, inst, tribe, band, *args)) et le
+  vocabulaire des systemes (vocabulary : systems.EVENT_VOCABULARY).
   hook(state, nom, ...) : crochets de la simulation.
 
 src/kora/resources.py
-  Ressources du pays : NAMES, LABELS, COVER, generate_layers (numpy, a
-  la cuisson), encode / decode, richness. En jeu : world.resource,
+  Ressources du pays : NAMES, LABELS, COVER, derive_silver, encode /
+  decode, richness (la cuisson des couches : mapgen.generate_layers). En jeu : world.resource,
   world.resources_near, world.resource_lines, world._rich.
 
 src/kora/orders.py
@@ -350,9 +395,10 @@ src/kora/ai_war.py
 
 src/kora/records.py  (pas de pygame)
   Les FICHES : to_json / from_json / copy d'un dataclass d'apres le TYPE de
-  ses champs (types.py : Tribe, Band ; sites.Site). Codecs de Hex, Order,
-  Person (register) ; metadata d'un champ : "round", "decode", "save",
-  "copy" ; json_copy (copie rapide de JSON). persist.py et sim.snapshot
+  ses champs (types.py : Tribe, Band ; places.Site, places.VillageData ;
+  un dataclass dans un autre : fiche imbriquee ; COMPACT : seulement ce
+  qui differe du defaut). Codecs de Hex, Order, Person (register) ;
+  metadata d'un champ : "round", "decode", "save", "copy" ; json_copy. persist.py et sim.snapshot
   s'en servent : un champ nouveau ne s'ecrit qu'une fois, dans types.py.
 
 src/kora/systems.py  (pas de pygame)
@@ -574,9 +620,14 @@ src/kora/session.py  (pas de pygame)
 
 src/kora/app.py
   run() : menu de demarrage (title_screen) -> _multiplayer (salon) ->
-  play(renderer, clock, boot, mp) -> menu. play : boucle 60 fps, clavier
-  / souris, autosave 8 semaines (en reseau : l'hote seul, kora-multi.json),
-  menu, onglets, hover/pin inspect, ordres par issue() (commands.py).
+  play(renderer, clock, boot, mp) -> menu. play cree une partie a l'ecran,
+  la classe Play : son etat dans self (camera, selection, panneaux,
+  fenetres, nouvelles), une methode par chose a faire (issue, toast,
+  band_action, open_village, village_click, trade_click, treasury_click,
+  side_click...) ; run() la boucle 60 fps, _on_event un evenement,
+  _on_key le clavier, _on_click la souris, _frame une image (le temps ou
+  l'hote, les nouvelles, le survol, le dessin). Autosave 8 semaines (en
+  reseau : l'hote seul, kora-multi.json), ordres par issue() (commands.py).
   En reseau : mp.pump (le temps de l'hote), resultats des ordres, notes,
   partie recopiee, Entree = discussion ; les cartes ne mettent pas en
   pause.

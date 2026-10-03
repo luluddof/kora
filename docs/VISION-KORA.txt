@@ -391,6 +391,20 @@ lente, bandes dessinees petites a taille fixe.
     systems.py, commands.py, tech.py, events_data.py, screens.py, app.py
     pour son clic, render.py pour son onglet...), et plus aucun des
     calculs des autres (sim, villages, battle, chiefdom, persist).
+  - "650 imports caches dans des fonctions : detaille." Puis : "je te
+    laisse tout faire." FAIT (0.7.2, sans changer le jeu : empreinte et SA
+    partie jouee deux ans identiques) : 734 imports caches -> 1 (commente) ;
+    des ETAGES (tools/dependances.py) que test_architecture verifie (on
+    n'importe que plus bas, en tete ; les systemes en cercle s'importent en
+    entier ; chaque module se charge seul) ; nouveaux modules de base :
+    gamestate (l'etat de la partie, les joueurs), places (les lieux, la
+    FICHE TYPEE DU VILLAGE), bands (les outils des bandes), learning
+    (comment on apprend), layout (les mises en page de l'interface) ;
+    app.play (1100 lignes) -> la classe Play (methodes de 143 lignes au
+    plus) ; events.check / apply en tables ; les reactions entre systemes
+    (une bande se scinde, un clan s'emancipe, la reserve d'un village...)
+    par systems.py. Reste (note dans ajouter-un-systeme.txt) : decouper les
+    plus gros modules quand un chantier y touche.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -474,6 +488,13 @@ lente, bandes dessinees petites a taille fixe.
   tests/test_architecture.py doit rester vert. Dette suivante (proposee) :
   site.data en fiche typee, app.play decoupe, imports en cercle.
   SignPath : il n'en veut pas (2026-10-03).
+  Fait le 2026-10-03 (0.7.2) : etages et imports (734 caches -> 1), fiche
+  typee du village (places.VillageData), classe Play, evenements en tables.
+  REGLES NOUVELLES : un module n'importe que son etage ou plus bas, en tete
+  (tools/dependances.LAYERS ; un module nouveau y prend sa place) ; un etat
+  de village nouveau = un champ type de VillageData ; une touche ou un clic
+  = une methode de app.Play ; une condition ou un effet d'evenement = une
+  fonction dans une table (moteur) ou dans le vocabulaire de son systeme.
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes
