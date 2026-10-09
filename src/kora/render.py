@@ -533,14 +533,17 @@ class Renderer:
         labels = dict(BAND_BUTTONS)
         labels.update(orders.labels(state, band.id))
         hint = BAND_HINT
+        hints = orders.hints(state, band.id)
         for key, rect in layout["buttons"].items():
             on = not actions.get(key, "?")
             if _contains(rect, mx, my) and actions.get(key):
                 hint = actions[key]
+            elif _contains(rect, mx, my) and key in hints:
+                hint = hints[key]
             hover = on and _contains(rect, mx, my)
             head, key_hint = split_hint(labels[key])
             theme.button(self.screen, rect, head, "second", on, hover, icon_key=BAND_ICONS.get(key), key_hint=key_hint, role="bouton_petit")
-        warn = hint != BAND_HINT
+        warn = hint != BAND_HINT and hint not in hints.values()
         theme.text(self.screen, hint, "mini", C.alerte if warn else C.cendre, (bx + 16, by + bh - 10 - 18), bw - 32)
 
     def draw_trade_marks(self, state: GameState, yaw, pitch, gcx, gcy, focal, dist) -> None:

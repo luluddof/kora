@@ -78,6 +78,15 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   la fortune du jour comptent ; quand une bataille vous touche, le temps passe en jours. Vous pouvez vous replier.
 - Vos gens sont des **enfants, des hommes, des femmes, des anciens, des blessés** : seule une part des hommes valides
   part en guerre. Un village pris n'est pas massacré : vous le **soumettez** (il devient tributaire) ou le pillez.
+- La **milice** : chaque homme du village se bat comme il vit. Les chasseurs tirent (l'arc, sinon la fronde) ou
+  pistent, les gens des champs et des métiers vont à la mêlée, tirent un peu, tiennent les boucliers. On ne choisit
+  pas : une levée (poignée, troupe, en masse) prend la même part de chacun, et ceux qui sont partis restent dans
+  leur catégorie.
+- L'**ost** : un suzerain appelle les troupes de ses tributaires (fiche de sa troupe, **Ost [H]**) ; elles le
+  rejoignent et ne font plus qu'une grande troupe, qu'il mène. Dissoute, chacun rentre chez soi.
+- Le **siège** : avec *Torches et brandons*, les palissades de l'ennemi ne comptent plus qu'à moitié ; avec
+  *L'art du siège*, une troupe en guerre qui se tient à côté d'un village ennemi l'investit : il ne trouve plus que
+  35 % de ses vivres et sa défense s'use chaque semaine.
 - En cet âge, **un peuple n'a qu'un village** : les autres villages de votre civilisation sont des frères
   indépendants, ou vos tributaires. Chacun travaille selon son sexe et son métier (chasse, cueillette, champs,
   poterie, silex…) ; un soldat retourne à son travail quand la troupe est dissoute.
@@ -114,7 +123,8 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   les présents aux familles, la paie des bâtisseurs (les chantiers avancent plus vite), de 0 à 200 % du tarif. Le
   commerce payé en argent est une **loi** (*Pays*, *Lois*). On peut aussi offrir des **sicles** aux autres peuples
   (écran *Peuples*). Avec l'argent pesé, les **mineurs** creusent les filons des collines ; avec les droits de
-  passage, les convois étrangers paient pour traverser votre pays.
+  passage, les convois étrangers paient pour traverser votre pays. En **disette**, un clic sur le grenier (écran
+  du village) **achète du grain** à un partenaire, un allié ou un peuple de votre pays, plus cher que le marché.
 - Les **pays** : un tributaire prend une nuance claire de la couleur de son suzerain (et reprend la sienne s'il se
   libère) ; la carte des **Suzerains** (touche **U**) ne montre que les grands pays et leurs villages. Avec la
   *Confédération*, deux peuples (ou jusqu'à quatre) ne font plus qu'un pays au dehors : chacun reste maître chez
@@ -151,7 +161,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **F** | Réunir les bandes proches |
 | **Tab** | Bande suivante |
 | **C** | Poser un campement · **K** : y déposer des vivres |
-| **H** | Honorer un clan (il reste fidèle) |
+| **H** | Honorer un clan (il reste fidèle) · une troupe de suzerain : appeler l'ost |
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
 | **Z** / **U** / **I** / **R** / **X** | Modes de carte : influence / suzerains / tournants / ressources / commerce |

@@ -518,7 +518,30 @@ lente, bandes dessinees petites a taille fixe.
   - "La molette pour voir tous les pays connus (ecran Peuples)." FAIT.
   - "Reflechis a l'argent en plus des echanges, sans rien implementer."
     PROPOSE (spec, section 6) : rancon, mercenaires, acheter la paix,
-    grain achete... en attente de son choix.
+    grain achete... Il a choisi la piste D (le 2026-10-11, ci-dessous).
+2026-10-11
+  - "3 oui" (le grain achete en disette chez un partenaire, plus cher que
+    le marche). FAIT (0.13.0 ; spec 2026-10-11-ost-siege-milice-grain.txt) :
+    clic sur le grenier en disette (ecran du village), un vendeur a portee
+    (partenaire, allie, pays), un prix qui monte avec ce qu'on lui prend et
+    en hiver ; l'IA achete en vraie faim.
+  - "Les armees des vassaux et du suzerain peuvent, sous ordre de ce
+    dernier, se reunir en une plus grosse armee, pour que ca bouge." FAIT :
+    l'OST (bouton Ost [H] d'une troupe) : les troupes des tributaires
+    viennent se fondre dans celle du suzerain ; dissoute, chacun rentre
+    chez soi ; l'IA suzeraine compte son ost, le leve et l'attend.
+  - "Si c'est coherent avec l'epoque, des technologies de siege." FAIT :
+    Torches et brandons (palier 5 : les palissades ne comptent qu'a moitie)
+    et L'art du siege (palier 6 : investir un village l'affame et use sa
+    defense) ; beliers, echelles et tours attendront le bronze et les
+    villes. L'IA assiege les villages qu'elle ne peut prendre d'assaut.
+  - "Pour la levee, on ne choisit pas combien d'archers : chaque soldat
+    appartient a une categorie et y reste." FAIT : la MILICE du village
+    (chacun selon sa vie : chasseurs, champs, metiers) ; une levee prend la
+    meme part de chaque categorie ; les partis restent dans la leur.
+    CONSTAT (spec, section 7) : dans SA partie, le monde IA se fige en
+    alliances (plus un combat apres l'an 41) ; propositions P1-P4 en
+    attente de son choix.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -644,9 +667,19 @@ lente, bandes dessinees petites a taille fixe.
   (tech.lines_for) ; l'arbre est verifie au chargement (un savoir de pan
   donne son tournant). EN ATTENTE (sa demande) : l'argent en plus des
   echanges (propositions A-H).
+  0.13.0 : REGLES NOUVELLES : une levee ne choisit pas le genre de ses
+  guerriers (villages.militia / levy_plan : la meme part de chaque
+  categorie) ; une troupe peut porter des compagnies d'un autre peuple (l'ost
+  : ost.py), qui rentrent chez elles et y redeviennent de leur peuple
+  (villages._go_home) ; ce qui change la defense ou les vivres d'un village
+  passe par systems.VILLAGE_DEFENSE / VILLAGE_FOOD ; ce qui se passe chaque
+  semaine apres les marches, par systems.WEEKLY ; un achat en argent passe
+  par money.book / earn avec sa cle (KEY_NAMES). Piste D de l'argent faite ;
+  restent A (rancon), B (mercenaires), C (acheter la paix), E-H.
   A FAIRE plus tard (pistes) : des tournants pour les ages suivants
   (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
-  les evenements.
+  les evenements ; le siege des ages suivants (beliers, echelles, tours :
+  avec le bronze et les villes).
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes

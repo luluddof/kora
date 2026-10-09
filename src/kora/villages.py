@@ -101,6 +101,7 @@ GRAIN_ROT = 0.003
 PALISADE_WEEKS = 12
 PALISADE_COST_WEEKS = 4
 PALISADE_DEFENSE = 1.6
+TOWER_DEFENSE = 1.15
 BURNED = 0.6
 DISEASE_POP = 80
 FLOOD_CHANCE = 0.06
@@ -251,6 +252,19 @@ LEVIES = (("poignee", 0.35, "Une poignée"), ("troupe", 0.7, "Une troupe"), ("ma
 LEVY_SHARE = {k: v for k, v, _l in LEVIES}
 ARMY_MIN_VILLAGE = 40
 ARMY_MIN = 5
+# LA MILICE : chaque homme du village a sa categorie, celle de sa vie de
+# tous les jours, et la garde a la guerre (on ne choisit pas : une levee
+# prend la meme part de chacune).
+#   les chasseurs  : la moitie tire (l'arc, sinon la fronde), un sur cinq
+#                    piste (Pistes et reperes), les autres a la melee ;
+#   les champs et  : la melee ; un sur cinq tire (l'arc du paysan) ; un
+#   les metiers      sur quatre a la garde (les porteurs de boucliers :
+#                    Palissades ; un sur trois avec la Maison des guerriers).
+HUNTER_SHOT = 0.5
+HUNTER_SCOUT = 0.2
+WORKER_SHOT = 0.2
+FARMER_GUARD = 0.25
+WARRIORS_GUARD = 0.35
 VILLAGE_KEEP = 20
 ARMY_SUPPLY_WEEKS = 8
 ARMY_TERM = 26
@@ -566,6 +580,8 @@ def food_mult(state, band) -> float:
     if site is not None:
         mult *= goods.forage_mult(site, band)
         mult *= production.of(state, band.tribe_id, "collecte")
+        # Un village assiege ne sort plus de ses murs (siege.py).
+        mult = systems.apply_mult(mult, systems.VILLAGE_FOOD, state, site)
     return mult
 
 
@@ -579,10 +595,11 @@ def yield_mult(state, site) -> float:
     mult *= production.of(state, site.tribe_id, "agriculture")
     if oath_of(site) == "champs":
         mult *= 1.1
-    return mult
+    return systems.apply_mult(mult, systems.VILLAGE_FOOD, state, site)
 
 
-def defense_parts(state, band) -> list[tuple[str, float]]:
+def wall_parts(state, band) -> list[tuple[str, float]]:
+    """Les murs du village : palissade, tour, pieux du serment, enceintes."""
     site = site_of(state, band)
     if site is None:
         return []
@@ -590,13 +607,21 @@ def defense_parts(state, band) -> list[tuple[str, float]]:
     if has(site, "palissade"):
         out.append(("Palissade", PALISADE_DEFENSE))
     if has(site, "tour"):
-        out.append(("Tour de guet", 1.15))
+        out.append(("Tour de guet", TOWER_DEFENSE))
     if oath_of(site) == "pieux":
         out.append(("Serment des pieux", 1.15))
     wall = _bonus(state, band.tribe_id).village_defense
     if wall != 1.0:
         out.append(("Enceintes et fossés", wall))
     return out
+
+
+def defense_parts(state, band, by: int = 0) -> list[tuple[str, float]]:
+    """Les murs, et ce que les systemes y changent (le siege : siege.py,
+    systems.VILLAGE_DEFENSE) ; by : le peuple qui attaque, s'il est connu."""
+    if site_of(state, band) is None:
+        return []
+    return wall_parts(state, band) + systems.parts(systems.VILLAGE_DEFENSE, state, band, by)
 
 
 def defense_mult(state, band) -> float:
@@ -1246,7 +1271,9 @@ def armies_of(state, site) -> list:
 
 
 def companies_of(state, site) -> int:
-    return sum(1 for b in armies_of(state, site) for u in _companies(b) if u[2] == site.id)
+    """Les troupes ou servent des hommes de ce village (la limite du village :
+    army_cap ; une levee faite au village rejoint la troupe qui y est)."""
+    return len(armies_of(state, site))
 
 
 def army_cap(state, site) -> int:
@@ -1285,38 +1312,121 @@ def army_morale(state, band) -> float:
     return WARRIORS_MORALE * _warrior_share(state, band) + systems.total(systems.ARMY_MORALE, state, band.tribe_id)
 
 
-def levy_size(band, share: float) -> int:
+def _away(state, site) -> dict[str, int]:
+    """Les hommes de ce village deja sous les armes, par role."""
+    out: dict[str, int] = {}
+    if site is None:
+        return out
+    for a in state.bands.values():
+        if a.kind != "armee" or a.population <= 0:
+            continue
+        for type_id, men, home in _companies(a):
+            if home == site.id:
+                role = units.UNITS[type_id].role if type_id in units.UNITS else "melee"
+                out[role] = out.get(role, 0) + men
+    return out
+
+
+def levy_size(band, share: float, state=None) -> int:
     """Combien d'hommes part une levee : une part des LEVABLES (une part des
     hommes valides, population.py), jamais les enfants, les femmes, les
-    anciens ni les blesses."""
-    return int(population.levable(band) * share)
+    anciens ni les blesses. Avec `state` : ceux deja partis comptent (un
+    village ne met jamais sous les armes plus que LEVY_MAX de ses hommes)."""
+    free = population.levable(band)
+    if state is not None:
+        away = sum(_away(state, site_of(state, band)).values())
+        if away:
+            free = min(free, max(0, int((population.fit_men(band) + away) * population.LEVY_MAX) - away))
+    return int(free * share)
 
 
-def levy_type(state, tribe_id: int, type_id: str | None):
-    tribe = state.tribes[tribe_id]
-    u = units.UNITS.get(type_id or "")
-    if u is not None and units.known(tribe, u):
-        return u
-    return units.best(tribe, "melee")
+def militia(state, band) -> list[tuple]:
+    """Les hommes du village, chacun dans sa categorie : [(type, hommes)]
+    pour ceux qui sont encore au village (ceux deja partis sont dans leurs
+    compagnies). Les parts sont celles du village entier : une levee
+    d'archers laisse moins d'archers au village."""
+    site = site_of(state, band)
+    tribe = state.tribes[band.tribe_id]
+    away = _away(state, site)
+    men = population.fit_men(band) + sum(away.values())
+    women = population.fit_women(band)
+    crafts = fields = 0
+    if site is not None:
+        m_left, w_left = men, women
+        for cid, n in sorted(goods.teams(site).items()):
+            if n <= 0 or cid not in goods.CRAFTS:
+                continue
+            m, w = _craft_take(cid, goods.TEAM * n, m_left, w_left)
+            m_left -= m
+            w_left -= w
+            crafts += m
+        need = int(round(len(site.data.fields) * FIELD_HANDS * ACTIVE_NORM))
+        free = m_left + w_left
+        if need > 0 and free > 0:
+            fields = int(round(min(need, free) * m_left / free))
+    hunters = max(0, men - crafts - fields)
+    workers = men - hunters
+    target = {"melee": 0.0, "tir": hunters * HUNTER_SHOT + workers * WORKER_SHOT, "garde": 0.0, "eclaireurs": 0.0}
+    if units.best(tribe, "eclaireurs") is not None:
+        target["eclaireurs"] = hunters * HUNTER_SCOUT
+    if units.best(tribe, "garde") is not None:
+        target["garde"] = workers * (WARRIORS_GUARD if site is not None and has(site, "guerriers") else FARMER_GUARD)
+    target["melee"] = men - sum(target.values())
+    pool = {role: max(0.0, target[role] - away.get(role, 0)) for role in units.ROLES}
+    out = []
+    for role in units.ROLES:
+        u = units.best(tribe, role)
+        if u is not None and pool[role] > 0:
+            out.append((u, pool[role]))
+    return out
+
+
+def _split_by(parts: list[tuple], n: int) -> list[tuple]:
+    """n hommes repartis comme `parts` (plus forts restes)."""
+    total = sum(w for _u, w in parts)
+    if total <= 0 or n <= 0:
+        return []
+    shares = [n * w / total for _u, w in parts]
+    cut = [int(s) for s in shares]
+    left = n - sum(cut)
+    for i in sorted(range(len(parts)), key=lambda i: (-(shares[i] - cut[i]), i))[:left]:
+        cut[i] += 1
+    return [(u, c) for (u, _w), c in zip(parts, cut) if c > 0]
+
+
+def levy_plan(state, band, share: float) -> list[tuple]:
+    """Qui part dans cette levee : la meme part de chaque categorie."""
+    return _split_by(militia(state, band), levy_size(band, share, state))
+
+
+def militia_text(state, band) -> str:
+    """La milice du village : "12 archers · 30 épieux · ..." (tous les levables)."""
+    plan = _split_by(militia(state, band), levy_size(band, 1.0, state))
+    return " · ".join(f"{n} {u.short.lower() if u.short else u.name.lower()}" for u, n in plan)
+
+
+def plan_text(plan: list[tuple]) -> str:
+    return ", ".join(f"{n} {u.name.lower()}" for u, n in plan)
 
 
 def army_block(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id: str | None = None) -> str:
+    """type_id : ignore (vieilles commandes) ; la levee suit la milice."""
     band = state.bands.get(band_id)
     site = site_of(state, band)
     if site is None:
         return "Seul un village leve des guerriers"
-    if type_id and type_id in units.UNITS and not units.known(state.tribes[band.tribe_id], units.UNITS[type_id]):
-        return f"Il faut connaître {tech.TECHS[units.UNITS[type_id].needs].name}"
     if band.population < ARMY_MIN_VILLAGE:
         return f"Il faut {ARMY_MIN_VILLAGE} habitants"
-    n = levy_size(band, share)
+    n = levy_size(band, share, state)
     if n < ARMY_MIN:
+        if _away(state, site) and population.levable(band) * share >= ARMY_MIN:
+            return f"Vos hommes sont déjà sous les armes ({n} de plus au plus)"
         return f"Trop peu de guerriers ({n}, il en faut {ARMY_MIN})"
     if band.population - n < VILLAGE_KEEP:
         return "Le village se viderait"
     count, cap = companies_of(state, site), army_cap(state, site)
-    if count >= cap:
-        return f"Déjà {count}/{cap} compagnies levées (Maison des guerriers : une de plus)"
+    if count >= cap and _home_army(state, band, site) is None:
+        return f"Déjà {count}/{cap} troupes levées (Maison des guerriers : une de plus)"
     return ""
 
 
@@ -1324,20 +1434,48 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
     """Le village leve une compagnie : ses hommes partent avec des vivres du
     grenier. Une troupe du village est au village : la compagnie la rejoint ;
     sinon, c'est une nouvelle troupe, menee par un chef de guerre."""
-    if army_block(state, band_id, share, type_id):
+    if army_block(state, band_id, share):
         return None
     band = state.bands[band_id]
     site = site_of(state, band)
     tribe = state.tribes[band.tribe_id]
-    kind = levy_type(state, band.tribe_id, type_id)
-    n = levy_size(band, share)
-    n = population.take_men(band, n)
+    # Chacun part dans sa categorie (la milice du village) : une compagnie
+    # par categorie.
+    plan = levy_plan(state, band, share)
+    n = population.take_men(band, sum(c for _u, c in plan))
+    plan = _split_by(plan, n)
+    if not plan:
+        return None
     # Les vivres des guerriers : le grenier du chef d'abord, puis le village.
     supply = chiefdom.granary_pay(state, band.tribe_id, float(ARMY_SUPPLY_WEEKS * n))
     extra = min(band.stock, float(ARMY_SUPPLY_WEEKS * n) - supply)
     band.stock -= extra
     supply += extra
-    here = next(
+    here = _home_army(state, band, site)
+    if here is not None:
+        for u, men in plan:
+            units.add(here, u.id, men, site.id)
+        here.stock = min(stock_max(here, state), here.stock + supply)
+        if tribe.is_player:
+            _note(state, LogKind.COMBAT, f"{name(site)} leve {plan_text(plan)} : ils rejoignent la troupe.", site.hex, to=tribe.id)
+        return here
+    nid = new_band_id(state)
+    army = Band(
+        nid, band.tribe_id, site.hex, n, supply, kind="armee", home=site.id, raised=state.tick_count,
+        units=[[u.id, men, site.id] for u, men in plan],
+    )
+    army.leader = chiefs.new_person(state, tribe)
+    army.loyalty = 100.0
+    state.bands[nid] = army
+    _ai_caches_changed(state)
+    if tribe.is_player:
+        _note(state, LogKind.COMBAT, f"{name(site)} leve une troupe : {plan_text(plan)}, menés par {army.leader.name}.", site.hex, to=tribe.id)
+    return army
+
+
+def _home_army(state, band, site):
+    """La troupe de ce peuple qui est au village (une levee la rejoint)."""
+    return next(
         (
             a
             for a in armies_of(state, site)
@@ -1348,21 +1486,6 @@ def raise_army(state, band_id: int, share: float = LEVY_SHARE["troupe"], type_id
         ),
         None,
     )
-    if here is not None:
-        units.add(here, kind.id, n, site.id)
-        here.stock = min(stock_max(here, state), here.stock + supply)
-        if tribe.is_player:
-            _note(state, LogKind.COMBAT, f"{name(site)} leve {n} {kind.name.lower()} : ils rejoignent la troupe.", site.hex, to=tribe.id)
-        return here
-    nid = new_band_id(state)
-    army = Band(nid, band.tribe_id, site.hex, n, supply, kind="armee", home=site.id, raised=state.tick_count, units=[[kind.id, n, site.id]])
-    army.leader = chiefs.new_person(state, tribe)
-    army.loyalty = 100.0
-    state.bands[nid] = army
-    _ai_caches_changed(state)
-    if tribe.is_player:
-        _note(state, LogKind.COMBAT, f"{name(site)} leve une troupe : {n} {kind.name.lower()}, menés par {army.leader.name}.", site.hex, to=tribe.id)
-    return army
 
 
 def detach_block(state, band_id: int) -> str:
@@ -1524,14 +1647,7 @@ def dissolve(state, band_id: int) -> bool:
     for home, us in sorted(groups.items()):
         if home == main:
             continue
-        part = _split_units(state, army, us)
-        site = _village_alive(state, home)
-        if site is None:
-            _to_clan(state, part)
-        elif state.world.distance(site.hex, part.position) <= ARMY_HOME:
-            _join_village(state, part, site)
-        else:
-            _send_home(state, part, site)
+        _go_home(state, _split_units(state, army, us), home)
     site = _village_alive(state, main)
     if site is None and here is not None:
         site = here
@@ -1545,6 +1661,34 @@ def dissolve(state, band_id: int) -> bool:
         if army.homebound and state.tribes[army.tribe_id].is_player:
             _note(state, LogKind.COMBAT, f"La troupe est dissoute : ses hommes rentrent à {name(site)}.", army.position, to=army.tribe_id)
     return True
+
+
+def _go_home(state, part, home: int) -> None:
+    """Des compagnies rentrent a leur village ; celles d'un autre peuple
+    (l'ost d'un tributaire, ost.py) redeviennent une troupe de leur peuple."""
+    site = _village_alive(state, home)
+    if site is None:
+        _to_clan(state, part)
+        return
+    if site.tribe_id != part.tribe_id and site.tribe_id in state.tribes:
+        part.tribe_id = site.tribe_id
+        part.leader = chiefs.new_person(state, state.tribes[site.tribe_id])
+        part.home = site.id
+    if state.world.distance(site.hex, part.position) <= ARMY_HOME:
+        _join_village(state, part, site)
+    else:
+        _send_home(state, part, site)
+
+
+def send_companies_home(state, army, comps: list) -> None:
+    """Ces compagnies quittent la troupe et rentrent chez elles (ost.py)."""
+    groups: dict[int, list] = {}
+    for u in comps:
+        groups.setdefault(u[2], []).append(u)
+    for home, us in sorted(groups.items()):
+        if sum(u[1] for u in army.units) <= sum(u[1] for u in us):
+            return
+        _go_home(state, _split_units(state, army, us), home)
 
 
 def disband(state, band_id: int) -> bool:
@@ -1854,9 +1998,7 @@ def occupations(state, band) -> dict:
                 men -= m
                 women -= w
                 out["champs"] = take
-            out["soldats"] = sum(
-                u[1] for a in state.bands.values() if a.kind == "armee" and a.tribe_id == band.tribe_id for u in a.units if u[2] == site.id
-            )
+            out["soldats"] = sum(_away(state, site).values())
     out["chasse"] = men
     out["cueillette"] = women
     return out

@@ -56,6 +56,9 @@ class VillageData:
     # Derniere alerte au joueur, derniere annee ou il a ete sollicite.
     alert: int = -1000
     asked: Optional[int] = None
+    # Le siege (siege.py) : semaines d'investissement, le peuple qui assiege.
+    siege: int = 0
+    besieger: int = 0
 
 
 def _village_data(raw) -> VillageData:

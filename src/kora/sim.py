@@ -19,9 +19,11 @@ from src.kora import (
     influence,
     learning,
     memory,
+    ost,
     places,
     population,
     records,
+    siege,
     sites,
     situations,
     systems,
@@ -243,13 +245,14 @@ def band_summary(state: GameState, band_id: int) -> dict | None:
 def _village_lines(state: GameState, band: Band) -> list[str]:
     if not band.village:
         return []
-    return villages.lines(state, band)
+    site = places.site_of(state, band)
+    return villages.lines(state, band) + (siege.lines(state, site) if site is not None else [])
 
 
 def _army_lines(state: GameState, band: Band) -> list[str]:
     if band.kind != "armee":
         return []
-    return villages.army_lines(state, band)
+    return villages.army_lines(state, band) + ost.lines(state, band)
 
 
 def _raid_lines(state: GameState, band: Band) -> list[str]:
@@ -1004,6 +1007,7 @@ def _week(state: GameState, battle_days: int) -> None:
     apply_season_spread(state)
     apply_movement(state)
     resolve_joins(state)
+    systems.run(systems.WEEKLY, state)
     learning.update_practice(state)
     prune_fight_marks(state)
     resolve_raids(state)

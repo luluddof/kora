@@ -21,6 +21,7 @@ from src.kora import (
     diplo,
     events,
     goods,
+    grain,
     laws,
     learning,
     money,
@@ -38,7 +39,7 @@ KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
     "teams", "diplo", "invite", "build", "raise", "reequip", "dissolve",
     "honor", "promote", "heir", "learn", "event", "situation",
-    "battle_retreat", "levy_rate", "feast", "charge", "base", "budget", "law",
+    "battle_retreat", "levy_rate", "feast", "charge", "base", "budget", "law", "grain",
 )
 IN_BATTLE = "En bataille : ordonnez le repli d'abord"
 NOT_YOURS = "Ce n'est pas à vous"
@@ -104,6 +105,8 @@ def _goto(state, tid, band_id, q, r):
         return _out(orders.HOMEBOUND + ".")
     if battle.in_battle(state, band):
         return _out(IN_BATTLE + ".")
+    # Un ordre de marche retient la troupe appelee a l'ost (ost.py).
+    band.ost = 0
     set_goto(state, band.id, Hex(int(q), int(r)))
     return _out()
 
@@ -127,6 +130,7 @@ def _march(state, tid, band_id, target_id):
             return _out(why + ".")
         if diplo.needs_declaration(state, tid, target.tribe_id) and not diplo.declared_war(state, tid, target.tribe_id) and not diplo.at_war(state, tid, target.tribe_id):
             return _out(f"Vous êtes en paix avec les {state.tribes[target.tribe_id].name} : déclarez-leur d'abord la guerre (écran Peuples)")
+    band.ost = 0
     set_march_to_band(state, band.id, target.id)
     return _out()
 
@@ -254,10 +258,11 @@ def _raise(state, tid, band_id, size, type_id):
     if band is None:
         return _out(why)
     share = villages.LEVY_SHARE.get(size, villages.LEVY_SHARE["troupe"])
-    why = villages.army_block(state, band.id, share, type_id) or ("" if chiefs.obeys(state, band) else orders.INDOCILE)
+    # type_id : ignore (on ne choisit pas : la milice du village part).
+    why = villages.army_block(state, band.id, share) or ("" if chiefs.obeys(state, band) else orders.INDOCILE)
     if why:
         return _out(why)
-    army = villages.raise_army(state, band.id, share, type_id)
+    army = villages.raise_army(state, band.id, share)
     return _out(sel=army.id if army is not None else None)
 
 
@@ -365,7 +370,16 @@ def _law(state, tid, law_id, option):
     return _out(laws.enact(state, tid, str(law_id), str(option)))
 
 
+def _grain(state, tid, site_id):
+    """Acheter du grain pour un village en disette (grain.py)."""
+    site = state.sites.get(int(site_id))
+    if site is None or site.tribe_id != tid:
+        return _out(NOT_YOURS)
+    return _out(grain.buy(state, tid, site.id))
+
+
 _HANDLERS = {
+    "grain": _grain,
     "base": _base,
     "budget": _budget,
     "law": _law,

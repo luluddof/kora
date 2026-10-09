@@ -1,0 +1,169 @@
+Kora - L'ost, le siege, la milice, le grain des disettes
+=======================================================
+Date : 2026-10-11. Statut : FAIT (version 0.13.0).
+
+Ses mots (raccourcis) :
+  1. "3 oui" : la piste D de l'argent (spec 2026-10-10, section 6) : le
+     grain achete en disette chez un partenaire, plus cher que le marche.
+  2. "Les armees des vassaux et du suzerain peuvent, sous ordre de ce
+     dernier, se reunir pour former une plus grosse armee, pour eviter les
+     situations ou ca ne bouge pas."
+  3. "Puis, si c'est coherent (sinon non), avec l'epoque : des technologies
+     de siege liees a l'epoque."
+  4. "Pour la levee de troupes, on ne choisit pas combien d'archers,
+     d'hommes d'armes, etc. : si on a 40 hommes, on ne peut pas les lever
+     tous en archers. Chaque soldat appartient a une categorie et y reste."
+
+
+1. LA MILICE (villages.py : militia, levy_plan, levy_size)
+----------------------------------------------------------
+  Chaque homme du village a sa CATEGORIE, celle de sa vie de tous les
+  jours :
+    - les CHASSEURS (les hommes qui ne sont ni aux champs ni aux metiers) :
+      la moitie tire (l'arc, sinon la fronde), un sur cinq piste (Pistes et
+      reperes), les autres vont a la melee ;
+    - les gens des CHAMPS et des METIERS : la melee ; un sur cinq tire (l'arc
+      du paysan) ; un sur quatre tient la garde (porteurs de boucliers, avec
+      les Palissades ; un sur trois avec la Maison des guerriers).
+  Une LEVEE ne choisit plus le genre : elle prend LA MEME PART de chaque
+  categorie (une poignee, une troupe, en masse) et en fait une compagnie
+  par categorie. Ceux qui sont partis RESTENT dans leur categorie : apres
+  une levee, le village a d'autant moins d'archers a lever. Un village ne
+  met jamais sous les armes plus que LEVY_MAX (70 %) de ses hommes valides,
+  ceux deja partis compris. La limite du village compte maintenant ses
+  TROUPES (2, 3 avec la Maison des guerriers) : une levee faite au village
+  rejoint la troupe qui y est.
+  Interface : l'ecran du village montre la milice (une case par role :
+  "9 Epieux", "4 Archers"... ; au survol : d'ou ils viennent, leurs
+  chiffres, combien sont deja partis), puis la taille de la levee et ce
+  qu'elle emmene ("6 epieux · 2 archers · 3 boucliers"). Le panneau Armee :
+  "Milice : ..." pour chaque village. Plus de boutons de genre.
+  L'IA leve de meme (on ne choisit plus pour elle). La fiche d'une troupe
+  donne ses compagnies village par village.
+  Dans SA partie : Lisenra (119 habitants) : 9 epieux · 4 archers · 4
+  boucliers ; une troupe emmene 6 epieux, 2 archers, 3 boucliers.
+
+
+2. L'OST (ost.py)
+-----------------
+  Une troupe d'un peuple qui a des tributaires APPELLE L'OST (bouton [H]
+  "Ost" de sa fiche ; au survol : ce qu'il fait) : les troupes de ses
+  tributaires (et des tributaires de ceux-ci) a 20 cases ou moins marchent
+  vers elle et, arrivees, se fondent dans sa pile : une seule grande troupe,
+  menee par le chef du suzerain, qui paie leur solde. Leurs compagnies
+  gardent leur village : dissoute, chacune rentre chez elle et redevient de
+  son peuple. Le lien rompu (une revolte), les compagnies du tributaire
+  rentrent. Un joueur tributaire peut retenir sa troupe : un ordre de
+  marche annule l'appel. La fiche : "L'ost : 11 guerriers des Maelira",
+  "L'ost en route : 2 troupes (40 guerriers)".
+  L'IA :
+    - une troupe de suzerain trop faible seule appelle l'ost d'un
+      tributaire qui ferait basculer le combat, l'attend, puis attaque
+      (ai_war.plan_raid "ost", advance_plans) ;
+    - un village de suzerain compte l'ost dans sa decision de lever (les
+      villages tributaires a portee levent une troupe a son appel :
+      ai._call_ost) ; sa troupe attend l'ost avant d'agir.
+  Dans SA partie (essai) : Maelira, voisin a 15 cases, devenu tributaire ;
+  l'ost appele : sa troupe (11) arrive et se fond dans celle de Lisenra
+  (22 guerriers, 6 compagnies de deux villages).
+
+
+3. LE SIEGE (siege.py ; deux savoirs du neolithique)
+----------------------------------------------------
+  Coherent avec l'epoque : au neolithique, on brule les palissades (traces
+  de palissades incendiees, pointes de fleches dans les enceintes) et l'on
+  investit les enceintes ; les beliers, les echelles, les tours roulantes
+  viendront avec le bronze et les villes (un age suivant), pas maintenant.
+  - TORCHES ET BRANDONS (palier 5, colonne Guerre et defense ; il faut les
+    Palissades et l'arc, un village tenu 3 ans, un peuple de 150) : contre
+    un village que vous attaquez, ses palissades, sa tour et ses enceintes
+    ne comptent plus qu'a moitie (x1,6 devient x1,3).
+  - L'ART DU SIEGE (palier 6 ; Torches et brandons, un village tenu 6 ans,
+    un peuple de 300) : une troupe EN GUERRE qui se tient a cote d'un
+    village ennemi (une case, sans marcher) l'INVESTIT : il ne trouve plus
+    que 35 % de ses vivres (cueillette et recolte) et sa defense perd 4 %
+    par semaine, jusqu'a x0,6. La troupe partie ou la paix : le siege est
+    leve. Le journal le dit aux deux peuples ; la fiche du village :
+    "Assiege par les X depuis N sem. : defense x0,80, vivres trouves x0,35".
+  Chiffres : tech.SIEGE_FIRE, SIEGE_FOOD, SIEGE_ERODE, SIEGE_FLOOR ; ils
+  s'affichent dans l'arbre et les fiches. La bataille montre "Torches contre
+  les pieux x0,81" et "Assieges depuis N sem." dans les abris du defenseur.
+  L'IA : un village qui sait assieger leve EN MASSE contre un village qu'il
+  prendrait une fois sa defense usee ; sa troupe declare la guerre,
+  s'installe devant lui, attend que la defense tombe, puis donne l'assaut
+  (ai._besiege). Sans le siege, rien ne change (une troupe, pas en masse).
+
+
+4. LE GRAIN DES DISETTES (grain.py ; la piste D de l'argent)
+------------------------------------------------------------
+  Un village en DISETTE (moins de 3 semaines de vivres, ou la faim ce
+  mois-ci) achete du grain a un peuple qui en a de trop : un partenaire
+  (accord commercial), un allie, un peuple de son pays - meme sans route,
+  a portee de porteurs. Il faut un tresor des deux cotes (Valeurs
+  d'echange) et pas de guerre.
+  Combien : de quoi remplir 8 semaines, ce que le vendeur cede (au-dela de
+  10 semaines de reserve) et ce que le tresor paie. Le PRIX : plus cher que
+  le marche (20 vivres le sicle) : 20 / (1,5 + la part de ce que le vendeur
+  a de trop qu'on lui prend + 0,5 en hiver). Le vendeur gagne les sicles ;
+  l'acheteur s'en souvient (+5, sans cumuler).
+  Interface : en disette, la tuile GRENIER de l'ecran du village s'entoure
+  d'or ("Disette : clic, acheter du grain") ; au survol, le vendeur, la
+  quantite, le prix et pourquoi c'est cher ; au clic, l'achat (ordre
+  "grain"). Le Tresor : la ligne "Grain des disettes". L'IA achete quand
+  elle a vraiment faim (moins d'une semaine de vivres).
+  Dans SA partie (essai) : grenier presque vide a Lisenra : 208 vivres chez
+  les Akor pour 25,9 sicles (8 vivres le sicle).
+
+
+5. EQUILIBRAGE (robot joueur et IA)
+-----------------------------------
+  Partie neuve : 0.12 -> 0.13, a 31 ans : combats 35 -> 23, population
+    6 705 -> 6 219, villages 45 -> 44 ; puis 80 combats a 46 ans (les
+    guerres reprennent avec les torches). Les levees se melangent :
+    archers 22 %, boucliers 18 %, epieux 18 %, guerriers 12 %, frondeurs
+    11 %, haches 11 %, pisteurs 8 % (avant : 62 % d'epieux).
+    (Le compte de combats d'une partie a l'autre varie beaucoup : un essai
+    sans les archers des champs donnait 44.)
+  SA partie, 35 ans (an 36 -> 71) : combats 27 -> 32 ; le siege appris par
+    26 peuples, les torches par 41 ; 1 198 achats de grain (environ 35 par an
+    dans 64 villages, en vraie faim) ; population 19 148.
+  SA partie, an 66, deux preuves (scratchpad demo_war.py, demo_ost.py) :
+    - Tumulak (674) en guerre contre Kheaksar (106), qu'il ne prend pas
+      d'assaut : il leve en masse, assiege 6 semaines, puis donne l'assaut
+      (Kheaksar tombe a 71) ;
+    - Aksarkhe (289), suzerain, contre Lisenur (186), trop fort pour lui
+      seul : l'ost de son tributaire vient, se fond dans sa troupe (65
+      guerriers), l'assaut part (Lisenur tombe a 83).
+
+
+7. CE QUE LES ESSAIS ONT MONTRE : UN MONDE QUI SE FIGE EN ALLIANCES
+-------------------------------------------------------------------
+  Dans SA partie, plus aucun combat apres l'an 41 (deja en 0.12). La
+  raison n'est pas la force : a l'an 66, chaque paire de voisins IA a un
+  pacte (231 alliances, 107 accords commerciaux, 30 tributs) ; il n'y a
+  plus une seule proie legale. L'ost et le siege rendent la guerre
+  possible quand elle a lieu (les preuves ci-dessus), mais personne ne la
+  declare plus. PROPOSITIONS (rien de code, a son choix) :
+    P1. Des alliances qui s'usent : sans ennemi commun ni present pendant
+        N ans, l'alliance tombe (ou il faut la renouveler par un don).
+    P2. Les chefs ambitieux (approche conquerant) rompent une alliance avec
+        un voisin faible dont ils convoitent les terres (trahison : la
+        reputation en souffre, comme aujourd'hui).
+    P3. Des causes de guerre : la terre (un village a l'etroit pres d'un
+        voisin), une ressource (silex, sel), une succession disputee ; un
+        motif rend la declaration moins couteuse.
+    P4. L'accord commercial n'empeche plus la guerre (seuls l'alliance, la
+        treve et le tribut l'empechent ; la guerre le fait tomber).
+
+
+6. VERIFICATIONS
+----------------
+  Tests : test_units (la milice : chacun dans sa categorie, la meme part de
+  chacun, ceux qui partent restent dans leur categorie), test_armies (les
+  troupes du village, jamais plus que les levables), test_ost_siege (l'ost
+  appele, fondu, dissous chez chacun, le lien rompu, le joueur tributaire
+  qui retient sa troupe, l'IA qui appelle l'ost et attend ; les torches,
+  le siege qui affame et use, l'IA qui assiege ; la sauvegarde),
+  test_grain (l'achat, les refus, le prix, l'IA), test_app_clicks (l'ecran
+  du village : la levee, puis le grain au clic). Empreinte re-enregistree ;
+  multijoueur identique.

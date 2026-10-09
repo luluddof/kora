@@ -45,12 +45,30 @@ def test_a_village_raises_a_troop_from_its_people():
 def test_raising_needs_people_and_one_troop_at_a_time():
     st, village, site = _village(pop=30)
     assert "habitants" in villages.army_block(st, 1)
-    st2, v2, s2 = _village(pop=150)
-    assert villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"]) is not None
-    assert villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"]) is not None
-    assert "compagnies" in villages.army_block(st2, 1, villages.LEVY_SHARE["poignee"])
+    st2, v2, s2 = _village(pop=400)
+    first = villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"])
+    # Levee au village : elle rejoint la troupe qui y est (une seule troupe).
+    assert villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"]) is first
+    assert villages.companies_of(st2, s2) == 1
+    first.position = offset_to_axial(40, 15)
+    second = villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"])
+    assert second is not None and second is not first
+    second.position = offset_to_axial(20, 15)
+    assert "troupes" in villages.army_block(st2, 1, villages.LEVY_SHARE["poignee"])
     s2.data.buildings.append("guerriers")
     assert villages.army_block(st2, 1, villages.LEVY_SHARE["poignee"]) == ""
+
+
+def test_a_village_never_has_more_than_its_levable_men_under_arms():
+    from src.kora import population
+
+    st, village, site = _village(pop=150)
+    men = population.fit_men(village)
+    while villages.raise_army(st, 1, villages.LEVY_SHARE["masse"]) is not None:
+        pass
+    away = sum(villages._away(st, site).values())
+    assert 0 < away <= int(men * population.LEVY_MAX)
+    assert "sous les armes" in villages.army_block(st, 1, villages.LEVY_SHARE["masse"])
 
 
 def test_a_nomad_band_cannot_raise_a_troop():

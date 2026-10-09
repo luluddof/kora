@@ -77,6 +77,8 @@ MOD_TEXT = {
     "accueil": ("Vous les avez bien accueillis", "Ils vous ont bien accueillis", 0.8),
     "chasses": ("Vous les avez chassés", "Ils vous ont chassés", 0.8),
     "entraide": ("Entraide", "Entraide", 0.6),
+    # Le grain des disettes (grain.py) : on s'en souvient, sans cumuler.
+    "grain": ("Vous leur avez vendu du grain dans la disette", "Ils vous ont vendu du grain dans la disette", 0.5),
     "echanges": ("Échanges réguliers", "Échanges réguliers", 0.3),
     "route_fermee": ("Vous avez fermé une de leurs routes", "Ils ont fermé une de vos routes", 0.5),
     "union_refusee": ("Union refusée", "Union refusée", 0.8),

@@ -53,6 +53,13 @@ BASE_INFLUENCE_RADIUS = 2
 # Combien de fois plus fort il faut etre pour prendre un peuple sous sa
 # protection (chiefdom.protect_ratio).
 BASE_PROTECT_RATIO = 2.5
+# Le siege (siege.py) : les torches laissent cette part des murs ; un
+# village investi trouve cette part de ses vivres et perd SIEGE_ERODE de sa
+# defense par semaine, jusqu'a SIEGE_FLOOR.
+SIEGE_FIRE = 0.5
+SIEGE_FOOD = 0.35
+SIEGE_ERODE = 0.04
+SIEGE_FLOOR = 0.6
 # Apprentissage : points par semaine = 1 + peuple / LEARN_POP.
 LEARN_POP = 120
 # Une partie longue : chaque palier demande deux fois plus qu'au debut du proto.
@@ -541,6 +548,14 @@ TECHS: dict[str, Tech] = {
             conds=(Cond("contacts", 4),),
             effects={"tolls": True},
         ),
+        Tech(
+            "torches", "Torches et brandons", 5, 0,
+            "Des flèches enflammées, des fagots poussés contre les pieux : le bois des palissades brûle.",
+            prereqs=("palissade", "arc"),
+            conds=(Cond("village_years", 3), Cond("pop", 150)),
+            effects={"siege_fire": True},
+            slot=1,
+        ),
         # --- les grandes chefferies (fin du neolithique) : des chefs qui
         # gagnent leurs voisins par les fetes, les dons, les serments ou la
         # force ; et ceux qui preferent leurs champs et leurs betes.
@@ -550,6 +565,14 @@ TECHS: dict[str, Tech] = {
             prereqs=("palissade", "haches"),
             conds=(Cond("village_years", 6),),
             effects={"village_defense": 1.3},
+        ),
+        Tech(
+            "siege", "L'art du siège", 6, 0,
+            "On ne prend plus d'assaut : on encercle, on coupe les champs et les sentiers, et l'on attend que la faim ouvre les portes.",
+            prereqs=("torches",),
+            conds=(Cond("village_years", 6), Cond("pop", 300)),
+            effects={"siege": True},
+            slot=1,
         ),
         Tech(
             "araire", "Araire", 6, 1,
@@ -1023,6 +1046,9 @@ class Bonuses:
     obligations: bool = False
     # La diplomatie (diplo.py) : on ne s'attaque plus sans declarer la guerre.
     diplomacy: bool = False
+    # Le siege (siege.py).
+    siege_fire: bool = False
+    siege: bool = False
 
 
 _MULT = {
@@ -1052,7 +1078,7 @@ _MULT = {
     "home_defense",
     "gifts",
 }
-_FLAGS = {"alliance", "union", "palisade", "clearing", "trade", "commerce", "kin", "math", "numbers", "money", "silver", "tolls", "feasts", "obligations", "diplomacy"}
+_FLAGS = {"alliance", "union", "palisade", "clearing", "trade", "commerce", "kin", "math", "numbers", "money", "silver", "tolls", "feasts", "obligations", "diplomacy", "siege_fire", "siege"}
 _CACHE: dict[frozenset, Bonuses] = {}
 NO_BONUS = Bonuses(food={})
 
@@ -1325,6 +1351,15 @@ def effect_lines(tech: Tech, base: "Bonuses | None" = None, known: bool = False)
         out.append("Les convois étrangers qui traversent votre pays paient leur passage")
     if e.get("tax"):
         out.append(f"Rendement de l'impôt : {_pct(e['tax'])}")
+    if e.get("siege_fire"):
+        out.append(
+            f"Vos assauts : les palissades, tours et enceintes d'un village ne comptent plus qu'à {SIEGE_FIRE * 100:.0f} % (x1,6 devient x{1 + 0.6 * SIEGE_FIRE:.1f})".replace(".", ",")
+        )
+    if e.get("siege"):
+        out.append(
+            f"Siège : une troupe en guerre qui se tient à côté d'un village ennemi l'investit ; il ne trouve plus que {SIEGE_FOOD * 100:.0f} % de ses vivres "
+            f"et sa défense perd {SIEGE_ERODE * 100:.0f} % par semaine (jusqu'à x{SIEGE_FLOOR:.1f})".replace(".", ",")
+        )
     if e.get("village_defense"):
         out.append(f"Défense de votre village : {_pct(e['village_defense'])}")
     if e.get("vassal_cap"):

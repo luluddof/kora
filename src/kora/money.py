@@ -459,6 +459,7 @@ KEY_NAMES = {
     "dons": "Présents aux familles",
     "chantiers": "Paie des bâtisseurs",
     "presents": "Présents aux autres peuples",
+    "grain": "Grain des disettes",
 }
 
 

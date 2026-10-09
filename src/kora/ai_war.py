@@ -9,12 +9,14 @@ ou moins qui ferait basculer le combat :
   - tout pres (AI_MERGE_RANGE) : elle la rejoint et fusionne ;
   - plus loin : elle l'appelle, l'attend, puis elles partent ensemble
     de la meme case (meme chemin, arrivee la meme semaine).
+Une troupe d'un suzerain peut aussi appeler l'OST : une troupe de ses
+tributaires (a ost.OST_RANGE cases) vient se fondre dans la sienne.
 Un raid en cours est annule si la cible s'est renforcee entre-temps.
 """
 
 from __future__ import annotations
 
-from src.kora import battle, chiefdom, chiefs, diplo
+from src.kora import battle, chiefdom, chiefs, diplo, ost
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
 from src.kora.battle import band_force, defense_force, side_force
@@ -57,7 +59,7 @@ def wins(state: GameState, bands: list[Band], prey: Band, edge: float = AI_RAID_
     morale, _parts = battle.start_morale(state, bands[0], attacker=True, h=prey.position)
     # Prudente : un bon moral ne lui fait pas oublier sa marge.
     mine = force_at(state, bands, prey.position) * min(1.1, morale / battle.MORALE_BASE)
-    return mine > edge * defense_force(state, prey)
+    return mine > edge * defense_force(state, prey, bands[0].tribe_id)
 
 
 def fair_game(state: GameState, band: Band, prey: Band, hungry: bool) -> bool:
@@ -110,8 +112,12 @@ def _reachable(state: GameState, band: Band, prey: Band, max_weeks: int) -> bool
 
 def _helper(state: GameState, band: Band, prey: Band) -> Band | None:
     best, best_d = None, None
+    # L'ost : les troupes des tributaires viennent a la troupe du suzerain.
+    vassals = set(chiefdom.descendants(state, band.tribe_id)) if band.kind == "armee" else set()
     for ally in state.bands.values():
-        if ally.id == band.id or ally.tribe_id != band.tribe_id:
+        if ally.id == band.id or (ally.tribe_id != band.tribe_id and ally.tribe_id not in vassals):
+            continue
+        if ally.tribe_id != band.tribe_id and (ally.ost or ally.path):
             continue
         # Une troupe s'allie a une troupe, un clan a un clan ; un village ne
         # bouge pas.
@@ -120,7 +126,7 @@ def _helper(state: GameState, band: Band, prey: Band) -> Band | None:
         if not _free(state, ally) or ally.intent_prey not in (0, prey.id):
             continue
         d = state.world.distance(band.position, ally.position)
-        if d > AI_CALL_RANGE:
+        if d > (AI_CALL_RANGE if ally.tribe_id == band.tribe_id else ost.OST_RANGE):
             continue
         if not wins(state, [band, ally], prey):
             continue
@@ -130,7 +136,8 @@ def _helper(state: GameState, band: Band, prey: Band) -> Band | None:
 
 
 def plan_raid(state: GameState, band: Band, max_weeks: int, hungry: bool = True):
-    """("attack", proie) | ("merge", allie, proie) | ("call", allie, proie) | None."""
+    """("attack", proie) | ("merge", allie, proie) | ("call", allie, proie)
+    | ("ost", troupe d'un tributaire, proie) | None."""
     if not _free(state, band) or band.intent_prey:
         return None
     solo = None
@@ -158,6 +165,8 @@ def plan_raid(state: GameState, band: Band, max_weeks: int, hungry: bool = True)
         return ("attack", solo)
     if group is not None:
         ally, prey = group
+        if ally.tribe_id != band.tribe_id:
+            return ("ost", ally, prey)
         near = state.world.distance(band.position, ally.position) <= AI_MERGE_RANGE
         return ("merge" if near else "call", ally, prey)
     return None
@@ -178,6 +187,14 @@ def start_plan(state: GameState, band: Band, plan) -> None:
         return
     kind, ally, prey = plan
     until = state.tick_count + AI_PLAN_WEEKS
+    if kind == "ost":
+        # Le suzerain attend sur place ; l'ost vient a lui (ost.weekly).
+        band.intent_prey = prey.id
+        band.intent_until = until + AI_PLAN_WEEKS
+        band.order = stay_order()
+        band.path = []
+        ost.call(state, band.id)
+        return
     for b in (band, ally):
         b.intent_prey = prey.id
         b.intent_until = until
@@ -243,6 +260,8 @@ def advance_plans(state: GameState) -> None:
                 set_march_to_band(state, b.id, prey.id)
             continue
         travelling = [b for b in mates if b not in here]
+        # L'ost en route compte : on l'attend.
+        travelling += [b for b in state.bands.values() if b.ost and b.ost in {h.id for h in here}]
         if not travelling:
             # Tout le monde est la et ca ne suffit plus : on renonce.
             for b in here:

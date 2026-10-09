@@ -203,13 +203,25 @@ def attack_mult(band, terrain) -> float:
     return mult
 
 
+# La fiche d'une troupe : une ligne par village (au plus LINES_MAX).
+LINES_MAX = 3
+
+
 def lines(state, band) -> list[str]:
+    """Les compagnies, village par village : "Lisenra : 6 épieux, 2 archers"."""
     if band.kind != "armee":
         return []
-    parts = []
+    by_home: dict[int, dict[str, int]] = {}
     for type_id, men, home in normalize(band):
-        u = UNITS.get(type_id)
+        if men > 0:
+            row = by_home.setdefault(home, {})
+            row[type_id] = row.get(type_id, 0) + men
+    out = []
+    for home, row in list(by_home.items())[:LINES_MAX]:
         site = state.sites.get(home)
-        where = f" ({places.name(site)})" if site is not None else ""
-        parts.append(f"{men} {u.name.lower() if u else type_id}{where}")
-    return ["Compagnies : " + " · ".join(parts)]
+        where = places.name(site) if site is not None else "sans village"
+        what = ", ".join(f"{men} {(UNITS[t].short or UNITS[t].name).lower() if t in UNITS else t}" for t, men in row.items())
+        out.append(f"{where} : {what}")
+    if len(by_home) > LINES_MAX:
+        out.append(f"... et {len(by_home) - LINES_MAX} autres villages")
+    return out

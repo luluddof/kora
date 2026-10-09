@@ -37,26 +37,53 @@ def test_each_role_has_its_best_type_by_age():
         assert u.role in units.ROLES and (not u.needs or u.needs in tech.TECHS)
 
 
-def test_a_second_company_joins_the_troop_at_the_village():
+def test_a_levy_takes_every_category_and_joins_the_troop_at_the_village():
     st, village, site = _village(known=("huttes", "semis", "sedentarite", "arc"))
-    first = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "guerriers")
-    second = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "archers")
-    assert second is first
+    first = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"])
+    # On ne choisit pas : les chasseurs tirent, les autres vont a la melee.
     assert [u[0] for u in first.units] == ["guerriers", "archers"]
+    second = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"])
+    assert second is first
+    assert [u[0] for u in first.units] == ["guerriers", "archers", "guerriers", "archers"]
     assert first.population == sum(u[1] for u in first.units)
     assert "archers" in " ".join(units.lines(st, first))
 
 
+def test_each_man_has_his_category_and_keeps_it():
+    st, village, site = _village(pop=300, known=("huttes", "semis", "sedentarite", "arc", "palissade", "reperes"))
+    site.data.fields = []
+    # Un village de chasseurs : des tireurs, des pisteurs, pas de garde.
+    roles = {u.role: n for u, n in villages.militia(st, village)}
+    assert set(roles) == {"melee", "tir", "eclaireurs"}
+    # Les champs : plus de bras aux champs, moins de tireurs, une garde.
+    site.data.fields = [site.hex] * 8
+    more = {u.role: n for u, n in villages.militia(st, village)}
+    assert set(more) == {"melee", "tir", "garde", "eclaireurs"}
+    assert more["tir"] < roles["tir"]
+    # Une levee prend la meme part de chacun : jamais 40 archers.
+    plan = villages.levy_plan(st, village, villages.LEVY_SHARE["masse"])
+    got = {u.role: n for u, n in plan}
+    total = sum(got.values())
+    for role, n in more.items():
+        assert abs(got[role] / total - n / sum(more.values())) < 0.05
+    # Ceux qui sont partis restent dans leur categorie : apres une levee, le
+    # village a moins de tireurs a lever, autant en proportion.
+    army = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"])
+    left = {u.role: n for u, n in villages.militia(st, village)}
+    shot = sum(c[1] for c in army.units if units.UNITS[c[0]].role == "tir")
+    assert abs(left["tir"] - (more["tir"] - shot)) < 1.0
+
+
 def test_troops_merge_into_one_stack_and_detach_again():
     st, village, site = _village(known=("huttes", "semis", "sedentarite", "arc"))
-    a = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "guerriers")
+    a = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"])
     a.position = offset_to_axial(36, 15)
-    b = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "archers")
+    b = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"])
     b.position = a.position
     assert b is not a
     total = a.population + b.population
     merge_bands(st, a.id)
-    assert b.id not in st.bands and a.population == total and len(a.units) == 2
+    assert b.id not in st.bands and a.population == total and len(a.units) == 4
     assert orders.labels(st, a.id)["split"] == "Détacher [S]"
     sel, msg = orders.perform(st, a.id, "split")
     part = st.bands[sel]
@@ -119,8 +146,7 @@ def test_reequip_at_the_village_for_the_new_age():
 
 def test_the_battle_report_lists_companies():
     st, village, site = _village(known=("huttes", "semis", "sedentarite", "arc"))
-    army = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "guerriers")
-    villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "archers")
+    army = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"])
     army.position = offset_to_axial(45, 15)
     st.tribes[2] = Tribe(2, "Steppe", 20, False, knowledge=set(tech.START_KNOWLEDGE))
     st.bands[50] = Band(50, 2, army.position, 12, 50.0)
@@ -139,7 +165,7 @@ def test_companies_are_saved(tmp_path):
     st.bands[1].stock = 5000.0
     sites.make_camp(st, 1)
     villages.found(st, 1)
-    army = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "archers")
+    army = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"])
     army.homebound = True
     path = tmp_path / "kora.json"
     save_game(st, path, {})

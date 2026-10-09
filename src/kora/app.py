@@ -12,6 +12,7 @@ from src.kora import (
     diplo,
     events,
     goods,
+    grain,
     influence,
     laws,
     layout,
@@ -29,7 +30,6 @@ from src.kora import (
     sites,
     situations,
     tech,
-    units,
     villages,
 )
 from src.kora.globe import (
@@ -321,7 +321,6 @@ def _fresh_ui() -> dict:
         "country_tab": "lois",
         "law_confirm": None,
         "levy": "troupe",
-        "levy_role": "melee",
         # Multijoueur : cartes deja repondues (la reponse est en route).
         "answered": set(),
     }
@@ -890,6 +889,13 @@ class Play:
         if choice.startswith("vb:"):
             self.ui["village_pick"] = choice[3:]
             return
+        if choice == "vgrain":
+            why = grain.quote(self.state, home.tribe_id, site.id)["why"]
+            if why:
+                self.toast(why)
+            else:
+                self.issue(commands.make(self.me(), "grain", site.id))
+            return
         if choice.startswith("vpage:"):
             self.ui["village_page"] = choice[6:]
             return
@@ -937,22 +943,13 @@ class Play:
         if choice.startswith("levy:"):
             self.ui["levy"] = choice[5:]
             return
-        if choice.startswith("ltype:"):
-            role = choice[6:]
-            if units.best(self.state.tribes[home.tribe_id], role) is None:
-                self.toast("Aucune unité de ce rôle pour l'instant (voir les savoirs).")
-            else:
-                self.ui["levy_role"] = role
-            return
         if choice == "vraise":
             share = villages.LEVY_SHARE.get(self.ui["levy"], villages.LEVY_SHARE["troupe"])
-            kind = units.best(self.state.tribes[home.tribe_id], self.ui.get("levy_role") or "melee")
-            type_id = kind.id if kind is not None else None
-            why = villages.army_block(self.state, home.id, share, type_id) or ("" if chiefs.obeys(self.state, home) else orders.INDOCILE)
+            why = villages.army_block(self.state, home.id, share) or ("" if chiefs.obeys(self.state, home) else orders.INDOCILE)
             if why:
                 self.toast(why)
             else:
-                self.issue(commands.make(self.me(), "raise", home.id, self.ui["levy"], type_id))
+                self.issue(commands.make(self.me(), "raise", home.id, self.ui["levy"], None))
             return
         if choice.startswith(("vsee:", "vrecall:", "vreequip:")):
             bid = int(choice.split(":")[1])
@@ -980,13 +977,6 @@ class Play:
     def army_click(self, choice) -> None:
         """Clic dans le panneau Armee."""
         kind, _sep, rest = choice.partition(":")
-        if kind == "arole":
-            sid, role = rest.split(":")
-            if units.best(self.state.tribes[self.state.viewer], role) is None:
-                self.toast("Aucune unité de ce rôle pour l'instant (voir les savoirs).")
-            else:
-                self.ui.setdefault("army_role", {})[int(sid)] = role
-            return
         if kind == "asize":
             sid, key = rest.split(":")
             self.ui.setdefault("army_size", {})[int(sid)] = key
@@ -1000,15 +990,13 @@ class Play:
                 self.side_panel = None
                 self.open_village(site.id)
                 return
-            role = self.ui.get("army_role", {}).get(site.id, "melee")
             key = self.ui.get("army_size", {}).get(site.id, "troupe")
-            unit = units.best(self.state.tribes[self.state.viewer], role) or units.best(self.state.tribes[self.state.viewer], "melee")
             share = villages.LEVY_SHARE.get(key, villages.LEVY_SHARE["troupe"])
-            why = villages.army_block(self.state, home.id, share, unit.id) or ("" if chiefs.obeys(self.state, home) else orders.INDOCILE)
+            why = villages.army_block(self.state, home.id, share) or ("" if chiefs.obeys(self.state, home) else orders.INDOCILE)
             if why:
                 self.toast(why)
             else:
-                self.issue(commands.make(self.me(), "raise", home.id, key, unit.id))
+                self.issue(commands.make(self.me(), "raise", home.id, key, None))
             return
         bid = int(rest)
         army = self.state.bands.get(bid)

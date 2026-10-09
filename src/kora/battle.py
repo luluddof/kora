@@ -171,8 +171,9 @@ def _fmt(x: float) -> str:
 # --- ce que chaque camp apporte ------------------------------------------------------
 
 
-def cover_parts(state, band: Band, h) -> list[tuple[str, float]]:
-    """Abri du defenseur : terrain, pays connu (Guetteurs), palissade..."""
+def cover_parts(state, band: Band, h, by: int = 0) -> list[tuple[str, float]]:
+    """Abri du defenseur : terrain, pays connu (Guetteurs), palissade... ;
+    by : le peuple qui attaque (les torches, siege.py)."""
     out = []
     terrain = state.world.terrain(h)
     c = COVER.get(terrain)
@@ -182,7 +183,7 @@ def cover_parts(state, band: Band, h) -> list[tuple[str, float]]:
     if know.home_defense != 1.0 and influence.is_home(state.world, h, band.tribe_id):
         out.append(("Pays connu (guetteurs)", know.home_defense))
     if band.village:
-        out.extend(villages.defense_parts(state, band))
+        out.extend(villages.defense_parts(state, band, by))
     return out
 
 
@@ -230,16 +231,16 @@ def fighters_in(band: Band, attacker: bool) -> float:
     return fighters_now(band, attacker)
 
 
-def _side(state, main: Band, attacker: bool, h) -> Side:
+def _side(state, main: Band, attacker: bool, h, by: int = 0) -> Side:
     bands = [main] + helpers_of(state, main)
     start = {b.id: fighters_in(b, attacker) for b in bands}
     quality = {b.id: band_quality(state, b) for b in bands}
     mods: list[tuple[str, str]] = []
     cover = 1.0
     if not attacker:
-        for label, mult in cover_parts(state, main, h):
+        for label, mult in cover_parts(state, main, h, by):
             cover *= mult
-            mods.append((f"{label} x{_fmt(mult)}", "+"))
+            mods.append((f"{label} x{_fmt(mult)}", "+" if mult >= 1.0 else "-"))
     morale, parts = start_morale(state, main, attacker, h)
     for label, v in parts:
         mods.append((f"{label} {'+' if v >= 0 else ''}{v:.0f} moral", "+" if v >= 0 else "-"))
@@ -426,7 +427,8 @@ def _now(state, bt, attacker: bool) -> Side:
     quality = {b.id: band_quality(state, b) for b in bands}
     cover = 1.0
     if not attacker and bands:
-        for _label, mult in cover_parts(state, bands[0], h):
+        foes = _alive(state, bt.attackers)
+        for _label, mult in cover_parts(state, bands[0], h, foes[0].tribe_id if foes else 0):
             cover *= mult
     attack, guard, ranged = {}, {}, {}
     for b in bands:
@@ -443,7 +445,7 @@ def start(state, attacker: Band, defender: Band, h, hunted: bool = False) -> Bat
     """La bataille commence : deux camps (la bande et ses renforts), leur
     moral, leurs generaux. Les bandes sur la case ne marchent plus."""
     a = _side(state, attacker, True, h)
-    d = _side(state, defender, False, h)
+    d = _side(state, defender, False, h, attacker.tribe_id)
     for side in (a, d):
         for b in side.bands:
             side.start[b.id] = fighters_now(b, side.attacker)
@@ -1054,15 +1056,15 @@ def side_force(state: GameState, band: Band) -> float:
     return force
 
 
-def defense_force(state: GameState, band: Band) -> float:
+def defense_force(state: GameState, band: Band, by: int = 0) -> float:
     """Force estimee d'une bande attaquee chez elle (pour l'IA) : renforts,
-    abri (terrain, palissade, pays connu) et moral."""
+    abri (terrain, palissade, pays connu) et moral ; by : qui attaque."""
     force = side_force(state, band)
     if band.village and band.kind != "armee":
         # Au mur : les hommes valides, et une part des femmes (WALL_WOMEN).
         force += WALL_WOMEN * population.women_force(band) * band_quality(state, band)
     cover = 1.0
-    for _label, mult in cover_parts(state, band, band.position):
+    for _label, mult in cover_parts(state, band, band.position, by):
         cover *= mult
     morale, _parts = start_morale(state, band, attacker=False, h=band.position)
     return force * cover * morale / (MORALE_BASE + KIN_MORALE)

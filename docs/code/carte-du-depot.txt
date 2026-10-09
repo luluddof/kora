@@ -110,7 +110,8 @@ Ici c'est plus petit, mais le meme decoupage :
                     resources.py, villages.py, orders.py, battle.py, units.py,
                     goods.py, situations.py, production.py, population.py,
                     chiefdom.py, numbers.py, money.py, laws.py, confed.py,
-                    memory.py, draws.py, turning.py
+                    memory.py, draws.py, turning.py, siege.py, ost.py,
+                    grain.py
                     "une semaine avance (ou un jour, en bataille)"
 
   Persistance       persist.py, data/kora_map.json
@@ -222,6 +223,39 @@ src/kora/turning.py  (pas de pygame)
   "tournant". Statut dans
   learning.status ("attente" tant qu'il n'est pas arrive) ; l'IA l'adopte
   d'abord (learning.auto_choose).
+
+src/kora/siege.py  (pas de pygame)
+  LE SIEGE (0.13) : Torches et brandons (bonus siege_fire : defense_parts
+  "Torches contre les pieux", les murs - villages.wall_parts - ne comptent
+  qu'a tech.SIEGE_FIRE) ; L'art du siege (bonus siege) : besiegers (troupes
+  en guerre, immobiles, a SIEGE_RANGE case), weekly (systems.WEEKLY :
+  VillageData.siege en semaines, besieger), erosion (tech.SIEGE_ERODE par
+  semaine jusqu'a SIEGE_FLOOR : systems.VILLAGE_DEFENSE), food_mult
+  (tech.SIEGE_FOOD : systems.VILLAGE_FOOD), at_war, can_besiege, lines
+  (fiche du village). L'IA : ai._besiege, ai._sieged_defense, ai._could_take.
+
+src/kora/ost.py  (pas de pygame)
+  L'OST (0.13) : le suzerain appelle les troupes de ses tributaires
+  (chiefdom.descendants, a OST_RANGE cases) : candidates, call_block, call
+  (Band.ost : la troupe a rejoindre ; bouton [H] "Ost" de la fiche d'une
+  troupe, orders.labels / hints / perform "honor"), weekly (systems.WEEKLY :
+  marche, join par bands._absorb, _release quand le lien se rompt :
+  villages.send_companies_home), foreign, coming, lines (fiche). Dissoute,
+  chaque compagnie rentre a son village et redevient de son peuple
+  (villages._go_home). L'IA : ai_war._helper / plan_raid ("ost"),
+  start_plan, advance_plans (on attend l'ost) ; ai._ost_villages,
+  _call_ost (les villages tributaires levent a l'appel), _army_ai attend
+  l'ost. Un ordre de marche du joueur tributaire l'en retient (commands).
+
+src/kora/grain.py  (pas de pygame)
+  LE GRAIN DES DISETTES (0.13, piste D de l'argent) : in_dearth
+  (DEARTH_WEEKS), sellers (partenaire, allie, pays ; tresor ; pas en
+  guerre ; relation >= SELL_RELATION), spare (au-dela de KEEP_WEEKS), quote
+  (le meilleur vendeur a portee : MARKUP + SCARCITY x la part prise +
+  WINTER), buy (ordre "grain" ; money.book / earn cle "grain" ; diplo mod
+  "grain"), ai_weekly (systems.WEEKLY : l'IA achete en vraie faim,
+  AI_DEARTH_WEEKS), tip_lines (la tuile GRENIER de l'ecran du village :
+  clic = acheter, render_village / app.village_click "vgrain").
 
 src/kora/draws.py  (pas de pygame)
   Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :
@@ -356,6 +390,16 @@ src/kora/villages.py
   croissance qui suit les vivres a venir (food_outlook, granary_growth,
   note_forage : collecte moyenne par saison), rank_name (hameau,
   village, gros village).
+  LA MILICE (0.13) : militia (chaque homme dans sa categorie selon sa vie :
+  chasseurs -> tir, pisteurs, melee ; champs et metiers -> melee, tir,
+  garde ; HUNTER_SHOT, HUNTER_SCOUT, WORKER_SHOT, FARMER_GUARD,
+  WARRIORS_GUARD ; ceux deja partis comptent : _away), levy_size(band,
+  share, state) (jamais plus de LEVY_MAX des hommes sous les armes),
+  levy_plan / _split_by (la meme part de chaque categorie : une compagnie
+  par categorie), militia_text, plan_text ; companies_of compte les TROUPES
+  du village (army_cap) ; _home_army (une levee rejoint la troupe au
+  village) ; wall_parts / defense_parts(band, by) ; send_companies_home,
+  _go_home.
 
 src/kora/goods.py
   Metiers (CRAFTS : potiers, sauniers, tisserands, pelletiers, tailleurs,
@@ -482,8 +526,9 @@ src/kora/records.py  (pas de pygame)
 
 src/kora/systems.py  (pas de pygame)
   LE TABLEAU DES SYSTEMES : MONTHLY (le mois du monde, dans l'ordre),
-  STABILITY, ARMY_MORALE, FLEE, BUILD_SPEED, CRAFT_OUTPUT (ce que chaque systeme ajoute
-  a ces calculs), EFFECT_FIELDS / EFFECT_SPECS (effets comme des savoirs,
+  WEEKLY (la semaine, apres les marches : ost, siege, grain),
+  STABILITY, ARMY_MORALE, FLEE, BUILD_SPEED, CRAFT_OUTPUT, VILLAGE_DEFENSE,
+  VILLAGE_FOOD (ce que chaque systeme ajoute a ces calculs), EFFECT_FIELDS / EFFECT_SPECS (effets comme des savoirs,
   lus par tech.bonuses et tech.spec_effect), EVENT_VOCABULARY (modules qui
   ajoutent conditions et effets aux evenements : events.vocabulary).
   fn("module.fonction"), run, parts, total, apply_mult.

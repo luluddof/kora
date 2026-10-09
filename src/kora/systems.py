@@ -71,6 +71,19 @@ ARMY_MORALE = (
 
 FLEE = ("money.flee_mult",)
 
+# Chaque semaine, apres les marches et les ralliements (sim._week) :
+# l'ost rejoint son suzerain, les sieges durent ou sont leves, les villages
+# IA en disette achetent du grain.
+WEEKLY = ("ost.weekly", "siege.weekly", "grain.ai_weekly")
+
+# Ce qui change la defense d'un village (villages.defense_parts) ;
+# (state, bande du village, peuple qui attaque ou 0) -> [(libelle, x)].
+VILLAGE_DEFENSE = ("siege.defense_parts",)
+
+# Les vivres qu'un village trouve et recolte (villages.food_mult,
+# villages.yield_mult) ; (state, site) -> x.
+VILLAGE_FOOD = ("siege.food_mult",)
+
 # Semaines de reserve d'une bande, en plus de ses savoirs (bands.stock_max) ;
 # (state, band) -> semaines (0 si le systeme ne s'en mele pas).
 STOCK_WEEKS = ("villages.stock_weeks",)

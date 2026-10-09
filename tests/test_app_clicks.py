@@ -238,3 +238,38 @@ def test_the_map_mode_button_and_its_list(monkeypatch, tmp_path):
         lambda r: need(not r.mode_menu_open and r.map_mode == "suzerains", "un clic ailleurs la ferme") or [],
     ]
     _play(monkeypatch, tmp_path, st, steps)
+
+
+def test_the_village_levies_its_militia_and_buys_grain_in_dearth(monkeypatch, tmp_path):
+    """L'ecran du village : la milice (on ne choisit pas le genre des
+    guerriers), la levee, puis le grenier presque vide : un clic achete du
+    grain a un partenaire."""
+    from src.kora import diplo
+    from test_grain import _two
+
+    st, buyer, bsite, seller, ssite = _two()
+    buyer.stock = 4000.0
+    seen = {}
+
+    def need(cond, what):
+        assert cond, what
+
+    def starve(r):
+        buyer.stock = 50.0
+        return []
+
+    steps = [
+        lambda r: [],
+        lambda r: _key(pygame.K_v),
+        lambda r: need(r.village_hits, "V ouvre le village") or need("types" in r.village_hits, "la milice") or [],
+        lambda r: _click(_center(r.village_hits["raise"])),
+        lambda r: seen.update(army=[b for b in st.bands.values() if b.kind == "armee"]) or starve(r),
+        lambda r: [],
+        lambda r: need(r.village_hits.get("grain"), "disette : la tuile du grenier acheté") or _click(_center(r.village_hits["tiles"][1])),
+        lambda r: seen.update(stock=buyer.stock) or [],
+    ]
+    _play(monkeypatch, tmp_path, st, steps)
+    army = seen["army"]
+    assert len(army) == 1 and len(army[0].units) >= 2, "chacun dans sa categorie : plusieurs compagnies"
+    assert seen["stock"] > 50.0, "le grain acheté arrive au grenier"
+    assert diplo.relation(st, 1, 3) is not None

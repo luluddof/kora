@@ -10,7 +10,7 @@ N'importe ni pygame ni render.
 
 from __future__ import annotations
 
-from src.kora import battle, chiefs, places, sites, villages
+from src.kora import battle, chiefs, ost, places, sites, villages
 from src.kora.bands import (
     SPLIT_MIN_POP,
     can_split,
@@ -54,11 +54,12 @@ def _army_actions(state, band) -> dict[str, str]:
         "camp": TROOP_CAMP,
         "deposit": TROOP_CAMP,
         "withdraw": TROOP_CAMP,
-        "honor": "Une troupe obéit sans qu'on l'honore",
+        # Une troupe n'a pas a etre honoree : ce bouton appelle l'ost.
+        "honor": ost.call_block(state, band.id),
         "army": villages.dissolve_block(state, band.id),
     }
     if band.homebound:
-        for key in ("split", "merge", "chief", "army"):
+        for key in ("split", "merge", "chief", "army", "honor"):
             out[key] = HOMEBOUND
         return out
     if band.retreating:
@@ -147,6 +148,17 @@ def camp_label(state, band_id: int) -> str:
     return "Camper [C]"
 
 
+def hints(state, band_id: int) -> dict:
+    """Ce que fait une action possible (au survol du bouton), quand son nom
+    ne suffit pas."""
+    band = state.bands.get(band_id)
+    if band is not None and band.kind == "armee":
+        return {
+            "honor": f"Appeler l'ost : les troupes de vos tributaires à {ost.OST_RANGE} cases viennent se fondre dans celle-ci (vous les menez, vous payez leur solde)",
+        }
+    return {}
+
+
 def labels(state, band_id: int) -> dict:
     """Libelles qui changent selon la bande (village, troupe, campement)."""
     band = state.bands.get(band_id)
@@ -160,6 +172,7 @@ def labels(state, band_id: int) -> dict:
         at_home = villages.disband_block(state, band_id) == "" and not _mates(state, band)
         out["merge"] = "Rentrer [F]" if at_home else "Réunir [F]"
         out["army"] = "Dissoudre [L]"
+        out["honor"] = "Ost [H]"
     return out
 
 
@@ -210,6 +223,9 @@ def perform(state, band_id: int, key: str):
         sites.withdraw(state, band_id)
         return band_id, ""
     if key == "honor":
+        if band.kind == "armee":
+            n = ost.call(state, band_id)
+            return band_id, "" if n else "Personne ne vient"
         chiefs.honor(state, band_id)
         return band_id, ""
     if key == "village":

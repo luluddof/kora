@@ -28,7 +28,7 @@ bas au plus haut :
                       bandes), chiefs, sites, influence, production, diplo,
                       goods, money, approach, numbers, laws, chiefdom,
                       confed, memory, draws, turning, villages, battle,
-                      situations, events, events_data
+                      siege, ost, grain, situations, events, events_data
   6  l'IA             ai_war, orders, puis ai
   7  la semaine       sim
   8  les ordres       commands
@@ -77,9 +77,11 @@ bas au plus haut :
      qui differe du defaut (COMPACT).
 
   c) Son mois : une ligne dans systems.MONTHLY, a sa place dans l'ordre
-     ("lois.monthly"). Ce qu'il fait a la stabilite, au moral, aux fuyards,
-     aux reserves, a la production : une ligne dans systems.STABILITY,
-     ARMY_MORALE, FLEE, STOCK_WEEKS, BUILD_SPEED, CRAFT_OUTPUT. Ses reactions aux bandes
+     ("lois.monthly") ; sa semaine (apres les marches) : systems.WEEKLY.
+     Ce qu'il fait a la stabilite, au moral, aux fuyards, aux reserves, a la
+     production, a la defense et aux vivres d'un village : une ligne dans
+     systems.STABILITY, ARMY_MORALE, FLEE, STOCK_WEEKS, BUILD_SPEED,
+     CRAFT_OUTPUT, VILLAGE_DEFENSE, VILLAGE_FOOD. Ses reactions aux bandes
      (BAND_SPLIT, BAND_MERGE, MERGE_ALLOWED), aux clans emancipes
      (EMANCIPATED), ce qu'il dit d'un savoir (TECH_LINES). La fonction
      attendue par chaque tableau est decrite en tete de systems.py ; un

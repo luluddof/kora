@@ -1,13 +1,15 @@
 from src.kora.ai_war import (
     AI_RAID_EDGE,
     advance_plans,
+    force_at,
     fair_game,
+    go_to_war,
     plan_raid,
     recheck_hunts,
     start_plan,
     unsafe_spots,
 )
-from src.kora import approach, chiefs, diplo, goods, places, sites, units, villages
+from src.kora import approach, chiefdom, chiefs, diplo, goods, ost, places, siege, sites, villages
 from src.kora.peoples import culture_of
 from src.kora.battle import band_force, band_quality, defense_force
 from src.kora.bands import (
@@ -18,6 +20,7 @@ from src.kora.bands import (
     forage_hexes,
     is_shielded,
     set_goto,
+    set_march_to_band,
     split_band,
 )
 from src.kora.gamestate import GameState
@@ -226,19 +229,6 @@ def _threat(state: GameState, band: Band, radius: int):
     return worst, worst_f
 
 
-def _ai_levy_type(state: GameState, band: Band, site) -> str:
-    """Premiere compagnie : la melee ; la suivante : des tireurs s'il y en a,
-    sinon une garde."""
-    tribe = state.tribes[band.tribe_id]
-    if villages.companies_of(state, site) == 0:
-        return units.best(tribe, "melee").id
-    for role in ("tir", "garde", "melee"):
-        u = units.best(tribe, role)
-        if u is not None:
-            return u.id
-    return "guerriers"
-
-
 # Un peuple qui sait semer et n'a pas encore de village (souvent un clan
 # emancipe) s'installe des 20 personnes, sur une terre correcte.
 AI_SETTLE_POP = 20
@@ -425,27 +415,44 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     if site is not None and not villages.army_block(state, band.id):
         foe, foe_f = _threat(state, band, AI_THREAT_RANGE)
         raise_it = foe is not None and foe_f >= AI_THREAT * band_force(state, band)
+        with_ost = False
         if not raise_it and weeks >= 6 and diplo.wars_of(state, band.tribe_id):
-            # En guerre declaree : on leve une troupe contre un ennemi a
-            # portee qu'on peut battre.
-            est = villages.levy_size(band, villages.LEVY_SHARE["troupe"]) * band_quality(state, band)
+            # En guerre declaree : une troupe contre un ennemi a portee qu'on
+            # peut battre ; pour assieger un village (si l'on sait), en masse.
+            # Seul, ou avec l'ost de ses tributaires.
+            besieger = bonus_of(state, band.tribe_id).siege
             for prey in bands_near(state, band.position, AI_WAR_REACH):
                 if diplo.declared_war(state, band.tribe_id, prey.tribe_id) and not is_shielded(state, prey):
-                    if est > AI_RAID_EDGE * defense_force(state, prey):
-                        raise_it = True
+                    size = "masse" if besieger and prey.village else "troupe"
+                    if _could_take(state, band, prey, size):
+                        raise_it = size
+                        break
+                    if _could_take(state, band, prey, size, with_ost=True):
+                        raise_it, with_ost = size, True
                         break
         if not raise_it and weeks >= 8 and band.population >= AI_ARMY_POP and state.rng.random() < AI_ARMY_WHIM * approach.factor(state, band.tribe_id, "army"):
             tribe = state.tribes[band.tribe_id]
             culture = culture_of(tribe)
             if tribe.prestige >= culture.raid_prestige - 10:
-                est = villages.levy_size(band, villages.LEVY_SHARE["troupe"]) * band_quality(state, band)
+                # Un village a assieger (si l'on sait) : on leve en masse.
+                besieger = bonus_of(state, band.tribe_id).siege
                 for prey in bands_near(state, band.position, AI_ARMY_REACH):
                     if fair_game(state, band, prey, hungry=False) and not is_shielded(state, prey):
-                        if est > AI_RAID_EDGE * defense_force(state, prey):
-                            raise_it = True
+                        size = "masse" if besieger and prey.village else "troupe"
+                        if _could_take(state, band, prey, size):
+                            raise_it = size
+                            break
+                        if _could_take(state, band, prey, size, with_ost=True):
+                            raise_it, with_ost = size, True
                             break
         if raise_it:
-            villages.raise_army(state, band.id, type_id=_ai_levy_type(state, band, site))
+            # La milice du village part telle qu'elle est (villages.militia).
+            share = villages.LEVY_SHARE["masse" if raise_it == "masse" else "troupe"]
+            if villages.army_block(state, band.id, share):
+                share = villages.LEVY_SHARE["troupe"]
+            army = villages.raise_army(state, band.id, share)
+            if army is not None and with_ost:
+                _call_ost(state, army)
     season = state.world.hex_season(band.position)
     if band.population >= 90 and weeks >= 8 and season.value in ("printemps", "ete") and can_split(state, band.id):
         # Des colons, seulement pour fonder un autre village du peuple (s'il
@@ -499,6 +506,9 @@ def _army_ai(state: GameState, band: Band, weeks: float) -> None:
     sinon rentrer et redevenir villageois."""
     if band.path or band.homebound:
         return
+    if ost.coming(state, band):
+        # L'ost est en route : on l'attend.
+        return
     home = villages.home_of(state, band)
     if home is None:
         return
@@ -512,14 +522,122 @@ def _army_ai(state: GameState, band: Band, weeks: float) -> None:
     reach_weeks = max(6, culture.raid_weeks)
     if diplo.wars_of(state, band.tribe_id):
         reach_weeks = max(reach_weeks, AI_WAR_RAID_WEEKS)
+    # Qui sait assieger s'occupe d'abord du village qu'il peut prendre
+    # (c'est pour lui qu'on l'a levee) : siege, puis assaut.
+    if _besiege(state, band, weeks):
+        return
     plan = plan_raid(state, band, reach_weeks, hungry=weeks < 3)
-    if plan is not None and plan[0] == "attack":
+    if plan is not None:
+        # Seule, ou avec une troupe soeur, ou avec l'ost de ses tributaires.
         start_plan(state, band, plan)
         return
     if at_home and foe is not None:
         return
     # Rien a faire : la troupe est dissoute, ses hommes rentrent (a pied).
     villages.dissolve(state, band.id)
+
+
+# Le siege (siege.py) : une troupe en guerre qui sait assieger va devant un
+# village ennemi a AI_SIEGE_REACH cases qu'elle prendrait une fois sa
+# defense usee, et l'investit tant qu'elle a des vivres.
+AI_SIEGE_REACH = 14
+AI_SIEGE_FOOD_WEEKS = 3
+AI_SIEGE_EDGE = 1.0
+
+
+def _edge(state: GameState, band: Band, prey: Band) -> float:
+    """La marge voulue : un siege affame aussi le village (ce que la force
+    estimee ne compte pas) : AI_SIEGE_EDGE suffit."""
+    if prey.village and bonus_of(state, band.tribe_id).siege:
+        return AI_SIEGE_EDGE
+    return AI_RAID_EDGE
+
+
+def _sieged_defense(state: GameState, band: Band, prey: Band) -> float:
+    """La defense de la proie ; un village, une fois assiege si ce peuple
+    sait assieger (siege.py : la defense usee jusqu'au plancher)."""
+    theirs = defense_force(state, prey, band.tribe_id)
+    tribe = state.tribes.get(band.tribe_id)
+    if not prey.village or tribe is None or not bonus_of(state, band.tribe_id).siege:
+        return theirs
+    site = places.site_of(state, prey)
+    weeks = getattr(site.data, "siege", 0) if site is not None else 0
+    now = siege.erosion(weeks) if weeks else 1.0
+    return theirs / now * siege.erosion(10**6)
+
+
+def _ost_villages(state: GameState, band: Band) -> list:
+    """Les villages des tributaires a portee d'ost (ost.OST_RANGE) qui
+    peuvent lever une troupe : ils viendraient a l'appel du suzerain."""
+    vassals = set(chiefdom.descendants(state, band.tribe_id))
+    if not vassals:
+        return []
+    out = []
+    for site in sorted(state.sites.values(), key=lambda s: s.id):
+        if site.kind != "village" or site.tribe_id not in vassals:
+            continue
+        if state.world.distance(site.hex, band.position) > ost.OST_RANGE:
+            continue
+        home = places.band_of(state, site)
+        if home is not None and not villages.army_block(state, home.id):
+            out.append(home)
+    return out
+
+
+def _could_take(state: GameState, band: Band, prey: Band, size: str, with_ost: bool = False) -> bool:
+    """Une levee de ce village (et l'ost de ses tributaires) battrait-elle
+    cette proie ?"""
+    est = villages.levy_size(band, villages.LEVY_SHARE[size], state) * band_quality(state, band)
+    if with_ost:
+        for v in _ost_villages(state, band):
+            est += villages.levy_size(v, villages.LEVY_SHARE["troupe"], state) * band_quality(state, v)
+    return est > _edge(state, band, prey) * _sieged_defense(state, band, prey)
+
+
+def _call_ost(state: GameState, army: Band) -> None:
+    """Le suzerain leve l'ost : chaque village tributaire a portee leve une
+    troupe, qui vient se fondre dans la sienne (ost.py)."""
+    for v in _ost_villages(state, army):
+        villages.raise_army(state, v.id, villages.LEVY_SHARE["troupe"])
+    ost.call(state, army.id)
+
+
+def _besiege(state: GameState, band: Band, weeks: float) -> bool:
+    if not siege.can_besiege(state, band) or weeks < AI_SIEGE_FOOD_WEEKS:
+        return False
+    best, best_d = None, None
+    for prey in bands_near(state, band.position, AI_SIEGE_REACH):
+        if not prey.village or is_shielded(state, prey):
+            continue
+        if not siege.at_war(state, band.tribe_id, prey.tribe_id) and not fair_game(state, band, prey, hungry=False):
+            continue
+        # Pris une fois sa defense usee ? (sinon, rien a attendre devant)
+        if force_at(state, [band], prey.position) < _edge(state, band, prey) * _sieged_defense(state, band, prey):
+            continue
+        d = state.world.distance(band.position, prey.position)
+        if best is None or d < best_d or (d == best_d and prey.id < best.id):
+            best, best_d = prey, d
+    if best is None:
+        return False
+    # Entre peuples qui ont la diplomatie : la guerre est declaree d'abord.
+    go_to_war(state, band, best)
+    if best_d <= siege.SIEGE_RANGE:
+        # Devant le village : l'assaut des que sa defense usee le permet,
+        # sinon on tient le siege.
+        if force_at(state, [band], best.position) >= _edge(state, band, best) * defense_force(state, best, band.tribe_id):
+            set_march_to_band(state, band.id, best.id)
+            return True
+        band.order = stay_order()
+        band.path = []
+        return True
+    spot = next(
+        (h for h in sorted(state.world.neighbors(best.position), key=lambda h: (state.world.distance(h, band.position), h.q, h.r)) if state.world.passable(h)),
+        None,
+    )
+    if spot is None:
+        return False
+    set_goto(state, band.id, spot, max_nodes=600, max_cost=1500)
+    return bool(band.path)
 
 
 AI_CACHE_SEEK = 8
@@ -582,7 +700,7 @@ def _decide(state: GameState) -> None:
         # vit alors sa vie (sans raider).
         if tribe.is_player and chiefs.obeys(state, band):
             continue
-        if band.retreating or band.intent_prey:
+        if band.retreating or band.intent_prey or band.ost:
             continue
         weeks = _stock_weeks(band)
         # Chaque bande decide une semaine sur quatre, en decale selon son id :

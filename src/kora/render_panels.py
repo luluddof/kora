@@ -1027,7 +1027,6 @@ def draw_army(r, state, layout, ui) -> None:
     _text(r, r.tiny, "LEVER DANS VOS VILLAGES", GOLD, bx + 18, y)
     pygame.draw.line(r.screen, (60, 56, 44), (bx + 14, y + 16), (bx + bw - 14, y + 16))
     y += 24
-    roles = ui.setdefault("army_role", {})
     sizes = ui.setdefault("army_size", {})
     block_h = 84
     max_blocks = max(1, (bh - 250) // block_h)
@@ -1039,34 +1038,21 @@ def draw_army(r, state, layout, ui) -> None:
         name_rect = (bx + 20, y + 5, 150, 20)
         items[f"avillage:{site.id}"] = name_rect
         _button(r, name_rect, places.name(site))
-        info = f"{home.population} habitants  ·  compagnies {villages.companies_of(state, site)}/{villages.army_cap(state, site)}"
+        info = f"{home.population} habitants  ·  troupes {villages.companies_of(state, site)}/{villages.army_cap(state, site)}"
         _text(r, r.tiny, info, SOFT, bx + 180, y + 8)
-        role = roles.get(site.id, "melee")
-        cw = (bw - 40 - 3 * 6) // 4
-        for i, rl in enumerate(units.ROLES):
-            rect = (bx + 20 + i * (cw + 6), y + 30, cw, 20)
-            u = units.best(tribe, rl)
-            label = u.short if u else f"{units.ROLE_LABEL[rl]} : verrouillé"
-            items[f"arole:{site.id}:{rl}"] = rect
-            _button(r, rect, label, on=u is not None, active=rl == role and u is not None)
-            if _hover(rect):
-                if u is None:
-                    first = units.ages_of(rl)[0]
-                    need = tech.TECHS[first.needs].name if first.needs else "?"
-                    tips.append(([(first.name, TEXT), (f"Il faut connaître {need}", BAD)], rect[0], rect[1] + 24))
-                else:
-                    tips.append(([(u.name, TEXT), (u.text, SOFT)], rect[0], rect[1] + 24))
+        # La milice : chacun dans sa categorie (on ne choisit pas).
+        milice = "Milice : " + (villages.militia_text(state, home) or "personne à lever")
+        _text(r, r.tiny, r._fit(r.tiny, milice, bw - 44), TEXT, bx + 20, y + 33)
         key = sizes.get(site.id, "troupe")
         sx = bx + 20
         for k, _share, _label in villages.LEVIES:
-            n = villages.levy_size(home, villages.LEVY_SHARE[k])
+            n = villages.levy_size(home, villages.LEVY_SHARE[k], state)
             rect = (sx, y + 54, 90, 20)
             items[f"asize:{site.id}:{k}"] = rect
             _button(r, rect, f"{LEVY_SHORT[k]} {n}", active=k == key)
             sx += 96
-        kind = units.best(tribe, role) or units.best(tribe, "melee")
         share = villages.LEVY_SHARE.get(key, villages.LEVY_SHARE["troupe"])
-        why = villages.army_block(state, home.id, share, kind.id) or ("" if chiefs.obeys(state, home) else "Ce clan n'obéit plus")
+        why = villages.army_block(state, home.id, share) or ("" if chiefs.obeys(state, home) else "Ce clan n'obéit plus")
         raise_rect = (sx + 6, y + 52, 120, 24)
         items[f"araise:{site.id}"] = raise_rect
         _button(r, raise_rect, "Lever [L]", on=not why)

@@ -113,6 +113,8 @@ class Band:
     # elle rentre a pied (homebound) et redevient villageoise a l'arrivee.
     units: list[list] = field(default_factory=list)
     homebound: bool = False
+    # L'ost (ost.py) : la troupe du suzerain que cette troupe va rejoindre.
+    ost: int = 0
     # Clan : les chefs des clans reunis (anciens) ; groupe pas encore soude.
     notables: list["Person"] = field(default_factory=list, metadata={"decode": _people})
     welded_until: int = 0
