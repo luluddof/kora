@@ -369,11 +369,16 @@ def test_far_villages_do_not_trade(monkeypatch):
 
 def test_ai_villages_put_hands_to_work():
     st, site, band = _village(known=("poterie", "peche"), res={"argile": (255, 2), "poisson": (255, 2)})
-    goods.ai_crafts(st, site, band, 20.0)
+    band.stock = 40.0 * band.population
+    goods.ai_crafts(st, site, band, 40.0)
     assert goods.teams_of(site, "potiers") == 1
-    # Grenier plein : pas de pecheurs ; grenier bas : on peche.
+    # Grenier plein : pas de pecheurs ; la recolte en vue est maigre (la
+    # marge sous villages.FOOD_SAFE_WEEKS) : on peche.
     assert goods.teams_of(site, "pecheurs") == 0
-    goods.ai_crafts(st, site, band, 4.0)
+    band.stock = 8.0 * band.population
+    site.data.forage = {s: band.population * 0.6 for s in ("hiver", "printemps", "ete", "automne")}
+    goods.ai_crafts(st, site, band, 8.0)
+    goods.ai_crafts(st, site, band, 8.0)
     assert goods.teams_of(site, "pecheurs") >= 1
 
 

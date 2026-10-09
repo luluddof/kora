@@ -25,7 +25,7 @@ Tout passe par commands.py ("grain"). N'importe pas pygame.
 
 from __future__ import annotations
 
-from src.kora import chiefdom, diplo, goods, money, places, siege
+from src.kora import chiefdom, diplo, goods, money, places, siege, villages
 from src.kora.bands import stock_max
 from src.kora.gamestate import is_human, note
 from src.kora.log import LogKind
@@ -33,6 +33,14 @@ from src.kora.types import Season
 
 DEARTH_WEEKS = 3
 AI_DEARTH_WEEKS = 1
+# LA DISETTE EN VUE : le grenier ne tiendra pas jusqu'a la recolte
+# (villages.food_outlook). On achete AVANT la crise, moins cher
+# (PLANNED_MARKUP au lieu de MARKUP : on n'est pas aux abois), de quoi
+# arriver a la recolte avec PLAN_MARGIN semaines d'avance. L'IA le fait une
+# fois par PLAN_EVERY semaines.
+PLANNED_MARKUP = 1.15
+PLAN_MARGIN = 2.0
+PLAN_EVERY = 4
 GRAIN_WEEKS = 8
 KEEP_WEEKS = 10
 MARKUP = 1.5
@@ -42,6 +50,17 @@ SELL_RELATION = -10
 GRATITUDE = 5
 MIN_BUY = 10.0
 REACH = 2
+
+
+def shortfall(state, band) -> float:
+    """La disette en vue : les semaines de vivres qui manqueront a la
+    prochaine recolte (0 : le grenier tiendra)."""
+    if band is None or not band.village or band.population <= 0:
+        return 0.0
+    site = places.site_of(state, band)
+    if site is None:
+        return 0.0
+    return max(0.0, -villages.food_outlook(state, site, band)[1])
 
 
 def in_dearth(state, band) -> bool:
@@ -76,7 +95,7 @@ def spare(state, seller: int) -> float:
     """Ce que le vendeur peut ceder (au-dela de KEEP_WEEKS semaines)."""
     total = 0.0
     for band in goods._food_spare(state, seller):
-        if not in_dearth(state, band):
+        if not in_dearth(state, band) and not shortfall(state, band):
             total += max(0.0, band.stock - KEEP_WEEKS * band.population)
     return total
 
@@ -86,8 +105,8 @@ def _near(state, site, seller: int) -> bool:
     return any(state.world.distance(site.hex, s.hex) <= reach for s in goods._village_sites(state, seller))
 
 
-def _markup(state, site, take: float, have: float) -> float:
-    m = MARKUP + SCARCITY * (take / have if have > 0 else 1.0)
+def _markup(state, site, take: float, have: float, planned: bool = False) -> float:
+    m = (PLANNED_MARKUP if planned else MARKUP) + SCARCITY * (take / have if have > 0 else 1.0)
     if state.world.hex_season(site.hex) is Season.HIVER:
         m += WINTER
     return m
@@ -105,10 +124,18 @@ def quote(state, tid: int, site_id: int) -> dict:
     if not _knows_money(state, tid):
         out["why"] = "Il faut un trésor (Valeurs d'échange) pour acheter du grain"
         return out
-    if not in_dearth(state, band):
-        out["why"] = f"Pas de disette : le village a plus de {DEARTH_WEEKS} semaines de vivres"
-        return out
-    want = min(GRAIN_WEEKS * band.population - band.stock, stock_max(band, state) - band.stock)
+    room = stock_max(band, state) - band.stock
+    planned = not in_dearth(state, band)
+    if planned:
+        lack = shortfall(state, band)
+        if lack <= 0:
+            out["why"] = f"Pas de disette : le village a plus de {DEARTH_WEEKS} semaines de vivres, et tiendra jusqu'à la récolte"
+            return out
+        # La disette en vue : de quoi tenir jusqu'a la recolte, et un peu.
+        want = min((lack + PLAN_MARGIN) * band.population, room)
+    else:
+        want = min(GRAIN_WEEKS * band.population - band.stock, room)
+    out["planned"] = planned
     if want < MIN_BUY:
         out["why"] = "Le grenier est plein"
         return out
@@ -121,7 +148,7 @@ def quote(state, tid: int, site_id: int) -> dict:
         if have < MIN_BUY:
             continue
         take = min(want, have)
-        m = _markup(state, site, take, have)
+        m = _markup(state, site, take, have, planned)
         cost = take * m / money.VPS
         if cost > tribe.money:
             take = tribe.money * money.VPS / m
@@ -192,8 +219,11 @@ def ai_weekly(state) -> None:
         band = places.band_of(state, site)
         if band is None or tribe.money < 1.0:
             continue
-        # L'IA attend la vraie faim (ou moins d'AI_DEARTH_WEEKS de vivres).
+        # La vraie faim (ou moins d'AI_DEARTH_WEEKS de vivres) : tout de suite.
         if band.famine_in_period or band.stock < AI_DEARTH_WEEKS * band.population:
+            buy(state, tribe.id, site.id)
+        # La disette en vue : l'intendant achete d'avance (moins cher).
+        elif (state.tick_count + site.id) % PLAN_EVERY == 0 and shortfall(state, band) > 0:
             buy(state, tribe.id, site.id)
 
 
@@ -203,7 +233,14 @@ def tip_lines(state, tid: int, site_id: int) -> list[str]:
     if q["why"]:
         return [q["why"]]
     sname = state.tribes[q["seller"]].name
-    return [
-        f"Acheter du grain aux {sname} : {q['vivres']:.0f} vivres pour {q['sicles']:.1f} sicles".replace(".", ","),
-        f"{q['per_sicle']:.1f} vivres le sicle (le marché : {money.VPS:.0f}) : plus cher que le marché, et plus encore si l'on prend beaucoup de ce qu'ils ont de trop ou en hiver".replace(".", ","),
-    ]
+    out = [f"Acheter du grain aux {sname} : {q['vivres']:.0f} vivres pour {q['sicles']:.1f} sicles".replace(".", ",")]
+    if q.get("planned"):
+        site = state.sites[site_id]
+        n = round(shortfall(state, places.band_of(state, site)))
+        lack = f"{n} semaine{'s' if n > 1 else ''}" if n >= 1 else "moins d'une semaine"
+        out.append(
+            f"Disette en vue : il manquera {lack} de vivres avant la récolte. "
+            "Acheté d'avance, le grain coûte moins cher qu'en pleine disette."
+        )
+    out.append(f"{q['per_sicle']:.1f} vivres le sicle (le marché : {money.VPS:.0f}) : plus cher que le marché, et plus encore si l'on prend beaucoup de ce qu'ils ont de trop ou en hiver".replace(".", ","))
+    return out

@@ -617,8 +617,13 @@ def draw_village(r, state, ui) -> None:
     warriors = sum(a.population for a in armies)
     defense = villages.defense_mult(state, band)
     dearth = grain.in_dearth(state, band)
-    lay["grain"] = dearth
-    store_sub = "Disette : clic, acheter du grain" if dearth else f"{weeks:.0f} semaines de vivres"
+    ahead = not dearth and grain.shortfall(state, band) > 0
+    lay["grain"] = dearth or ahead
+    store_sub = (
+        "Disette : clic, acheter du grain" if dearth
+        else "Disette en vue : clic, acheter d'avance" if ahead
+        else f"{weeks:.0f} semaines de vivres"
+    )
     tiles = (
         ("HABITANTS", f"{band.population}", f"places à bâtir {villages.used_slots(site)}/{villages.slots(state, site)}", INK),
         ("GRENIER", f"{band.stock:.0f} / {cap:.0f}", store_sub, GOOD if weeks >= 8 else WARN),
@@ -633,12 +638,12 @@ def draw_village(r, state, ui) -> None:
     )
     for rect, (label, value, sub_t, col) in zip(lay["tiles"], tiles):
         _tile(r, rect, label, value, sub_t, col)
-    if dearth:
+    if dearth or ahead:
         grain_rect = lay["tiles"][1]
-        pygame.draw.rect(screen, GOLD, grain_rect, 2, border_radius=6)
+        pygame.draw.rect(screen, GOLD if dearth else WARN, grain_rect, 2, border_radius=6)
         if _hover(grain_rect, mx, my):
             q = grain.tip_lines(state, site.tribe_id, site.id)
-            rows = [("Le grain des disettes", INK)] + [(t, SOFT if i else (GOOD if not grain.quote(state, site.tribe_id, site.id)["why"] else WARN)) for i, t in enumerate(q)]
+            rows = [("Le grain des disettes" if dearth else "La disette en vue", INK)] + [(t, SOFT if i else (GOOD if not grain.quote(state, site.tribe_id, site.id)["why"] else WARN)) for i, t in enumerate(q)]
             ui.setdefault("_vtips", []).append((rows, mx, my))
     stab_rect = lay["tiles"][-1]
     if _hover(stab_rect, mx, my):

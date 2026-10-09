@@ -1049,23 +1049,42 @@ def _note_player(state) -> None:
 AI_ORDER = ("sauniers", "potiers", "tisserands", "pelletiers", "tailleurs", "pecheurs", "calculateurs", "mineurs")
 
 
-def ai_crafts(state, site, band, weeks: float) -> None:
-    """Un village IA met aux metiers les bras dont ses champs n'ont pas
-    besoin ; les pecheurs quand le grenier est bas."""
-    import math
+def _keeps_hands(state, site, band, cid: str) -> bool:
+    """Une equipe de plus a ce metier laisserait-elle aux champs tous leurs
+    bras (villages.field_hands_mult) ? On l'essaie, puis on revient."""
+    before = dict(site.data.teams)
+    site.data.teams[cid] = teams_of(site, cid) + 1
+    ok = villages.field_hands_mult(site, band, state) >= 1.0
+    site.data.teams = before
+    return ok
 
-    fields = min(villages.MAX_FIELDS, max(1, math.ceil(band.population / villages.FIELD_WORKERS)))
-    free = int(band.population - fields * villages.FIELD_HANDS) // TEAM
-    cap = min(team_cap(band), free)
-    if cap <= 0:
-        return
+
+def ai_crafts(state, site, band, weeks: float) -> None:
+    """L'INTENDANT d'un village IA : les champs d'abord.
+      - un metier n'a des bras que si les champs gardent tous les leurs (les
+        adultes valides, pas les enfants ni les anciens : field_hands_mult) ;
+      - les champs manquent de bras, ou une disette est en vue (le grenier ne
+        tiendra pas jusqu'a la recolte : villages.food_outlook) : un metier
+        qui ne nourrit pas rend une equipe, chaque fois qu'il decide (les gens
+        de metier retournent aux champs, a la chasse, a la cueillette) ;
+      - les pecheurs (un metier qui nourrit) viennent quand la marge avant la
+        recolte est sous villages.FOOD_SAFE_WEEKS."""
+    _left, margin = villages.food_outlook(state, site, band)
+    short = margin < villages.FOOD_SAFE_WEEKS
+    if villages.field_hands_mult(site, band, state) < 1.0 or margin < 0:
+        for cid in reversed(AI_ORDER):
+            if not CRAFTS[cid].food and teams_of(site, cid) > 0:
+                set_teams(state, site, cid, teams_of(site, cid) - 1)
+                return
+    cap = team_cap(band)
     for cid in AI_ORDER:
         if total_teams(site) >= cap:
             break
-        if CRAFTS[cid].food and weeks >= 12:
+        food = bool(CRAFTS[cid].food)
+        if food != short:
             continue
-        want = 1 if not CRAFTS[cid].food else 2
-        if teams_of(site, cid) < want and not add_block(state, site, cid):
+        want = 2 if food else 1
+        if teams_of(site, cid) < want and not add_block(state, site, cid) and _keeps_hands(state, site, band, cid):
             set_teams(state, site, cid, teams_of(site, cid) + 1)
 
 

@@ -308,6 +308,12 @@ src/kora/music.py (presentation) : Director (update(state | None, dt),
   set_volume, listening, prefs, stop), wants_war_music ; la boucle
   data/music/casus_bellis.ogg, faite par tools/boucle_musique.py.
 
+0.17 (l'intendant) : goods.ai_crafts / _keeps_hands (les champs d'abord ;
+  la disette en vue rend les gens de metier), ai._village_ai (AI_FOOD_MARGIN :
+  ni chantier ni levee sans marge), grain.shortfall / PLANNED_MARKUP /
+  PLAN_MARGIN / PLAN_EVERY (le grain d'avance, l'IA et le joueur : tuile
+  GRENIER "Disette en vue").
+
 src/kora/draws.py  (pas de pygame)
   Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :
   set_seed / seed_of / seed_from (state.research["seed"] ; app._fresh_seed

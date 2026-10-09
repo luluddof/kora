@@ -578,6 +578,14 @@ lente, bandes dessinees petites a taille fixe.
     faite par tools/boucle_musique.py (raccord mesure plus doux que le
     morceau), elle monte et descend avec la guerre ; Reglages (volume,
     couper, ecouter).
+2026-10-15
+  - G7 (explique, puis "oui, fais-le") : les villages IA gerent leur
+    grenier. FAIT (0.17.0 ; spec 2026-10-15-intendant-des-villages.txt) :
+    les champs d'abord (les metiers ne prennent plus leurs bras), les gens
+    de metier rendus quand la disette est en vue, pas de chantier ni de
+    levee sans marge, le grain achete d'avance et moins cher (le joueur
+    aussi, sur la tuile du grenier). Famine IA : 11,5 % -> 7,2 % des
+    semaines ; partie neuve +22 % de population.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -734,6 +742,9 @@ lente, bandes dessinees petites a taille fixe.
   sons sont de l'interface (music.py, etage presentation), jamais dans la
   simulation ; un fichier de data nouveau (data/music) est ajoute aux
   "datas" des deux specs ; un reglage du joueur va dans reglages.json.
+  0.17.0 : REGLE NOUVELLE : une decision IA qui coute des vivres ou des
+  bras regarde d'abord villages.food_outlook (la marge a la recolte) ; un
+  metier IA ne prend jamais les bras des champs (goods._keeps_hands).
   A FAIRE plus tard (pistes) : des tournants pour les ages suivants
   (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
   les evenements ; le siege des ages suivants (beliers, echelles, tours :

@@ -140,7 +140,8 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   commerce payé en argent est une **loi** (*Pays*, *Lois*). On peut aussi offrir des **sicles** aux autres peuples
   (écran *Peuples*). Avec l'argent pesé, les **mineurs** creusent les filons des collines ; avec les droits de
   passage, les convois étrangers paient pour traverser votre pays. En **disette**, un clic sur le grenier (écran
-  du village) **achète du grain** à un partenaire, un allié ou un peuple de votre pays, plus cher que le marché.
+  du village) **achète du grain** à un partenaire, un allié ou un peuple de votre pays, plus cher que le marché ;
+  quand la disette est **en vue** (le grenier ne tiendra pas jusqu'à la récolte), on l'achète d'avance, moins cher.
 - Les **pays** : un tributaire prend une nuance claire de la couleur de son suzerain (et reprend la sienne s'il se
   libère) ; la carte des **Suzerains** (touche **U**) ne montre que les grands pays et leurs villages. Avec la
   *Confédération*, deux peuples (ou jusqu'à quatre) ne font plus qu'un pays au dehors : chacun reste maître chez

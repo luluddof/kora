@@ -1,0 +1,73 @@
+Kora - L'intendant des villages (G7)
+====================================
+Date : 2026-10-15. Statut : FAIT (version 0.17.0).
+
+Ses mots : "G7, explique mieux" puis "oui, fais-le" : que les villages IA
+gerent leur grenier au lieu de vivre au bord de la famine.
+
+
+1. LE DIAGNOSTIC (SA partie, 6 ans, chaque village IA chaque semaine)
+--------------------------------------------------------------------
+  - 11,5 % des semaines-village a moins d'une semaine de vivres, surtout en
+    ETE (la soudure avant la recolte d'automne) ; les famines aussi.
+  - Le grenier n'est pas trop petit (60 semaines de place) ; sur l'annee,
+    le compte est bon (les greniers IA montent) : le mal est SAISONNIER et
+    propre a certains villages.
+  - La recolte ne couvre que 69 % du besoin de l'annee (30 % pour le
+    dixieme le plus pauvre) : dans les villages qui ont faim, les champs
+    manquent de BRAS (56 a 79 % de la recolte possible).
+  - La cause : l'IA comptait ses bras libres sur TOUTE la population
+    (enfants et anciens compris) et mettait trop de monde aux metiers
+    (poterie, sel, tissage...) ; elle ne les rendait jamais aux champs.
+
+
+2. L'INTENDANT (goods.ai_crafts, ai._village_ai, grain.py)
+---------------------------------------------------------
+  Il regarde ce que dit deja le jeu : villages.food_outlook (les semaines
+  de vivres qui resteront a la prochaine recolte, la chasse et la
+  cueillette de chaque saison comptees).
+  - LES CHAMPS D'ABORD : un metier n'a une equipe de plus que si les
+    champs gardent TOUS leurs bras (les adultes valides : field_hands_mult,
+    essaye avant d'ajouter).
+  - LA DISETTE EN VUE (le grenier ne tiendra pas jusqu'a la recolte) ou des
+    champs qui manquent de bras : un metier qui ne nourrit pas rend une
+    equipe a chaque decision ; ses gens retournent aux champs, a la chasse,
+    a la cueillette. Les pecheurs (un metier qui nourrit) viennent quand la
+    marge est sous 6 semaines.
+  - Sans une marge de 4 semaines a la recolte (AI_FOOD_MARGIN) : pas de
+    chantier, pas de troupe levee de son plein gre ; en guerre, il faut au
+    moins tenir jusqu'a la recolte ; se defendre d'une menace, toujours.
+  - ACHETER AVANT LA CRISE : un village qui voit venir la disette achete
+    d'avance (une fois par mois) de quoi arriver a la recolte avec 2
+    semaines d'avance, MOINS CHER qu'en pleine disette (une marge de 1,15
+    au lieu de 1,5 sur le prix du marche) ; les vendeurs ne cedent pas le
+    grain dont ils auront besoin eux-memes.
+  POUR LE JOUEUR, la meme chose, a sa main : quand la disette est en vue,
+  la tuile GRENIER de l'ecran du village s'entoure d'ambre ("Disette en
+  vue : clic, acheter d'avance") ; au survol, ce qui manquera et le prix
+  (dans SA partie, une annee maigre : 416 vivres chez les Lian pour 26,9
+  sicles, 15,5 vivres le sicle, contre environ 8 en pleine disette). La
+  liste des villages disait deja "disette en vue".
+
+
+3. CE QUE CA CHANGE (robot joueur et IA)
+----------------------------------------
+  SA partie, 6 ans : semaines au bord de la famine 11,5 % -> 7,2 % ; la
+    recolte couvre 88 % du besoin (69 %).
+  SA partie, 30 ans (0.16 -> 0.17) : population 20 943 -> 22 845, combats
+    et guerres comparables.
+  Partie neuve, 31 ans : population 6 767 -> 8 262 (+22 %), villages 46 ->
+    47, autant de guerres.
+  Ceux qui ont encore faim : des villages sur de mauvaises terres (2 a 6
+  champs qui rendent 300 a 2 000 vivres pour un besoin de 3 400 a 7 800),
+  souvent sans personne a qui acheter. Une faim de la terre, pas de la
+  gestion.
+
+
+4. VERIFICATIONS
+----------------
+  Tests : test_steward (les champs gardent leurs bras, la disette en vue
+  rend les gens de metier, pas de chantier sans marge, le grain d'avance
+  moins cher, l'IA qui achete d'avance), test_goods (les pecheurs quand la
+  recolte en vue est maigre). Empreinte re-enregistree ; multijoueur
+  identique.

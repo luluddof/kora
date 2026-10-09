@@ -214,6 +214,9 @@ AI_ARMY_REACH = 16
 AI_WAR_REACH = 28
 AI_WAR_RAID_WEEKS = 9
 AI_BUILD_RESERVE = 12
+# La marge (semaines de vivres a la prochaine recolte) qu'un village IA veut
+# garder avant de batir ou de lever une troupe de son plein gre.
+AI_FOOD_MARGIN = 4.0
 
 
 def _threat(state: GameState, band: Band, radius: int):
@@ -401,8 +404,13 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     site = places.site_of(state, band)
     if site is not None:
         goods.ai_crafts(state, site, band, weeks)
+    # L'intendant : de quoi tenir jusqu'a la recolte (villages.food_outlook).
+    # Sans la marge, ni chantier ni troupe levee de son plein gre ; se
+    # defendre d'une menace, toujours.
+    margin = villages.food_outlook(state, site, band)[1] if site is not None else 0.0
+    safe = margin >= AI_FOOD_MARGIN
     warm = state.world.hex_season(band.position).value in ("printemps", "ete")
-    if site is not None and warm and places.works(site) is None:
+    if site is not None and warm and safe and places.works(site) is None:
         # On batit au printemps et en ete, sur le surplus : pas avec les
         # vivres de l'hiver.
         # Pendant les grands travaux, le monument passe d'abord.
@@ -417,7 +425,7 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
         foe, foe_f = _threat(state, band, AI_THREAT_RANGE)
         raise_it = foe is not None and foe_f >= AI_THREAT * band_force(state, band)
         with_ost = False
-        if not raise_it and weeks >= 6 and diplo.wars_of(state, band.tribe_id):
+        if not raise_it and weeks >= 6 and margin >= 0 and diplo.wars_of(state, band.tribe_id):
             # En guerre declaree : une troupe contre un ennemi a portee qu'on
             # peut battre ; pour assieger un village (si l'on sait), en masse.
             # Seul, ou avec l'ost de ses tributaires.
@@ -431,7 +439,7 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
                     if _could_take(state, band, prey, size, with_ost=True):
                         raise_it, with_ost = size, True
                         break
-        if not raise_it and weeks >= 8 and band.population >= AI_ARMY_POP and state.rng.random() < AI_ARMY_WHIM * approach.factor(state, band.tribe_id, "army"):
+        if not raise_it and weeks >= 8 and safe and band.population >= AI_ARMY_POP and state.rng.random() < AI_ARMY_WHIM * approach.factor(state, band.tribe_id, "army"):
             tribe = state.tribes[band.tribe_id]
             culture = culture_of(tribe)
             if tribe.prestige >= culture.raid_prestige - 10:
