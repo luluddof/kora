@@ -10,8 +10,10 @@ N'importe ni pygame ni render.
 
 from __future__ import annotations
 
-from src.kora import battle, chiefs, ost, places, sites, villages
+from src.kora import ai_war, battle, chiefs, diplo, ost, places, sites, villages
+from src.kora.path import astar, travel_weeks
 from src.kora.bands import (
+    campaign_weeks,
     SPLIT_MIN_POP,
     can_split,
     civ_band_cap,
@@ -246,3 +248,79 @@ def perform(state, band_id: int, key: str):
         villages.leave(state, band_id)
         return band_id, ""
     return band_id, ""
+
+
+# --- avant l'attaque : le rapport de force (le survol d'un etranger) --------------------
+# Une de vos bandes choisie, la souris sur une bande etrangere : ce que
+# donnerait l'attaque (le clic droit), compte comme l'IA le compte
+# (ai_war.odds_at), et ce qui l'empeche ou la rend risquee.
+
+
+def _fmt(x: float) -> str:
+    return f"{x:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+
+
+def attack_preview(state, band_id: int, prey_id: int) -> dict | None:
+    """{"title", "ratio", "word", "rows": [(texte, sorte)], "blocked"} ; sorte :
+    "bon", "mauvais", "note", "alerte". None si ce n'est pas une attaque."""
+    band, prey = state.bands.get(band_id), state.bands.get(prey_id)
+    if band is None or prey is None or prey.population <= 0 or band.tribe_id == prey.tribe_id:
+        return None
+    me, them = band.tribe_id, prey.tribe_id
+    tribe = state.tribes.get(them)
+    who = tribe.name if tribe is not None else "?"
+    what = places.name(places.site_of(state, prey)) if prey.village and places.site_of(state, prey) else (
+        "leur troupe" if prey.kind == "armee" else "leur clan"
+    )
+    out = {"title": f"Attaquer les {who} ({what}) : clic droit", "rows": [], "blocked": ""}
+    # Ce qui l'empeche (comme l'ordre de marche : commands._march).
+    if not chiefs.obeys(state, band):
+        out["blocked"] = INDOCILE
+    elif band.village:
+        out["blocked"] = "Un village ne bouge pas : formez une bande [S] pour attaquer"
+    elif band.homebound:
+        out["blocked"] = HOMEBOUND
+    elif diplo.may_start(state, me, them):
+        out["blocked"] = diplo.may_start(state, me, them)
+    elif diplo.needs_declaration(state, me, them) and not diplo.declared_war(state, me, them) and not diplo.at_war(state, me, them):
+        out["blocked"] = f"Vous êtes en paix avec les {who} : déclarez-leur d'abord la guerre (écran Peuples)"
+    ratio, word = ai_war.odds_at(state, band, prey)
+    out["ratio"], out["word"] = ratio, word
+    rows = out["rows"]
+    tone = "bon" if ratio >= 1.3 else "mauvais" if ratio < 0.85 else "alerte"
+    rows.append((f"Rapport de force : {_fmt(ratio)} contre 1, {word}", tone))
+    helpers = ai_war.helpers_at(state, [band], prey.position)
+    mine = round(battle.fighters_now(band, True) + sum(battle.fighters_now(b, True) for b in helpers))
+    rows.append((f"Vos combattants : {mine}" + (f" (dont {len(helpers)} bande{'s' if len(helpers) > 1 else ''} en renfort près d'eux)" if helpers else ""), "note"))
+    guards = battle.helpers_of(state, prey)
+    theirs = round(battle.fighters_now(prey, False) + sum(battle.fighters_now(b, False) for b in guards))
+    rows.append((f"Les leurs : {theirs}" + (f" (dont {len(guards)} bande{'s' if len(guards) > 1 else ''} en renfort)" if guards else ""), "note"))
+    cover = battle.cover_parts(state, prey, prey.position, me)
+    if cover:
+        rows.append(("Leur abri : " + " · ".join(f"{label} x{_fmt(m)}" for label, m in cover), "note"))
+    m_me, _p = battle.start_morale(state, band, attacker=True, h=prey.position)
+    m_them, _p2 = battle.start_morale(state, prey, attacker=False, h=prey.position)
+    rows.append((f"Moral : le vôtre {m_me:.0f}, le leur {m_them:.0f}", "note"))
+    # Le trajet et les vivres.
+    water = bool(state.tribes[me].cabotage) if me in state.tribes else False
+    path = astar(state.world, band.position, prey.position, max_nodes=4000, water_ok=water, costs=ai_war.costs_of(state, me))
+    food = campaign_weeks(state, band)
+    if path is None:
+        rows.append(("Pas de chemin connu jusqu'à eux", "alerte"))
+    else:
+        weeks = travel_weeks(state.world, band.position, path, water_ok=water, costs=ai_war.costs_of(state, me))
+        text = f"Trajet : ~{weeks} sem."
+        if band.kind == "armee":
+            back = villages.weeks_home(state, band, prey.position)
+            stock = f"{food:.0f} sem." if food >= 1 else "moins d'une semaine"
+            text += f" ; vivres : {stock} ; retour au village : ~{back} sem."
+            rows.append((text, "alerte" if food < weeks + back else "note"))
+            if food < weeks + back:
+                rows.append(("Vos vivres ne tiendront pas l'aller et le retour : la troupe aura faim", "mauvais"))
+        else:
+            rows.append((text, "note"))
+    if prey.kind != "armee" and not prey.village:
+        rows.append(("Un clan peut fuir avant votre arrivée", "note"))
+    if not out["blocked"] and diplo.peace_pact(state, me, them):
+        rows.append(("Un pacte vous lie : attaquer serait une trahison (prestige -10)", "mauvais"))
+    return out

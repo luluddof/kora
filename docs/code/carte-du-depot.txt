@@ -111,7 +111,7 @@ Ici c'est plus petit, mais le meme decoupage :
                     goods.py, situations.py, production.py, population.py,
                     chiefdom.py, numbers.py, money.py, laws.py, confed.py,
                     memory.py, draws.py, turning.py, siege.py, ost.py,
-                    grain.py, casus.py
+                    grain.py, casus.py, wars.py
                     "une semaine avance (ou un jour, en bataille)"
 
   Persistance       persist.py, data/kora_map.json
@@ -282,6 +282,31 @@ diplo.py, 0.14 : PEACE_PACTS / peace_pact (le commerce n'en est pas : P4),
   .set_tree_hidden / tech_world (_TREES), tree_graph.build(hidden).
   learning._GOOD_RESOURCE / trade_goods_for : les biens qui valent une
   ressource (conditions "res").
+
+0.16 :
+src/kora/wars.py (pas de pygame) : l'ecran des guerres en donnees : Front
+  (key = grand suzerain ennemi, enemies, since, declared_by, my_side,
+  their_side, my_goals, their_goals, scores, armies, sieges, fights ; score,
+  target), fronts(state, me), others(state, me), score_text.
+src/kora/render_wars.py : l'ecran (screens "guerres", touche W, onglet
+  Guerres : layout.WARS_TAB, render_panels.wars_ready / wars_alert) ;
+  wars_hit ; app.wars_click (wpick, wsee, wsite, whex, wact:soumission /
+  treve / fiche).
+orders.attack_preview (la fiche avant l'attaque ; app._attack_preview la
+  garde en cache, render.draw_attack_preview la dessine en dernier) ;
+  ai_war.helpers_at, odds_at (le rapport de force de l'IA, aussi
+  sim._raid_lines), short_of_food, SUPPLY_MARGIN ; bands.weeks_between,
+  food_weeks, WALK_COST ; villages.weeks_home, warn_supply
+  (systems.WEEKLY).
+persist : saves_dir, new_save_path, list_saves, latest_save, trash_save
+  (CORBEILLE), "game_version" dans la sauvegarde ; render_menu :
+  load_layout / load_hit / draw_load (Charger une partie), saved_when,
+  draw_title_backdrop, settings_layout / settings_hit / settings_value /
+  draw_settings ; app.Settings (la fenetre des reglages, commune aux deux
+  menus), title_screen (page "load"), play(..., save_path, director).
+src/kora/music.py (presentation) : Director (update(state | None, dt),
+  set_volume, listening, prefs, stop), wants_war_music ; la boucle
+  data/music/casus_bellis.ogg, faite par tools/boucle_musique.py.
 
 src/kora/draws.py  (pas de pygame)
   Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :

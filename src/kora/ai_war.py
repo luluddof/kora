@@ -11,21 +11,26 @@ ou moins qui ferait basculer le combat :
     de la meme case (meme chemin, arrivee la meme semaine).
 Une troupe d'un suzerain peut aussi appeler l'OST : une troupe de ses
 tributaires (a ost.OST_RANGE cases) vient se fondre dans la sienne.
+LES VIVRES DE CAMPAGNE : une troupe IA ne part que si ses vivres tiennent
+l'aller, le retour au village et SUPPLY_MARGIN semaines ; en route (une
+proie qui fuit l'entraine plus loin), elle rentre des que ses vivres ne
+tiennent plus que le retour et la marge (short_of_food).
 Un raid en cours est annule si la cible s'est renforcee entre-temps.
 """
 
 from __future__ import annotations
 
-from src.kora import battle, chiefdom, chiefs, diplo, ost
+from src.kora import battle, chiefdom, chiefs, diplo, ost, villages
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
 from src.kora.battle import band_force, defense_force, side_force
-from src.kora.bands import bands_near, bonus_of, costs_of, is_shielded, set_goto, set_march_to_band
+from src.kora.bands import bands_near, bonus_of, campaign_weeks, costs_of, is_shielded, set_goto, set_march_to_band, weeks_between
 from src.kora.gamestate import GameState, humans, note
 from src.kora.types import Band, OrderKind, stay_order
 from src.kora.vision import is_visible
 
 AI_RAID_REST = 12
+SUPPLY_MARGIN = 2
 # Avec un motif (casus.py), on raide un voisin jusqu'a cette relation.
 MOTIVE_RELATION = 40
 AI_RAID_EDGE = 1.25
@@ -36,13 +41,14 @@ AI_PLAN_WEEKS = 8
 RAID_REACH_PER_WEEK = MOVE_POINTS_PER_WEEK // 10
 
 
-def force_at(state: GameState, bands: list[Band], spot) -> float:
-    """Force de `bands` si elles combattent sur `spot`, avec les bandes de
-    leur tribu deja a portee de renfort de ce point."""
+def helpers_at(state: GameState, bands: list[Band], spot) -> list[Band]:
+    """Les bandes qui viendraient en renfort de `bands` si elles combattent
+    sur `spot` : de leur tribu (qui obeissent), de leurs allies, de leur
+    pays, deja a portee de renfort de ce point."""
     tribe_id = bands[0].tribe_id
     ids = {b.id for b in bands}
-    force = sum(band_force(state, b) for b in bands)
     reach = bonus_of(state, tribe_id).reinforce
+    out = []
     for ally in bands_near(state, spot, reach):
         if ally.id in ids:
             continue
@@ -51,8 +57,36 @@ def force_at(state: GameState, bands: list[Band], spot) -> float:
                 continue
         elif not (diplo.allied(state, ally.tribe_id, tribe_id) or ally.tribe_id in chiefdom.country(state, tribe_id)):
             continue
+        out.append(ally)
+    return out
+
+
+def force_at(state: GameState, bands: list[Band], spot) -> float:
+    """Force de `bands` si elles combattent sur `spot`, avec les bandes de
+    leur tribu deja a portee de renfort de ce point."""
+    force = sum(band_force(state, b) for b in bands)
+    for ally in helpers_at(state, bands, spot):
         force += band_force(state, ally)
     return force
+
+
+def odds_at(state: GameState, band: Band, prey: Band) -> tuple[float, str]:
+    """Le rapport de force d'une attaque de `band` sur `prey`, compte comme
+    l'IA le compte (wins) : la force la ou le combat aura lieu, avec les
+    renforts et le moral, contre la defense de la proie (abri, renforts,
+    moral). (rapport, mot)."""
+    morale, _parts = battle.start_morale(state, band, attacker=True, h=prey.position)
+    mine = force_at(state, [band], prey.position) * min(1.1, morale / battle.MORALE_BASE)
+    ratio = mine / max(0.1, defense_force(state, prey, band.tribe_id))
+    if ratio >= 2.0:
+        word = "écrasant"
+    elif ratio >= 1.3:
+        word = "favorable"
+    elif ratio >= 0.85:
+        word = "incertain"
+    else:
+        word = "défavorable"
+    return ratio, word
 
 
 def wins(state: GameState, bands: list[Band], prey: Band, edge: float = AI_RAID_EDGE) -> bool:
@@ -114,6 +148,20 @@ def _reachable(state: GameState, band: Band, prey: Band, max_weeks: int) -> bool
     return weeks <= max_weeks
 
 
+def short_of_food(state: GameState, band: Band, target=None) -> bool:
+    """Une troupe dont les vivres ne tiennent pas (l'aller jusqu'a `target`,
+    s'il y en a un) puis le retour au village et SUPPLY_MARGIN semaines.
+    Un clan, lui, vit du pays : jamais."""
+    if band.kind != "armee":
+        return False
+    need = SUPPLY_MARGIN
+    if target is not None:
+        need += weeks_between(state, band.position, target) + villages.weeks_home(state, band, target)
+    else:
+        need += villages.weeks_home(state, band)
+    return campaign_weeks(state, band) < need
+
+
 def _helper(state: GameState, band: Band, prey: Band) -> Band | None:
     best, best_d = None, None
     # L'ost : les troupes des tributaires viennent a la troupe du suzerain.
@@ -153,6 +201,8 @@ def plan_raid(state: GameState, band: Band, max_weeks: int, hungry: bool = True)
         if is_shielded(state, prey):
             continue
         if state.world.distance(band.position, prey.position) > reach:
+            continue
+        if short_of_food(state, band, prey.position):
             continue
         alone = wins(state, [band], prey)
         ally = None if alone else _helper(state, band, prey)
@@ -277,15 +327,22 @@ def advance_plans(state: GameState) -> None:
 
 def recheck_hunts(state: GameState) -> None:
     """Chaque semaine : une IA en route pour un raid qui le perdrait
-    maintenant (renforts arrives, cible a l'abri) fait demi-tour."""
+    maintenant (renforts arrives, cible a l'abri) fait demi-tour ; une
+    troupe dont les vivres ne tiennent plus l'aller et le retour rentre."""
     for band in list(state.bands.values()):
-        if band.order.kind is not OrderKind.MARCH_TO_BAND:
+        if band.id not in state.bands or band.order.kind is not OrderKind.MARCH_TO_BAND:
             continue
         tribe = state.tribes.get(band.tribe_id)
         if tribe is None or tribe.is_player:
             continue
         target = state.bands.get(band.order.target_band_id)
         if target is None or target.tribe_id == band.tribe_id:
+            continue
+        if short_of_food(state, band, target.position) and not battle.in_battle(state, band):
+            # La proie fuit et l'entraine trop loin : on rentre avant la faim.
+            band.order = stay_order()
+            band.path = []
+            villages.dissolve(state, band.id)
             continue
         hunters = [
             b

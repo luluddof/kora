@@ -565,6 +565,19 @@ lente, bandes dessinees petites a taille fixe.
     G1 debut guide, G2 sauvegardes, G3 son, G4 ecran des guerres, G5
     sentiers, G6 troupes IA et vivres, G7 faim des villages IA, G8 suite
     de l'arbre, G9 rapport de force avant l'attaque.
+2026-10-14
+  - G2, G4, G6, G9 : oui ("de la qualite, que ca s'integre bien"). FAIT
+    (0.16.0 ; spec 2026-10-14-guerres-sauvegardes-musique.txt) : une
+    sauvegarde par partie (Charger, Supprimer, copie) ; l'ecran des
+    guerres (W) ; les troupes IA rentrent avant la faim, le joueur est
+    prevenu ; la fiche du rapport de force au survol d'un etranger.
+    G1, G3, G8 : plus tard. G5 : il dira comment. G7 : explique, a son
+    choix.
+  - "La musique Casus bellis pour les guerres ou le joueur est implique,
+    une boucle sans transition, et des reglages de volume." FAIT : boucle
+    faite par tools/boucle_musique.py (raccord mesure plus doux que le
+    morceau), elle monte et descend avec la guerre ; Reglages (volume,
+    couper, ecouter).
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -714,6 +727,13 @@ lente, bandes dessinees petites a taille fixe.
   et une fois par taille de carte ; l'arbre ne montre pas draws.hidden
   (layout.set_tree_hidden ; les tests repartent de l'arbre complet :
   conftest).
+  0.16.0 : REGLES NOUVELLES : un rapport de force montre au joueur est
+  celui de l'IA (ai_war.odds_at) ; une troupe IA garde de quoi rentrer
+  (ai_war.short_of_food) ; une partie solo a SA sauvegarde (Play.save_path,
+  persist.new_save_path), jamais ecrasee par une autre ; la musique et les
+  sons sont de l'interface (music.py, etage presentation), jamais dans la
+  simulation ; un fichier de data nouveau (data/music) est ajoute aux
+  "datas" des deux specs ; un reglage du joueur va dans reglages.json.
   A FAIRE plus tard (pistes) : des tournants pour les ages suivants
   (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
   les evenements ; le siege des ages suivants (beliers, echelles, tours :

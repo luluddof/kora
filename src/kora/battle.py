@@ -907,23 +907,6 @@ def log_suffix(state, res: Result, me: int | None = None) -> str:
     return ""
 
 
-def odds(state, band: Band, prey: Band) -> tuple[float, str]:
-    """Rapport de force estime d'un raid de `band` sur `prey` (fiche de
-    bande) : (rapport, mot)."""
-    mine = side_force(state, band)
-    theirs = defense_force(state, prey)
-    ratio = mine / max(0.1, theirs)
-    if ratio >= 2.0:
-        word = "ecrasant"
-    elif ratio >= 1.3:
-        word = "favorable"
-    elif ratio >= 0.85:
-        word = "incertain"
-    else:
-        word = "defavorable"
-    return ratio, word
-
-
 # --- sauvegarde -----------------------------------------------------------------------------
 
 

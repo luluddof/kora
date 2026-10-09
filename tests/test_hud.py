@@ -139,7 +139,7 @@ def test_journal_panel_has_filters_and_sort():
 def test_escape_menu_has_resume_save_main_menu_quit():
     layout = menu_layout(1280, 720)
     keys = set(layout["items"])
-    assert keys == {"reprendre", "sauvegarder", "principal", "quitter"}
+    assert keys == {"reprendre", "sauvegarder", "copie", "reglages", "principal", "quitter"}
     rx, ry, rw, rh = layout["items"]["reprendre"]
     assert menu_hit(layout, rx + 2, ry + 2) == "reprendre"
     sx, sy, sw, sh = layout["items"]["sauvegarder"]

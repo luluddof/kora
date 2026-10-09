@@ -6,6 +6,7 @@ from src.kora.ai_war import (
     go_to_war,
     plan_raid,
     recheck_hunts,
+    short_of_food,
     start_plan,
     unsafe_spots,
 )
@@ -604,6 +605,9 @@ def _call_ost(state: GameState, army: Band) -> None:
 
 def _besiege(state: GameState, band: Band, weeks: float) -> bool:
     if not siege.can_besiege(state, band) or weeks < AI_SIEGE_FOOD_WEEKS:
+        return False
+    # Tenir un siege : des vivres pour rester, puis rentrer (ai_war).
+    if short_of_food(state, band) or weeks < villages.weeks_home(state, band) + AI_SIEGE_FOOD_WEEKS:
         return False
     best, best_d = None, None
     for prey in bands_near(state, band.position, AI_SIEGE_REACH):

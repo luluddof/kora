@@ -23,6 +23,7 @@ from src.kora import (
     places,
     render_battle,
     render_menu,
+    music,
     render_tech,
     render_treasury,
     screens,
@@ -46,13 +47,16 @@ from src.kora.types import Hex
 from src.kora.log import FILTER_ALL, LogKind
 from src.kora.persist import (
     default_save_path,
+    latest_save,
+    list_saves,
+    new_save_path,
+    trash_save,
     load_game,
     load_prefs,
     multi_save_path,
     peek_save,
     save_game,
     save_prefs,
-    set_aside_save,
 )
 from src.kora.render import Renderer
 from src.kora.layout import (
@@ -74,12 +78,12 @@ from src.kora.layout import (
     zoom_at,
 )
 from src.kora.sim import _default_world, consume_ticks, fight_at, hex_inspect, new_game, player_home_hex
-from src.kora.gamestate import human_dead, log_of, note
+from src.kora.gamestate import human_dead, log_of
 from src.kora.vision import is_explored, is_visible, vision_of
 from src.kora.situations import SPECS
 from src.kora.render_situations import banner_hit, window_hit
 from src.kora.render_village import found_hit
-from src.kora.render_panels import army_ready, commerce_ready
+from src.kora.render_panels import army_ready, commerce_ready, wars_ready
 
 
 TOAST_LIFE = 4.0
@@ -236,13 +240,15 @@ def _start_view(state, selected, sw: int, sh: int):
     return state, selected, 0.0, 0.0, zoom, yaw, pitch
 
 
-def _continue_boot(worlds, sw: int, sh: int):
-    """La partie sauvegardee ; None si elle ne se lit pas (elle est alors
-    mise de cote, jamais ecrasee)."""
-    path = default_save_path()
+def _continue_boot(worlds, sw: int, sh: int, path=None):
+    """Une partie sauvegardee (par defaut la plus recente qui se lit :
+    persist.latest_save) ; None si elle ne se lit pas (elle reste ou elle
+    est : le menu Charger la montre)."""
+    path = path or latest_save()
+    if path is None:
+        return None
     loaded = load_game(path, worlds.fresh())
     if loaded is None:
-        set_aside_save(path)
         return None
     state, view = loaded
     return _start_view(state, _refresh_selection(state, view.get("selected")), sw, sh)
@@ -255,15 +261,12 @@ def _fresh_seed() -> int:
 
 
 def _new_boot(worlds, setup: dict | None, sw: int, sh: int):
-    """Une partie neuve (menu de demarrage) ; l'ancienne sauvegarde est
-    mise de cote, pas effacee."""
-    moved = set_aside_save(default_save_path())
+    """Une partie neuve (menu de demarrage) : elle aura sa propre
+    sauvegarde (persist.new_save_path) ; les autres restent."""
     # Chaque partie tire son monde (les savoirs tires, draws.py).
     setup = dict(setup or {})
     setup.setdefault("seed", _fresh_seed())
     state = new_game(worlds.fresh(), setup=setup)
-    if moved is not None:
-        note(state, LogKind.DECOUVERTE, f"Ancienne partie mise de côté : {moved.name}")
     return _start_view(state, _first_player_band(state), sw, sh)
 
 
@@ -344,13 +347,16 @@ def run() -> None:
     _loading(renderer, "Kora : la carte du monde se prépare...")
     worlds = _Worlds()
     message = ""
+    # La musique (music.py) : une pour tout le programme, menu et parties.
+    director = music.Director(load_prefs())
     while True:
-        choice = title_screen(renderer, clock, worlds, message)
+        choice = title_screen(renderer, clock, worlds, message, director)
         message = ""
         sw, sh = renderer.screen.get_size()
         if choice[0] == "quit":
             break
         mp = None
+        save_path = None
         if choice[0] in ("host", "join", "resume_mp"):
             out = _multiplayer(renderer, clock, worlds, choice)
             if out[0] == "quit":
@@ -362,15 +368,17 @@ def run() -> None:
             boot = _start_view(state, _first_player_band(state), sw, sh)
         else:
             _loading(renderer, "La partie se prépare...")
-            if choice[0] == "continue":
-                boot = _continue_boot(worlds, sw, sh)
+            if choice[0] in ("continue", "load"):
+                save_path = latest_save() if choice[0] == "continue" else choice[1]
+                boot = _continue_boot(worlds, sw, sh, save_path)
                 if boot is None:
-                    message = "La sauvegarde ne se lit pas (autre version ?) : elle est mise de côté."
+                    message = "Cette sauvegarde ne se lit pas (autre version du jeu ?)."
                     continue
             else:
+                save_path = new_save_path()
                 boot = _new_boot(worlds, choice[1], sw, sh)
         _settle_memory()
-        outcome, message = play(renderer, clock, boot, mp)
+        outcome, message = play(renderer, clock, boot, mp, save_path, director)
         if outcome == "quit":
             break
     pygame.quit()
@@ -401,26 +409,94 @@ def _prefilled(setup: dict) -> dict:
     return setup
 
 
-def title_screen(renderer, clock, worlds, message: str = ""):
-    """Le menu de demarrage, la creation du peuple, le menu du multijoueur.
-    Rend ("continue",), ("new", setup), ("host", setup), ("join", setup),
-    ("resume_mp",) ou ("quit",)."""
+class Settings:
+    """La fenetre des Reglages (render_menu.draw_settings) : le volume de la
+    musique (curseur, - et +), la couper, l'ecouter ; enregistres dans
+    reglages.json a chaque changement. Commune au menu de demarrage et au
+    menu de la partie."""
+
+    def __init__(self, director) -> None:
+        self.director = director
+        self.open = False
+        self.drag = False
+
+    def show(self) -> None:
+        self.open = True
+
+    def close(self) -> None:
+        self.open = False
+        self.drag = False
+        self.director.listening = False
+
+    def _set(self, volume: float, on: bool | None = None) -> None:
+        self.director.set_volume(volume, on)
+        save_prefs(load_prefs() | self.director.prefs())
+
+    def handle(self, renderer, event) -> bool:
+        """Traite l'evenement si la fenetre est ouverte (True : il est pris)."""
+        if not self.open:
+            return False
+        lay = getattr(renderer, "settings_hits", None) or {}
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.close()
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and lay:
+            hit = render_menu.settings_hit(lay, *event.pos)
+            d = self.director
+            if hit in ("close", "dehors"):
+                self.close()
+            elif hit == "minus":
+                self._set(round(d.volume - render_menu.VOLUME_STEP, 2))
+            elif hit == "plus":
+                self._set(round(d.volume + render_menu.VOLUME_STEP, 2))
+            elif hit == "toggle":
+                self._set(d.volume, not d.on)
+            elif hit == "listen" and d.on:
+                d.listening = not d.listening
+            elif hit == "track":
+                self.drag = True
+                self._set(render_menu.settings_value(lay, event.pos[0]))
+        elif event.type == pygame.MOUSEMOTION and self.drag and lay:
+            self.director.set_volume(render_menu.settings_value(lay, event.pos[0]))
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.drag:
+            self.drag = False
+            self._set(self.director.volume)
+        return True
+
+    def draw(self, renderer) -> None:
+        if self.open:
+            d = self.director
+            render_menu.draw_settings(renderer, d.volume, d.on, d.listening)
+
+
+def title_screen(renderer, clock, worlds, message: str = "", director=None):
+    """Le menu de demarrage, la creation du peuple, les sauvegardes, le menu
+    du multijoueur. Rend ("continue",), ("load", fichier), ("new", setup),
+    ("host", setup), ("join", setup), ("resume_mp",) ou ("quit",)."""
 
     scene = render_menu.TitleScene(worlds.shown)
-    info = peek_save(default_save_path())
+    saves = list_saves()
+    latest = next((s for s in saves if s["info"] is not None), None)
+    info = latest["info"] if latest is not None else None
     multi = peek_save(multi_save_path())
+    load = {"scroll": 0, "confirm": None, "message": ""}
     rng = random.Random()
     setup = None
     page = "title"
     hint = ""
     t = 0.0
+    director = director or music.Director(load_prefs())
+    settings = Settings(director)
     while True:
-        t += clock.tick(60) / 1000.0
+        dt = clock.tick(60) / 1000.0
+        t += dt
+        director.update(None, dt)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return ("quit",)
             if event.type == pygame.VIDEORESIZE:
                 renderer.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                continue
+            if settings.handle(renderer, event):
                 continue
             if setup is not None:
                 mode = setup.get("mode", "solo")
@@ -467,6 +543,33 @@ def title_screen(renderer, clock, worlds, message: str = ""):
                     elif hit == "reprendre":
                         return ("resume_mp",)
                 continue
+            if page == "load":
+                # Charger une partie : jouer, supprimer (un second clic), defiler.
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    page = "title"
+                elif event.type == pygame.MOUSEWHEEL:
+                    load["scroll"] = max(0, load["scroll"] - event.y)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    hits = getattr(renderer, "load_hits", None)
+                    hit = render_menu.load_hit(hits, *event.pos, saves) if hits else None
+                    if hit == "retour":
+                        page = "title"
+                    elif hit and hit.startswith("jouer:"):
+                        return ("load", saves[int(hit[6:])]["path"])
+                    elif hit and hit.startswith("suppr:"):
+                        i = int(hit[6:])
+                        if load["confirm"] != i:
+                            load["confirm"] = i
+                        else:
+                            load["confirm"] = None
+                            gone = saves[i]["path"]
+                            load["message"] = f"{gone.name} est à la corbeille." if trash_save(gone) else "Impossible de la supprimer."
+                            saves = list_saves()
+                            latest = next((s for s in saves if s["info"] is not None), None)
+                            info = latest["info"] if latest is not None else None
+                    else:
+                        load["confirm"] = None
+                continue
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return ("quit",)
@@ -474,9 +577,16 @@ def title_screen(renderer, clock, worlds, message: str = ""):
                     return ("continue",)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 hits = getattr(renderer, "title_hits", None)
-                hit = render_menu.title_hit(hits, *event.pos, can_continue=info is not None) if hits else None
+                hit = render_menu.title_hit(hits, *event.pos, can_continue=info is not None, can_load=bool(saves)) if hits else None
                 if hit == "continuer":
                     return ("continue",)
+                if hit == "charger":
+                    page = "load"
+                    load = {"scroll": 0, "confirm": None, "message": ""}
+                    continue
+                if hit == "reglages":
+                    settings.show()
+                    continue
                 if hit == "nouvelle":
                     setup = _prefilled(render_menu.new_setup(rng))
                     hint = ""
@@ -487,10 +597,13 @@ def title_screen(renderer, clock, worlds, message: str = ""):
                     return ("quit",)
         if page == "mp":
             render_menu.draw_mp_menu(renderer, scene, multi, t, message)
+        elif page == "load":
+            render_menu.draw_load(renderer, scene, saves, t, load["scroll"], load["confirm"], load["message"])
         else:
-            render_menu.draw_title(renderer, scene, info, t, message)
+            render_menu.draw_title(renderer, scene, info, t, message, len(saves))
         if setup is not None:
             render_menu.draw_setup(renderer, setup, t, info if setup.get("mode", "solo") == "solo" else None, hint)
+        settings.draw(renderer)
         pygame.display.flip()
 
 
@@ -626,8 +739,11 @@ class Play:
     ecran, les ordres) ; run() : la boucle, _on_event : un evenement,
     _frame : une image."""
 
-    def __init__(self, renderer, clock, boot, mp=None) -> None:
+    def __init__(self, renderer, clock, boot, mp=None, save_path=None, director=None) -> None:
         self.renderer, self.clock, self.boot, self.mp = renderer, clock, boot, mp
+        # La musique de guerre (music.py) et la fenetre des reglages.
+        self.director = director or music.Director(load_prefs())
+        self.settings = Settings(self.director)
         self.screen = self.renderer.screen
         self.state, self.selected, self.camera_x, self.camera_y, self.zoom, self.globe_yaw, self.globe_pitch = self.boot
         self.renderer.map_mode = "zones"
@@ -646,9 +762,11 @@ class Play:
         # bouger sur une bande etrangere, avec une de vos bandes choisie,
         # l'attaque (au relachement).
         self.right_press = None
+        # Le rapport de force au survol d'un etranger (orders.attack_preview).
+        self.preview_cache: dict = {}
         self.acc = 0.0
         # En multijoueur, seul l'hote sauvegarde (a part : la partie solo reste).
-        self.save_path = multi_save_path() if self.mp is not None else default_save_path()
+        self.save_path = multi_save_path() if self.mp is not None else (save_path or default_save_path())
         self.last_auto = -1
         # Multijoueur : le message qu'on ecrit (Entree), None sinon.
         self.chat_text = None
@@ -669,7 +787,10 @@ class Play:
         self.now = 0.0
 
         # Les clics de chaque grand ecran (screens.SCREENS).
-        self.screen_clicks = {"village": self.village_click, "commerce": self.trade_click, "tresor": self.treasury_click, "pays": self.country_click}
+        self.screen_clicks = {
+            "village": self.village_click, "commerce": self.trade_click, "tresor": self.treasury_click, "pays": self.country_click,
+            "guerres": self.wars_click,
+        }
         assert set(self.screen_clicks) == set(screens.BY_NAME)
 
 
@@ -684,6 +805,8 @@ class Play:
 
     def leave(self) -> None:
         self.persist()
+        self.settings.close()
+        self.director.stop(1.5)
         if self.mp is not None:
             self.mp.close()
 
@@ -818,6 +941,47 @@ class Play:
                 return
             self.ui["law_confirm"] = None
             self.issue(commands.make(self.me(), "law", law_id, option))
+
+    def wars_click(self, choice) -> None:
+        """Clic dans l'ecran des guerres : choisir une guerre, voir une
+        troupe, un village ou un combat ; exiger la soumission, proposer la
+        treve (commands.py, "diplo") ; leur fiche (Peuples)."""
+        if choice == "wclose":
+            screens.close_all(self.ui)
+            return
+        kind, _sep, rest = choice.partition(":")
+        if kind == "wpick":
+            self.ui["war_pick"] = int(rest)
+        elif kind == "wsee":
+            band = self.state.bands.get(int(rest))
+            if band is not None:
+                screens.close_all(self.ui)
+                if band.tribe_id == self.state.viewer:
+                    self.selected = band.id
+                self.globe_yaw, self.globe_pitch = _look_hex(self.state, band.position)
+        elif kind == "wsite":
+            site = self.state.sites.get(int(rest))
+            if site is not None:
+                screens.close_all(self.ui)
+                self.show_place(site.hex)
+        elif kind == "whex":
+            q, r = rest.split(":")
+            screens.close_all(self.ui)
+            self.show_place(Hex(int(q), int(r)))
+        elif kind == "wact":
+            action, tid = rest.split(":")
+            tid = int(tid)
+            if action == "fiche":
+                screens.close_all(self.ui)
+                self.open_diplomacy(tid)
+                return
+            verdict = diplo.evaluate(self.state, self.state.viewer, tid, action)
+            if verdict.blocked:
+                self.toast(verdict.blocked)
+            elif diplo.on_cooldown(self.state, self.state.viewer, tid, action):
+                self.toast("Vous avez déjà proposé cela récemment.")
+            else:
+                self.issue(commands.make(self.me(), "diplo", tid, action))
 
     def set_slider(self, key: str, value) -> None:
         """Un curseur du budget : l'ordre ne part que si la valeur change."""
@@ -1104,6 +1268,17 @@ class Play:
         self.issue(commands.make(self.me(), "goto", self.selected, hx.q, hx.r))
         return True
 
+    def _attack_preview(self, foe_id: int):
+        """Le rapport de force sous la souris : recalcule quand la bande, la
+        proie ou la semaine changent (il cherche un chemin)."""
+        band, prey = self.state.bands.get(self.selected), self.state.bands.get(foe_id)
+        if band is None or prey is None:
+            return None
+        key = (band.id, prey.id, band.position, prey.position, band.population, prey.population, self.state.step)
+        if self.preview_cache.get("key") != key:
+            self.preview_cache = {"key": key, "value": orders.attack_preview(self.state, band.id, prey.id)}
+        return self.preview_cache["value"]
+
     def _foe_under(self, mx: int, my: int):
         """La bande etrangere sous la souris, si une de vos bandes est
         choisie (le clic droit l'attaquera) ; None sinon."""
@@ -1323,6 +1498,8 @@ class Play:
                 out = self._on_event(event)
                 if out is not None:
                     return out
+            # La musique de guerre : elle monte quand la guerre vous touche.
+            self.director.update(self.state, dt)
             out = self._frame(dt)
             if out is not None:
                 return out
@@ -1333,6 +1510,8 @@ class Play:
         if event.type == pygame.QUIT:
             self.leave()
             return "quit", ""
+        elif self.settings.handle(self.renderer, event):
+            return None
         elif event.type == pygame.KEYDOWN and self.chat_text is not None:
             # La discussion (multijoueur) : Entree envoie, Echap renonce.
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
@@ -1365,6 +1544,18 @@ class Play:
                     else:
                         self.persist()
                         self.toast("Partie sauvegardée.")
+                elif choice == "copie":
+                    if self.mp is not None:
+                        self.toast("À plusieurs, c'est l'hôte qui garde la partie : pas de copie.")
+                    else:
+                        # Une copie a cote (Charger une partie) ; on continue
+                        # de jouer dans la sauvegarde de cette partie.
+                        self.persist()
+                        copy = new_save_path()
+                        save_game(self.state, copy, _view(self.camera_x, self.camera_y, self.zoom, self.selected, self.globe_yaw, self.globe_pitch))
+                        self.toast(f"Copie enregistrée (an {self.state.clock.year}) : menu principal, Charger une partie.")
+                elif choice == "reglages":
+                    self.settings.show()
                 elif choice == "principal":
                     self.leave()
                     return "menu", ""
@@ -1531,6 +1722,11 @@ class Play:
             self.open_screen("tresor", toggle=True)
         elif event.key == pygame.K_z:
             self.renderer.map_mode = "relief" if self.renderer.map_mode == "zones" else "zones"
+        elif event.key == pygame.K_w:
+            if not wars_ready(self.state):
+                self.toast("Les guerres se déclarent avec Dons et palabres (la diplomatie).")
+                return None
+            self.open_screen("guerres", toggle=True)
         elif event.key == pygame.K_n:
             if not laws.available(self.state, self.state.viewer):
                 self.toast("Les lois viennent avec Valeurs d'échange ou Nombres additifs.")
@@ -1801,6 +1997,14 @@ class Play:
             )
             if hx is not None:
                 hover_info = hex_inspect(self.state, hx)
+        # Une de vos bandes choisie, la souris sur un etranger : ce que
+        # donnerait l'attaque (orders.attack_preview), a la place de la case.
+        self.ui["attack_preview"] = None
+        foe = self._foe_under(mx, my) if not blocked and side_hit(self.renderer.side_hits, mx, my) is None else None
+        if foe is not None:
+            self.ui["attack_preview"] = self._attack_preview(foe)
+            if self.ui["attack_preview"] is not None:
+                hover_info = None
         if self.ui["situation_open"] is not None and situations.find(self.state, self.ui["situation_open"]) is None:
             self.close_situation()
         self.renderer.draw(
@@ -1824,10 +2028,12 @@ class Play:
         )
         if self.mp is not None:
             render_menu.draw_mp_overlay(self.renderer, self.mp, self.state, self.chat_text)
+        self.settings.draw(self.renderer)
         pygame.display.flip()
 
 
-def play(renderer, clock, boot, mp=None) -> tuple[str, str]:
+def play(renderer, clock, boot, mp=None, save_path=None, director=None) -> tuple[str, str]:
     """Une partie, jusqu'au retour au menu ("menu", message) ou au depart
-    ("quit", ""). mp : la session multijoueur (session.py), sinon solo."""
-    return Play(renderer, clock, boot, mp).run()
+    ("quit", ""). mp : la session multijoueur (session.py), sinon solo ;
+    save_path : sa sauvegarde (par defaut kora.json) ; director : la musique."""
+    return Play(renderer, clock, boot, mp, save_path, director).run()

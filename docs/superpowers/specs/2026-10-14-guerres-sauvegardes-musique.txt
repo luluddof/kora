@@ -1,0 +1,159 @@
+Kora - L'ecran des guerres, le rapport de force, les vivres, les sauvegardes, la musique
+=====================================================================================
+Date : 2026-10-14. Statut : FAIT (version 0.16.0).
+
+Ses mots (raccourcis), sur les propositions G1-G9 (spec 2026-10-13) :
+  G2 (plusieurs sauvegardes) : oui. G4 (un ecran des guerres) : oui.
+  G6 (les troupes IA et leurs vivres) : oui. G9 (le rapport de force avant
+  l'attaque) : oui. G1, G3, G8 : plus tard. G5 : il dira comment.
+  G7 : "je ne comprends pas" (explique ci-dessous, section 6).
+  "Reflechis bien et ne les implemente pas a la va-vite : de la qualite, et
+  que ca s'integre bien au jeu."
+  Puis : "Pour les guerres ou le joueur est implique, la musique Casus
+  bellis (du telechargement) ; une boucle ou l'on ne remarque pas la
+  transition ; elle arrive seulement en cas de guerre ou le joueur est
+  implique, et part apres ; des reglages pour le volume de la musique."
+
+
+1. G9 : LE RAPPORT DE FORCE AVANT L'ATTAQUE (orders.attack_preview)
+-------------------------------------------------------------------
+  Une de vos bandes choisie, la souris sur une bande etrangere (ce que le
+  clic droit attaquerait) : une fiche a cote de la souris, a la place de
+  celle de la case :
+    "Attaquer les Die (Rali) : clic droit"
+    ce qui l'empeche (en rouge) : en paix avec un peuple qui a la
+      diplomatie (declarez d'abord la guerre), un tributaire, un village ;
+    le RAPPORT : "0,61 contre 1, defavorable" (vert, ambre, rouge) ;
+    vos combattants (et vos bandes en renfort pres d'eux), les leurs (et
+    leurs renforts) ; leur ABRI (terrain, pays connu, palissade, tour,
+    enceintes, torches, siege, chacun avec son multiplicateur) ; le MORAL
+    des deux camps ; le TRAJET (en semaines, par le vrai chemin) et, pour
+    une troupe, les VIVRES et le RETOUR au village ("Vos vivres ne
+    tiendront pas l'aller et le retour : la troupe aura faim") ; un clan
+    peut fuir ; un pacte : ce serait une trahison.
+  Le rapport est compte EXACTEMENT comme l'IA le compte (ai_war.odds_at :
+  la force la ou le combat aura lieu, renforts et moral compris, contre la
+  defense de la proie) ; la fiche d'une bande en marche ("Raid sur les X :
+  rapport de force...") dit le meme chiffre. (battle.odds, l'ancienne
+  estimation qui ne comptait pas les renforts pres de la cible, est
+  retiree.) Le calcul (il cherche un chemin) n'est refait que quand la
+  bande, la proie ou la semaine changent.
+
+
+2. G6 : LES VIVRES DE CAMPAGNE (ai_war.short_of_food, villages.warn_supply)
+--------------------------------------------------------------------------
+  Vu en essai : une troupe IA poursuivait un clan qui fuyait a 50 cases et
+  mourait de faim en route. Maintenant :
+  - une troupe IA ne part en raid que si ses vivres tiennent l'aller, le
+    retour au village et 2 semaines (SUPPLY_MARGIN) ;
+  - en route (une proie qui fuit l'entraine plus loin), des que ses vivres
+    ne tiennent plus que cela, elle renonce et RENTRE (dissoute a pied) ;
+  - un siege ne se tient que tant qu'il reste de quoi rentrer.
+  Pour le joueur, rien n'est decide a sa place, mais le JOURNAL previent
+  (une fois toutes les 8 semaines) : "La troupe de Urmaear n'a plus que 2
+  semaines de vivres, et Lisenra est a 4 semaines : rentrez, ou elle aura
+  faim." ; la fiche d'attaque le dit avant le depart.
+  L'estimation de marche (bands.weeks_between) : la distance, a 12 points
+  par case (le cout moyen d'une case de pays), 40 points par semaine. Les
+  vivres de campagne (bands.campaign_weeks) : le grenier de la troupe, plus
+  ce qu'elle trouve sur le pays ou elle est (au moins 40 % de sa ration
+  vient de ses vivres). Une premiere version qui ne comptait que les vivres
+  emportes bloquait presque tous les raids : corrigee avant de livrer.
+  Equilibrage (robot joueur et IA) :
+    SA partie, 30 ans (0.14 -> 0.16) : population 17 275 -> 20 943 (les
+      troupes ne meurent plus de faim en route), combats 43 -> 29,
+      soumissions ou changements de suzerain 21 -> 15, sieges 7 -> 3.
+    Partie neuve, 31 ans (0.15 -> 0.16) : population 6 593 -> 6 767,
+      villages 43 -> 46, 6 tributaires soumis par la guerre.
+
+
+3. G4 : L'ECRAN DES GUERRES (wars.py, render_wars.py ; touche W, onglet Guerres)
+-------------------------------------------------------------------------------
+  L'onglet "Guerres" (icone des haches croisees) vient avec la diplomatie
+  (Dons et palabres) ou une guerre ; il respire quand on vient de vous
+  declarer la guerre (8 semaines).
+  - A GAUCHE, VOS GUERRES : une carte par PAYS ennemi (une guerre se fait
+    contre tout un pays) : depuis quand, l'avantage, le but ("Pour les
+    soumettre", "Ils veulent vous soumettre") ; puis AILLEURS DANS LE MONDE,
+    les guerres entre les pays que vous connaissez.
+  - A DROITE, la guerre choisie : qui l'a declaree ; la BARRE DE
+    L'AVANTAGE (de -100 a +100, et ce qui le fait : +10 par combat gagne,
+    -10 par combat perdu, +30 par village pris, +2 par semaine de siege) ;
+    les buts ; les deux CAMPS (chaque peuple, sa force) ; EN CAMPAGNE : vos
+    troupes et celles de votre pays, et celles de l'ennemi que vous VOYEZ
+    (le brouillard compte), avec ce qu'elles font (marche sur Rali,
+    assiege, rejoint l'ost, rentre, au village) et "Voir" ; les SIEGES en
+    cours ; les DERNIERS COMBATS (six mois) avec "Voir".
+  - EN BAS : exiger la soumission (de votre but, sinon de leur suzerain),
+    proposer une treve, leur fiche (Peuples) - chacun dit s'ils
+    accepteraient, et pourquoi au survol.
+  CORRIGE au passage : l'avantage "+2 par semaine de siege" (annonce en
+  0.14) n'etait pas compte ; il l'est (siege.weekly).
+
+
+4. G2 : PLUSIEURS SAUVEGARDES (persist.list_saves, new_save_path, trash_save)
+----------------------------------------------------------------------------
+  - Chaque partie a SA sauvegarde : une partie neuve en ouvre une nouvelle
+    (partie-<date>.json) au lieu de mettre l'ancienne de cote ; l'ancienne
+    kora.json reste la sauvegarde de la partie d'avant (et les "anciennes"
+    mises de cote sont toutes la, elles aussi).
+  - Le menu : "Continuer" reprend la plus recente qui se lit ; "Charger une
+    partie (N)" montre toutes les sauvegardes, la plus recente d'abord :
+    le peuple, l'annee, les gens, les villages, la date, la version ;
+    Jouer ; Supprimer (un second clic confirme ; la sauvegarde va a la
+    corbeille, un dossier a cote : on peut la recuperer a la main) ; une
+    sauvegarde qui ne se lit pas (autre version) est montree, grisee. La
+    molette fait defiler.
+  - Dans la partie (Echap) : "Sauvegarder" (dans sa sauvegarde) et
+    "Sauvegarder une copie" (une copie a cote, qu'on retrouve dans Charger ;
+    on continue de jouer dans la sienne). A plusieurs, c'est l'hote qui
+    garde la partie (kora-multi.json, a part, comme avant).
+
+
+5. LA MUSIQUE DE GUERRE ET LES REGLAGES (music.py, tools/boucle_musique.py)
+--------------------------------------------------------------------------
+  - "Casus bellis" (son fichier, 38 Mo en WAV) devient data/music/
+    casus_bellis.ogg (2,8 Mo) : une BOUCLE SANS COUTURE faite par
+    tools/boucle_musique.py. Le jeu faisant lui-meme le fondu d'entree et
+    de sortie, la boucle prend le coeur du morceau (de 6,2 s, apres sa
+    montee, a 183,1 s, avant son extinction : 2 min 57) ; la fin a ete
+    choisie la ou les 2 secondes qui suivent ressemblent le plus aux 2
+    premieres (meme accord, meme temps du rythme : ressemblance 0,89),
+    calee a l'echantillon pres, puis un fondu enchaine a puissance egale.
+    Mesure : au raccord, le saut d'echantillon est de 0,016 ; un moment
+    ordinaire du morceau saute de 0,082 (99e centile) : le raccord est plus
+    doux que la musique elle-meme. Le son est joue en entier (pas en flux) :
+    le melangeur le reprend a l'echantillon pres.
+  - Elle ne joue QUE si vous etes en guerre : une guerre declaree qui vous
+    implique, ou une bataille ou se battent vos gens. Elle monte en 4 s,
+    et quand la guerre finit (treve, soumission, guerre eteinte) elle
+    attend 3 s puis s'eteint en 6 s. Elle s'arrete en revenant au menu.
+  - LES REGLAGES (menu de demarrage et menu Echap) : le volume de la
+    musique (curseur, - et +, de 0 a 100 %), la couper / la remettre,
+    "Ecouter" pour l'essayer. Ils sont gardes (reglages.json).
+  - Sans carte son, rien ne joue et rien ne plante. La partie ne change pas
+    (empreinte identique ; le multijoueur aussi).
+
+
+6. G7, EXPLIQUE
+---------------
+  Le grain des disettes (0.13) permet a un village affame d'acheter du
+  grain. En essai, sur 35 ans de SA partie, les villages IA en ont achete
+  environ 1 200 fois, toujours en vraie faim : ils vivent au bord de la
+  famine, sans reserves avant l'hiver. Proposition : leur apprendre a
+  gerer leur grenier (semer plus, garder de quoi passer l'hiver, lever
+  moins de troupes quand il est bas). A son choix.
+
+
+7. VERIFICATIONS
+----------------
+  Tests : test_wars_screen (le front contre tout un pays, les autres
+  guerres, l'ecran ouvert par W et ses boutons, la treve proposee, la fiche
+  d'attaque et ce qui l'empeche, la troupe IA qui ne poursuit pas au-dela
+  de ses vivres, l'avertissement au joueur), test_saves_music (une
+  sauvegarde par partie, Continuer, l'illisible montree, la corbeille, la
+  page Charger, la musique qui ne joue qu'en guerre et attend avant de
+  partir, les reglages qui changent le volume et s'en souviennent),
+  test_battle (le rapport de force), test_hud (le menu Echap). Empreinte
+  identique ; multijoueur identique, avec les exe aussi (la musique y est
+  embarquee).

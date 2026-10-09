@@ -278,6 +278,7 @@ class Renderer:
         self.trade_hits: dict = {}
         self.treasury_hits: dict = {}
         self.country_hits: dict = {}
+        self.wars_hits: dict = {}
         self.trade_partners: list = []
         self.trade_routes: list = []
         self.trade_candidates: list = []
@@ -477,6 +478,10 @@ class Renderer:
         self.draw_toasts(toasts or [], extra_y)
         self.draw_inspect(hover_info, pin_info)
         self.draw_band_card(state, selected_id)
+        # Avant l'attaque : la fiche du rapport de force, par-dessus la carte
+        # de la bande choisie (la souris est sur la carte du monde).
+        if ui is not None and ui.get("attack_preview"):
+            self.draw_attack_preview(ui["attack_preview"])
         # Les cartes d'evenement et le bandeau des situations restent sous
         # les panneaux ouverts.
         render_panels.draw_event_cards(self, state, ui)
@@ -1144,12 +1149,14 @@ class Renderer:
         commerce = render_panels.commerce_ready(state)
         treasury = money.has_money(state, state.viewer)
         country = bool(laws.available(state, state.viewer))
+        at_war = render_panels.wars_ready(state)
         if panel == "savoirs" and ui.get("tech_cam") is None:
             # Premiere ouverture : la vue se pose sur la recherche en cours.
             ui["tech_cam"] = render_tech.focus_cam(state, w, h)
         layout = side_layout(
             w, h, panel=panel if (panel != "armee" or army) else None, era=ui.get("era", 0), army=army, commerce=commerce,
             tech_cam=ui.get("tech_cam"), tech_tab=ui.get("tech_tab", "arbre"), treasury=treasury, country=country,
+            wars=at_war,
         )
         if layout.get("tech") is not None:
             ui["tech_cam"] = layout["tech"]["cam"]
@@ -1187,6 +1194,8 @@ class Renderer:
             tribe_ = state.tribes.get(state.viewer)
             waiting = tribe_ is not None and laws.known(state, state.viewer, "base") and not tribe_.base
             self._draw_tab(tabs["pays"], "Pays", bool(ui.get("country_open")), waiting, "balance")
+        if "guerres" in tabs:
+            self._draw_tab(tabs["guerres"], "Guerres", bool(ui.get("wars_open")), render_panels.wars_alert(state), "combat")
         self._draw_tab(tabs["journal"], "Journal", panel == "journal", False, "journal")
 
     _TECH_COLORS = {
@@ -1302,6 +1311,18 @@ class Renderer:
             if placed:
                 self.toast_hits.append(((x, y, cw, th), toast))
             y -= 6
+
+    def draw_attack_preview(self, preview: dict) -> None:
+        """Avant l'attaque (orders.attack_preview) : une fiche a cote de la
+        souris ; le rapport en tete, en couleur ; ce qui l'empeche en rouge."""
+        mx, my = pygame.mouse.get_pos()
+        tones = {"bon": C.bon, "mauvais": C.mauvais, "alerte": C.alerte, "note": C.lin}
+        lines = [(preview["title"], C.os, "petit_gras")]
+        if preview.get("blocked"):
+            lines.append((preview["blocked"], C.mauvais, "petit_gras"))
+        for i, (text, tone) in enumerate(preview["rows"]):
+            lines.append((text, tones.get(tone, C.lin), "petit_gras" if i == 0 else "petit"))
+        theme.tooltip(self.screen, lines, mx + 18, my + 18, 430)
 
     def draw_inspect(self, hover_info: dict | None, pin_info: dict | None) -> None:
         w, h = self.screen.get_size()

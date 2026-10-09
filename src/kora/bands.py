@@ -15,10 +15,10 @@ from __future__ import annotations
 from src.kora import population, systems, tech, units
 from src.kora.gamestate import GameState, is_human, note
 from src.kora.log import LogKind
-from src.kora.path import astar
+from src.kora.path import MOVE_POINTS_PER_WEEK, astar
 from src.kora.peoples import MINOR_BAND_CUT, civ_of, civ_villages
 from src.kora.types import Band, Hex, Order, OrderKind, stay_order
-from src.kora.world import enter_cost_for
+from src.kora.world import enter_cost_for, food_production
 
 
 FORAGE_RADIUS = 2
@@ -123,6 +123,38 @@ def _tribe_pop(state: GameState, tribe_id: int) -> int:
         for b in state.bands.values()
         if b.tribe_id == tribe_id and b.population > 0
     )
+
+
+# --- les vivres d'une campagne ----------------------------------------------------
+# Une estimation rapide (sans chemin) des semaines de marche : WALK_COST
+# points par case, le cout moyen d'une case de pays (plaine 10, foret 20...).
+WALK_COST = 12
+
+
+def weeks_between(state: GameState, a, b) -> int:
+    """Semaines de marche estimees entre deux cases (au moins 0)."""
+    d = state.world.distance(a, b)
+    return -(-d * WALK_COST // MOVE_POINTS_PER_WEEK)
+
+
+def food_weeks(band: Band) -> float:
+    """Les semaines que la bande tient avec ses vivres (sans rien trouver)."""
+    return band.stock / max(1, band.population)
+
+
+# En campagne, on vit en partie du pays : on puise au moins CAMPAIGN_EAT de
+# sa ration dans ses vivres (la marche, la troupe nombreuse, le pays deja
+# fouille).
+CAMPAIGN_EAT = 0.4
+
+
+def campaign_weeks(state: GameState, band: Band) -> float:
+    """Les semaines que la bande tient en campagne : ses vivres, plus ce
+    qu'elle trouve sur le pays ou elle est (une estimation)."""
+    know = bonus_of(state, band.tribe_id)
+    found = sum(food_production(state.world, h, state.world.hex_season(h), bonus=know) for h in forage_hexes(state, band))
+    need = max(CAMPAIGN_EAT * band.population, band.population - found)
+    return band.stock / max(1.0, need)
 
 
 def stock_max(band: Band, state: GameState | None = None) -> float:

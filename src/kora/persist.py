@@ -7,6 +7,7 @@ import sys
 import time
 from pathlib import Path
 
+from src.kora import __version__
 from src.kora import battle, chiefs, diplo, draws, events, memory, records, sites, situations, tech, turning, villages
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LOG_CAP, LogEntry, LogKind
@@ -57,6 +58,78 @@ def save_prefs(prefs: dict) -> None:
 
 
 KEEP_ASIDE = 5
+
+# --- les sauvegardes : une par partie ------------------------------------------------
+# Chaque partie solo a SA sauvegarde dans le dossier des sauvegardes (la
+# premiere, d'avant : kora.json ; les suivantes : partie-<date>.json). Le
+# menu "Continuer" reprend la plus recente qui se lit ; "Charger une
+# partie" les montre toutes. Supprimer met le fichier a la corbeille (un
+# dossier a cote : on peut le recuperer a la main ; CORBEILLE_KEEP au plus).
+# La partie a plusieurs (kora-multi.json) et les reglages n'en sont pas.
+NOT_SAVES = ("kora-multi.json", "reglages.json")
+CORBEILLE = "corbeille"
+CORBEILLE_KEEP = 20
+
+
+def saves_dir() -> Path:
+    return default_save_path().parent
+
+
+def new_save_path() -> Path:
+    """Le fichier d'une partie neuve (ou d'une copie) : jamais un existant."""
+    root = saves_dir()
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    path = root / f"partie-{stamp}.json"
+    n = 2
+    while path.exists():
+        path = root / f"partie-{stamp}-{n}.json"
+        n += 1
+    return path
+
+
+def list_saves() -> list[dict]:
+    """Les sauvegardes solo, la plus recente d'abord : {"path", "time" (date
+    du fichier), "info" (peek_save ; None : elle ne se lit pas)}."""
+    root = saves_dir()
+    out = []
+    try:
+        files = [p for p in root.glob("*.json") if p.name not in NOT_SAVES]
+    except OSError:
+        return []
+    for path in files:
+        try:
+            when = path.stat().st_mtime
+        except OSError:
+            continue
+        out.append({"path": path, "time": when, "info": peek_save(path)})
+    out.sort(key=lambda s: (-s["time"], s["path"].name))
+    return out
+
+
+def latest_save() -> Path | None:
+    """La sauvegarde la plus recente qui se lit (Continuer)."""
+    return next((s["path"] for s in list_saves() if s["info"] is not None), None)
+
+
+def trash_save(path: Path) -> bool:
+    """Supprimer une sauvegarde : elle va a la corbeille (recuperable)."""
+    path = Path(path)
+    bin_ = path.parent / CORBEILLE
+    try:
+        bin_.mkdir(parents=True, exist_ok=True)
+        target = bin_ / path.name
+        if target.exists():
+            target = bin_ / f"{path.stem}-{time.strftime('%Y%m%d-%H%M%S')}{path.suffix}"
+        path.replace(target)
+    except OSError:
+        return False
+    old = sorted(bin_.glob("*.json"), key=lambda p: p.stat().st_mtime)
+    for extra in old[:-CORBEILLE_KEEP]:
+        try:
+            extra.unlink()
+        except OSError:
+            pass
+    return True
 
 
 def set_aside_save(path: Path) -> Path | None:
@@ -262,6 +335,7 @@ def game_to_json(state: GameState, view: dict | None = None) -> dict:
         influence.append([col, row, {str(tid): val for tid, val in cell.items()}])
     payload = {
         "version": SAVE_VERSION,
+        "game_version": __version__,
         "map": {
             "width": state.world.width,
             "height": state.world.height,
@@ -514,6 +588,7 @@ def peek_save(path: Path) -> dict | None:
             "population": pop,
             "villages": villages,
             "dead": bool(data.get("player_dead", False)),
+            "game_version": str(data.get("game_version", "")),
         }
     except (OSError, ValueError, KeyError, TypeError):
         return None

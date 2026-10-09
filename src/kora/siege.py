@@ -126,6 +126,8 @@ def weekly(state) -> None:
             continue
         site.data.siege = was + 1
         site.data.besieger = here[0].tribe_id
+        # Chaque semaine de siege : un avantage dans la guerre (diplo).
+        diplo.add_score(state, here[0].tribe_id, site.tribe_id, diplo.SIEGE_SCORE)
         if not was:
             who = state.tribes[here[0].tribe_id].name
             _tell(state, site, here[0].tribe_id, f"Les {who} assiègent {places.name(site)} : on ne sort plus des murs.")

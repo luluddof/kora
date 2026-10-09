@@ -152,6 +152,8 @@ def hud_hit(layout: dict, mx: int, my: int):
 MENU_ITEMS = (
     ("reprendre", "Reprendre"),
     ("sauvegarder", "Sauvegarder"),
+    ("copie", "Sauvegarder une copie"),
+    ("reglages", "Réglages"),
     ("principal", "Menu principal"),
     ("quitter", "Quitter"),
 )
@@ -586,21 +588,26 @@ TREASURY_TAB = ("tresor", "Trésor")
 COUNTRY_TAB = ("pays", "Pays")
 
 
-def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False, country: bool = False) -> tuple:
+# Les guerres (render_wars.py) : avec la diplomatie, ou une guerre.
+WARS_TAB = ("guerres", "Guerres")
+
+
+def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False, country: bool = False, wars: bool = False) -> tuple:
     return (
         SIDE_TABS
         + ((ARMY_TAB,) if army else ())
         + ((COMMERCE_TAB,) if commerce else ())
         + ((TREASURY_TAB,) if treasury else ())
         + ((COUNTRY_TAB,) if country else ())
+        + ((WARS_TAB,) if wars else ())
     )
 
 
-def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None, tech_tab: str = "arbre", treasury: bool = False, country: bool = False) -> dict:
+def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None, tech_tab: str = "arbre", treasury: bool = False, country: bool = False, wars: bool = False) -> dict:
     tab_w, gap = TAB_W, 6
     tab_x = width - tab_w - 4
     top = HUD_HEIGHT + 44
-    shown = side_tabs(army, commerce, treasury, country)
+    shown = side_tabs(army, commerce, treasury, country, wars)
     n = len(shown)
     tab_h = max(54, min(TAB_H, (height - top - 8 - gap * (n - 1)) // n))
     tabs = {key: (tab_x, top + i * (tab_h + gap), tab_w, tab_h) for i, (key, _l) in enumerate(shown)}

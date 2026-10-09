@@ -63,7 +63,9 @@ BONUS_ICONS = {
 TITLE_ITEMS = (
     ("continuer", "Continuer"),
     ("nouvelle", "Nouvelle partie"),
+    ("charger", "Charger une partie"),
     ("multijoueur", "Multijoueur"),
+    ("reglages", "Réglages"),
     ("quitter", "Quitter"),
 )
 
@@ -89,18 +91,19 @@ def title_layout(width: int, height: int) -> dict:
     return {"buttons": buttons, "title": (x, max(40, int(height * 0.12))), "panel": (0, 0, x + bw + 60, height)}
 
 
-def title_hit(lay: dict, mx: int, my: int, can_continue: bool = True):
+def title_hit(lay: dict, mx: int, my: int, can_continue: bool = True, can_load: bool = True):
     for key, rect in lay["buttons"].items():
         if _hover(rect, mx, my):
             if key == "continuer" and not can_continue:
+                return None
+            if key == "charger" and not can_load:
                 return None
             return key
     return None
 
 
-def draw_title(r, scene, save_info: dict | None, t: float, message: str = "") -> None:
-    """Le menu de demarrage. `scene` : un objet avec .world (la planete),
-    dessinee sans brouillard et qui tourne lentement."""
+def draw_title_backdrop(r, scene, t: float) -> None:
+    """Le fond du menu : la planete qui tourne, la nuit a gauche."""
     screen = r.screen
     w, h = screen.get_size()
     yaw = 0.8 + t * 0.03
@@ -130,6 +133,14 @@ def draw_title(r, scene, save_info: dict | None, t: float, message: str = "") ->
             pygame.draw.rect(veil, (*C.ocre_sombre, a), (0, y, min(w, 700), 4))
         theme._PANELS[key] = veil
     screen.blit(veil, (0, 0))
+
+
+def draw_title(r, scene, save_info: dict | None, t: float, message: str = "", saves: int = 0) -> None:
+    """Le menu de demarrage. `scene` : un objet avec .world (la planete),
+    dessinee sans brouillard et qui tourne lentement."""
+    draw_title_backdrop(r, scene, t)
+    screen = r.screen
+    w, h = screen.get_size()
     lay = title_layout(w, h)
     r.title_hits = lay
     tx, ty = lay["title"]
@@ -139,7 +150,7 @@ def draw_title(r, scene, save_info: dict | None, t: float, message: str = "") ->
     mx, my = pygame.mouse.get_pos()
     for key_, label in TITLE_ITEMS:
         rect = lay["buttons"][key_]
-        on = key_ != "continuer" or save_info is not None
+        on = (key_ != "continuer" or save_info is not None) and (key_ != "charger" or saves > 0)
         hover = on and _hover(rect, mx, my)
         x, y, bw, bh = rect
         if key_ == "continuer":
@@ -158,6 +169,8 @@ def draw_title(r, scene, save_info: dict | None, t: float, message: str = "") ->
             theme.text(screen, theme.fit(theme.font("mini_gras"), info, bw - 20), "mini_gras", (58, 26, 10) if on else C.cendre, (x + (bw - theme.font("mini_gras").size(theme.fit(theme.font("mini_gras"), info, bw - 20))[0]) // 2, y + bh - 21))
         elif key_ == "quitter":
             theme.button(screen, rect, label, "discret", True, hover, role="h3")
+        elif key_ == "charger" and saves:
+            theme.button(screen, rect, f"{label} ({saves})", "second", on, hover, role="h3")
         else:
             theme.button(screen, rect, label, "second", on, hover, role="h3")
     if message:
@@ -165,6 +178,173 @@ def draw_title(r, scene, save_info: dict | None, t: float, message: str = "") ->
         theme.text(screen, message, "petit_gras", C.alerte, (x, y + bh + 16), 560)
     theme.text(screen, f"version {__version__}", "mini", C.cendre, (14, h - 24))
     theme.text(screen, "Icônes : game-icons.net (CC BY 3.0) · Polices : Alegreya (OFL)", "mini", (92, 80, 68), (w - 420, h - 24))
+
+
+# --- les reglages ----------------------------------------------------------------
+# Une fenetre (menu de demarrage et menu de la partie) : le volume de la
+# musique (curseur, - et +), la musique coupee ou non, "Ecouter" pour
+# l'essayer. Les reglages vont dans reglages.json (persist.save_prefs).
+VOLUME_STEP = 0.1
+
+
+def settings_layout(width: int, height: int) -> dict:
+    bw, bh = 520, 300
+    bx, by = (width - bw) // 2, (height - bh) // 2
+    track = (bx + 40, by + 128, bw - 80 - 120, 14)
+    minus = (track[0] + track[2] + 16, by + 118, 44, 34)
+    plus = (minus[0] + 52, by + 118, 44, 34)
+    toggle = (bx + 40, by + 176, 210, 36)
+    listen = (bx + bw - 40 - 210, by + 176, 210, 36)
+    close = (bx + (bw - 180) // 2, by + bh - 56, 180, 38)
+    return {"box": (bx, by, bw, bh), "track": track, "minus": minus, "plus": plus, "toggle": toggle, "listen": listen, "close": close}
+
+
+def settings_hit(lay: dict, mx: int, my: int):
+    if not lay:
+        return None
+    for key in ("minus", "plus", "toggle", "listen", "close"):
+        if _hover(lay[key], mx, my):
+            return key
+    x, y, w, h = lay["track"]
+    if x - 6 <= mx <= x + w + 6 and y - 10 <= my <= y + h + 10:
+        return "track"
+    if _hover(lay["box"], mx, my):
+        return "panel"
+    return "dehors"
+
+
+def settings_value(lay: dict, mx: int) -> float:
+    """Le volume sous la souris, sur le curseur (par pas de 5 %)."""
+    x, _y, w, _h = lay["track"]
+    v = max(0.0, min(1.0, (mx - x) / max(1, w)))
+    return round(v * 20) / 20
+
+
+def draw_settings(r, volume: float, on: bool, listening: bool) -> None:
+    screen = r.screen
+    w, h = screen.get_size()
+    lay = settings_layout(w, h)
+    r.settings_hits = lay
+    theme.veil(screen, 150)
+    bx, by, bw, bh = lay["box"]
+    theme.panel(screen, lay["box"], "pierre")
+    theme.text(screen, "Réglages", "h1", C.ocre_jaune, (bx + 30, by + 18))
+    theme.text(screen, "La musique de guerre : elle ne joue que quand vous êtes en guerre.", "petit", C.lin, (bx + 30, by + 66), bw - 60)
+    mx, my = pygame.mouse.get_pos()
+    x, y, tw, th = lay["track"]
+    theme.text(screen, f"Volume de la musique : {round(volume * 100)} %" + ("" if on else " (coupée)"), "petit_gras", C.os if on else C.cendre, (x, y - 26))
+    theme.bar(screen, lay["track"], volume, C.ocre if on else C.cendre)
+    knob = (x + int(tw * volume), y + th // 2)
+    pygame.draw.circle(screen, C.braise if on else C.cendre, knob, 10)
+    pygame.draw.circle(screen, C.nuit, knob, 10, 2)
+    theme.button(screen, lay["minus"], "-", "second", True, _hover(lay["minus"], mx, my))
+    theme.button(screen, lay["plus"], "+", "second", True, _hover(lay["plus"], mx, my))
+    theme.button(screen, lay["toggle"], "Couper la musique" if on else "Remettre la musique", "second", True, _hover(lay["toggle"], mx, my))
+    theme.button(screen, lay["listen"], "Arrêter l'écoute" if listening else "Écouter", "second", on, on and _hover(lay["listen"], mx, my))
+    theme.button(screen, lay["close"], "Fermer [Échap]", "principal", True, _hover(lay["close"], mx, my))
+
+
+# --- charger une partie ----------------------------------------------------------
+# Toutes les sauvegardes (persist.list_saves), la plus recente d'abord : le
+# peuple, l'annee, les gens, la date ; Jouer ; Supprimer (un second clic
+# confirme : la sauvegarde va a la corbeille).
+LOAD_ROW = 64
+LOAD_W = 760
+_MONTHS = ("janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc.")
+
+
+def saved_when(when: float) -> str:
+    """'le 9 oct. à 20:15' (l'heure de la machine)."""
+    import time as _time
+
+    t = _time.localtime(when)
+    return f"le {t.tm_mday} {_MONTHS[t.tm_mon - 1]} {t.tm_year} à {t.tm_hour:02d}:{t.tm_min:02d}"
+
+
+def load_layout(width: int, height: int, n: int, scroll: int = 0) -> dict:
+    # A gauche, comme le menu de demarrage, sur un panneau de pierre.
+    bx = max(40, int(width * 0.07))
+    bw = min(LOAD_W, width - bx - 60)
+    by = max(40, int(height * 0.10))
+    list_top = by + 96
+    fits = max(1, (height - 120 - list_top) // (LOAD_ROW + 8))
+    scroll = max(0, min(scroll, max(0, n - fits)))
+    rows = []
+    for i in range(scroll, min(n, scroll + fits)):
+        y = list_top + (i - scroll) * (LOAD_ROW + 8)
+        row = (bx, y, bw, LOAD_ROW)
+        rows.append({
+            "index": i,
+            "row": row,
+            "play": (bx + bw - 14 - 120, y + (LOAD_ROW - 34) // 2, 120, 34),
+            "trash": (bx + bw - 14 - 120 - 10 - 120, y + (LOAD_ROW - 34) // 2, 120, 34),
+        })
+    back = (bx, height - 96, 200, 40)
+    return {"box": (bx, by, bw, height - by - 40), "rows": rows, "back": back, "scroll": scroll, "fits": fits, "list": (bx, list_top, bw, fits * (LOAD_ROW + 8))}
+
+
+def load_hit(lay: dict, mx: int, my: int, saves: list):
+    if not lay:
+        return None
+    if _hover(lay["back"], mx, my):
+        return "retour"
+    for row in lay["rows"]:
+        if row["index"] >= len(saves):
+            continue
+        if _hover(row["trash"], mx, my):
+            return f"suppr:{row['index']}"
+        if _hover(row["play"], mx, my) and saves[row["index"]]["info"] is not None:
+            return f"jouer:{row['index']}"
+    return None
+
+
+def draw_load(r, scene, saves: list, t: float, scroll: int = 0, confirm: int | None = None, message: str = "") -> None:
+    """La page des sauvegardes, sur la planete du menu."""
+    draw_title_backdrop(r, scene, t)
+    screen = r.screen
+    w, h = screen.get_size()
+    lay = load_layout(w, h, len(saves), scroll)
+    r.load_hits = lay
+    bx, by, bw, _bh = lay["box"]
+    theme.panel(screen, (bx - 24, by - 24, bw + 48, h - by - 16), "pierre")
+    theme.text(screen, "Charger une partie", "h1", C.ocre_jaune, (bx, by))
+    theme.text(screen, "La plus récente d'abord. Supprimer : la sauvegarde va à la corbeille (un dossier à côté).", "petit", C.lin, (bx, by + 44), bw)
+    mx, my = pygame.mouse.get_pos()
+    if not saves:
+        theme.text(screen, "Aucune partie sauvegardée.", "petit", C.cendre, (bx, by + 100))
+    for row in lay["rows"]:
+        s = saves[row["index"]]
+        x, y, rw, rh = row["row"]
+        theme.panel(screen, row["row"], "carte")
+        info = s["info"]
+        if info is not None:
+            color = info.get("color") or (200, 200, 200)
+            pygame.draw.rect(screen, color, (x + 12, y + 12, 8, rh - 24), border_radius=3)
+            head = info["name"] + ("  ·  peuple disparu" if info.get("dead") else "")
+            theme.text(screen, head, "h3", C.os, (x + 32, y + 8))
+            line = f"an {info['year']}  ·  {info['population']} personnes"
+            if info.get("villages"):
+                line += f"  ·  {info['villages']} village{'s' if info['villages'] > 1 else ''}"
+            line += f"  ·  sauvée {saved_when(s['time'])}"
+            if info.get("game_version"):
+                line += f"  ·  version {info['game_version']}"
+            theme.text(screen, theme.fit(theme.font("mini"), line, rw - 300), "mini", C.lin, (x + 32, y + 38))
+            theme.button(screen, row["play"], "Jouer", "principal", True, _hover(row["play"], mx, my))
+        else:
+            theme.text(screen, s["path"].name, "h3", C.cendre, (x + 32, y + 8))
+            theme.text(screen, f"Ne se lit pas (autre version du jeu ?)  ·  {saved_when(s['time'])}", "mini", C.cendre, (x + 32, y + 38))
+        sure = confirm == row["index"]
+        theme.button(screen, row["trash"], "Confirmer ?" if sure else "Supprimer", "second", True, _hover(row["trash"], mx, my))
+    if len(saves) > lay["fits"]:
+        lx, ly, lw, lh = lay["list"]
+        track = (lx + lw + 8, ly, 5, lh - 8)
+        pygame.draw.rect(screen, C.cuir, track, border_radius=2)
+        th = max(18, int(track[3] * lay["fits"] / len(saves)))
+        ty = track[1] + int((track[3] - th) * lay["scroll"] / max(1, len(saves) - lay["fits"]))
+        pygame.draw.rect(screen, C.ocre_jaune, (track[0], ty, 5, th), border_radius=2)
+    theme.button(screen, lay["back"], "Retour [Échap]", "second", True, _hover(lay["back"], mx, my))
+    if message:
+        theme.text(screen, message, "petit_gras", C.alerte, (lay["back"][0] + 220, lay["back"][1] + 10), bw - 240)
 
 
 # --- creation de la tribu -----------------------------------------------------------

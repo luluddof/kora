@@ -53,7 +53,7 @@ from src.kora.types import Band, Season, Terrain, stay_order
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.world import offset_to_axial
 from src.kora.places import VillageData
-from src.kora.gamestate import PLAYER_TRIBE_ID, note
+from src.kora.gamestate import PLAYER_TRIBE_ID, is_human, note
 from src.kora.peoples import CULTURES, civ_of, culture_of, make_name
 from src.kora.bands import (
     _absorb,
@@ -63,7 +63,9 @@ from src.kora.bands import (
     gain_prestige,
     new_band_id,
     set_goto,
+    campaign_weeks,
     stock_max,
+    weeks_between,
 )
 from src.kora.places import (  # noqa: F401
     RANKS,
@@ -1292,6 +1294,46 @@ def home_of(state, band):
     if band is None or band.kind != "armee":
         return None
     return _village_alive(state, band.home)
+
+
+# Le journal previent le joueur quand une troupe n'a plus de vivres que
+# pour rentrer (et SUPPLY_WARN_MARGIN semaines) ; une fois par
+# SUPPLY_WARN_EVERY semaines.
+SUPPLY_WARN_MARGIN = 2
+SUPPLY_WARN_EVERY = 8
+
+
+def warn_supply(state) -> None:
+    """Chaque semaine (systems.WEEKLY) : les troupes du joueur loin de chez
+    elles et a court de vivres."""
+    for army in sorted(state.bands.values(), key=lambda b: b.id):
+        if army.kind != "armee" or army.population <= 0 or army.homebound:
+            continue
+        tribe = state.tribes.get(army.tribe_id)
+        if tribe is None or not is_human(state, tribe.id):
+            continue
+        home = home_of(state, army)
+        back = weeks_home(state, army)
+        left = campaign_weeks(state, army)
+        if home is None or back <= 0 or left >= back + SUPPLY_WARN_MARGIN:
+            continue
+        flags = tribe.flags if tribe.flags is not None else {}
+        key = f"vivres_troupe:{army.id}"
+        if state.tick_count - flags.get(key, -10**6) < SUPPLY_WARN_EVERY:
+            continue
+        flags[key] = state.tick_count
+        tribe.flags = flags
+        who = army.leader.name if army.leader is not None else "la troupe"
+        _note(state, LogKind.COMBAT, f"La troupe de {who} n'a plus que {left:.0f} semaine{'s' if left >= 2 else ''} de vivres, et {name(home)} est à {back} semaine{'s' if back > 1 else ''} : rentrez, ou elle aura faim.", army.position, to=tribe.id)
+
+
+def weeks_home(state, band, start=None) -> int:
+    """Semaines de marche d'une troupe jusqu'a son village (depuis `start`,
+    sinon d'ou elle est) ; 0 sans village."""
+    site = home_of(state, band)
+    if site is None:
+        return 0
+    return weeks_between(state, start if start is not None else band.position, site.hex)
 
 
 def _warrior_share(state, band) -> float:

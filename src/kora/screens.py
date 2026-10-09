@@ -1,4 +1,5 @@
-"""Les GRANDS ECRANS de l'interface : le village, le commerce, le tresor, le pays.
+"""Les GRANDS ECRANS de l'interface : le village, le commerce, le tresor, le
+pays, les guerres.
 
 Un seul est ouvert a la fois. Chacun est decrit ICI (une ligne de SCREENS) :
   name      son nom (app.py y branche sa fonction de clic)
@@ -22,6 +23,7 @@ from src.kora.render_country import country_hit
 from src.kora.render_trade import trade_hit
 from src.kora.render_treasury import treasury_hit
 from src.kora.render_village import village_hit
+from src.kora.render_wars import wars_hit
 
 
 @dataclass(frozen=True)
@@ -49,11 +51,16 @@ def _country_hit(r, mx, my):
     return country_hit(r.country_hits, mx, my)
 
 
+def _wars_hit(r, mx, my):
+    return wars_hit(r.wars_hits, mx, my)
+
+
 SCREENS = (
     Screen("village", "village_open", "village_hits", "render_village.draw_village", _village_hit),
     Screen("commerce", "trade_open", "trade_hits", "render_trade.draw_trade", _trade_hit),
     Screen("tresor", "treasury_open", "treasury_hits", "render_treasury.draw_treasury", _treasury_hit),
     Screen("pays", "country_open", "country_hits", "render_country.draw_country", _country_hit),
+    Screen("guerres", "wars_open", "wars_hits", "render_wars.draw_wars", _wars_hit),
 )
 BY_NAME = {s.name: s for s in SCREENS}
 # Ferme : None pour le village (un lieu), False pour les autres.

@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from src.kora import (
+    ai_war,
     battle,
     chiefdom,
     chiefs,
@@ -258,13 +259,14 @@ def _army_lines(state: GameState, band: Band) -> list[str]:
 
 
 def _raid_lines(state: GameState, band: Band) -> list[str]:
-    """Raid en cours : le rapport de force estime (battle.odds)."""
+    """Raid en cours : le rapport de force estime (le meme qu'au survol :
+    ai_war.odds_at)."""
     if band.order.kind is not OrderKind.MARCH_TO_BAND:
         return []
     prey = state.bands.get(band.order.target_band_id)
     if prey is None or prey.tribe_id == band.tribe_id:
         return []
-    ratio, word = battle.odds(state, band, prey)
+    ratio, word = ai_war.odds_at(state, band, prey)
     tribe = state.tribes.get(prey.tribe_id)
     who = tribe.name if tribe else "?"
     return [f"Raid sur les {who} : rapport de force {ratio:.1f} contre 1 ({word})".replace(".", ",", 1)]

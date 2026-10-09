@@ -76,7 +76,7 @@ FLEE = ("money.flee_mult",)
 # Chaque semaine, apres les marches et les ralliements (sim._week) :
 # l'ost rejoint son suzerain, les sieges durent ou sont leves, les villages
 # IA en disette achetent du grain.
-WEEKLY = ("ost.weekly", "siege.weekly", "grain.ai_weekly")
+WEEKLY = ("ost.weekly", "siege.weekly", "grain.ai_weekly", "villages.warn_supply")
 
 # Ce qui change la defense d'un village (villages.defense_parts) ;
 # (state, bande du village, peuple qui attaque ou 0) -> [(libelle, x)].

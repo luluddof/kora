@@ -1007,6 +1007,26 @@ def commerce_alert(state) -> bool:
     return any(r.by == state.viewer and r.idle >= 2 for r in goods.routes_of(state, state.viewer))
 
 
+def wars_ready(state) -> bool:
+    """L'onglet des guerres : avec la diplomatie (on declare la guerre), ou
+    des qu'on est en guerre."""
+    return diplo.diplomatic(state, state.viewer) or bool(diplo.wars_of(state, state.viewer))
+
+
+# On vous a declare la guerre depuis moins de WAR_NEWS semaines : l'onglet
+# respire.
+WAR_NEWS = 8
+
+
+def wars_alert(state) -> bool:
+    me = state.viewer
+    for enemy in diplo.wars_of(state, me):
+        pact = next((p for p in diplo._pacts(state, me, enemy) if p.kind == diplo.WAR), None)
+        if pact is not None and pact.payer != me and state.tick_count - pact.since <= WAR_NEWS:
+            return True
+    return False
+
+
 def army_ready(state) -> bool:
     tribe = state.tribes.get(state.viewer)
     if tribe is None:

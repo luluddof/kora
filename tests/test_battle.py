@@ -204,8 +204,11 @@ def test_odds_read_the_balance_of_forces():
     a = _band(st, 1, 1, 60, kind="armee")
     weak = _band(st, 2, 2, 20, col=24)
     strong = _band(st, 3, 2, 400, col=30)
-    assert battle.odds(st, a, weak)[1] in ("ecrasant", "favorable")
-    assert battle.odds(st, a, strong)[1] == "defavorable"
+    # Le rapport de force, compte comme l'IA le compte (ai_war.odds_at).
+    from src.kora import ai_war
+
+    assert ai_war.odds_at(st, a, weak)[1] in ("écrasant", "favorable")
+    assert ai_war.odds_at(st, a, strong)[1] == "défavorable"
 
 
 def test_the_battle_report_is_saved(tmp_path):

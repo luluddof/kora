@@ -68,6 +68,14 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - **Clic droit maintenu** (ou molette maintenue) et glisser : tourner la planète. **Molette** : zoomer.
 - Le bouton **Carte** (en bas à gauche) déroule les modes de carte : relief, influence, suzerains, tournants,
   ressources, commerce.
+- Une de vos bandes choisie, **survolez une bande étrangère** : le **rapport de force** de l'attaque (vos combattants
+  et les leurs, renforts, abri, moral, trajet, vivres d'une troupe), et ce qui l'empêche.
+- L'écran des **guerres** (touche **W**, onglet *Guerres*) : vos guerres pays par pays, l'avantage, les buts, les deux
+  camps, les troupes en campagne, les sièges, les derniers combats ; exiger la soumission, proposer une trêve.
+- Chaque partie a **sa sauvegarde** : *Continuer* reprend la plus récente, *Charger une partie* les montre toutes
+  (jouer, supprimer) ; dans la partie, *Échap* puis *Sauvegarder une copie*.
+- La **musique de guerre** (*Casus bellis*) monte quand vous êtes en guerre et s'éteint à la paix ; son volume se
+  règle dans *Réglages* (menu de démarrage et *Échap*).
 - **Espace** : pause. **1 à 5** : vitesse du temps.
 - Survolez une case pour voir ce qu'elle produit et ce qu'y coûte la marche (chaque case varie un peu, doucement
   d'une case à sa voisine : les chemins suivent le pays) ; un clic l'épingle.
@@ -170,6 +178,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **Tab** | Bande suivante |
 | **C** | Poser un campement · **K** : y déposer des vivres |
 | **H** | Honorer un clan (il reste fidèle) · une troupe de suzerain : appeler l'ost |
+| **W** | L'écran des guerres (avec la diplomatie) |
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
 | **Z** / **U** / **I** / **R** / **X** | Modes de carte : influence / suzerains / tournants / ressources / commerce |
@@ -241,3 +250,5 @@ La vision du jeu et les règles de travail : `docs/VISION-KORA.txt`, `CLAUDE.md`
   [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) ; la liste est dans `data/icons/CREDITS.txt`.
 - Polices : Alegreya SC et Alegreya Sans (The Alegreya Project Authors, Huerta Tipográfica), licence
   [SIL Open Font License](https://openfontlicense.org) ; `data/fonts/OFL.txt`.
+- Musique : *Casus bellis*, fournie par l'auteur du jeu ; la boucle (`data/music/casus_bellis.ogg`) est faite par
+  `tools/boucle_musique.py`.
