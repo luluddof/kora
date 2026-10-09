@@ -486,6 +486,12 @@ lente, bandes dessinees petites a taille fixe.
     entre les techs." FAIT (0.10.1) : liens a angles droits dans les
     couloirs (jamais au travers d'une carte), et au survol la chaine d'un
     savoir s'eclaire (or : ce qu'il faut avant ; bleu : ce qu'il ouvre).
+    Puis : "l'eclairage n'est pas une solution : reorganise les techs comme
+    un graphe, separees pour laisser la place aux connexions, comme
+    Victoria 3." FAIT (0.10.2) : tree_graph.py place l'arbre (toujours
+    vertical) comme un graphe en couches : ordre qui croise le moins, chacun
+    sous ce dont il depend, des passages reserves aux liens longs, des
+    courbes douces entre les rangees.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------

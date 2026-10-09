@@ -48,7 +48,8 @@ def test_savoirs_tree_is_a_canvas_you_pan_and_zoom():
         assert by >= HUD_HEIGHT and by + bh <= h
         view = layout["tech"]["view"]
         # Tout l'arbre, vu de loin : chaque savoir se clique, rien ne se
-        # chevauche, les paliers descendent, chaque branche garde sa colonne.
+        # chevauche, les paliers descendent ; un savoir est pres de ce dont
+        # il depend (le graphe, tree_graph.py).
         far = side_layout(w, h, panel="savoirs", tech_cam=(0.0, 0.0, 0.01))
         assert far["tech"]["cam"][2] == tree_zoom_min(view, world)
         rects = {}
@@ -65,8 +66,12 @@ def test_savoirs_tree_is_a_canvas_you_pan_and_zoom():
         for t in tech.TECHS.values():
             for pid in t.prereqs:
                 assert rects[pid][1] < rects[t.id][1]
-        assert rects["semis"][0] == rects["champs"][0]
-        assert rects["poterie"][0] == rects["greniers"][0]
+        def cx(tid):
+            return rects[tid][0] + rects[tid][2] / 2
+
+        span = max(r_[0] + r_[2] for r_ in rects.values()) - min(r_[0] for r_ in rects.values())
+        assert abs(cx("chevres") - cx("domestication")) < span / 6
+        assert abs(cx("ancetres") - cx("terre_ancetres")) < span / 6
         neo_top = min(rects[t.id][1] for t in tech.TECHS.values() if t.tier >= 4)
         assert all(rects[t.id][1] < neo_top for t in tech.TECHS.values() if t.tier <= 3)
         # A l'echelle 1, tout ne tient pas : on se deplace.

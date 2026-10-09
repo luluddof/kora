@@ -210,24 +210,32 @@ def test_the_tree_lays_turning_points_in_their_rows_without_overlap():
         assert world["nodes"][t.id][2] > world["nodes"]["feu"][2], "un tournant est une large carte"
 
 
-def test_the_links_run_in_the_corridors_and_never_cross_a_card():
+def test_the_tree_is_laid_out_as_a_graph_and_links_never_cross_a_card():
+    from src.kora import tree_graph
     from src.kora.layout import chain_of, tech_world
 
     world = tech_world()
     nodes, links = world["nodes"], world["links"]
     assert set(links) == {(p, t.id) for t in tech.TECHS.values() for p in t.prereqs}
     for (pid, tid), pts in links.items():
-        # Du bas du prerequis au haut du savoir, a angles droits.
+        # Du bas du prerequis au haut du savoir, toujours en descendant.
         assert pts[0][1] == nodes[pid][1] + nodes[pid][3] and pts[-1][1] == nodes[tid][1]
-        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
-            assert x0 == x1 or y0 == y1, (pid, tid)
+        assert all(b[1] >= a[1] - 1e-6 for a, b in zip(pts, pts[1:])), (pid, tid)
+        for px, py in pts:
             for other, (nx, ny, nw, nh) in nodes.items():
                 if other in (pid, tid):
                     continue
-                crosses = (
-                    x0 == x1 and nx < x0 < nx + nw and min(y0, y1) < ny + nh and max(y0, y1) > ny
-                ) or (y0 == y1 and ny < y0 < ny + nh and min(x0, x1) < nx + nw and max(x0, x1) > nx)
-                assert not crosses, (pid, tid, other)
-    up, down = chain_of("chefferie")
+                assert not (nx + 1 < px < nx + nw - 1 and ny + 1 < py < ny + nh - 1), (pid, tid, other)
+    # Moins de croisements que l'ordre des branches de depart.
+    g = tree_graph.build()
+    down = {}
+    for chain in g["edges"].values():
+        for a, b in zip(chain, chain[1:]):
+            down.setdefault(a, []).append(b)
+    start = [[] for _ in g["order"]]
+    for k, layer in enumerate(g["order"]):
+        start[k] = sorted(layer, key=lambda n: (tech.TECHS[n].branch, tech.TECHS[n].slot) if n in tech.TECHS else (99, 0))
+    assert tree_graph.crossings(g["order"], down) < tree_graph.crossings(start, down)
+    up, down_ = chain_of("chefferie")
     assert {"conte", "clan", "rites", "palabres", "feu"} <= up
-    assert {"terre_ancetres", "ancetres", "grand_chef"} <= down
+    assert {"terre_ancetres", "ancetres", "grand_chef"} <= down_

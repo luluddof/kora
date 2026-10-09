@@ -130,6 +130,45 @@ def _fit(font, text: str, width: int) -> str:
     return theme.fit(font, text, width)
 
 
+def _blit_fit(screen, font, text: str, color, x: int, y: int, width: int) -> int:
+    """Une ligne qui tient dans `width` : un peu resserree s'il le faut (au
+    plus 25 %), sinon coupee avec "…". Rend sa hauteur."""
+    surf = font.render(text, True, color)
+    if surf.get_width() > width > 0:
+        if surf.get_width() * 0.75 <= width:
+            surf = pygame.transform.smoothscale(surf, (int(width), surf.get_height()))
+        else:
+            surf = font.render(_fit(font, text, width), True, color)
+    screen.blit(surf, (x, y))
+    return surf.get_height()
+
+
+def _line_h(font) -> int:
+    """L'interligne d'un nom : la police a beaucoup d'air, on la serre."""
+    return max(1, int(font.get_height() * 0.88))
+
+
+def SMALL_FONTS() -> list:
+    """De loin, le nom d'une carte descend en taille plutot que d'etre coupe."""
+    return [theme.font_file("sans", size) for size in (13, 12, 11, 10, 9)]
+
+
+def _name_block(fonts, name: str, width: int, height: int):
+    """(police, lignes) du nom d'une carte : la plus grande police ou il
+    tient en deux lignes au plus, dans la largeur et la hauteur donnees ;
+    sinon la plus petite (les lignes seront resserrees ou coupees)."""
+    for font in fonts:
+        parts = _wrap(font, name, width)
+        if len(parts) <= 2 and len(parts) * _line_h(font) <= height and all(font.size(p)[0] <= width for p in parts):
+            return font, parts
+    font = fonts[-1]
+    lines = max(1, min(2, height // max(1, _line_h(font))))
+    parts = _wrap(font, name, width)
+    if len(parts) > lines:
+        parts = parts[: lines - 1] + [" ".join(parts[lines - 1:])]
+    return font, parts
+
+
 # --- medaillons : un dessin par branche --------------------------------------------
 
 
@@ -327,7 +366,6 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
     screen.set_clip(view)
     pygame.draw.rect(screen, (20, 16, 12), view)
     cols, rows = world["cols"], world["rows"]
-    col_w = world["col_w"]
 
     def sx(x):
         return vx + (x - cam[0]) * z
@@ -369,7 +407,7 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
     small = z < 0.62
     for sec in world["sections"]:
         era = sec["era"]
-        era_name, tiers, branches = tech.ERAS[era]
+        era_name, tiers, _branches = tech.ERAS[era]
         _tint, _top, _bot, accent = ERA_STYLE[era % len(ERA_STYLE)]
         hx, hy, hw, hh = to_screen(cam, view, sec["head"])
         left = sx(TREE_PAD)
@@ -386,24 +424,6 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
             line_h = font.get_height()
             for k, part in enumerate(parts):
                 screen.blit(font.render(part, True, accent), (int(left + 2 * rad + 12), int(hy + (hh - line_h * len(parts)) / 2 + line_h * k)))
-        for i, name in enumerate(branches):
-            if not name:
-                continue
-            gx = int(sx(cols[i])) + 6
-            if gx > vx + vw or gx + col_w * z < vx:
-                continue
-            font = r.small if z >= 1.0 else r.tiny
-            parts = _wrap(font, name, int(col_w * z) - 34)[:2]
-            lh = font.get_height()
-            if era > 0:
-                tw = max(font.size(p_)[0] for p_ in parts) + 30
-                screen.blit(_gradient_card(tw, max(4, int(hh) - 8), _top, _bot, 6), (gx - 4, int(hy) + 4))
-            icon = medallion(era, i, "attente", max(6, int(8 * min(1.3, z))))
-            screen.blit(icon, (gx, int(hy + hh / 2) - icon.get_height() // 2))
-            ty = int(hy + (hh - lh * len(parts)) / 2)
-            for part in parts:
-                screen.blit(font.render(part, True, (214, 208, 188)), (gx + 22, ty))
-                ty += lh
         for tier in tiers:
             ry = sy(rows[tier])
             if ry > vy + vh or ry + world["heights"][tier] * z < vy:
@@ -423,7 +443,6 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
     # Cartes : le detail suit le zoom.
     hovered = None
     pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 380.0)
-    name_font = head_font if z >= 1.2 else r.small if z >= 0.8 else r.tiny
     for tid, rect in nodes.items():
         if tid not in lay["visible"]:
             continue
@@ -446,43 +465,52 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
         if t.turning:
             _turning_card(r, state, tribe, t, st, (x, y, w, h), z, pick, hover, head_font)
             continue
-        rad = max(8, min(22, int(17 * z)))
-        med = medallion(tech.era_of(t), t.branch, st, rad)
-        screen.blit(med, (x + 5, y + h // 2 - med.get_height() // 2))
-        tx = x + 2 * rad + 12
-        text_w = w - (tx - x) - 12
-        lines = []
-        parts = _wrap(name_font, t.name, text_w)
-        if len(parts) > 2:
-            parts = parts[:1] + [_fit(name_font, " ".join(parts[1:]), text_w)]
-        lines += [(p_, name_font, style["text"]) for p_ in parts]
+        # Le medaillon a la taille de la carte (rien de loin : la place au nom) ;
+        # a droite, la place de la coche ou du cadenas.
+        icon = max(6, int(13 * min(1.2, z)))
+        if z >= 0.55:
+            rad = max(8, min(22, int(17 * z)))
+            med = medallion(tech.era_of(t), t.branch, st, rad)
+            screen.blit(med, (x + 5, y + h // 2 - med.get_height() // 2))
+            tx = x + 2 * rad + 12
+        else:
+            tx = x + 5
+        text_w = w - (tx - x) - icon - 6
+        extra = []
         if z >= 0.8:
             text, color = _status_line(state, tribe, tid, st)
-            lines.append((_fit(r.tiny, text, text_w), r.tiny, color))
+            extra.append((text, r.tiny, color))
         if z >= 1.05:
             first = tech.summary(t)
             if first:
-                lines.append((_fit(r.tiny, first, text_w), r.tiny, (178, 205, 140) if st != "verrouille" else (130, 113, 96)))
-        total = sum(f.get_height() for _t, f, _c in lines)
-        ty = y + max(2, (h - total) // 2 - 2)
-        for text, font, color in lines:
-            if ty + font.get_height() > y + h - 2:
+                extra.append((first, r.tiny, (178, 205, 140) if st != "verrouille" else (130, 113, 96)))
+        room = h - 4 - sum(f.get_height() for _t, f, _c in extra)
+        # La plus grande police ou le nom tient (deux lignes au plus) : celle
+        # qui convient a la taille de la carte a ce zoom.
+        fonts = [f for f in (head_font, r.small, r.tiny) if _line_h(f) * 2 <= max(h - 4, 1) * 1.15 or f is r.tiny] + SMALL_FONTS()
+        font, parts = _name_block(fonts, t.name, text_w, room)
+        lines = [(p_, font, style["text"], _line_h(font)) for p_ in parts] + [(t_, f_, c_, f_.get_height()) for t_, f_, c_ in extra]
+        total = sum(lh for *_rest, lh in lines)
+        ty = y + max(1, (h - total) // 2)
+        for text, font_, color, lh in lines:
+            if ty + lh > y + h:
                 break
-            screen.blit(font.render(text, True, color), (tx, ty))
-            ty += font.get_height()
+            _blit_fit(screen, font_, text, color, tx, ty - (font_.get_height() - lh) // 2, text_w)
+            ty += lh
         done = tribe.progress.get(tid, 0.0) / t.cost if t.cost else 0.0
         if st != "connu" and done > 0:
             bar = (tx, y + h - max(5, int(7 * z)), w - (tx - x) - 10, max(2, int(3 * z)))
             pygame.draw.rect(screen, (23, 18, 14), bar)
             pygame.draw.rect(screen, STYLE["en_cours"]["edge"] if st == "en_cours" else (143, 130, 115), (bar[0], bar[1], int(bar[2] * min(1.0, done)), bar[3]))
         if st == "connu":
-            _check(screen, x + w - 9, y + 9, GOLD, r=max(4, int(6 * min(1.2, z))))
-        elif st == "verrouille":
+            _check(screen, x + w - icon // 2 - 3, y + icon // 2 + 3, GOLD, r=max(3, icon // 2))
+        elif st == "verrouille" and z >= 0.55:
             _lock(screen, x + w - 10, y + 10, style["edge"])
         elif st == "absent":
             pygame.draw.line(screen, (120, 70, 60), (x + 6, y + h - 6), (x + w - 6, y + 6), 1)
         if t.drawn and st != "connu":
-            _chance_pill(r, state, tribe, t, st, x + w, y, z)
+            # En bas a droite : le nom reste lisible.
+            _chance_pill(r, state, tribe, t, st, x + w, y + h - 20, z)
     if focus is not None:
         # Hors de la chaine : effaces ; dans la chaine : un liseré de sa couleur.
         veil = None
@@ -566,7 +594,7 @@ def _chance_pill(r, state, tribe, t, st, right: int, top: int, z: float) -> None
     """La pastille d'un savoir tire : sa chance (un "?" avant le tirage de
     votre peuple), "monde" s'il depend du monde, rien de lisible s'il est
     absent (la carte est barree)."""
-    if z < 0.7:
+    if z < 0.9:
         return
     if st == "absent":
         text, col = "absent", (150, 96, 84)
@@ -595,27 +623,40 @@ def _turning_card(r, state, tribe, t, st, rect, z, pick, hover, head_font) -> No
     pygame.draw.rect(screen, _lerp(gold, (0, 0, 0), 0.45), (x + 3, y + 3, w - 6, h - 6), 1, border_radius=5)
     for cx_, cy_ in ((x + 6, y + 6), (x + w - 7, y + 6), (x + 6, y + h - 7), (x + w - 7, y + h - 7)):
         pygame.draw.circle(screen, gold, (cx_, cy_), max(2, int(3 * min(1.2, z))))
-    rad = max(10, min(30, int(24 * z)))
-    med = medallion(tech.era_of(t), t.branch, st, rad)
-    screen.blit(med, (x + 10, y + h // 2 - med.get_height() // 2))
-    tx = x + 2 * rad + 22
-    tw = w - (tx - x) - 14
-    big = head_font if z >= 0.8 else r.small
-    yy = y + max(4, int(8 * z))
-    screen.blit(r.tiny.render("GRAND TOURNANT", True, _lerp(gold, (0, 0, 0), 0.2)), (tx, yy))
-    yy += r.tiny.get_height()
-    screen.blit(big.render(_fit(big, t.name, tw), True, INK if st != "verrouille" else STYLE["verrouille"]["text"]), (tx, yy))
-    yy += big.get_height()
+    icon = max(7, int(15 * min(1.2, z)))
+    if z >= 0.5:
+        rad = max(8, min(30, int(24 * z)))
+        med = medallion(tech.era_of(t), t.branch, st, rad)
+        screen.blit(med, (x + 10, y + h // 2 - med.get_height() // 2))
+        tx = x + 2 * rad + 22
+    else:
+        tx = x + 8
+    tw = w - (tx - x) - icon - 10
+    bar_h = max(9, int(12 * z))
+    head = []
+    if z >= 0.6:
+        head.append(("GRAND TOURNANT", r.tiny, _lerp(gold, (0, 0, 0), 0.2), r.tiny.get_height()))
+    tail = []
     if z >= 0.7:
         text, color = _status_line(state, tribe, t.id, st)
-        screen.blit(r.tiny.render(_fit(r.tiny, text, tw), True, color), (tx, yy))
-        yy += r.tiny.get_height() + 1
+        tail.append((text, r.tiny, color, r.tiny.get_height()))
     if z >= 0.95:
         if turning.born(state, t.id):
             line = f"{turning.born_text(state, state.viewer, t.id)} · {len(turning.adopted_by(state, t.id))} peuples l'ont adopté"
         else:
             line = "Ouvre : " + ", ".join(p.name for p in tech.pan_of(t.id))
-        screen.blit(r.tiny.render(_fit(r.tiny, line, tw), True, NOTE), (tx, yy))
+        tail.append((line, r.tiny, NOTE, r.tiny.get_height()))
+    big_fonts = [f for f in (head_font, r.small, r.tiny) if _line_h(f) * 2 <= h * 0.6 or f is r.tiny] + SMALL_FONTS()
+    room = h - bar_h - 4 - sum(row[3] for row in head + tail)
+    big, parts = _name_block(big_fonts, t.name, tw, max(_line_h(big_fonts[-1]), room))
+    name_color = INK if st != "verrouille" else STYLE["verrouille"]["text"]
+    rows = head + [(p_, big, name_color, _line_h(big)) for p_ in parts] + tail
+    yy = y + max(2, (h - bar_h - sum(row[3] for row in rows)) // 2)
+    for text, font, color, lh in rows:
+        if yy + lh > y + h - bar_h + 2:
+            break
+        _blit_fit(screen, font, text, color, tx, yy - (font.get_height() - lh) // 2, tw)
+        yy += lh
     # La presence chez vous (avant l'adoption), ou l'adoption en cours.
     if st in ("attente", "disponible", "en_cours", "verrouille"):
         done = tribe.progress.get(t.id, 0.0) / t.cost if t.cost else 0.0
@@ -627,8 +668,8 @@ def _turning_card(r, state, tribe, t, st, rect, z, pick, hover, head_font) -> No
         pygame.draw.rect(screen, (23, 18, 14), bar, border_radius=2)
         pygame.draw.rect(screen, col, (bar[0], bar[1], int(bar[2] * min(1.0, frac)), bar[3]), border_radius=2)
     if st == "connu":
-        _check(screen, x + w - 12, y + 12, GOLD, r=max(5, int(7 * min(1.2, z))))
-    elif st == "verrouille":
+        _check(screen, x + w - icon // 2 - 6, y + icon // 2 + 6, GOLD, r=max(3, icon // 2))
+    elif st == "verrouille" and z >= 0.5:
         _lock(screen, x + w - 12, y + 12, STYLE["verrouille"]["edge"])
 
 

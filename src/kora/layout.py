@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 
-from src.kora import numbers, tech
+from src.kora import numbers, tech, tree_graph
 from src.kora.globe import hex_to_globe_screen
 from src.kora.log import FILTER_ALL, LogKind
 from src.kora.types import Hex
@@ -389,122 +389,25 @@ _TREE: dict = {}
 
 
 def tech_world() -> dict:
-    """La toile de l'arbre, a l'echelle 1 : une rangee par palier (plusieurs
-    sous-rangees si une case porte plusieurs savoirs : Tech.slot), une
-    colonne par branche, une banniere par age ; la rangee des grands
-    tournants (tech.TURNING_TIERS) a ses cartes larges (Tech.span)."""
+    """La toile de l'arbre, a l'echelle 1 : place comme un GRAPHE
+    (tree_graph.py : une couche par palier, l'ordre qui croise le moins,
+    chacun sous ce dont il depend, la place laissee aux liens), une
+    banniere par age ; la marge de gauche nomme les paliers."""
     if _TREE:
         return _TREE
-    n_cols = max(len(b) for _n, _t, b in tech.ERAS)
-    width = TREE_PAD + TREE_GUTTER + n_cols * TREE_COL + TREE_PAD
-    y = TREE_PAD
-    sections = []
-    rows: dict = {}
-    heights: dict = {}
-    for i, (_name, tiers, _branches) in enumerate(tech.ERAS):
-        head_h = TREE_COLHEAD if i == 0 else TREE_BAND
-        head = (0, y, width, head_h)
-        y += head_h
-        top = y
-        for tier in tiers:
-            rows[tier] = y
-            if tier in tech.TURNING_TIERS:
-                h = TREE_TURN_ROW
-            else:
-                h = TREE_ROW * (1 + max((t.slot for t in tech.TECHS.values() if t.tier == tier), default=0))
-            heights[tier] = h
-            y += h
-        sections.append({"era": i, "head": head, "body": (0, top, width, y - top)})
-    cols = [TREE_PAD + TREE_GUTTER + i * TREE_COL for i in range(n_cols)]
-    nodes = {}
-    for t in tech.TECHS.values():
-        if t.turning:
-            w = t.span * TREE_COL - (TREE_COL - TREE_NODE_W)
-            nodes[t.id] = (cols[t.branch] + (TREE_COL - TREE_NODE_W) // 2, rows[t.tier] + (TREE_TURN_ROW - TREE_TURN_H) // 2, w, TREE_TURN_H)
-        else:
-            y0 = rows[t.tier] + t.slot * TREE_ROW
-            nodes[t.id] = (cols[t.branch] + (TREE_COL - TREE_NODE_W) // 2, y0 + (TREE_ROW - TREE_NODE_H) // 2, TREE_NODE_W, TREE_NODE_H)
-    _TREE.update({"size": (width, y + TREE_PAD), "cols": cols, "col_w": TREE_COL, "rows": rows, "heights": heights, "sections": sections, "nodes": nodes})
-    _TREE["links"] = tree_links(nodes, cols)
+    geo = tree_graph.geometry(TREE_PAD + TREE_GUTTER, TREE_PAD, {0: TREE_COLHEAD, 1: TREE_BAND})
+    width, height = geo["size"]
+    _TREE.update({
+        "size": (width, height + TREE_PAD),
+        "cols": [],
+        "col_w": TREE_COL,
+        "rows": geo["rows"],
+        "heights": geo["heights"],
+        "sections": geo["sections"],
+        "nodes": geo["nodes"],
+        "links": geo["links"],
+    })
     return _TREE
-
-
-# Les liens de l'arbre : des traces a angles droits qui passent dans les
-# COULOIRS (entre deux rangees de cartes, entre deux colonnes) et ne
-# traversent jamais une carte. Plusieurs liens d'un meme couloir sont
-# decales de quelques pixels pour qu'on les suive un a un.
-LINK_MARGIN = 12
-LANE_STEP = 5
-
-
-def _free(nodes, x: float, y0: float, y1: float, skip=()) -> bool:
-    """Le segment vertical x, de y0 a y1, ne traverse aucune carte."""
-    lo, hi = min(y0, y1), max(y0, y1)
-    for tid, (nx, ny, nw, nh) in nodes.items():
-        if tid in skip:
-            continue
-        if nx - 2 <= x <= nx + nw + 2 and ny < hi and ny + nh > lo:
-            return False
-    return True
-
-
-def _hfree(nodes, y: float, x0: float, x1: float, skip=()) -> bool:
-    lo, hi = min(x0, x1), max(x0, x1)
-    for tid, (nx, ny, nw, nh) in nodes.items():
-        if tid in skip:
-            continue
-        if ny - 2 <= y <= ny + nh + 2 and nx < hi and nx + nw > lo:
-            return False
-    return True
-
-
-def tree_links(nodes, cols) -> dict:
-    """{(prerequis, savoir): [points]} a l'echelle 1 de la toile. Le lien
-    descend du bas du prerequis dans le couloir sous sa rangee, longe ce
-    couloir, descend dans un couloir entre deux colonnes (si une carte est
-    sur le chemin), longe le couloir au-dessus du savoir et y entre par le
-    haut."""
-    bounds = sorted({c for c in cols} | {cols[-1] + TREE_COL})
-    out: dict = {}
-    lane_use: dict = {}
-    bus_use: dict = {}
-    edges = sorted(
-        ((pid, t.id) for t in tech.TECHS.values() for pid in t.prereqs),
-        key=lambda e: (nodes[e[1]][1], nodes[e[1]][0], e[0]),
-    )
-    for pid, tid in edges:
-        px, py, pw, ph = nodes[pid]
-        cx, cy, cw, _ch = nodes[tid]
-        a = (px + pw / 2, py + ph)
-        z = (cx + cw / 2, cy)
-        skip = (pid, tid)
-        # Le couloir sous le prerequis : un "bus" par prerequis (ses liens
-        # partent ensemble), decale des autres bus du meme couloir.
-        key = round(a[1] + LINK_MARGIN)
-        bus = bus_use.setdefault(key, {})
-        if pid not in bus:
-            k = len(bus)
-            bus[pid] = (k + 1) // 2 * (1 if k % 2 else -1) * 4
-        y1 = a[1] + LINK_MARGIN + bus[pid]
-        y2 = z[1] - LINK_MARGIN
-        if _free(nodes, z[0], y1, y2, skip) and _hfree(nodes, y1, a[0], z[0], skip):
-            pts = [a, (a[0], y1), (z[0], y1), z]
-        else:
-            # Un couloir entre deux colonnes, le plus pres du savoir, libre.
-            lanes = sorted(bounds, key=lambda b: (abs(b - z[0]) + 0.3 * abs(b - a[0]), b))
-            lane = next((b for b in lanes if _free(nodes, b, y1, y2, skip)), lanes[0])
-            k = lane_use.get(lane, 0)
-            lane_use[lane] = k + 1
-            lx = lane + (k + 1) // 2 * (1 if k % 2 else -1) * LANE_STEP
-            lx = max(lane - 15, min(lane + 15, lx))
-            pts = [a, (a[0], y1), (lx, y1), (lx, y2), (z[0], y2), z]
-        # Sans points en double (un lien tout droit).
-        clean = [pts[0]]
-        for p in pts[1:]:
-            if p != clean[-1]:
-                clean.append(p)
-        out[(pid, tid)] = clean
-    return out
 
 
 def chain_of(tid: str) -> tuple[set, set]:

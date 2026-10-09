@@ -1,6 +1,6 @@
 Kora - La recherche refaite : les grands tournants et les tirages
 =================================================================
-Date : 2026-10-09. Statut : FAIT (version 0.10.0 ; l'arbre lisible : 0.10.1, section 5).
+Date : 2026-10-09. Statut : FAIT (version 0.10.0 ; l'arbre lisible : 0.10.1 et 0.10.2, sections 5 et 6).
 
 Sa demande (ses mots) :
   "Le rework du systeme de recherche : je m'inspirerais un peu de Terra
@@ -170,3 +170,37 @@ Point par point :
     faut avant lui s'eclaire en OR, tout ce qu'il ouvre en BLEU (liens
     epais, cartes cerclees) ; le reste de l'arbre s'efface.
   - La bulle et la fiche disent "Il faut : ..." et "Mene a : ...".
+
+
+6. L'ARBRE PLACE COMME UN GRAPHE (0.10.2)
+-----------------------------------------
+  Sa remarque : "l'eclairage n'est pas une solution ; il faut reorganiser
+  les techs pour que, tel un graphe, ce soit bien organise : pas forcement
+  colles, mais separes pour laisser la place aux connexions, comme l'arbre
+  de Victoria 3."
+  L'arbre reste vertical (sa demande du 2026-09-24), mais la grille des
+  branches est abandonnee : tree_graph.py le place comme un graphe en
+  couches (methode de Sugiyama) :
+    - une couche par palier (et les rangees des grands tournants) ;
+    - un lien qui saute des couches y reserve un POINT DE PASSAGE par couche
+      traversee (une place etroite que personne d'autre ne prend) ;
+    - l'ordre dans chaque couche reduit les croisements (barycentres,
+      24 passes en descendant et en remontant ; le meilleur garde) : 42
+      croisements, contre bien plus dans l'ordre des branches (teste) ;
+    - chacun se place pres de la moyenne de ce dont il depend et de ce
+      qu'il ouvre, sans chevauchement, l'ordre garde ; un couloir de 74
+      pixels entre deux rangees pour les liens ;
+    - les liens : une courbe douce dans chaque couloir, la verticale de
+      leur point de passage a travers une rangee ; jamais sur une carte
+      (teste), chacun sa trace.
+  Les cartes des grands tournants sont plus larges (380). Les noms des
+  branches ne sont plus des colonnes (le medaillon de chaque carte garde
+  l'icone de sa branche). L'eclairage de la chaine au survol reste.
+  Puis : "les textes ne sont pas bien affiches : certains incomplets,
+  d'autres qui depassent." Corrige : le medaillon n'a plus de taille minimale
+  de loin (il prenait la place du nom) ; le nom prend la plus grande police
+  ou il tient en deux lignes dans la carte a ce zoom (jusqu'a 9 points de
+  loin, plutot que d'etre coupe), interligne serre ; une ligne trop longue
+  est resserree (25 % au plus), sinon coupee avec "…" ; la place de la coche
+  et du cadenas est reservee ; la pastille des tirages passe en bas a droite
+  et ne s'affiche que de pres.

@@ -657,9 +657,16 @@ src/kora/render_tech.py (la recherche)
   "absent" ; la fiche (learning.detail_lines : sections "Il faut le sort",
   "Il faut qu'il soit arrive chez vous", lignes "info"). layout.tech_world :
   rangees des tournants (TREE_TURN_ROW, Tech.span), sous-rangees (slot),
-  heights, links (layout.tree_links : liens a angles droits dans les
-  couloirs) ; layout.chain_of (la chaine d'un savoir) ; render_tech._links
-  (couleurs, chaine en or / bleu au survol, le reste efface). La carte des tournants : render.shown_turning /
+  heights, links (tree_graph.py : le graphe en couches, points de passage,
+  ordre qui croise le moins, positions, courbes) ; layout.chain_of (la
+  chaine d'un savoir) ; render_tech._links (couleurs, chaine en or / bleu
+  au survol, le reste efface).
+
+src/kora/tree_graph.py (presentation, pur)
+  Le placement de l'arbre des savoirs comme un graphe (Sugiyama) : build
+  (couches, points de passage, _min_crossings, _positions), crossings,
+  geometry (rectangles, rangees, sections, liens : _routes / _curve).
+  Calcule une fois (layout.tech_world le garde). La carte des tournants : render.shown_turning /
   _draw_turning_legend (turning_hits, turning_pick ; app : touche I, clic
   de legende), globe_draw.turn_pick, look.turning_color.
 
