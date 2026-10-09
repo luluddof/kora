@@ -91,7 +91,7 @@ jobs:
             echo "Pas de cle ou de page itch.io (BUTLER_API_KEY, ITCH_GAME) : rien a envoyer."
             exit 0
           fi
-          curl -sSL -o butler.zip https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default
+          curl -sSL -o butler.zip https://broth.itch.zone/butler/windows-amd64/LATEST/archive/default
           unzip -q butler.zip -d butler
           v="${GITHUB_REF_NAME#v}"
           ./butler/butler.exe push dist/Kora "$ITCH_GAME:windows" --userversion "$v"
