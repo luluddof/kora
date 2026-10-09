@@ -410,18 +410,6 @@ def tech_world() -> dict:
     return _TREE
 
 
-def chain_of(tid: str) -> tuple[set, set]:
-    """(ce qu'il faut avant lui, ce qu'il ouvre apres lui) : toute la
-    chaine d'un savoir, pour l'eclairer dans l'arbre."""
-    up: set = set()
-    todo = [tid]
-    while todo:
-        for p in tech.TECHS[todo.pop()].prereqs:
-            if p not in up:
-                up.add(p)
-                todo.append(p)
-    return up, tech.descendants(tid)
-
 
 def tree_zoom_min(view, world) -> float:
     """Tout l'arbre tient dans la vue."""

@@ -491,7 +491,8 @@ lente, bandes dessinees petites a taille fixe.
     Victoria 3." FAIT (0.10.2) : tree_graph.py place l'arbre (toujours
     vertical) comme un graphe en couches : ordre qui croise le moins, chacun
     sous ce dont il depend, des passages reserves aux liens longs, des
-    courbes douces entre les rangees.
+    courbes douces entre les rangees. Puis : "l'eclairage comme ca, tu
+    vires." FAIT (0.10.3) : retire.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------

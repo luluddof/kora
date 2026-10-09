@@ -195,7 +195,7 @@ Point par point :
       (teste), chacun sa trace.
   Les cartes des grands tournants sont plus larges (380). Les noms des
   branches ne sont plus des colonnes (le medaillon de chaque carte garde
-  l'icone de sa branche). L'eclairage de la chaine au survol reste.
+  l'icone de sa branche).
   Puis : "les textes ne sont pas bien affiches : certains incomplets,
   d'autres qui depassent." Corrige : le medaillon n'a plus de taille minimale
   de loin (il prenait la place du nom) ; le nom prend la plus grande police
@@ -204,3 +204,7 @@ Point par point :
   est resserree (25 % au plus), sinon coupee avec "…" ; la place de la coche
   et du cadenas est reservee ; la pastille des tirages passe en bas a droite
   et ne s'affiche que de pres.
+  Puis (0.10.3) : "l'eclairage comme ca, tu vires." Retire : plus de chaine
+  en or et bleu, plus de cartes effacees ou cerclees au survol (et
+  layout.chain_of avec) ; la bulle garde "Il faut" et "Mene a", en couleur
+  ordinaire.

@@ -11,9 +11,6 @@ a la recherche en cours.
   - des liens a angles droits qui passent dans les couloirs entre les
     cartes (layout.tree_links), jamais au travers : dores quand le chemin
     est connu, verts quand il mene a un savoir disponible ;
-  - au survol d'un savoir (ou quand il est choisi), sa CHAINE s'eclaire :
-    ce qu'il faut avant lui en or, ce qu'il ouvre en bleu ; le reste
-    s'efface ;
   - en tete, la recherche en cours ; en bas, la fiche du savoir choisi ;
   - au survol d'une carte, une bulle avec ses premiers effets ;
   - les GRANDS TOURNANTS (turning.py) : de larges cartes sur leur rangee,
@@ -396,12 +393,7 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
     nodes = lay["nodes"]
     # Le savoir montre : celui sous la souris, sinon celui qu'on a choisi ;
     # sa chaine (ce qu'il faut avant, ce qu'il ouvre) s'eclaire.
-    focus = None
-    if vx <= mx <= vx + vw and vy <= my <= vy + vh:
-        focus = next((tid for tid, (x_, y_, w_, h_) in nodes.items() if tid in lay["visible"] and x_ <= mx <= x_ + w_ and y_ <= my <= y_ + h_), None)
-    focus = focus or pick
-    up, down = layout.chain_of(focus) if focus in tech.TECHS else (set(), set())
-    _links(screen, world, states, cam, view, z, focus, up, down)
+    _links(screen, world, states, cam, view, z)
     # Noms des ages, des colonnes, des paliers (par-dessus les liens).
     gutter = TREE_GUTTER * z
     small = z < 0.62
@@ -511,26 +503,12 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
         if t.drawn and st != "connu":
             # En bas a droite : le nom reste lisible.
             _chance_pill(r, state, tribe, t, st, x + w, y + h - 20, z)
-    if focus is not None:
-        # Hors de la chaine : effaces ; dans la chaine : un liseré de sa couleur.
-        veil = None
-        for tid, rect in nodes.items():
-            if tid not in lay["visible"] or tid == focus:
-                continue
-            x, y, w, h = (int(v) for v in rect)
-            if tid in up or tid in down:
-                pygame.draw.rect(screen, CHAIN_UP if tid in up else CHAIN_DOWN, (x - 2, y - 2, w + 4, h + 4), 2, border_radius=7)
-                continue
-            if veil is None or veil.get_size() != (w, h):
-                veil = pygame.Surface((w, h), pygame.SRCALPHA)
-                veil.fill((12, 9, 7, 150))
-            screen.blit(veil, (x, y))
     screen.set_clip(None)
     pygame.draw.rect(screen, GOLD_DEEP, view, 1)
     _controls(r, lay, mx, my)
     sx0, sy0, _sw, sh0 = lay["strip"]
     zoom = f"zoom {int(round(100 * z))} %"
-    hint = r.tiny.render(f"Survolez un savoir : en or ce qu'il faut avant, en bleu ce qu'il ouvre  ·  glisser : se déplacer  ·  molette : zoomer  ·  {zoom}", True, NOTE)
+    hint = r.tiny.render(f"Glisser (n'importe quel bouton) : se déplacer  ·  molette : zoomer  ·  flèches, + et -  ·  {zoom}", True, NOTE)
     hx = sx0 + 4
     if lay.get("tabs"):
         t = lay["tabs"]["nombres"]
@@ -544,40 +522,27 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
         _hover_tip(r, state, hovered, states[hovered], mx, my)
 
 
-# La chaine d'un savoir : ce qu'il faut avant lui (or), ce qu'il ouvre (bleu).
-CHAIN_UP = (246, 200, 96)
-CHAIN_DOWN = (104, 182, 232)
-
-
-def _links(screen, world, states, cam, view, z, focus, up, down) -> None:
-    """Les liens de l'arbre (layout.tree_links), a angles droits. Sans
-    savoir montre : dores (connus), verts (ils menent a un savoir
-    disponible), sombres (pas encore). Un savoir montre : sa chaine en or
-    (avant lui) et en bleu (apres lui), plus epaisse ; le reste en filigrane."""
+def _links(screen, world, states, cam, view, z) -> None:
+    """Les liens de l'arbre (tree_graph.py) : dores (chemin connu), de la
+    couleur du savoir quand ils menent a un savoir disponible ou en cours,
+    sombres (pas encore), rouge sombre (vers un savoir absent)."""
     vx, vy, vw, vh = view
     x0, y0, _z = cam
     arrow = max(3, int(5 * min(1.3, z)))
     order = []
     for (pid, tid), pts in world["links"].items():
-        if focus is not None and (pid == focus or pid in up) and (tid == focus or tid in up):
-            rank, color, width = 2, CHAIN_UP, 3
-        elif focus is not None and (pid == focus or pid in down) and (tid in down):
-            rank, color, width = 2, CHAIN_DOWN, 3
+        known = states[pid] == "connu"
+        child = states[tid]
+        if known and child == "connu":
+            rank, color, width = 1, (190, 156, 88), 2
+        elif known and child in ("disponible", "en_cours"):
+            rank, color, width = 1, STYLE[child]["edge"], 2
+        elif child == "absent":
+            rank, color, width = 0, (72, 52, 46), 1
         else:
-            known = states[pid] == "connu"
-            child = states[tid]
-            if known and child == "connu":
-                rank, color, width = 1, (190, 156, 88), 2
-            elif known and child in ("disponible", "en_cours"):
-                rank, color, width = 1, STYLE[child]["edge"], 2
-            elif child == "absent":
-                rank, color, width = 0, (72, 52, 46), 1
-            else:
-                rank, color, width = 0, (104, 84, 62), 1
-            if focus is not None:
-                rank, color, width = 0, _lerp(color, (20, 16, 12), 0.7), 1
+            rank, color, width = 0, (104, 84, 62), 1
         order.append((rank, pid, tid, pts, color, width))
-    # Les liens montres par-dessus les autres.
+    # Les chemins ouverts par-dessus les autres.
     for rank, _pid, _tid, pts, color, width in sorted(order, key=lambda o: (o[0], o[1], o[2])):
         sp = [(vx + (px - x0) * z, vy + (py - y0) * z) for px, py in pts]
         if max(p[1] for p in sp) < vy or min(p[1] for p in sp) > vy + vh:
@@ -821,10 +786,10 @@ def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
     lines = [(t.name, INK), (STATE_LABEL[st], STYLE[st]["edge"])]
     lines += [("+ " + line, (178, 205, 140)) for line in tech.effect_lines(t)[:3]]
     if t.prereqs:
-        lines.append(("Il faut : " + ", ".join(tech.TECHS[p].name for p in t.prereqs), CHAIN_UP))
+        lines.append(("Il faut : " + ", ".join(tech.TECHS[p].name for p in t.prereqs), SOFT))
     after = tech.pan_of(tid)
     if after and not t.turning:
-        lines.append(("Mène à : " + ", ".join(a.name for a in after), CHAIN_DOWN))
+        lines.append(("Mène à : " + ", ".join(a.name for a in after), SOFT))
     if t.turning:
         lines.append(("Ouvre : " + ", ".join(p.name for p in tech.pan_of(t.id)), TURN_GOLD))
     if t.drawn:

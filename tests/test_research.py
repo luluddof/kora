@@ -212,7 +212,7 @@ def test_the_tree_lays_turning_points_in_their_rows_without_overlap():
 
 def test_the_tree_is_laid_out_as_a_graph_and_links_never_cross_a_card():
     from src.kora import tree_graph
-    from src.kora.layout import chain_of, tech_world
+    from src.kora.layout import tech_world
 
     world = tech_world()
     nodes, links = world["nodes"], world["links"]
@@ -236,6 +236,3 @@ def test_the_tree_is_laid_out_as_a_graph_and_links_never_cross_a_card():
     for k, layer in enumerate(g["order"]):
         start[k] = sorted(layer, key=lambda n: (tech.TECHS[n].branch, tech.TECHS[n].slot) if n in tech.TECHS else (99, 0))
     assert tree_graph.crossings(g["order"], down) < tree_graph.crossings(start, down)
-    up, down_ = chain_of("chefferie")
-    assert {"conte", "clan", "rites", "palabres", "feu"} <= up
-    assert {"terre_ancetres", "ancetres", "grand_chef"} <= down_
