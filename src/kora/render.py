@@ -115,6 +115,7 @@ from src.kora.layout import (  # noqa: F401
     hud_layout,
     map_mode_hit,
     map_mode_layout,
+    MAP_BUTTON_H,
     menu_hit,
     menu_layout,
     min_zoom_for,
@@ -255,6 +256,8 @@ class Renderer:
         # "zones" (teinte des zones d'influence) ou "relief".
         self.map_mode = "zones"
         self.mode_hits: dict = {}
+        # La liste des modes de carte (le bouton en bas a gauche) est ouverte.
+        self.mode_menu_open = False
         # La carte des grands tournants : le tournant choisi, ses lignes.
         self.turning_pick: str | None = None
         self.turning_hits: dict = {}
@@ -495,6 +498,8 @@ class Renderer:
             self.situation_open_uid = None
         if ui.get("event_open") is not None:
             render_panels.draw_event_modal(self, state, ui)
+        # La liste des modes de carte, ouverte : par-dessus la carte et ses fiches.
+        self.draw_map_menu()
         if menu_open:
             self.draw_menu()
 
@@ -820,14 +825,21 @@ class Renderer:
                 pygame.draw.circle(self.screen, (206, 180, 90), (x, y), 2)
 
     def draw_map_modes(self) -> None:
+        """Le bouton des modes de carte (en bas a gauche) et, ouverte, sa
+        liste ; puis la legende du mode choisi (en haut a droite)."""
         w, h = self.screen.get_size()
-        layout = map_mode_layout(w, h)
+        layout = map_mode_layout(w, h, self.mode_menu_open)
         self.mode_hits = layout
         mx, my = pygame.mouse.get_pos()
-        for key, label in MAP_MODES:
-            head, hint = split_hint(label)
-            rect = layout[key]
-            theme.button(self.screen, rect, head, "second", True, _contains(rect, mx, my), icon_key=MAP_MODE_ICONS.get(key), key_hint=hint, role="bouton_petit", active=self.map_mode == key)
+        names = dict(MAP_MODES)
+        current, _hint = split_hint(names.get(self.map_mode, "Relief"))
+        bx, by, bw, bh = layout["button"]
+        theme.button(self.screen, layout["button"], f"Carte : {current}", "second", True, _contains(layout["button"], mx, my),
+                     icon_key=MAP_MODE_ICONS.get(self.map_mode, "relief"), role="bouton_petit", active=self.mode_menu_open)
+        # Une petite fleche : vers le haut, la liste s'ouvre au-dessus.
+        ax, ay = bx + bw - 16, by + bh // 2
+        tip = -4 if not self.mode_menu_open else 4
+        pygame.draw.polygon(self.screen, C.ocre_jaune, [(ax - 5, ay - tip // 2), (ax + 5, ay - tip // 2), (ax, ay + tip)])
         if self.map_mode == "commerce":
             self._draw_trade_legend(layout, w)
         if self.map_mode == "suzerains":
@@ -836,9 +848,7 @@ class Renderer:
         if self.map_mode == "tournants":
             self._draw_turning_legend(layout, w)
         if self.map_mode == "ressources":
-            x0 = layout["relief"][0]
-            y = layout["relief"][1] + 36
-            bw = w - TAB_W - 14 - x0
+            x0, y, bw = layout["legend"]
             bh = 14 + 18 * ((len(NAMES) + 1) // 2)
             theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
             for i, name in enumerate(NAMES):
@@ -846,6 +856,19 @@ class Renderer:
                 cy = y + 8 + (i // 2) * 18
                 pygame.draw.polygon(self.screen, COLORS[name], theme.chamfer((cx, cy + 3, 11, 11), 2))
                 theme.text(self.screen, LABELS[name], "mini", C.lin, (cx + 16, cy), bw // 2 - 26)
+
+    def draw_map_menu(self) -> None:
+        layout = self.mode_hits
+        if not layout or not layout.get("items"):
+            return
+        mx, my = pygame.mouse.get_pos()
+        bx, by, bw, _bh = layout["button"]
+        first = min(r_[1] for r_ in layout["items"].values())
+        theme.panel(self.screen, (bx - 4, first - 6, bw + 8, by - first + 4), "infobulle")
+        for key, label in MAP_MODES:
+            head, hint = split_hint(label)
+            rect = layout["items"][key]
+            theme.button(self.screen, rect, head, "second", True, _contains(rect, mx, my), icon_key=MAP_MODE_ICONS.get(key), key_hint=hint, role="bouton_petit", active=self.map_mode == key)
 
     def shown_turning(self, state) -> str:
         """Le grand tournant montre sur sa carte : celui qu'on a choisi,
@@ -868,14 +891,12 @@ class Renderer:
         me = state.tribes.get(state.viewer)
         if me is None:
             return
-        x0 = layout["relief"][0]
-        y = layout["relief"][1] + 36
-        bw = w - TAB_W - 14 - x0
+        x0, y, bw = layout["legend"]
         turns = tech.turnings()
         pick = self.shown_turning(state)
         bh = 12 + 18 + 22 * len(turns) + 18 * 3
         theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
-        theme.text(self.screen, "Les grands tournants : où ils sont nés, où ils arrivent (cliquez pour choisir)", "mini", C.os, (x0 + 12, y + 6), bw - 24)
+        theme.text(self.screen, "Les grands tournants : qui les a découverts, où ils arrivent (cliquez pour choisir)", "mini", C.os, (x0 + 12, y + 6), bw - 24)
         yy = y + 28
         mx, my = pygame.mouse.get_pos()
         for t in turns:
@@ -908,9 +929,7 @@ class Renderer:
         state = getattr(self, "_legend_state", None)
         if state is None:
             return
-        x0 = layout["relief"][0]
-        y = layout["relief"][1] + 36
-        bw = w - TAB_W - 14 - x0
+        x0, y, bw = layout["legend"]
         realms = look.great_realms(state)
         known = set(diplo.contacts_of(state, state.viewer)) | {state.viewer}
         realms = [(root, m) for root, m in realms if known & set(m)][:10]
@@ -942,9 +961,7 @@ class Renderer:
         """Legende du mode Commerce : les biens, ce que disent les traits,
         et le commerce du mois."""
         state = getattr(self, "_legend_state", None)
-        x0 = layout["relief"][0]
-        y = layout["relief"][1] + 36
-        bw = w - TAB_W - 14 - x0
+        x0, y, bw = layout["legend"]
         rows = [(goods.GOOD_COLORS[g], goods.GOOD_NAMES[g]) for g in goods.GOODS]
         notes = [
             "Trait plein : la route a porté le mois dernier",
@@ -1284,7 +1301,7 @@ class Renderer:
         if pin_info:
             pin_lines = inspect_lines(pin_info)
             ph = 18 + 24 + 18 * max(0, len(pin_lines) - 1)
-            self._draw_inspect_card(pin_info, 12, h - ph - 12, 270, ph, pinned=True)
+            self._draw_inspect_card(pin_info, 12, h - ph - 12 - MAP_BUTTON_H - 10, 270, ph, pinned=True)
         if hover_info and (pin_info is None or hover_info.get("hex") != pin_info.get("hex")):
             mx, my = pygame.mouse.get_pos()
             lines = self._inspect_lines(hover_info)

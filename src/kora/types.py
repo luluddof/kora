@@ -228,6 +228,9 @@ class Tribe:
     # 100 %) ; les savoirs tires dont le tirage lui a ete annonce (draws.py).
     tournants: dict[str, float] = field(default_factory=dict)
     revealed: set[str] = field(default_factory=set)
+    # Les grands tournants dont ce peuple est le berceau (le premier a les
+    # adopter) : leur bonus pour toujours (turning.CRADLE).
+    cradles: list[str] = field(default_factory=list)
     # L'approche de son chef envers les autres peuples (approach.py), depuis
     # quand, et le chef qui l'a prise.
     approach: str = ""

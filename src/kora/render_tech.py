@@ -304,12 +304,13 @@ def _status_line(state, tribe, tid: str, st: str) -> tuple[str, tuple]:
     if t.turning and st == "attente":
         pres = turning.presence(tribe, tid)
         if not turning.born(state, tid) and pres <= 0:
-            return "Pas encore né dans le monde", STYLE["attente"]["text"]
+            return "Pas encore découvert", STYLE["attente"]["text"]
         gain = turning.monthly_gain(state, state.viewer, tid)
         more = f" · +{gain:g}/mois" if gain > 0 else " · rien ne l'apporte"
         return f"Arrive chez vous : {pres:.0f} %{more}", STYLE["attente"]["text"]
     if t.turning and st == "disponible":
-        return f"Arrivé chez vous · à adopter · {t.cost} pts · ~{learning.weeks_left(state, state.viewer, tid)} sem.", STYLE["disponible"]["edge"]
+        first = "" if turning.born(state, tid) else " · le premier en sera le berceau"
+        return f"Arrivé chez vous · à adopter · {t.cost} pts{first}", STYLE["disponible"]["edge"]
     if st == "connu":
         return "Connu", STYLE["connu"]["edge"]
     if st == "en_cours":
@@ -423,7 +424,7 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
             font = r.small if z >= 1.0 else r.tiny
             label = _wrap(font, tech.TIER_NAMES[tier], int(gutter) - 18)[:2]
             if tier in tech.TURNING_TIERS:
-                cost = "naissent, se répandent"
+                cost = "se répandent, s'adoptent"
             else:
                 cost = f"{tech.TIER_COST[tier]} pts" if tech.TIER_COST[tier] else "au départ"
             lh = font.get_height()

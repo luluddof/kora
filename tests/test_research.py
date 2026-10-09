@@ -105,7 +105,7 @@ def test_a_drawn_knowledge_is_never_a_dead_end():
 # --- les grands tournants ------------------------------------------------------------
 
 
-def test_a_turning_point_is_born_where_its_conditions_are_met_then_spreads():
+def test_a_turning_point_is_discovered_by_the_first_to_finish_its_research():
     st = _state()
     tribe = st.tribes[1]
     tribe.practice["hivers"] = 5
@@ -113,26 +113,50 @@ def test_a_turning_point_is_born_where_its_conditions_are_met_then_spreads():
     st.bands[4] = Band(4, 1, offset_to_axial(21, 20), 30, 300.0)
     st.next_band_id = 5
     assert turning.own_conditions(st, tribe, tech.TECHS["clan"])
-    # Le clan ne se voit pas avant d'etre arrive : on ne l'adopte pas.
+    # Il ne s'adopte pas avant d'etre arrive.
     assert learning.status(st, 1, "clan") == "attente"
     assert learning.status(st, 1, "conte") == "verrouille"
-    prestige = tribe.prestige
     for _ in range(9):
         turning.monthly(st)
     assert turning.presence(tribe, "clan") == 100.0
-    assert turning.birthplace(st, "clan") == (1, st.clock.year)
-    assert tribe.prestige > prestige
-    assert any("naît chez vous" in e.text for e in st.log.entries)
+    # Arrive : pas encore decouvert ; le journal dit qu'on peut etre le premier.
+    assert turning.birthplace(st, "clan") is None
+    assert any("berceau" in e.text for e in st.log.entries)
     assert learning.status(st, 1, "clan") == "disponible"
-    # Il se repand chez le voisin en contact (2), pas chez l'inconnu (3).
+    # Personne ne l'a adopte : il ne se repand pas encore.
+    turning.monthly(st)
+    assert turning.presence(st.tribes[2], "clan") == 0
+    # La recherche terminee : decouvert, le berceau et son bonus.
+    prestige = tribe.prestige
+    loyalty = tech.bonuses(tribe).loyalty
+    learning.choose(st, 1, "clan")
+    tribe.progress["clan"] = tech.TECHS["clan"].cost
+    learning.update_learning(st)
+    assert "clan" in tribe.knowledge
+    assert turning.birthplace(st, "clan") == (1, st.clock.year)
+    assert tribe.prestige >= prestige + turning.BIRTH_PRESTIGE
+    assert tribe.cradles == ["clan"] and tech.bonuses(tribe).loyalty > loyalty + 5 - 1
+    assert any("premiers au monde" in e.text for e in st.log.entries)
+    # Maintenant il se repand chez le voisin en contact (2), pas chez l'inconnu (3).
     turning.monthly(st)
     assert turning.presence(st.tribes[2], "clan") > 0
     assert turning.presence(st.tribes[3], "clan") == 0
-    rows = turning.sources(st, 2, "clan")
-    assert any(who == 1 for _l, _v, who in rows)
-    # Adopte : il ouvre son pan.
-    tech.grant(tribe, "clan")
+    assert any(who == 1 for _l, _v, who in turning.sources(st, 2, "clan"))
+    # Le second a l'adopter n'est pas le berceau.
+    other = st.tribes[2]
+    tech.grant(other, "clan")
+    turning.on_adopted(st, other, "clan")
+    assert turning.birthplace(st, "clan")[0] == 1 and other.cradles == []
     assert learning.status(st, 1, "conte") in ("attente", "disponible")
+
+
+def test_a_save_of_0_10_loses_cradles_that_never_adopted():
+    st = _state()
+    st.tribes[2].knowledge.add("don")
+    st.research.update({"turnings": 1, "births": {"clan": [1, 4], "don": [2, 7]}})
+    turning.migrate(st)
+    assert "clan" not in st.research["births"], "le peuple 1 n'avait pas adopte le clan"
+    assert st.research["births"]["don"] == [2, 7] and st.tribes[2].cradles == ["don"]
 
 
 def test_the_ai_adopts_a_turning_point_first():

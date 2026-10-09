@@ -56,8 +56,11 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   à choisir parmi 12 (chasseurs d'aurochs, enfants du froid, conteurs, guerriers…). Ils durent **5 ans**, puis
   s'éteignent (le panneau *Tribu* dit combien de temps il leur reste).
 - **Clic gauche** sur une de vos bandes (un rond à votre couleur) pour la choisir, puis **clic gauche sur la carte** pour
-  qu'elle y marche. Un clic sur une bande étrangère : un raid (attention, les combats sont durs).
+  qu'elle y marche. Une de vos bandes choisie, un **clic droit** sur une bande étrangère l'**attaque** (attention, les
+  combats sont durs) ; un **clic gauche** sur un autre peuple ouvre sa diplomatie.
 - **Clic droit maintenu** (ou molette maintenue) et glisser : tourner la planète. **Molette** : zoomer.
+- Le bouton **Carte** (en bas à gauche) déroule les modes de carte : relief, influence, suzerains, tournants,
+  ressources, commerce.
 - **Espace** : pause. **1 à 5** : vitesse du temps.
 - Survolez une case pour voir ce qu'elle produit ; un clic l'épingle.
 - Le **journal** (à droite) raconte ce qui arrive ; un clic sur une ligne y emmène la caméra.
@@ -92,7 +95,9 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - Les **savoirs** : un arbre qu'on parcourt à la souris (**T**). Certains sont de **grands tournants** (le clan, la
   sédentarité, la domestication, la terre des ancêtres, le don et l'échange) : ils **naissent** chez le premier peuple
   qui en remplit les conditions, se **répandent** chez ses voisins (plus vite entre alliés, partenaires, pays), et
-  ne s'**adoptent** que quand ils sont arrivés chez vous ; adoptés, ils ouvrent tout un pan de l'arbre. La sédentarité
+  ne s'**adoptent** que quand ils sont arrivés chez vous ; adoptés (la recherche terminée), ils ouvrent tout un pan de
+  l'arbre. Le **premier peuple** du monde à en terminer la recherche en est le **berceau** : du prestige et un bonus
+  pour toujours. La sédentarité
   permet de fonder un village. La **carte des tournants** (**I**) montre où ils sont nés et où ils arrivent.
 - D'autres savoirs sont **tirés au sort**, une fois par partie : certains ne viennent pas à tous les peuples (le
   vôtre compris), d'autres ne naissent pas dans tous les mondes, et dans certains groupes un seul naît (les croyances,

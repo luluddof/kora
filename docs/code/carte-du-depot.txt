@@ -206,8 +206,11 @@ src/kora/turning.py  (pas de pygame)
   ses conditions, les peuples en contact), monthly_gain, monthly
   (systems.MONTHLY : presence, naissances state.research["births"],
   journal, carte "tournant_voyageurs"), birthplace / born / born_text,
-  adopted_by, own_conditions, lines (fiche), migrate (vieilles parties ;
-  persist, new_game), EVENT_EFFECTS "tournant". Statut dans
+  adopted_by, own_conditions, lines (fiche), on_adopted (fin de la
+  recherche : decouvert ; le premier = berceau, CRADLE, Tribe.cradles,
+  effect_ids / effect_specs "berceau:"), cradle_text, migrate et
+  _migrate_cradles (vieilles parties ; persist, new_game), EVENT_EFFECTS
+  "tournant". Statut dans
   learning.status ("attente" tant qu'il n'est pas arrive) ; l'IA l'adopte
   d'abord (learning.auto_choose).
 

@@ -219,3 +219,22 @@ def test_the_turning_map_and_the_tree_answer_clicks(monkeypatch, tmp_path):
         lambda r: need(st.tribes[1].learning == "don", st.tribes[1].learning) or [],
     ]
     _play(monkeypatch, tmp_path, st, steps)
+
+
+def test_the_map_mode_button_and_its_list(monkeypatch, tmp_path):
+    """Le bouton « Carte » en bas a gauche : il ouvre la liste des modes ; un
+    mode choisi la referme ; un clic ailleurs aussi."""
+    st = _money_state()
+
+    def need(cond, what):
+        assert cond, what
+
+    steps = [
+        lambda r: [],
+        lambda r: _click(_center(r.mode_hits["button"])),
+        lambda r: need(r.mode_menu_open and r.mode_hits["items"], "la liste s'ouvre") or _click(_center(r.mode_hits["items"]["suzerains"])),
+        lambda r: need(r.map_mode == "suzerains" and not r.mode_menu_open, r.map_mode) or _click(_center(r.mode_hits["button"])),
+        lambda r: need(r.mode_menu_open, "rouverte") or _click((W // 2, H // 2)),
+        lambda r: need(not r.mode_menu_open and r.map_mode == "suzerains", "un clic ailleurs la ferme") or [],
+    ]
+    _play(monkeypatch, tmp_path, st, steps)

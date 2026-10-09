@@ -4,18 +4,18 @@ Un grand tournant (tech.Tech, kind="tournant" : le clan, la sedentarite,
 la domestication, la terre des ancetres, le don et l'echange) est une grosse
 recherche qui ouvre tout un pan de l'arbre (tech.pan_of). Il ne s'apprend
 pas n'importe ou :
-  - il NAIT chez le premier peuple du monde qui remplit ses conditions (ses
-    conds, et ses prerequis) : sa PRESENCE y monte de BIRTH par mois ; a
-    100 %, le tournant est ne (state.research["births"]), le berceau gagne
-    du prestige, et la nouvelle court (le journal) ;
-  - puis il se REPAND : chaque mois, chaque peuple en contact avec un peuple
-    ou il est present le recoit un peu plus (voisins, accords commerciaux,
-    alliances, meme pays, villages freres ; plus encore de ceux qui l'ont
-    adopte) - SPREAD_CAP par mois au plus ; un peuple qui en remplit les
-    conditions le recoit aussi de lui-meme ;
-  - present a 100 % chez un peuple (Tribe.tournants), il peut y etre ADOPTE :
-    une recherche comme les autres (son prix, la diffusion des voisins qui
-    l'ont adopte) ; adopte, il ouvre son pan.
+  - il ARRIVE chez un peuple (sa PRESENCE, Tribe.tournants, monte jusqu'a
+    100 %) : de lui-meme, s'il en remplit les conditions (ses conds et ses
+    prerequis : BIRTH par mois), ou de ses voisins qui l'ont deja adopte
+    (voisins, accords commerciaux, alliances, meme pays, villages freres ;
+    SPREAD_CAP par mois au plus) ;
+  - arrive a 100 %, il peut etre ADOPTE : une recherche comme les autres
+    (son prix, la diffusion des voisins qui l'ont adopte). Il n'est
+    DECOUVERT qu'une fois la recherche terminee (on_adopted) : le PREMIER
+    peuple du monde a la terminer en est le BERCEAU (state.research
+    ["births"], Tribe.cradles) : prestige +BIRTH_PRESTIGE et un bonus pour
+    toujours (CRADLE, des effets comme un savoir : systems.EFFECT_FIELDS
+    "berceau:") ; la nouvelle court (le journal). Adopte, il ouvre son pan.
 Une carte (« Voyageurs ») propose au joueur d'accelerer sa venue.
 Les vieilles parties : migrate (au chargement) donne le tournant a qui sait
 deja les savoirs de son pan.
@@ -41,7 +41,16 @@ SPREAD_KIN = 1.0
 # Un peuple qui l'a adopte le repand mieux qu'un peuple ou il est present.
 ADOPTED = 1.5
 SPREAD_CAP = 12.0
-BIRTH_PRESTIGE = 10
+BIRTH_PRESTIGE = 20
+# Le bonus du berceau : le premier peuple a adopter un tournant le garde
+# pour toujours (des effets comme ceux d'un savoir).
+CRADLE = {
+    "clan": {"loyalty": 5, "chief_reach": 2},
+    "sedentarite": {"village_growth": 1.1, "granary": 2},
+    "domestication": {"village_food": 1.05, "winter_famine": 0.95},
+    "terre_ancetres": {"stability": 4, "prestige_gain": 1.1},
+    "don": {"diplo": 10, "trade_price": 1.05},
+}
 # La carte des voyageurs : quand la presence est entre ces bornes.
 VISIT_RANGE = (15.0, 80.0)
 
@@ -99,7 +108,8 @@ def sources(state, tribe_id: int, tid: str) -> list[tuple[str, float, int]]:
     alive = _living(state)
     for other in diplo.contacts_of(state, tribe_id):
         o = state.tribes.get(other)
-        if o is None or other not in alive or presence(o, tid) < 100.0:
+        # Il ne se repand que de ceux qui l'ont adopte (decouvert).
+        if o is None or other not in alive or tid not in o.knowledge:
             continue
         value, why = SPREAD_CONTACT, []
         if other in near:
@@ -117,9 +127,7 @@ def sources(state, tribe_id: int, tid: str) -> list[tuple[str, float, int]]:
         if other in kin:
             value += SPREAD_KIN
             why.append("frères")
-        if tid in o.knowledge:
-            value *= ADOPTED
-            why.append("l'ont adopté")
+        value *= ADOPTED
         label = f"Les {o.name}" + (f" ({', '.join(why)})" if why else "")
         out.append((label, round(value, 2), other))
     out.sort(key=lambda x: (-x[1], x[2]))
@@ -161,21 +169,56 @@ def monthly(state) -> None:
 
 
 def _arrived(state, tribe, tid: str) -> None:
+    """Arrive a 100 % : il peut etre adopte (le journal le dit au joueur)."""
     t = tech.TECHS[tid]
-    if not born(state, tid):
-        state.research.setdefault("births", {})[tid] = [tribe.id, state.clock.year]
-        gain_prestige(state, tribe, BIRTH_PRESTIGE)
-        for h in humans(state):
-            if h == tribe.id:
-                text = f"Un grand tournant naît chez vous : {t.name}. Vous pouvez l'adopter (Savoirs), et il se répandra chez vos voisins."
-            elif tribe.id in diplo.contacts_of(state, h):
-                text = f"Un grand tournant naît chez les {tribe.name} : {t.name}. Il se répandra chez leurs voisins."
-            else:
-                text = f"On raconte qu'au loin un grand tournant est né : {t.name}."
-            note(state, LogKind.DECOUVERTE, text, to=h)
+    if not is_human(state, tribe.id):
         return
-    if is_human(state, tribe.id):
-        note(state, LogKind.DECOUVERTE, f"Le grand tournant {t.name} est arrivé chez vous : vous pouvez l'adopter (Savoirs).", to=tribe.id)
+    if born(state, tid):
+        text = f"Le grand tournant {t.name} est arrivé chez vous : vous pouvez l'adopter (Savoirs)."
+    else:
+        text = (
+            f"Un grand tournant est à votre portée : {t.name}. Encore jamais découvert : "
+            f"le premier peuple à l'adopter (Savoirs) en sera le berceau ({cradle_text(tid)})."
+        )
+    note(state, LogKind.DECOUVERTE, text, to=tribe.id)
+
+
+def cradle_text(tid: str) -> str:
+    """Le bonus du berceau en une ligne."""
+    effects = tech.effect_lines(tech.spec_effect("berceau:" + tid)) if tid in CRADLE else []
+    return f"prestige +{BIRTH_PRESTIGE}" + ("" if not effects else ", et pour toujours : " + ", ".join(e[:1].lower() + e[1:] for e in effects))
+
+
+def on_adopted(state, tribe, tid: str) -> None:
+    """La recherche d'un tournant est terminee chez ce peuple : il l'a
+    decouvert. Le premier du monde en est le berceau."""
+    t = tech.TECHS[tid]
+    if born(state, tid):
+        if is_human(state, tribe.id):
+            note(state, LogKind.DECOUVERTE, f"Votre peuple a adopté le grand tournant {t.name} : tout un pan de savoirs s'ouvre.", to=tribe.id)
+        return
+    state.research.setdefault("births", {})[tid] = [tribe.id, state.clock.year]
+    gain_prestige(state, tribe, BIRTH_PRESTIGE)
+    if tid in CRADLE and tid not in tribe.cradles:
+        tribe.cradles.append(tid)
+        tech.invalidate()
+    for h in humans(state):
+        if h == tribe.id:
+            text = f"Vous êtes les premiers au monde à découvrir le grand tournant {t.name} : votre peuple en est le berceau ({cradle_text(tid)})."
+        elif tribe.id in diplo.contacts_of(state, h):
+            text = f"Les {tribe.name} ont découvert le grand tournant {t.name}, les premiers au monde. Il se répandra chez leurs voisins."
+        else:
+            text = f"On raconte qu'au loin un peuple a découvert un grand tournant : {t.name}."
+        note(state, LogKind.DECOUVERTE, text, to=h)
+
+
+def effect_ids(tribe) -> list:
+    """Les bonus de berceau du peuple (systems.EFFECT_FIELDS)."""
+    return ["berceau:" + t for t in (getattr(tribe, "cradles", None) or [])]
+
+
+def effect_specs() -> dict:
+    return {f"berceau:{t}": (f"Berceau : {tech.TECHS[t].name}", eff) for t, eff in CRADLE.items()}
 
 
 def _visitors(state, tribe, tid: str) -> None:
@@ -198,15 +241,15 @@ def _visitors(state, tribe, tid: str) -> None:
 
 
 def born_text(state, viewer: int, tid: str) -> str:
-    """"Né chez les Akor, an 23" ; "Né avant les mémoires"."""
+    """"Découvert par les Akor, an 23" ; "Découvert avant les mémoires"."""
     place = birthplace(state, tid)
     if place is None:
-        return "Pas encore né"
+        return "Pas encore découvert"
     if not place[0]:
-        return "Né avant que l'on s'en souvienne"
+        return "Découvert avant que l'on s'en souvienne"
     who = state.tribes.get(place[0])
-    where = "chez vous" if place[0] == viewer else (f"chez les {who.name}" if who else "chez un peuple disparu")
-    return f"Né {where}, an {place[1]}"
+    by = "par vous" if place[0] == viewer else (f"par les {who.name}" if who else "par un peuple disparu")
+    return f"Découvert {by}, an {place[1]}"
 
 
 def adopted_by(state, tid: str) -> list[int]:
@@ -223,7 +266,7 @@ def lines(state, tribe_id: int, tid: str) -> list[tuple[str, str]]:
     out.append((f"Il ouvre : {', '.join(p.name for p in pan)}" + (f", et {more} autres savoirs après eux" if more > 0 else ""), "note"))
     place = birthplace(state, tid)
     if place is None:
-        out.append(("Il n'est encore né nulle part.", "note"))
+        out.append((f"Encore jamais découvert : le premier peuple à l'adopter en sera le berceau ({cradle_text(tid)}).", "note"))
     else:
         out.append((f"{born_text(state, tribe_id, tid)} ; adopté par {len(adopted_by(state, tid))} peuples.", "note"))
     if tid in tribe.knowledge:
@@ -233,7 +276,7 @@ def lines(state, tribe_id: int, tid: str) -> list[tuple[str, str]]:
     if pres < 100:
         rows = sources(state, tribe_id, tid)
         if not rows:
-            out.append(("Rien ne l'apporte encore : il faut en remplir les conditions, ou connaître un peuple où il est né.", "manque"))
+            out.append(("Rien ne l'apporte encore : il faut en remplir les conditions, ou connaître un peuple qui l'a adopté.", "manque"))
         gain = monthly_gain(state, tribe_id, tid)
         for label, value, _who in rows[:4]:
             out.append((f"{label} : +{value:g} par mois", "ok"))
@@ -252,6 +295,7 @@ def migrate(state) -> None:
     village) ; les berceaux : le plus ancien peuple qui l'a."""
     research = dict(getattr(state, "research", None) or {})
     if research.get("turnings"):
+        _migrate_cradles(state)
         return
     research.setdefault("births", {})
     villages = {s.tribe_id for s in state.sites.values() if s.kind == "village"}
@@ -268,7 +312,29 @@ def migrate(state) -> None:
             # Ne avant la memoire : on ne sait plus ou (peuple 0).
             research["births"][t.id] = [0, 0]
     research["turnings"] = 1
+    research["births_v"] = 2
     state.research = research
+    tech.invalidate()
+
+
+def _migrate_cradles(state) -> None:
+    """Une partie de la 0.10 : un tournant y "naissait" a 100 % de presence ;
+    desormais il n'est decouvert qu'adopte. Un berceau qui ne l'a pas adopte
+    ne l'est plus ; un vrai berceau recoit son bonus."""
+    research = state.research
+    if research.get("births_v") == 2:
+        return
+    births = research.setdefault("births", {})
+    for tid, (who, _year) in list(births.items()):
+        tribe = state.tribes.get(int(who))
+        if who and (tribe is None or tid not in tribe.knowledge):
+            del births[tid]
+        elif who and tid in CRADLE and tid not in tribe.cradles:
+            tribe.cradles.append(tid)
+    for t in tech.turnings():
+        if t.id not in births and any(t.id in tr.knowledge for tr in state.tribes.values()):
+            births[t.id] = [0, 0]
+    research["births_v"] = 2
     tech.invalidate()
 
 

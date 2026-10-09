@@ -354,6 +354,10 @@ def _update_learning(state) -> None:
         tribe.progress[tid] = tribe.progress.get(tid, 0.0) + learn_rate(state, tribe.id, tid)
         if tribe.progress[tid] >= TECHS[tid].cost:
             grant(tribe, tid)
+            if TECHS[tid].turning:
+                # Un grand tournant est decouvert : le premier en est le berceau.
+                turning.on_adopted(state, tribe, tid)
+                continue
             if tribe.is_player:
                 tech = TECHS[tid]
                 note(state, LogKind.DECOUVERTE, f"Nouveau savoir : {tech.name}. {summary(tech)}", to=tribe.id)
@@ -370,6 +374,7 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
     out.extend((f"  {line}", "effet") for line in effect_lines(tech))
     if tech.turning:
         out.extend(("  " + text, "effet") for text, kind in turning.lines(state, tribe_id, tech_id)[:1])
+        out.append((f"  Au premier peuple qui l'adopte, son berceau : {turning.cradle_text(tech_id)}", "effet"))
     else:
         after = pan_of(tech_id)
         if after:

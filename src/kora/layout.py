@@ -215,7 +215,7 @@ BAND_BUTTONS = (
 BAND_ROW = 5
 
 
-BAND_HINT = "Clic : aller · ennemi : raid · Maj+clic allié : rejoindre"
+BAND_HINT = "Clic : aller · clic droit sur un étranger : attaquer · Maj+clic allié : rejoindre"
 
 
 def band_card_layout(width: int, height: int, n_lines: int) -> dict:
@@ -246,24 +246,38 @@ MAP_MODES = (
 )
 
 
-def map_mode_layout(width: int, height: int) -> dict:
-    """Pastilles du mode de carte, en haut a droite sous la barre (a gauche
-    des onglets) : rien d'autre ne s'y trouve quand les panneaux sont fermes."""
-    out = {}
-    x = width - TAB_W - 14
-    for key, label in reversed(MAP_MODES):
-        head, hint = split_hint(label)
-        cw = 40 + 8 * len(head) + (16 if hint else 0)
-        x -= cw
-        out[key] = (x, HUD_HEIGHT + 8, cw, 28)
-        x -= 6
-    return out
+MAP_BUTTON_W = 270
+MAP_BUTTON_H = 34
+MAP_ITEM_H = 32
+# Les legendes des modes de carte : en haut a droite, sous la barre.
+MAP_LEGEND_W = 620
+
+
+def map_mode_layout(width: int, height: int, open_: bool = False) -> dict:
+    """Le bouton des modes de carte, en bas a gauche de l'ecran ; ouvert, la
+    liste des modes se deroule au-dessus de lui. "legend" : la place des
+    legendes (en haut a droite, a gauche des onglets)."""
+    button = (12, height - MAP_BUTTON_H - 12, MAP_BUTTON_W, MAP_BUTTON_H)
+    items = {}
+    if open_:
+        y = button[1] - 6 - len(MAP_MODES) * MAP_ITEM_H
+        for key, _label in MAP_MODES:
+            items[key] = (12, y, MAP_BUTTON_W, MAP_ITEM_H - 2)
+            y += MAP_ITEM_H
+    right = width - TAB_W - 14
+    lw = min(MAP_LEGEND_W, right - 12)
+    return {"button": button, "items": items, "legend": (right - lw, HUD_HEIGHT + 8, lw)}
 
 
 def map_mode_hit(layout: dict, mx: int, my: int):
-    for key, rect in layout.items():
+    """Un mode de la liste ouverte, "menu" (le bouton), ou None."""
+    if not layout:
+        return None
+    for key, rect in layout.get("items", {}).items():
         if _contains(rect, mx, my):
             return key
+    if _contains(layout["button"], mx, my):
+        return "menu"
     return None
 
 

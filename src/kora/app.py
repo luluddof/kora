@@ -642,6 +642,10 @@ class Play:
         # Le curseur du budget qu'on glisse (render_treasury), le dernier ordre.
         self.slider_drag = None
         self.slider_sent = None
+        # Le clic droit : glisser fait tourner la planete ; un clic sans
+        # bouger sur une bande etrangere, avec une de vos bandes choisie,
+        # l'attaque (au relachement).
+        self.right_press = None
         self.acc = 0.0
         # En multijoueur, seul l'hote sauvegarde (a part : la partie solo reste).
         self.save_path = multi_save_path() if self.mp is not None else default_save_path()
@@ -1111,9 +1115,14 @@ class Play:
         self.issue(commands.make(self.me(), "goto", self.selected, hx.q, hx.r))
         return True
 
-    def _army_selected(self) -> bool:
-        band = self.state.bands.get(self.selected) if self.selected is not None else None
-        return band is not None and is_army(band)
+    def _foe_under(self, mx: int, my: int):
+        """La bande etrangere sous la souris, si une de vos bandes est
+        choisie (le clic droit l'attaquera) ; None sinon."""
+        mine = self.state.bands.get(self.selected) if self.selected is not None else None
+        if mine is None or mine.tribe_id != self.state.viewer:
+            return None
+        hit = _band_at_pixel(self.state, mx, my, self.zoom, self.globe_yaw, self.globe_pitch, self.sw, self.sh)
+        return hit.id if hit is not None and hit.tribe_id != self.state.viewer else None
 
     def _country_at(self, h) -> int:
         """Le peuple etranger dont on voit le village sur la case, ou dans la
@@ -1167,7 +1176,7 @@ class Play:
             if self.confirm["band"] != target.id or self.now > self.confirm["until"]:
                 self.confirm["band"] = target.id
                 self.confirm["until"] = self.now + CONFIRM_SECONDS
-                self.toast(f"Pacte avec les {name} : cliquez encore pour attaquer (trahison, prestige -10).", True)
+                self.toast(f"Pacte avec les {name} : clic droit encore pour attaquer (trahison, prestige -10).", True)
                 return
             self.confirm["band"] = None
         self.issue(commands.make(self.me(), "march", self.selected, target.id))
@@ -1426,6 +1435,13 @@ class Play:
             if event.button == 1:
                 self.slider_drag = None
                 self.slider_sent = None
+            if event.button == 3 and self.right_press is not None:
+                press, self.right_press = self.right_press, None
+                ax, ay = press["at"]
+                moved = abs(event.pos[0] - ax) + abs(event.pos[1] - ay)
+                target = self.state.bands.get(press["target"]) if press["target"] else None
+                if target is not None and moved <= 6 and target.population > 0:
+                    self.order_raid(target)
             if event.button == self.drag_button:
                 self.dragging = False
             if event.button == self.tech_drag:
@@ -1561,6 +1577,8 @@ class Play:
                 self.dragging = True
                 self.drag_button = event.button
                 self.last_mouse = event.pos
+                if event.button == 3:
+                    self.right_press = {"at": event.pos, "target": self._foe_under(mx, my)}
         elif event.button == 1:
             mx, my = event.pos
             ui_hit = hud_hit(self.renderer.hud_hits, mx, my)
@@ -1604,8 +1622,16 @@ class Play:
                 self.renderer.turning_pick = pick
                 return None
             mode = map_mode_hit(self.renderer.mode_hits, mx, my)
+            if mode == "menu":
+                self.renderer.mode_menu_open = not self.renderer.mode_menu_open
+                return None
             if mode is not None:
                 self.renderer.map_mode = mode
+                self.renderer.mode_menu_open = False
+                return None
+            if self.renderer.mode_menu_open:
+                # Un clic ailleurs referme la liste des modes.
+                self.renderer.mode_menu_open = False
                 return None
             card_uid = next(
                 (uid for uid, rect in self.renderer.event_hits.items() if isinstance(uid, int)
@@ -1668,12 +1694,11 @@ class Play:
                     self.selected = None
                 else:
                     self.selected = hit.id
-            elif hit is not None and self._army_selected():
-                self.order_raid(hit)
             elif hit is not None:
-                # Un pays clique sans armee choisie : sa diplomatie.
+                # Un clic gauche sur un autre peuple : sa diplomatie (on
+                # l'attaque au clic droit).
                 self.open_diplomacy(hit.tribe_id)
-            elif not self._army_selected() and (
+            elif (
                 seen := _seen_village_at_pixel(self.state, mx, my, self.zoom, self.globe_yaw, self.globe_pitch, self.sw, self.sh)
             ) and seen in diplo.contacts_of(self.state, self.state.viewer):
                 # Une ville connue, meme dans le brouillard : sa diplomatie.

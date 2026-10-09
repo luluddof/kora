@@ -1,6 +1,8 @@
 Kora - La recherche refaite : les grands tournants et les tirages
 =================================================================
-Date : 2026-10-09. Statut : FAIT (version 0.10.0 ; l'arbre lisible : 0.10.1 et 0.10.2, sections 5 et 6).
+Date : 2026-10-09. Statut : FAIT (version 0.10.0 ; l'arbre lisible : 0.10.1 a 0.10.3, sections 5 et 6 ;
+la decouverte et le berceau, le clic droit, le bouton des cartes : 0.11.0,
+section 7).
 
 Sa demande (ses mots) :
   "Le rework du systeme de recherche : je m'inspirerais un peu de Terra
@@ -208,3 +210,42 @@ Point par point :
   en or et bleu, plus de cartes effacees ou cerclees au survol (et
   layout.chain_of avec) ; la bulle garde "Il faut" et "Mene a", en couleur
   ordinaire.
+
+
+7. LA DECOUVERTE, LE BERCEAU ; LE CLIC DROIT ; LE BOUTON DES CARTES (0.11.0)
+--------------------------------------------------------------------------
+  Ses mots : "quand on a une armee ou une tribu, il faut faire clic droit
+  pour attaquer une autre ; un tournant donne un bonus au premier a l'avoir
+  eu, et il faut completer la recherche pour qu'il soit considere comme
+  debloque/decouvert ; les modes de carte dans un bouton en bas de l'ecran
+  qui ouvre une liste deroulante."
+  - Le CLIC DROIT attaque : une de vos bandes choisie (troupe ou clan), un
+    clic droit sans bouger sur une bande etrangere l'attaque (au
+    relachement : un clic droit glisse fait toujours tourner la planete) ;
+    le clic gauche sur un etranger ouvre sa diplomatie (meme avec une bande
+    choisie). La fiche de bande et le pacte a trahir le disent ("clic droit
+    encore pour attaquer").
+  - Un tournant n'est DECOUVERT qu'une fois sa recherche terminee
+    (turning.on_adopted, appele par learning a la fin de la recherche). Arrive
+    a 100 % chez vous, il est "a votre portee" ; le journal dit si personne
+    ne l'a encore decouvert. Le PREMIER peuple du monde a terminer la
+    recherche en est le BERCEAU : prestige +20 et un bonus POUR TOUJOURS
+    (turning.CRADLE ; Tribe.cradles ; des effets comme un savoir,
+    systems.EFFECT_FIELDS "berceau:") :
+      Le clan            attachement des clans +5, emprise du chef +2
+      La sedentarite     croissance des villages +10 %, grenier +2 semaines
+      La domestication   vivres des villages +5 %, famine d'hiver -5 %
+      La terre des ancetres  stabilite +4, prestige gagne +10 %
+      Le don et l'echange    propositions +10, prix de vos ventes +5 %
+    Il ne se repand plus que depuis les peuples qui l'ont ADOPTE. La fiche du
+    tournant et sa carte le disent ("le premier en sera le berceau").
+    Parties de la 0.10 : un "berceau" qui ne l'avait pas adopte ne l'est plus ;
+    un vrai berceau recoit son bonus (turning._migrate_cradles).
+    Essai (partie neuve, 46 ans) : premier village an 11 ; a l'an 46, 47
+    villages, 10 700 personnes ; les tournants decouverts an 5, 9, 10, 16,
+    22.
+  - Les MODES DE CARTE : un bouton "Carte : <mode>" en bas a gauche ; un clic
+    deroule la liste des six modes au-dessus de lui (par-dessus tout) ; un
+    mode choisi, ou un clic ailleurs, la referme ; les touches Z U I R X
+    marchent toujours ; les legendes restent en haut a droite ; la fiche de
+    case epinglee remonte au-dessus du bouton.

@@ -92,12 +92,15 @@ EFFECT_FIELDS = (
     "situations.effect_ids",
     # La base des nombres et les operations connues.
     "numbers.effect_ids",
+    # Les bonus des berceaux des grands tournants.
+    "turning.effect_ids",
 )
 
 EFFECT_SPECS = {
     "sit:": "situations.effect_specs",
     "base:": "numbers.effect_specs",
     "op:": "numbers.effect_specs",
+    "berceau:": "turning.effect_specs",
 }
 
 # Ce que dit un savoir, en plus de ses effets (tech.effect_lines) ;

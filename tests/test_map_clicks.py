@@ -45,3 +45,37 @@ def test_an_unknown_people_opens_nothing():
     play = _play(st)
     play.open_diplomacy(3)
     assert play.side_panel is None
+
+
+def test_a_right_click_attacks_a_left_click_talks():
+    """Une de vos bandes choisie : clic droit sur un etranger = l'attaquer ;
+    clic gauche = sa diplomatie ; un clic droit glisse fait tourner la
+    planete sans attaquer."""
+    from src.kora.globe import hex_to_globe_screen, look_at_hex, view_params
+    from src.kora.layout import HUD_HEIGHT
+
+    st = _state()
+    st.bands[1].position = offset_to_axial(28, 20)
+    diplo.make_contact(st, 1, 3, quiet=True)
+    recompute_vision(st)
+    play = _play(st)
+    play.sw, play.sh = 1280, 720
+    play.selected = 1
+    foe = st.bands[3]
+    play.globe_yaw, play.globe_pitch = look_at_hex(foe.position, st.world.width, st.world.height)
+    gcx, gcy, focal, dist = view_params(play.zoom, play.sw, play.sh, HUD_HEIGHT)
+    x, y = (int(v) for v in hex_to_globe_screen(foe.position, st.world, play.globe_yaw, play.globe_pitch, gcx, gcy, focal, dist))
+    hit = app._band_at_pixel(st, x, y, play.zoom, play.globe_yaw, play.globe_pitch, play.sw, play.sh)
+    assert hit is not None and hit.tribe_id == 3
+    # Clic droit glisse : rien.
+    play._on_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=3))
+    play._on_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(x + 40, y), button=3))
+    assert st.bands[1].order.kind.name == "STAY"
+    # Clic gauche : la diplomatie, et la bande ne bouge pas.
+    play._on_click(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=1))
+    assert play.side_panel == "peuples" and play.ui["people_pick"] == 3
+    assert st.bands[1].order.kind.name == "STAY"
+    # Clic droit : l'attaque.
+    play._on_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=3))
+    play._on_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(x, y), button=3))
+    assert st.bands[1].order.kind.name == "MARCH_TO_BAND" and st.bands[1].order.target_band_id == hit.id
