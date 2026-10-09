@@ -62,10 +62,14 @@ def wins(state: GameState, bands: list[Band], prey: Band, edge: float = AI_RAID_
 
 def fair_game(state: GameState, band: Band, prey: Band, hungry: bool) -> bool:
     """Un peuple qu'on peut raider : pas de pacte ; un voisin cordial,
-    seulement quand on a faim."""
-    if prey.tribe_id == band.tribe_id or diplo.at_peace(state, band.tribe_id, prey.tribe_id):
+    seulement quand on a faim. Entre peuples qui ont la diplomatie, il faut
+    pouvoir lui declarer la guerre (go_to_war le fera au depart du raid)."""
+    a, b = band.tribe_id, prey.tribe_id
+    if a == b or diplo.has_pact(state, a, b):
         return False
-    if diplo.may_start(state, band.tribe_id, prey.tribe_id):
+    if diplo.may_start(state, a, b):
+        return False
+    if diplo.needs_declaration(state, a, b) and not diplo.declared_war(state, a, b) and diplo.evaluate(state, a, b, "guerre").blocked:
         return False
     if not hungry and diplo.relation(state, band.tribe_id, prey.tribe_id) >= 15:
         return False
@@ -159,8 +163,17 @@ def plan_raid(state: GameState, band: Band, max_weeks: int, hungry: bool = True)
     return None
 
 
+def go_to_war(state: GameState, band: Band, prey: Band) -> None:
+    """Le raid part : entre peuples qui ont la diplomatie, l'IA declare
+    d'abord la guerre (diplo.declare_war)."""
+    a, b = band.tribe_id, prey.tribe_id
+    if diplo.needs_declaration(state, a, b) and not diplo.declared_war(state, a, b):
+        diplo.declare_war(state, a, b)
+
+
 def start_plan(state: GameState, band: Band, plan) -> None:
     if plan[0] == "attack":
+        go_to_war(state, band, plan[1])
         set_march_to_band(state, band.id, plan[1].id)
         return
     kind, ally, prey = plan
@@ -202,8 +215,7 @@ def advance_plans(state: GameState) -> None:
             or prey.population <= 0
             or band.retreating
             or state.tick_count > band.intent_until
-            or diplo.at_peace(state, band.tribe_id, prey.tribe_id)
-            or diplo.may_start(state, band.tribe_id, prey.tribe_id)
+            or not fair_game(state, band, prey, hungry=True)
         ):
             _drop_plan(band)
             continue
@@ -225,6 +237,7 @@ def advance_plans(state: GameState) -> None:
         if is_shielded(state, prey):
             continue
         if wins(state, here, prey):
+            go_to_war(state, band, prey)
             for b in here:
                 _drop_plan(b)
                 set_march_to_band(state, b.id, prey.id)

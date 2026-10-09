@@ -98,7 +98,7 @@ def test_player_new_knowledge_logs_ai_does_not():
         logged = [e for e in st.log.entries if e.kind is LogKind.DECOUVERTE]
         assert bool(logged) is is_player
         if is_player:
-            assert "Fumage" in logged[0].text and "+4 semaines" in logged[0].text
+            assert "Fumage" in logged[0].text and "14 semaines" in logged[0].text
 
 
 def test_log_survives_save(tmp_path):

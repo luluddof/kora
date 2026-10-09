@@ -188,8 +188,12 @@ def test_an_old_save_gets_the_turning_points_of_what_it_knows():
     assert {"sedentarite", "clan"} <= tribe.knowledge
     assert turning.birthplace(st, "sedentarite") == (0, 0)
     assert "avant" in turning.born_text(st, 1, "sedentarite")
-    # Une fois seulement.
+    # A chaque chargement, l'arbre reste coherent : qui sait un savoir du pan
+    # d'un tournant a ce tournant (l'arbre a pu changer entre deux versions).
     tribe.knowledge.discard("clan")
+    turning.migrate(st)
+    assert "clan" in tribe.knowledge
+    tribe.knowledge -= {"clan", "conte"}
     turning.migrate(st)
     assert "clan" not in tribe.knowledge
 

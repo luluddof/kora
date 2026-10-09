@@ -125,6 +125,8 @@ def _march(state, tid, band_id, target_id):
         why = diplo.may_start(state, tid, target.tribe_id)
         if why:
             return _out(why + ".")
+        if diplo.needs_declaration(state, tid, target.tribe_id) and not diplo.declared_war(state, tid, target.tribe_id) and not diplo.at_war(state, tid, target.tribe_id):
+            return _out(f"Vous êtes en paix avec les {state.tribes[target.tribe_id].name} : déclarez-leur d'abord la guerre (écran Peuples)")
     set_march_to_band(state, band.id, target.id)
     return _out()
 

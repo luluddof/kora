@@ -32,7 +32,7 @@ def test_a_marching_troop_can_bring_back_wolf_cubs_for_hunting_dogs():
     inst = events._new_instance(st, events.EVENTS["loups_troupe"], 1, army.id, {})
     assert events._eligible(st, events.EVENTS["loups_troupe"], inst)
     assert "la troupe de" in events.text_for(st, inst)
-    st.tribes[1].knowledge |= {"epieu"}
+    st.tribes[1].knowledge |= {"epieu", "domestication"}
     assert learning.status(st, 1, "chiens") != "disponible"
     cubs = events._new_instance(st, events.EVENTS["louveteaux_troupe"], 1, army.id, {})
     events.apply(st, cubs, ("flag", "louveteaux"))

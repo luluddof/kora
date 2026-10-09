@@ -450,7 +450,7 @@ def vassals_of(state, tid: int) -> list[int]:
 
 
 VASSAL_BASE = 3
-PROTECT_RATIO = 2.5
+PROTECT_RATIO = tech.BASE_PROTECT_RATIO
 FEAST_NEIGHBORS = 8.0
 FEAST_RANGE = 40
 FEAST_SPELL = 52

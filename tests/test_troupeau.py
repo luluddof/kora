@@ -35,7 +35,7 @@ def _tribe_on_steppe(pop=10, prestige=0, is_player=True, troupeau=False):
         troupeau=troupeau,
         steppe_seen=True,
         steppe_weeks=TROUPEAU_STEPPE_WEEKS,
-        knowledge={"feu", "outils", "epieu"},
+        knowledge={"feu", "outils", "epieu", "domestication"},
         practice={"steppe": TROUPEAU_STEPPE_WEEKS},
     )
     st = GameState(

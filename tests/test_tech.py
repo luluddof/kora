@@ -73,7 +73,7 @@ def test_effect_text_is_drawn_from_the_numbers():
     assert any("Force au combat : +10 %" in line for line in lines)
     assert any("Plaine et steppe : +10 % de nourriture" in line for line in lines)
     portage = " ".join(tech.effect_lines(tech.TECHS["portage"]))
-    assert "forêt : 4 cases/semaine (au lieu de 3)" in portage
+    assert "forêt : 4 cases/semaine (au départ 3)" in portage
     assert "Déjà pris en compte" in tech.effect_lines(tech.TECHS["feu"])[0]
 
 
@@ -288,3 +288,18 @@ def test_a_failed_tick_rolls_knowledge_back():
     assert "arc" not in st.tribes[1].knowledge
     assert "arc" not in st.tribes[1].progress
     assert "foret" not in st.tribes[1].practice
+
+
+def test_effect_numbers_are_those_of_the_people_not_of_the_start():
+    """"Bandes : jusqu'a 12 (au lieu de 8)" : le 8 est le chiffre du peuple
+    aujourd'hui, pas celui du depart ; pareil pour le prestige d'hiver."""
+    tribe = Tribe(1, "Kora", 20, True, knowledge={"feu", "outils", "conte", "peintures"})
+    tech.invalidate()
+    chef = " ".join(tech.lines_for(tribe, tech.TECHS["chefferie"]))
+    assert f"jusqu'à {tech.bonuses(tribe).max_bands + 4} (aujourd'hui {tech.bonuses(tribe).max_bands})" in chef
+    # Recits (+2) et peintures (+2) : l'hiver sans famine rapporte +8 aujourd'hui.
+    rites = " ".join(tech.lines_for(tribe, tech.TECHS["ancetres"]))
+    assert "aujourd'hui +8 / -4" in rites
+    # Un savoir deja connu : "sans lui".
+    conte = " ".join(tech.lines_for(tribe, tech.TECHS["conte"]))
+    assert "+8 sans famine" in conte and "sans lui +6" in conte

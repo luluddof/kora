@@ -75,7 +75,13 @@ def test_a_right_click_attacks_a_left_click_talks():
     play._on_click(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=1))
     assert play.side_panel == "peuples" and play.ui["people_pick"] == 3
     assert st.bands[1].order.kind.name == "STAY"
-    # Clic droit : l'attaque.
+    # En paix (tous deux ont la diplomatie) : le clic droit ne lance rien.
+    assert diplo.needs_declaration(st, 1, 3)
+    play._on_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=3))
+    play._on_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(x, y), button=3))
+    assert st.bands[1].order.kind.name == "STAY"
+    # La guerre declaree : le clic droit attaque.
+    diplo.declare_war(st, 1, 3)
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=3))
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(x, y), button=3))
     assert st.bands[1].order.kind.name == "MARCH_TO_BAND" and st.bands[1].order.target_band_id == hit.id

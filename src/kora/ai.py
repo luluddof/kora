@@ -206,6 +206,9 @@ AI_ARMY_POP = 60
 AI_THREAT = 0.5
 AI_THREAT_RANGE = 8
 AI_ARMY_REACH = 16
+# En guerre declaree, la troupe va chercher l'ennemi plus loin.
+AI_WAR_REACH = 28
+AI_WAR_RAID_WEEKS = 9
 AI_BUILD_RESERVE = 12
 
 
@@ -422,6 +425,15 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     if site is not None and not villages.army_block(state, band.id):
         foe, foe_f = _threat(state, band, AI_THREAT_RANGE)
         raise_it = foe is not None and foe_f >= AI_THREAT * band_force(state, band)
+        if not raise_it and weeks >= 6 and diplo.wars_of(state, band.tribe_id):
+            # En guerre declaree : on leve une troupe contre un ennemi a
+            # portee qu'on peut battre.
+            est = villages.levy_size(band, villages.LEVY_SHARE["troupe"]) * band_quality(state, band)
+            for prey in bands_near(state, band.position, AI_WAR_REACH):
+                if diplo.declared_war(state, band.tribe_id, prey.tribe_id) and not is_shielded(state, prey):
+                    if est > AI_RAID_EDGE * defense_force(state, prey):
+                        raise_it = True
+                        break
         if not raise_it and weeks >= 8 and band.population >= AI_ARMY_POP and state.rng.random() < AI_ARMY_WHIM * approach.factor(state, band.tribe_id, "army"):
             tribe = state.tribes[band.tribe_id]
             culture = culture_of(tribe)
@@ -497,7 +509,10 @@ def _army_ai(state: GameState, band: Band, weeks: float) -> None:
         set_goto(state, band.id, home.hex, max_nodes=500, max_cost=1000)
         return
     culture = culture_of(state.tribes[band.tribe_id])
-    plan = plan_raid(state, band, max(6, culture.raid_weeks), hungry=weeks < 3)
+    reach_weeks = max(6, culture.raid_weeks)
+    if diplo.wars_of(state, band.tribe_id):
+        reach_weeks = max(reach_weeks, AI_WAR_RAID_WEEKS)
+    plan = plan_raid(state, band, reach_weeks, hungry=weeks < 3)
     if plan is not None and plan[0] == "attack":
         start_plan(state, band, plan)
         return

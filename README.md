@@ -57,7 +57,9 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   s'éteignent (le panneau *Tribu* dit combien de temps il leur reste).
 - **Clic gauche** sur une de vos bandes (un rond à votre couleur) pour la choisir, puis **clic gauche sur la carte** pour
   qu'elle y marche. Une de vos bandes choisie, un **clic droit** sur une bande étrangère l'**attaque** (attention, les
-  combats sont durs) ; un **clic gauche** sur un autre peuple ouvre sa diplomatie.
+  combats sont durs) ; un **clic gauche** sur un autre peuple ouvre sa diplomatie. Entre peuples qui connaissent la
+  **diplomatie** (Dons et palabres), on ne s'attaque qu'après avoir **déclaré la guerre** (écran Peuples) : les
+  pays (tributaires, confédérés) et les alliés suivent ; une trêve y met fin.
 - **Clic droit maintenu** (ou molette maintenue) et glisser : tourner la planète. **Molette** : zoomer.
 - Le bouton **Carte** (en bas à gauche) déroule les modes de carte : relief, influence, suzerains, tournants,
   ressources, commerce.

@@ -1315,4 +1315,7 @@ def _will_fight(state: GameState, a: Band, b: Band) -> bool:
     (treve, alliance, tribut) - a moins que l'une ne soit venue attaquer."""
     if diplo.hostile_intent(state, a.tribe_id, b.tribe_id):
         return True
+    if diplo.needs_declaration(state, a.tribe_id, b.tribe_id) and not diplo.declared_war(state, a.tribe_id, b.tribe_id):
+        # Entre peuples qui ont la diplomatie : pas de combat sans guerre.
+        return False
     return _hunts(a, b) or _hunts(b, a)

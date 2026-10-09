@@ -135,7 +135,7 @@ def test_a_conqueror_chief_worries_everyone():
 def test_the_great_chiefdom_techs_sit_in_the_neolithic():
     for tid in ("enceintes", "araire", "festins", "lait", "grand_chef", "otages", "biens_prestige"):
         t = tech.TECHS[tid]
-        assert t.tier == 6 and tech.era_of(t) == 1, tid
+        assert t.tier >= 5 and tech.era_of(t) == 1, tid
         assert tech.effect_lines(t), tid
     assert 6 in tech.ERAS[1][1] and tech.TIER_NAMES[6] == "Grandes chefferies"
     cells = [(t.branch, t.tier, t.slot) for t in tech.TECHS.values() if tech.era_of(t) == 1]

@@ -50,6 +50,9 @@ BASE_MOVE_COST = MOVE_COST
 BASE_CHIEF_REACH = 12
 # Rayon de la zone d'influence autour d'une bande (voir influence.py).
 BASE_INFLUENCE_RADIUS = 2
+# Combien de fois plus fort il faut etre pour prendre un peuple sous sa
+# protection (chiefdom.protect_ratio).
+BASE_PROTECT_RATIO = 2.5
 # Apprentissage : points par semaine = 1 + peuple / LEARN_POP.
 LEARN_POP = 120
 # Une partie longue : chaque palier demande deux fois plus qu'au debut du proto.
@@ -259,7 +262,7 @@ TECHS: dict[str, Tech] = {
             "Échanger des présents, s'asseoir autour du même feu : on parle avant de se battre.",
             prereqs=("feu",),
             conds=(Cond("contacts", 1),),
-            effects={"gifts": 1.5, "diplo": 10},
+            effects={"gifts": 1.5, "diplo": 10, "diplomacy": True},
         ),
         # --- palier 2 : savoirs du clan ------------------------------------
         Tech(
@@ -272,7 +275,7 @@ TECHS: dict[str, Tech] = {
         Tech(
             "troupeau", "Garde des troupeaux", 2, 1,
             "Suivre et garder un troupeau plutôt que le chasser : la steppe devient un garde-manger.",
-            prereqs=("epieu",),
+            prereqs=("domestication",),
             conds=(
                 Cond("seen", label="steppe"),
                 _weeks(TROUPEAU_STEPPE_WEEKS, _T.STEPPE, label="steppe"),
@@ -368,7 +371,7 @@ TECHS: dict[str, Tech] = {
         Tech(
             "chiens", "Chiens de chasse", 3, 4,
             "Les louveteaux d'autrefois sont devenus des chiens : ils rabattent le gibier et veillent la nuit.",
-            prereqs=("epieu",),
+            prereqs=("domestication",),
             conds=(Cond("flag", 1, label="louveteaux"),),
             effects={"food": {_T.FORET: 1.06, _T.PLAINE: 1.06, _T.STEPPE: 1.06}, "vision": 2},
         ),
@@ -411,7 +414,7 @@ TECHS: dict[str, Tech] = {
         Tech(
             "chevres", "Chèvres et moutons", 4, 4,
             "Des bêtes qui suivent le berger : du lait, de la laine, de la viande sur pied.",
-            prereqs=("domestication",),
+            prereqs=("domestication", "sedentarite"),
             conds=(Cond("res", 20, ("chevres",), "près des chèvres sauvages"), Cond("pop", 120)),
             effects={
                 "food": {_T.COLLINE: 1.2, _T.MONTAGNE: 1.2, _T.PLAINE: 1.05},
@@ -451,7 +454,7 @@ TECHS: dict[str, Tech] = {
         Tech(
             "haches", "Haches polies", 5, 0,
             "La pierre polie abat les arbres et les ennemis : la forêt recule devant les champs.",
-            prereqs=("palissade",),
+            prereqs=("champs",),
             conds=(Cond("res", 20, ("silex",), "près du silex"), Cond("pop", 200)),
             effects={"combat": 1.1, "clearing": True},
         ),
@@ -477,7 +480,7 @@ TECHS: dict[str, Tech] = {
         Tech(
             "tissage", "Tissage", 5, 2,
             "Le lin et la laine tissés : des vêtements chauds, et des étoffes qu'on échange.",
-            prereqs=("poterie",),
+            prereqs=("champs",),
             conds=(Cond("villages", 1), Cond("pop", 200)),
             effects={"winter_famine": 0.8, "winter_prestige": 1},
         ),
@@ -544,7 +547,7 @@ TECHS: dict[str, Tech] = {
         Tech(
             "enceintes", "Enceintes et fossés", 6, 0,
             "Un fossé, un talus, une palissade double : le village devient un refuge où l'on tient un siège.",
-            prereqs=("haches",),
+            prereqs=("palissade", "haches"),
             conds=(Cond("village_years", 6),),
             effects={"village_defense": 1.3},
         ),
@@ -563,11 +566,12 @@ TECHS: dict[str, Tech] = {
             effects={"feasts": True, "feast_cost": 0.75},
         ),
         Tech(
-            "lait", "Lait et laine", 6, 4,
+            "lait", "Lait et laine", 5, 4,
             "On trait les vaches et les chèvres, on tond les moutons : les bêtes vivantes nourrissent et habillent.",
-            prereqs=("bovins",),
+            prereqs=("chevres",),
             conds=(Cond("village_years", 5),),
             effects={"village_food": 1.08, "stability": 3},
+            slot=1,
         ),
         Tech(
             "grand_chef", "Chef des chefs", 6, 5,
@@ -611,12 +615,16 @@ TECHS: dict[str, Tech] = {
             kind="tournant", span=2, price=140,
         ),
         Tech(
-            "domestication", "La domestication", 3.5, 3,
-            "On ne chasse plus la bête : on la garde, on la fait naître, on choisit les plus douces. Les troupeaux deviennent une richesse.",
+            "domestication", "La domestication", 1.5, 1,
+            "Le loup qui rôde autour du feu devient chien ; la bête qu'on chassait, on la garde et on la fait naître. Les bêtes deviennent des compagnes, puis une richesse.",
             prereqs=("epieu",),
-            conds=(Cond("res", 30, ("chevres", "aurochs", "chevaux"), "près de bêtes sauvages à apprivoiser"), Cond("pop", 160), Cond("winters", 6)),
+            conds=(
+                Cond("res", 10, ("chevres", "aurochs", "chevaux", "rennes"), "près de bêtes sauvages à apprivoiser"),
+                Cond("pop", 40),
+                Cond("winters", 2),
+            ),
             effects={"winter_famine": 0.95},
-            kind="tournant", span=2, price=200,
+            kind="tournant", span=2, price=90,
         ),
         Tech(
             "terre_ancetres", "La terre des ancêtres", 3.5, 5,
@@ -704,7 +712,7 @@ TECHS: dict[str, Tech] = {
         Tech(
             "cheval", "Le cheval monté", 6, 3,
             "On ne mange plus le cheval : on le monte. La steppe rétrécit, et les cavaliers frappent loin.",
-            prereqs=("domestication", "chevres"),
+            prereqs=("troupeau", "chevres"),
             conds=(Cond("res", 20, ("chevaux",), "près des chevaux sauvages"), Cond("pop", 150)),
             effects={"move": {_T.PLAINE: 8, _T.STEPPE: 7}, "combat": 1.1, "vision": 1},
             world=0.4, chance=0.35,
@@ -720,7 +728,7 @@ TECHS: dict[str, Tech] = {
         Tech(
             "fromage", "Fromages et laitages", 6, 4,
             "Le lait caillé se garde des mois : l'hiver devient moins maigre.",
-            prereqs=("chevres",),
+            prereqs=("lait",),
             conds=(Cond("village_years", 4),),
             effects={"village_food": 1.04, "winter_famine": 0.93},
             slot=1, chance=0.5,
@@ -909,6 +917,11 @@ def start_bonus_lines(bonus: StartBonus) -> list[str]:
     return lines
 
 
+def start_bonus_lines_for(tribe, bonus: StartBonus) -> list[str]:
+    """Pareil, avec les vrais chiffres du peuple (None : ceux du depart)."""
+    return lines_for(tribe, bonus) if tribe is not None else start_bonus_lines(bonus)
+
+
 def set_start_bonuses(tribe, picks, tick: int) -> None:
     tribe.start_bonuses = [b for b in picks if b in START_BONUSES][:START_BONUS_PICKS]
     tribe.start_bonus_until = tick + START_BONUS_WEEKS if tribe.start_bonuses else -1
@@ -1008,6 +1021,8 @@ class Bonuses:
     feasts: bool = False
     feast_cost: float = 1.0
     obligations: bool = False
+    # La diplomatie (diplo.py) : on ne s'attaque plus sans declarer la guerre.
+    diplomacy: bool = False
 
 
 _MULT = {
@@ -1037,7 +1052,7 @@ _MULT = {
     "home_defense",
     "gifts",
 }
-_FLAGS = {"alliance", "union", "palisade", "clearing", "trade", "commerce", "kin", "math", "numbers", "money", "silver", "tolls", "feasts", "obligations"}
+_FLAGS = {"alliance", "union", "palisade", "clearing", "trade", "commerce", "kin", "math", "numbers", "money", "silver", "tolls", "feasts", "obligations", "diplomacy"}
 _CACHE: dict[frozenset, Bonuses] = {}
 NO_BONUS = Bonuses(food={})
 
@@ -1116,6 +1131,29 @@ def bonuses(tribe) -> Bonuses:
     return bonus
 
 
+def bonuses_without(tribe, tid: str) -> Bonuses:
+    """Les bonus du peuple sans ce savoir (ou cet effet) : la base des
+    chiffres de effect_lines."""
+    known = set(getattr(tribe, "knowledge", None) or ())
+    for path in systems.EFFECT_FIELDS:
+        known |= set(systems.fn(path)(tribe) or ())
+    known.discard(tid)
+    return bonuses_of(known) if known else NO_BONUS
+
+
+def has_effect(tribe, tid: str) -> bool:
+    if tid in (getattr(tribe, "knowledge", None) or ()):
+        return True
+    return any(tid in (systems.fn(path)(tribe) or ()) for path in systems.EFFECT_FIELDS)
+
+
+def lines_for(tribe, tech) -> list[str]:
+    """effect_lines avec les vrais chiffres de ce peuple (None : ceux du depart)."""
+    if tribe is None:
+        return effect_lines(tech)
+    return effect_lines(tech, bonuses_without(tribe, tech.id), has_effect(tribe, tech.id))
+
+
 def move_costs(tribe) -> dict:
     b = bonuses(tribe)
     return b.move if b.move else BASE_MOVE_COST
@@ -1148,9 +1186,19 @@ def _slower(mult: float) -> str:
     return f"se gâtent {_num(times)} fois moins vite"
 
 
-def effect_lines(tech: Tech) -> list[str]:
+def effect_lines(tech: Tech, base: "Bonuses | None" = None, known: bool = False) -> list[str]:
+    """Ce que fait un savoir (ou un effet du meme genre), en phrases tirees
+    des donnees. base : les bonus du peuple SANS ce savoir (bonuses_without) ;
+    les totaux sont alors ses vrais chiffres ("jusqu'a 14, aujourd'hui 10") ;
+    known : il le sait deja ("sans lui 10"). Sans base : les chiffres du
+    depart."""
     e = tech.effects
     out: list[str] = []
+    b = base if base is not None else NO_BONUS
+    word = "sans lui" if known else ("aujourd'hui" if base is not None else "au départ")
+
+    def was(value) -> str:
+        return f" ({word} {value})"
     if e.get("base"):
         out.append("Déjà pris en compte dans le jeu de base.")
     groups: dict[float, list] = {}
@@ -1170,38 +1218,30 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("winter_famine"):
         out.append(f"Famine pendant l'hiver local : {_pct(e['winter_famine'])} de morts")
     if e.get("stock_weeks"):
-        n = e["stock_weeks"]
-        out.append(f"Réserves : +{n} semaine{'s' if n > 1 else ''} de stock par personne")
+        out.append(f"Réserves : {b.stock_weeks + e['stock_weeks']} semaines de stock par personne" + was(b.stock_weeks))
     if e.get("caches"):
-        if e["caches"] >= 3:
-            out.append(f"Caches de vivres : jusqu'à {e['caches']} (bouton Déposer de la bande)")
-        else:
-            out.append(f"Caches de vivres : +{e['caches']}")
+        out.append(f"Caches de vivres : jusqu'à {b.caches + e['caches']} (bouton Déposer de la bande)" + was(b.caches))
     if e.get("cache_cap"):
-        out.append(f"Chaque cache garde +{e['cache_cap']} de vivres")
+        out.append(f"Chaque cache garde {b.cache_cap + e['cache_cap']} vivres de plus" + was(b.cache_cap))
     if e.get("cache_decay"):
         out.append(f"Les caches {_slower(e['cache_decay'])}")
     if e.get("camps"):
-        if e["camps"] >= 2:
-            out.append(f"Campements : jusqu'à {e['camps']} (bouton Camper ici)")
-        else:
-            out.append(f"Campements : +{e['camps']}")
+        out.append(f"Campements : jusqu'à {b.camps + e['camps']} (bouton Camper ici)" + was(b.camps))
     if e.get("camp_shelter"):
         out.append(f"En hiver au campement : {_pct(e['camp_shelter'])} de morts de faim")
     if e.get("camp_growth"):
         out.append(f"Naissances des bandes au campement : {_pct(e['camp_growth'])}")
     for terrain, cost in e.get("move", {}).items():
-        before = 60 / BASE_MOVE_COST[terrain]
-        after = 60 / cost
-        out.append(
-            f"Marche en {_TERRAIN_FR[terrain]} : {_num(after)} cases/semaine (au lieu de {_num(before)})"
-        )
+        now_cost = (b.move or BASE_MOVE_COST).get(terrain, BASE_MOVE_COST[terrain])
+        before = 60 / now_cost
+        after = 60 / min(cost, now_cost)
+        out.append(f"Marche en {_TERRAIN_FR[terrain]} : {_num(after)} cases/semaine" + was(_num(before)))
     if e.get("vision"):
-        out.append(f"Vue : +{e['vision']} cases autour de vos bandes")
+        out.append(f"Vue : {b.vision + e['vision']} cases autour de vos bandes" + was(b.vision))
     if e.get("reinforce"):
-        out.append(f"Renforts : vos bandes s'entraident jusqu'à {BASE_REINFORCE + e['reinforce']} cases (au lieu de {BASE_REINFORCE})")
+        out.append(f"Renforts : vos bandes s'entraident jusqu'à {b.reinforce + e['reinforce']} cases" + was(b.reinforce))
     if e.get("influence_radius"):
-        out.append(f"Zone d'influence : +{e['influence_radius']} case autour de vos bandes et camps")
+        out.append(f"Zone d'influence : {b.influence_radius + e['influence_radius']} cases autour de vos bandes et camps" + was(b.influence_radius))
     if e.get("home_food"):
         out.append(f"Dans votre zone d'influence : {_pct(e['home_food'])} de nourriture")
     if e.get("recovery"):
@@ -1209,17 +1249,17 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("growth"):
         out.append(f"Naissances : {_pct(e['growth'])}")
     if e.get("max_bands"):
-        out.append(f"Bandes : jusqu'à {BASE_MAX_BANDS + e['max_bands']} (au lieu de {BASE_MAX_BANDS})")
+        out.append(f"Bandes : jusqu'à {b.max_bands + e['max_bands']}" + was(b.max_bands))
     if e.get("loyalty"):
-        out.append(f"Attachement des clans à la tribu : {e['loyalty']:+d}")
+        out.append(f"Attachement des clans à la tribu : {b.loyalty + e['loyalty']:+d}" + was(f"{b.loyalty:+d}"))
     if e.get("stability"):
-        out.append(f"Stabilité de vos villages : {e['stability']:+d}")
+        out.append(f"Stabilité de vos villages : {b.stability + e['stability']:+d}" + was(f"{b.stability:+d}"))
     if e.get("chief_reach"):
-        out.append(f"Emprise du chef : +{e['chief_reach']} cases")
+        out.append(f"Emprise du chef : {b.chief_reach + e['chief_reach']} cases" + was(b.chief_reach))
     if e.get("winter_prestige") or e.get("famine_prestige"):
-        good = BASE_WINTER_PRESTIGE + e.get("winter_prestige", 0)
-        bad = BASE_FAMINE_PRESTIGE + e.get("famine_prestige", 0)
-        out.append(f"Prestige à la fin de l'hiver : +{good} sans famine, {bad} avec (au lieu de +4 / -6)")
+        good = b.winter_prestige + e.get("winter_prestige", 0)
+        bad = b.famine_prestige + e.get("famine_prestige", 0)
+        out.append(f"Prestige à la fin de l'hiver : {good:+d} sans famine, {bad:+d} avec" + was(f"{b.winter_prestige:+d} / {b.famine_prestige:+d}"))
     if e.get("herd"):
         out.append("Steppe : nourriture x1,35 au printemps, x1,65 en été, x1,5 en automne et en hiver")
     if e.get("cabotage"):
@@ -1227,7 +1267,9 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("gifts"):
         out.append(f"Cadeaux aux autres peuples : {_pct(e['gifts'])} d'effet")
     if e.get("diplo"):
-        out.append(f"Vos propositions aux autres peuples : {e['diplo']:+d} d'acceptation")
+        out.append(f"Vos propositions aux autres peuples : {b.diplo + e['diplo']:+d} d'acceptation" + was(f"{b.diplo:+d}"))
+    if e.get("diplomacy"):
+        out.append("La diplomatie : entre peuples qui la connaissent, on ne s'attaque plus sans déclarer la guerre (écran Peuples)")
     if e.get("alliance"):
         out.append("Vous pouvez proposer une alliance (mariages entre les chefs)")
     if e.get("union"):
@@ -1235,10 +1277,10 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("diffusion"):
         out.append(f"Savoirs connus des voisins : +{round(100 * e['diffusion'])} % d'apprentissage en plus")
     if e.get("villages"):
-        if tech.id == "semis":
+        if tech.id == "sedentarite":
             out.append("Vous pouvez fonder un village sur un de vos campements (bouton Village)")
         else:
-            out.append(f"Villages : +{e['villages']}")
+            out.append(f"Villages : {b.villages + e['villages']}" + was(b.villages))
     if e.get("palisade"):
         out.append("Vos villages peuvent bâtir une palissade (défense x1,6) et une maison des guerriers")
     if e.get("field_yield"):
@@ -1246,7 +1288,7 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("soil_loss"):
         out.append(f"Épuisement des champs : {_pct(e['soil_loss'])}")
     if e.get("granary"):
-        out.append(f"Greniers des villages : +{e['granary']} semaines de réserve")
+        out.append(f"Greniers des villages : {b.granary + e['granary']} semaines de réserve en plus" + was(b.granary))
     if e.get("grain_rot"):
         out.append(f"Grain perdu au grenier (rats, humidité) : {_pct(e['grain_rot'])}")
     if e.get("disease"):
@@ -1286,11 +1328,12 @@ def effect_lines(tech: Tech) -> list[str]:
     if e.get("village_defense"):
         out.append(f"Défense de votre village : {_pct(e['village_defense'])}")
     if e.get("vassal_cap"):
-        out.append(f"Tributaires que vous pouvez tenir : +{e['vassal_cap']}")
+        out.append(f"Tributaires que vous pouvez tenir : {b.vassal_cap + e['vassal_cap']:+d} en plus" + was(f"{b.vassal_cap:+d}"))
     if e.get("vassal_tribute"):
         out.append(f"Tribut de vos tributaires : {_pct(e['vassal_tribute'])}")
     if e.get("protect_ratio"):
-        out.append("Prendre un peuple sous sa protection : il suffit d'être deux fois plus fort (au lieu de deux fois et demie)")
+        now_ratio = BASE_PROTECT_RATIO * b.protect_ratio
+        out.append(f"Prendre un peuple sous sa protection : il suffit d'être {_num(now_ratio * e['protect_ratio'])} fois plus fort" + was(_num(now_ratio)))
     if e.get("vassal_unrest"):
         out.append(f"Agitation de vos tributaires : {_pct(e['vassal_unrest'])}")
     if e.get("feasts"):
@@ -1338,8 +1381,8 @@ def start_knowledge(tribe) -> None:
         grant(tribe, tid)
 
 
-def summary(tech: Tech) -> str:
-    lines = effect_lines(tech)
+def summary(tech: Tech, tribe=None) -> str:
+    lines = lines_for(tribe, tech)
     return lines[0] if lines else ""
 
 

@@ -299,6 +299,7 @@ def _fresh_ui() -> dict:
         "era": 0,
         "tribe_pick": None,
         "people_pick": None,
+        "people_scroll": 0,
         "event_open": None,
         # Situation (crise, conjoncture) dont la fenetre est ouverte (uid).
         "situation_open": None,
@@ -1426,6 +1427,11 @@ class Play:
                 # La molette zoome l'arbre des savoirs, autour du curseur.
                 factor = TREE_ZOOM_STEP if event.y > 0 else 1.0 / TREE_ZOOM_STEP
                 self.ui["tech_cam"] = zoom_at(tlay["cam"], tlay["view"], tlay["world"], wx_, wy_, factor)
+                return None
+            plist = getattr(self.renderer, "people_list", None)
+            if self.side_panel == "peuples" and plist and _in_rect(plist, wx_, wy_):
+                # La molette fait defiler la liste des peuples.
+                self.ui["people_scroll"] = max(0, int(self.ui.get("people_scroll", 0)) - (1 if event.y > 0 else -1))
                 return None
             zmin = min_zoom_for(self.state.world, self.sw, self.sh)
             self.zoom = min(MAX_ZOOM, max(zmin, self.zoom * (1.1 if event.y > 0 else 0.9)))

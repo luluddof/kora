@@ -24,6 +24,7 @@ from src.kora.tech import (
     _plural,
     bonuses,
     effect_lines,
+    lines_for,
     grant,
     missing_prereqs,
     pan_of,
@@ -371,7 +372,7 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
     st = status(state, tribe_id, tech_id)
     out: list[tuple[str, str]] = [(tech.name, "titre"), (tech.about, "texte")]
     out.append(("Effets :", "note"))
-    out.extend((f"  {line}", "effet") for line in effect_lines(tech))
+    out.extend((f"  {line}", "effet") for line in lines_for(tribe, tech))
     if tech.turning:
         out.extend(("  " + text, "effet") for text, kind in turning.lines(state, tribe_id, tech_id)[:1])
         out.append((f"  Au premier peuple qui l'adopte, son berceau : {turning.cradle_text(tech_id)}", "effet"))

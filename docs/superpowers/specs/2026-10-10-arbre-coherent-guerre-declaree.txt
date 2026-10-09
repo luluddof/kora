@@ -1,0 +1,150 @@
+Kora - Un arbre coherent, des chiffres vrais, la guerre declaree
+================================================================
+Date : 2026-10-10. Statut : FAIT (version 0.12.0) ; l'argent : PROPOSE
+(section 6, rien de code, a sa demande).
+
+Ses mots (raccourcis) :
+  1. "Reorganise les techs de maniere coherente : chien de chasse et garde
+     des troupeaux, c'est sous domestication. Rends plus coherente la
+     structure de l'arbre - mais le style actuel espace a la Victoria 3 est
+     bien : ce n'est pas le visuel qui doit changer."
+  2. "Les nombres doivent etre des variables : le 8 doit afficher vraiment
+     le chiffre actuel (notamment le prestige en cas de non-famine en
+     hiver), et pas que dans l'arbre des techs."
+  3. "Une diplomatie basique qui fait qu'apres il faut declarer la guerre
+     pour attaquer les pays qui ont aussi la diplomatie (donc rework de la
+     diplomatie)."
+  4. "Sur l'ecran des peuples : pouvoir utiliser la molette pour descendre
+     et voir tous les pays connus."
+  5. "Reflechis a un moyen d'utiliser l'argent en plus des echanges (sans
+     rien implementer pour l'instant)."
+
+
+1. L'ARBRE COHERENT (tech.py ; le dessin ne change pas)
+-------------------------------------------------------
+  - LA DOMESTICATION devient un grand tournant de l'AGE TRIBAL (rangee 1,5,
+    a cote du clan) : le chien, puis les troupeaux, viennent bien avant les
+    villages. Nait : Chasse a l'epieu ; pres de betes a apprivoiser (chevres,
+    aurochs, chevaux, rennes), peuple 40, 2 hivers ; 90 pts.
+    Son pan : Garde des troupeaux, Chiens de chasse (le louveteau garde son
+    role : il faut avoir recueilli des louveteaux), puis, au neolithique,
+    Chevres et moutons (avec la sedentarite).
+  - Ce qui suivait mal : Haches polies (pour defricher) viennent des Champs
+    cultives, plus des Palissades ; Enceintes et fosses demandent les
+    palissades ET les haches ; Tissage vient des champs (le lin), plus de
+    la poterie ; Lait et laine viennent des chevres et moutons (palier 5),
+    et les Fromages du lait ; le Cheval monte vient de la garde des
+    troupeaux (la steppe) et des chevres.
+  - Les parties en cours : a chaque chargement, un peuple qui sait un savoir
+    du pan d'un tournant a ce tournant (turning._ensure_pans) : dans SA
+    partie, la domestication lui est donnee (il gardait des troupeaux).
+  - La Steppe part avec l'epieu, la garde des troupeaux, donc la
+    domestication.
+
+
+2. LES CHIFFRES VRAIS (tech.effect_lines, lines_for, bonuses_without)
+---------------------------------------------------------------------
+  Chaque effet qui s'ajoute a une valeur du peuple dit son TOTAL et la
+  valeur d'AUJOURD'HUI (ou "sans lui" s'il le sait deja, "au depart" sans
+  peuple) : bandes, vue, renforts, zone d'influence, emprise du chef,
+  attachement, stabilite, prestige d'hiver (avec et sans famine),
+  reserves, caches, campements, greniers, villages, tributaires, la
+  protection (combien de fois plus fort), la marche par terrain, les
+  propositions. Exemple (Chefferie, dans SA partie) : "Bandes : jusqu'a 12
+  (sans lui 8)", "Attachement des clans : +28 (sans lui +20)".
+  Partout ou un effet s'affiche : l'arbre (cartes, bulle, fiche), les bonus
+  de depart (Tribu), les bases des nombres (Savoirs, Pays), les lois.
+  (Les prix des situations et le menu de creation gardent les chiffres du
+  depart : il n'y a pas encore de peuple a qui les comparer.)
+
+
+3. LA GUERRE DECLAREE (diplo.py, ai_war.py, ai.py, battle.py, commands.py)
+--------------------------------------------------------------------------
+  - La DIPLOMATIE : Dons et palabres la donnent (bonus "diplomacy").
+  - Deux peuples qui l'ont sont EN PAIX tant que la guerre n'est pas
+    declaree : pas de raid, pas de combat en se croisant (meme une bande
+    venue attaquer s'arrete), pas de vol de cache. Le joueur ne peut pas
+    lancer l'attaque (clic droit : "Vous etes en paix avec les X :
+    declarez-leur d'abord la guerre").
+  - DECLARER LA GUERRE (ecran Peuples, l'action en tete ; ses consequences
+    au survol) : pas entre allies ni sous une treve (rompez d'abord), pas
+    pour un tributaire ; relation -30 ; sans motif (un tribut refuse en est
+    un) : prestige -5 et les autres peuples s'en souviennent (-5) ; l'accord
+    commercial tombe ; LES PAYS entrent en guerre (suzerain, tributaires,
+    confederes) et LES ALLIES de l'attaque la rejoignent. Le journal le dit a
+    chaque joueur touche.
+  - LA PAIX : une treve (proposee, ou demandee par l'IA lassee apres un an
+    et demi, ou si les combats tournent mal) ; une guerre sans combat
+    pendant trois ans s'eteint d'elle-meme.
+  - L'IA declare la guerre au moment ou elle lance un raid qu'elle aurait
+    lance avant (meme jugement : plus forte, peu amie ou affamee, selon
+    l'approche de son chef) ; en guerre, ses villages levent une troupe
+    contre un ennemi a 28 cases qu'ils peuvent battre, et ses troupes vont
+    plus loin (9 semaines).
+  - Avec un peuple SANS la diplomatie, rien ne change : les raids restent
+    libres.
+  - L'ecran Peuples : "En guerre" en rouge dans la liste, "En guerre (depuis
+    N sem.)" dans la fiche, la raison "En guerre -20".
+  Equilibrage (robot joueur et IA) :
+    Partie neuve, 30 ans : combats 71 (0.11) -> 33 ; population 6 040 ->
+      6 700 ; villages 39 -> 45. La diplomatie rend le monde plus calme :
+      chaque guerre finit par une treve de deux ans.
+    SA partie, 15 ans : combats 42 -> 28 (les guerres entre villages restent
+      souvent froides : la troupe d'un village est bien plus faible qu'un
+      village defendu, c'etait deja le cas).
+
+
+4. L'ECRAN DES PEUPLES DEFILE (render_panels.draw_peoples, app)
+---------------------------------------------------------------
+  La molette, sur la liste, la fait defiler (ui["people_scroll"]) ; une
+  barre a droite dit ou l'on est.
+
+
+5. VERIFICATIONS
+----------------
+  Tests : test_war.py (7 : paix par defaut, declaration, allies et pays,
+  alliance ou treve d'abord, bandes qui ne se battent pas, l'ordre du joueur
+  bloque, l'IA declare au depart du raid, la guerre qui s'eteint),
+  test_tech (les vrais chiffres), test_research (l'arbre coherent au
+  chargement), test_map_clicks (le clic droit en paix, puis en guerre), et
+  la suite. Empreinte re-enregistree ; multijoueur identique.
+
+
+6. L'ARGENT, EN PLUS DES ECHANGES (PROPOSITIONS, rien de code)
+-------------------------------------------------------------
+  Aujourd'hui l'argent sert : l'impot, la solde, les gages, les presents
+  (familles, autres peuples), les batisseurs, le tribut, les peages, le
+  commerce en argent. Pistes pour qu'il pese plus, chacune avec sa raison
+  historique et ce qu'elle demanderait :
+
+  A. LA RANCON (guerre). Un village pris ou une bande vaincue : le vainqueur
+     peut exiger des sicles au lieu de piller ou de soumettre ; un chef
+     capture se rachete. Le vaincu choisit : payer (et garder ses
+     batiments) ou perdre. -> la carte "conquete", une option "rancon".
+  B. LES MERCENAIRES ET LES GUERRIERS DES AUTRES. Louer pour une saison des
+     guerriers d'un peuple voisin (petit peuple, nomades) : une troupe qu'on
+     ne leve pas chez soi, payee chaque mois ; impayee, elle part ou se
+     retourne. -> une troupe "louee" (armee d'un autre peuple sous vos
+     ordres), le budget.
+  C. ACHETER LA PAIX, ACHETER UN ALLIE. Une treve contre des sicles (le tribut
+     inverse, une fois) ; payer un allie pour qu'il entre en guerre. ->
+     diplo.evaluate : "+X : vous offrez N sicles".
+  D. LE GRENIER QU'ON ACHETE. En disette, acheter du grain a un partenaire
+     (meme sans route), plus cher que le marche. -> une action du village
+     en famine, un prix qui monte avec la rarete.
+  E. LES GRANDS TRAVAUX PAYES. Le grand monument, les enceintes : payer des
+     ouvriers (sicles) au lieu des vivres ; un batiment de prestige qu'on
+     n'obtient qu'en argent (un tresor du temple, une maison du chef).
+  F. LES CHARGES ACHETEES. Les familles qui comptent (chiefdom) : acheter
+     leur faveur au cas par cas, ou vendre une charge (le tresor monte,
+     la stabilite baisse si on abuse).
+  G. LA DETTE. Preter des sicles a un voisin (relation, puis interet) ; le
+     defaut de paiement est un motif de guerre. Le debiteur devient
+     dependant (un pas vers le tribut).
+  H. LA MONNAIE FRAPPEE (age suivant). Un savoir : la valeur depend de qui la
+     frappe ; une monnaie forte attire le commerce, une monnaie rognee fait
+     monter les prix.
+  Mon conseil, dans cet ordre : A (la rancon : elle rend la guerre
+  utile sans tuer), B (les mercenaires : l'argent devient de la force),
+  D (le grain achete : l'argent sauve des vies), puis C. Les autres
+  plus tard (E, F demandent de retoucher la chefferie ; G, H l'age suivant).

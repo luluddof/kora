@@ -74,7 +74,7 @@ def draw(r, state, lay: dict, ui: dict | None) -> None:
         yy = y0 + 32
         theme.text(screen, about, "mini", C.lin, (tx, yy), card[2] - (tx - x0) - 12)
         yy += 18
-        for line in tech.effect_lines(tech.math_effect(f"base:{base}")):
+        for line in tech.lines_for(state.tribes.get(state.viewer), tech.math_effect(f"base:{base}")):
             theme.text(screen, line, "mini", GREEN, (tx, yy), card[2] - (tx - x0) - 12)
             yy += 16
     else:
@@ -83,7 +83,7 @@ def draw(r, state, lay: dict, ui: dict | None) -> None:
         yy = y0 + 32
         for b in numbers.BASE_ORDER:
             name, _about, _eff = numbers.BASES[b]
-            eff = " · ".join(tech.effect_lines(tech.math_effect(f"base:{b}")))
+            eff = " · ".join(tech.lines_for(state.tribes.get(state.viewer), tech.math_effect(f"base:{b}")))
             theme.text(screen, f"{name} : {eff}", "mini", C.lin, (tx, yy), card[2] - 28)
             yy += 17
     theme.text(screen, "La base des nombres est une loi du pays : elle se choisit, ou se réforme, dans l'écran Pays, onglet Lois [N].", "mini", C.cendre, (x0 + 14, y1 - 22), card[2] - 28)
@@ -145,7 +145,7 @@ def draw(r, state, lay: dict, ui: dict | None) -> None:
         stw = theme.font("mini").size(status)[0]
         theme.text(screen, status, "mini", edge if st != "a_trouver" else C.cendre, (x + w - stw - 10, y + 6))
         theme.text(screen, op["name"], "petit_gras", C.os if st != "a_trouver" else C.lin, (tx, y + 4), w - 72 - stw)
-        eff = tech.effect_lines(tech.math_effect(op["effect"]))
+        eff = tech.lines_for(state.tribes.get(state.viewer), tech.math_effect(op["effect"]))
         yy = y + 24
         if h >= 66:
             theme.text(screen, op["text"], "mini", C.lin if st != "a_trouver" else C.cendre, (tx, yy), w - 62)

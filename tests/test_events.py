@@ -121,7 +121,7 @@ def test_the_wolves_can_give_dogs():
     events.fire(st, inst)
     events.choose(st, inst.uid, 0)
     assert "louveteaux" in st.tribes[1].flags
-    st.tribes[1].knowledge.add("epieu")
+    st.tribes[1].knowledge.update(("epieu", "domestication"))
     assert learning.status(st, 1, "chiens") == "disponible"
 
 

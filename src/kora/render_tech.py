@@ -474,7 +474,7 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
             text, color = _status_line(state, tribe, tid, st)
             extra.append((text, r.tiny, color))
         if z >= 1.05:
-            first = tech.summary(t)
+            first = tech.summary(t, tribe)
             if first:
                 extra.append((first, r.tiny, (178, 205, 140) if st != "verrouille" else (130, 113, 96)))
         room = h - 4 - sum(f.get_height() for _t, f, _c in extra)
@@ -785,7 +785,7 @@ def _column(r, rect, title: str, rows: list) -> None:
 def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
     t = tech.TECHS[tid]
     lines = [(t.name, INK), (STATE_LABEL[st], STYLE[st]["edge"])]
-    lines += [("+ " + line, (178, 205, 140)) for line in tech.effect_lines(t)[:3]]
+    lines += [("+ " + line, (178, 205, 140)) for line in tech.lines_for(state.tribes.get(state.viewer), t)[:3]]
     if t.prereqs:
         lines.append(("Il faut : " + ", ".join(tech.TECHS[p].name for p in t.prereqs), SOFT))
     after = tech.pan_of(tid)

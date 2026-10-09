@@ -200,6 +200,15 @@ src/kora/confed.py  (pas de pygame)
   sans amis s'en va), ai_wants (diplo.ai_monthly, _propose_to_player ->
   carte "offre_confederation"), lines (ecran Peuples).
 
+diplo.py, la GUERRE DECLAREE (0.12) : diplomatic / needs_declaration /
+  declared_war (pacte "guerre"), at_peace (paix par defaut entre peuples
+  qui ont la diplomatie), war_allies / war_pairs / declare_war / end_war /
+  wars_of / _fade_wars, action "guerre" (_war_verdict) ; ai_war.fair_game
+  et go_to_war (l'IA declare au depart du raid) ; ai.py : levees et portee
+  en guerre ; battle._will_fight ; commands._march.
+tech.py, les CHIFFRES VRAIS : effect_lines(tech, base, known),
+  bonuses_without, has_effect, lines_for, start_bonus_lines_for.
+
 src/kora/turning.py  (pas de pygame)
   Les GRANDS TOURNANTS (tech.Tech kind="tournant", tech.turnings / pan_of
   / descendants) : presence (Tribe.tournants), sources (d'ou il vient :

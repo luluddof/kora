@@ -296,6 +296,7 @@ def migrate(state) -> None:
     research = dict(getattr(state, "research", None) or {})
     if research.get("turnings"):
         _migrate_cradles(state)
+        _ensure_pans(state)
         return
     research.setdefault("births", {})
     villages = {s.tribe_id for s in state.sites.values() if s.kind == "village"}
@@ -315,6 +316,23 @@ def migrate(state) -> None:
     research["births_v"] = 2
     state.research = research
     tech.invalidate()
+
+
+def _ensure_pans(state) -> None:
+    """L'arbre a pu changer (0.12 : la domestication passe a l'age tribal,
+    avec le chien et la garde des troupeaux) : qui sait un savoir du pan d'un
+    tournant a ce tournant."""
+    changed = False
+    for t in tech.turnings():
+        pan = {p.id for p in tech.pan_of(t.id)}
+        for tribe in state.tribes.values():
+            if t.id not in tribe.knowledge and tribe.knowledge & pan:
+                tech.grant(tribe, t.id)
+                changed = True
+                if t.id not in births(state):
+                    state.research.setdefault("births", {})[t.id] = [0, 0]
+    if changed:
+        tech.invalidate()
 
 
 def _migrate_cradles(state) -> None:

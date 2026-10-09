@@ -143,7 +143,7 @@ def draw_country(r, state, ui) -> None:
             theme.text(screen, opt.name, "petit_gras", C.os if ok else C.lin, (tx, cy + 6), cx + cw - tx - 8)
             lines = theme.wrap(r.tiny, opt.text, cx + cw - tx - 10)
             if law.id == "base":
-                eff = tech.effect_lines(tech.math_effect(f"base:{opt.id}"))
+                eff = tech.lines_for(tribe, tech.math_effect(f"base:{opt.id}"))
             else:
                 eff = []
             ly = cy + 28

@@ -500,6 +500,25 @@ lente, bandes dessinees petites a taille fixe.
     = attaquer (clic gauche = diplomatie) ; decouvert a la fin de la
     recherche, le premier = le berceau (prestige +20, bonus pour toujours) ;
     bouton "Carte" en bas a gauche.
+2026-10-10
+  - "Reorganise les techs de maniere coherente : chien de chasse et garde
+    des troupeaux sous la domestication ; plus coherent, mais le style
+    espace a la Victoria 3 est bien." FAIT (0.12.0 ; spec
+    2026-10-10-arbre-coherent-guerre-declaree.txt) : la domestication,
+    tournant de l'age tribal ; haches, enceintes, tissage, lait, fromage,
+    cheval mieux places.
+  - "Les nombres doivent etre des variables (le 8 = le chiffre actuel,
+    notamment le prestige d'hiver), pas que dans l'arbre." FAIT : chaque
+    effet dit son total et la valeur du peuple aujourd'hui, partout ou il
+    s'affiche.
+  - "Une diplomatie basique : ensuite il faut declarer la guerre pour
+    attaquer les pays qui ont aussi la diplomatie." FAIT : Dons et
+    palabres ; paix par defaut ; declarer la guerre (pays et allies
+    suivent) ; treve ; l'IA declare au depart de ses raids.
+  - "La molette pour voir tous les pays connus (ecran Peuples)." FAIT.
+  - "Reflechis a l'argent en plus des echanges, sans rien implementer."
+    PROPOSE (spec, section 6) : rancon, mercenaires, acheter la paix,
+    grain achete... en attente de son choix.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -619,6 +638,12 @@ lente, bandes dessinees petites a taille fixe.
   vos bandes choisie) ; clic gauche sur un etranger = sa diplomatie ; un
   tournant n'est decouvert qu'adopte, et ne se repand que depuis ceux qui
   l'ont adopte ; les modes de carte passent par le bouton "Carte".
+  0.12.0 : REGLES NOUVELLES : entre peuples qui ont la diplomatie, toute
+  attaque passe par une guerre declaree (diplo.declare_war ; l'IA :
+  ai_war.go_to_war) ; un texte d'effet montre les chiffres du peuple
+  (tech.lines_for) ; l'arbre est verifie au chargement (un savoir de pan
+  donne son tournant). EN ATTENTE (sa demande) : l'argent en plus des
+  echanges (propositions A-H).
   A FAIRE plus tard (pistes) : des tournants pour les ages suivants
   (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
   les evenements.

@@ -202,7 +202,7 @@ def _start_bonus_chip(r, state, tribe, right: int, y: int, ui) -> None:
             if bonus is None:
                 continue
             lines.append((bonus.name, GOLD))
-            lines.extend((f"  {line}", SOFT) for line in tech.start_bonus_lines(bonus))
+            lines.extend((f"  {line}", SOFT) for line in tech.start_bonus_lines_for(tribe, bonus))
         lines.append((f"Choisis à la création du peuple, ils durent {tech.START_BONUS_YEARS} ans.", NOTE))
         ui.setdefault("_tips", []).append((lines, rect[0] - 120, y + 18))
 
@@ -589,10 +589,15 @@ def draw_peoples(r, state, layout, ui) -> None:
     if pick not in peoples:
         pick = peoples[0]
         ui["people_pick"] = pick
-    # Liste a gauche.
+    # Liste a gauche : elle defile a la molette (ui["people_scroll"]).
     lx, ly, lw = bx + 12, by + 46, 250
     row_h = 46
-    for tid in peoples:
+    list_rect = (lx, ly, lw, by + bh - 10 - ly)
+    r.people_list = list_rect
+    fits = max(1, list_rect[3] // row_h)
+    top = max(0, min(int(ui.get("people_scroll", 0)), len(peoples) - fits))
+    ui["people_scroll"] = top
+    for tid in peoples[top:]:
         if ly + row_h > by + bh - 10:
             break
         t = state.tribes[tid]
@@ -613,12 +618,21 @@ def draw_peoples(r, state, layout, ui) -> None:
         _text(r, r.tiny, r._fit(r.tiny, second, 130), GOLD if nv or t.is_player else NOTE, lx + 32, ly + 23)
         rel = diplo.relation(state, state.viewer, tid)
         lvl = diplo.level(state, state.viewer, tid)
+        if diplo.declared_war(state, state.viewer, tid):
+            lvl = "En guerre"
         val = _signed(rel)
         vw = r.small.size(val)[0]
         _text(r, r.small, val, _rel_color(rel), lx + lw - 10 - vw, ly + 5)
         lw2 = r.tiny.size(lvl)[0]
-        _text(r, r.tiny, lvl, _rel_color(rel), lx + lw - 10 - lw2, ly + 23)
+        _text(r, r.tiny, lvl, BAD if lvl == "En guerre" else _rel_color(rel), lx + lw - 10 - lw2, ly + 23)
         ly += row_h
+    if len(peoples) > fits:
+        # La barre de defilement : ou l'on est dans la liste.
+        track = (lx + lw + 3, list_rect[1], 4, fits * row_h - 4)
+        pygame.draw.rect(r.screen, (40, 31, 24), track, border_radius=2)
+        th = max(16, int(track[3] * fits / len(peoples)))
+        ty_ = track[1] + int((track[3] - th) * top / max(1, len(peoples) - fits))
+        pygame.draw.rect(r.screen, GOLD, (track[0], ty_, 4, th), border_radius=2)
     # Fiche a droite.
     cx = lx + lw + 14
     cw = bx + bw - 12 - cx
@@ -807,7 +821,7 @@ def draw_peoples(r, state, layout, ui) -> None:
     cols = 2
     aw = (cw - 12) // cols
     ah = 46
-    for i, action in enumerate(["treve", "alliance", "commerce", "tribut", "proteger", "confederer", "union", "rompre"]):
+    for i, action in enumerate(["guerre", "treve", "alliance", "commerce", "tribut", "proteger", "confederer", "union", "rompre"]):
         ax = cx + (i % cols) * (aw + 12)
         ay = cy + (i // cols) * ah
         if ay + ah > by + bh - 6:
@@ -815,6 +829,9 @@ def draw_peoples(r, state, layout, ui) -> None:
         verdict = diplo.evaluate(state, state.viewer, pick, action)
         wait = diplo.on_cooldown(state, state.viewer, pick, action) if action != "rompre" else 0
         line, tint = _verdict_line(verdict)
+        if action == "guerre" and not verdict.blocked:
+            # Une declaration, pas une proposition : ses consequences au survol.
+            line, tint = "Possible : survolez pour les conséquences", WARN
         if t.is_player and not verdict.blocked and action in diplo.HUMAN_OFFERS:
             # Un autre joueur : pas de calcul, il recevra une carte et choisira.
             line, tint = "Un joueur : il décidera lui-même", GOLD
@@ -826,7 +843,10 @@ def draw_peoples(r, state, layout, ui) -> None:
         on = not verdict.blocked and not wait
         _button(r, rect, diplo.ACTION_LABELS[action], on=on)
         _text(r, r.tiny, r._fit(r.tiny, line, aw - 6), tint, ax + 2, ay + 26)
-        if _hover(rect) and verdict.reasons:
+        if _hover(rect) and verdict.reasons and action == "guerre":
+            rows = [("Déclarer la guerre aux " + t.name, TEXT)] + [(f"  {label}", WARN) for label, _v in verdict.reasons]
+            tips.append((rows, rect[0] + rect[2] + 10, rect[1] - 4, rect))
+        elif _hover(rect) and verdict.reasons:
             rows = [(f"{_signed(v):>4}  {label}", GOOD if v > 0 else BAD if v < 0 else SOFT) for label, v in verdict.reasons]
             if action != "rompre":
                 rows.append((f"Total : {_signed(verdict.score)} (il faut plus de 0)", TEXT))

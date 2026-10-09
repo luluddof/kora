@@ -37,7 +37,7 @@ def test_a_tributary_does_not_start_a_war_but_joins_its_overlords():
     # Un suzerain peut, lui ; et son tributaire le suit.
     assert diplo.may_start(st, 2, 1) == ""
     diplo.add_pact(st, 1, 3, "treve", diplo.TRUCE_WEEKS)
-    diplo.on_fight(st, 2, 1, True, True)
+    diplo.declare_war(st, 2, 1)
     assert not diplo.has_pact(st, 1, 3), "la guerre du suzerain est celle du tributaire"
     assert diplo.may_start(st, 3, 1) == "" and diplo.hostile_intent(st, 3, 1)
     # Se revolter contre son suzerain reste possible.
