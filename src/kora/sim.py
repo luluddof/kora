@@ -14,6 +14,7 @@ from src.kora import (
     chiefdom,
     chiefs,
     diplo,
+    draws,
     events,
     influence,
     learning,
@@ -25,6 +26,7 @@ from src.kora import (
     situations,
     systems,
     tech,
+    turning,
     units,
     villages,
 )
@@ -709,6 +711,7 @@ class _Snap:
     next_battle_uid: int = 1
     day: int = 0
     step: int = 0
+    research: dict = field(default_factory=dict)
 
 
 def snapshot(state: GameState) -> _Snap:
@@ -755,6 +758,7 @@ def snapshot(state: GameState) -> _Snap:
         next_battle_uid=state.next_battle_uid,
         day=state.day,
         step=state.step,
+        research=records.json_copy(state.research),
     )
 
 
@@ -800,6 +804,7 @@ def _restore(state: GameState, saved: _Snap) -> None:
     state.next_battle_uid = saved.next_battle_uid
     state.day = saved.day
     state.step = saved.step
+    state.research = saved.research
     recompute_vision(state)
 
 
@@ -904,6 +909,10 @@ def new_game(
         story=True,
     )
     chiefs.ensure(st)
+    # Les tirages des savoirs : la graine de la partie (le menu en tire une ;
+    # sans elle, la meme pour toutes : les tests, l'empreinte).
+    draws.set_seed(st, int((setup or {}).get("seed", 1)))
+    turning.migrate(st)
     if minor_peoples is None:
         # Les petites cartes des tests restent a 4 peuples.
         minor_peoples = MINOR_START if world.width >= 300 else 0

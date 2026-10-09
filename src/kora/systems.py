@@ -49,6 +49,9 @@ MONTHLY = (
     "chiefs.monthly",
     # L'approche de chaque chef (apres les successions, avant ses decisions).
     "approach.monthly",
+    # Les grands tournants se repandent ; les tirages des savoirs s'annoncent.
+    "turning.monthly",
+    "draws.monthly",
     "diplo.ai_monthly",
     "confed.monthly",
     "events.monthly",
@@ -103,7 +106,7 @@ TECH_LINES = ("goods.tech_lines",)
 
 # Les modules qui ajoutent des conditions, des effets et leurs textes aux
 # evenements (EVENT_CONDITIONS, EVENT_EFFECTS, EVENT_TEXTS ; events.vocabulary).
-EVENT_VOCABULARY = ("goods", "money", "numbers", "ai_war")
+EVENT_VOCABULARY = ("goods", "money", "numbers", "ai_war", "turning")
 
 # Une bande se scinde (bands.split_band) ; (state, ancienne, nouvelle).
 BAND_SPLIT = ("chiefs.on_split",)

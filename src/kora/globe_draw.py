@@ -82,6 +82,8 @@ class Planet:
         # opacite de la teinte (plus forte au bord et au coeur).
         self.zones_on = True
         self.realm_on = False
+        # La carte des grands tournants : le tournant montre (None : autre carte).
+        self.turn_pick = None
         self._zone_key = None
         self.zone_owner = np.full((self.height, self.width), -1, dtype=np.int16)
         self.zone_alpha = np.zeros((self.height, self.width), dtype=np.float32)
@@ -187,14 +189,19 @@ class Planet:
         # Le brouillard : les zones telles que le joueur les a vues (memory.py).
         vis = vision_of(state, state.viewer) if hasattr(state, "povs") else None
         fog_key = (vis.mem_gen, id(vis.visible)) if vis is not None else None
-        key = (getattr(world, "_influence_gen", 0), len(world._influence), tuple(tids), look._ties_key(state)[2], self.realm_on, fog_key)
+        turn = (self.turn_pick, state.tick_count // 4) if self.turn_pick else None
+        key = (getattr(world, "_influence_gen", 0), len(world._influence), tuple(tids), look._ties_key(state)[2], self.realm_on, fog_key, turn)
         if key == self._zone_key:
             return key
         self._zone_key = key
         index = {tid: i for i, tid in enumerate(tids)}
-        self.zone_colors = np.array(
-            [look.country_color(state, t) for t in tids] or [(0, 0, 0)], dtype=np.float32
-        )
+        if self.turn_pick:
+            # La carte des grands tournants : chaque peuple a la couleur de
+            # la presence du tournant choisi chez lui (look.turning_color).
+            colors = [look.turning_color(state, t, self.turn_pick) for t in tids]
+        else:
+            colors = [look.country_color(state, t) for t in tids]
+        self.zone_colors = np.array(colors or [(0, 0, 0)], dtype=np.float32)
         shown = None
         realm_ix = np.zeros(max(1, len(tids)), dtype=np.int16)
         if self.realm_on:
@@ -234,7 +241,9 @@ class Planet:
                 edge |= realm[nr, nc] != realm
         inside = owner >= 0
         strength = np.clip((value - ZONE_MIN) / max(1e-6, CORE_MIN - ZONE_MIN), 0.0, 1.0)
-        if shown is None:
+        if self.turn_pick:
+            alpha = np.where(edge, 0.75, 0.5 + 0.12 * strength).astype(np.float32)
+        elif shown is None:
             alpha = np.where(edge, 0.36, 0.08 + 0.12 * strength).astype(np.float32)
         else:
             alpha = np.where(edge, 0.8, 0.45 + 0.15 * strength).astype(np.float32)
@@ -243,7 +252,7 @@ class Planet:
         return key
 
     def zone_key(self) -> tuple:
-        return (self.zones_on, self.realm_on, self._zone_key, self.res_on, self.trade_on)
+        return (self.zones_on, self.realm_on, self.turn_pick, self._zone_key, self.res_on, self.trade_on)
 
     def _resources(self):
         if self._res_color is None:
@@ -277,7 +286,7 @@ class Planet:
         elif self.zones_on:
             owner = self.zone_owner[rows, cols]
             mine = owner >= 0
-            if self.realm_on:
+            if self.realm_on or self.turn_pick:
                 # Carte politique : le terrain en gris, les pays par-dessus.
                 grey = base.mean(axis=-1, keepdims=True)
                 base = (base * 0.3 + grey * 0.7) * 0.75

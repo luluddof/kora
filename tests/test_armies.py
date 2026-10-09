@@ -11,7 +11,7 @@ from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
 
-def _village(pop=90, stock=3000.0, known=("huttes", "semis")):
+def _village(pop=90, stock=3000.0, known=("huttes", "semis", "sedentarite")):
     world = make_filled_world(60, 30, Terrain.VALLEE, wrap_x=True)
     tribe = Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE) | set(known), culture="joueur")
     st = GameState(world=world, clock=Clock(), tribes={1: tribe}, bands={1: Band(1, 1, offset_to_axial(30, 15), pop, stock)}, next_band_id=2)
@@ -134,7 +134,7 @@ def test_a_troop_away_leaves_the_harvest_short_of_hands():
 def test_troops_are_saved(tmp_path):
     world = make_filled_world(40, 20, Terrain.VALLEE, wrap_x=True)
     st = new_game(world)
-    st.tribes[1].knowledge.update(("huttes", "semis"))
+    st.tribes[1].knowledge.update(("huttes", "semis", "sedentarite"))
     st.bands[1].population = 90
     st.bands[1].stock = 2000.0
     sites.make_camp(st, 1)
@@ -154,7 +154,7 @@ def test_an_ai_village_raises_a_troop_when_threatened():
         clock=Clock(),
         tribes={
             1: Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE)),
-            2: Tribe(2, "Vallée", 30, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"}, culture="vallee"),
+            2: Tribe(2, "Vallée", 30, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite"}, culture="vallee"),
             3: Tribe(3, "Steppe", 30, False, knowledge=set(tech.START_KNOWLEDGE), culture="steppe"),
         },
         bands={

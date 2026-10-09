@@ -30,7 +30,7 @@ from src.kora.tech import (
 )
 from src.kora.types import Season, Terrain
 from src.kora.world import is_inshore
-from src.kora import chiefdom, chiefs, diplo, sites
+from src.kora import chiefdom, chiefs, diplo, draws, sites, turning
 from src.kora.villages import land_profile
 
 
@@ -163,7 +163,9 @@ def conditions_met(state, tribe, tech: Tech) -> bool:
 
 def status(state, tribe_id: int, tech_id: str) -> str:
     """"connu", "en_cours", "disponible", "attente" (prerequis OK, pas les
-    conditions) ou "verrouille" (prerequis manquants)."""
+    conditions ; un grand tournant : pas encore arrive chez lui),
+    "verrouille" (prerequis manquants) ou "absent" (un tirage : il ne
+    viendra pas, draws.py)."""
     tribe = state.tribes[tribe_id]
     tech = TECHS[tech_id]
     if tech_id in tribe.knowledge:
@@ -174,8 +176,13 @@ def status(state, tribe_id: int, tech_id: str) -> str:
         return "en_cours"
     if tribe.progress.get(tech_id, 0.0) > 0:
         return "disponible"
+    if draws.absent(state, tribe_id, tech_id):
+        return "absent"
     if missing_prereqs(tribe, tech):
         return "verrouille"
+    if tech.turning:
+        # Un grand tournant s'adopte quand il est arrive chez soi.
+        return "disponible" if turning.presence(tribe, tech_id) >= 100.0 else "attente"
     if not conditions_met(state, tribe, tech):
         return "attente"
     return "disponible"
@@ -237,7 +244,8 @@ def auto_choose(state, tribe_id: int) -> str | None:
     if not ready:
         return None
     taste = culture_of(tribe).taste
-    ready.sort(key=lambda tid: (taste.index(tid) if tid in taste else 99, TECHS[tid].cost, tid))
+    # Un grand tournant arrive chez soi passe avant tout : il ouvre un pan.
+    ready.sort(key=lambda tid: (not TECHS[tid].turning, taste.index(tid) if tid in taste else 99, TECHS[tid].cost, tid))
     choose(state, tribe_id, ready[0])
     return ready[0]
 
@@ -359,16 +367,28 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = [(tech.name, "titre"), (tech.about, "texte")]
     out.append(("Effets :", "note"))
     out.extend((f"  {line}", "effet") for line in effect_lines(tech))
+    if tech.turning:
+        out.extend(("  " + text, "effet") for text, kind in turning.lines(state, tribe_id, tech_id)[:1])
     if st == "connu":
         out.append(("Savoir connu.", "ok"))
         return out
+    if st == "absent":
+        out.append(("Il ne viendra pas :", "note"))
+        out.append(("  " + draws.why_absent(state, tribe_id, tech_id), "manque"))
+        return out
+    if tech.drawn:
+        out.append(("Il faut le sort :", "note"))
+        out.extend(("  " + text, kind if kind != "note" else "info") for text, kind in draws.lines(state, tribe_id, tech_id))
+    if tech.turning:
+        out.append(("Il faut qu'il soit arrivé chez vous :", "note"))
+        out.extend(("  " + text, kind if kind != "note" else "info") for text, kind in turning.lines(state, tribe_id, tech_id)[1:])
     if tech.prereqs:
         out.append(("Il faut connaître :", "note"))
         for pid in tech.prereqs:
             out.append((f"  {TECHS[pid].name}", "ok" if pid in tribe.knowledge else "manque"))
     teachers = _neighbors_know(state, tribe_id, tech_id)
     if tech.conds:
-        out.append(("Il faut avoir vécu :", "note"))
+        out.append(("Pour qu'il naisse chez vous :" if tech.turning else "Il faut avoir vécu :", "note"))
         for cond in tech.conds:
             have, need, label = cond_progress(state, tribe, cond, bool(teachers))
             shown = f"  {label}  ({min(have, need)}/{need})" if cond.kind not in ("seen", "flag") else f"  {label}"

@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-10-02.
+Derniere mise a jour : 2026-10-09.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -467,6 +467,21 @@ lente, bandes dessinees petites a taille fixe.
     tributaires rejoignent leur suzerain mais ne declarent pas eux-memes
     de guerre, a l'inverse des confederes" FAIT (le pays : chiefdom.country).
 
+2026-10-09
+  - "Le rework du systeme de recherche, inspire de Terra Invicta et d'EU5 :
+    comme dans EU5 un systeme d'institutions (pas le nom, mais leur
+    fonctionnement) : de grosses recherches qui debloquent tout un pan ;
+    cote Terra Invicta : des recherches avec un % de chance de ne pas
+    apparaitre dans chaque pays (le notre compris) ; d'autres tirees a
+    l'echelle du monde, puis pour certaines un tirage par pays ; et des
+    technologies incompatibles : si l'une apparait dans le monde, l'autre
+    non." FAIT (0.10.0 ; spec 2026-10-09-recherche-tournants-et-tirages.txt) :
+    cinq GRANDS TOURNANTS (le clan, la sedentarite - qui permet desormais de
+    fonder un village -, la domestication, la terre des ancetres, le don et
+    l'echange) qui naissent chez un peuple, se repandent chez ses voisins
+    et s'adoptent quand ils sont arrives (carte des tournants, touche I) ;
+    14 savoirs TIRES (par peuple, par monde, par monde puis peuple, trois
+    groupes exclusifs), fixes par la graine de la partie.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -576,6 +591,15 @@ lente, bandes dessinees petites a taille fixe.
   diplo.may_start (un tributaire ne declare pas de guerre) ; une guerre ou
   une paix s'etend au PAYS (chiefdom.country / followers) ; la vue d'un
   joueur se partage par systems.SIGHT.
+  Fait le 2026-10-09 (0.10.0) : la recherche refaite (grands tournants,
+  tirages). REGLES NOUVELLES : un savoir qui ouvre tout un pan est un grand
+  tournant (kind="tournant", sur sa rangee 1,5 / 3,5 ; ses conds sont celles
+  de sa naissance) ; un savoir tire n'est le prerequis d'aucun savoir sur
+  (test) ; tout tirage passe par draws.py et la graine de la partie (jamais
+  state.rng) ; une case de l'arbre peut porter plusieurs savoirs (slot).
+  A FAIRE plus tard (pistes) : des tournants pour les ages suivants
+  (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
+  les evenements.
   MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
   sans qu'il le redemande.
   En attente de SON choix : la suite de la profondeur des ages, toutes

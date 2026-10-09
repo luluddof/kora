@@ -8,7 +8,7 @@ from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
-NEO = set(tech.START_KNOWLEDGE) | {"huttes", "semis", "chefferie", "maisons", "ancetres", "echanges", "palabres", "greniers", "poterie"}
+NEO = set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite", "chefferie", "maisons", "ancetres", "echanges", "palabres", "greniers", "poterie"}
 
 
 def _world():
@@ -138,7 +138,7 @@ def test_the_great_chiefdom_techs_sit_in_the_neolithic():
         assert t.tier == 6 and tech.era_of(t) == 1, tid
         assert tech.effect_lines(t), tid
     assert 6 in tech.ERAS[1][1] and tech.TIER_NAMES[6] == "Grandes chefferies"
-    cells = [(t.branch, t.tier) for t in tech.TECHS.values() if tech.era_of(t) == 1]
+    cells = [(t.branch, t.tier, t.slot) for t in tech.TECHS.values() if tech.era_of(t) == 1]
     assert len(cells) == len(set(cells))
 
 

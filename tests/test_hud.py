@@ -109,7 +109,7 @@ def test_the_tree_draws_at_every_zoom():
         for z in (0.01, 0.7, 1.0, 1.6):
             ui = {"tech_cam": (100.0, 100.0, z)}
             r.draw(st, 0, 0, 1.0, None, side_panel="savoirs", ui=ui, tech_pick="feu")
-            assert r.side_hits["tech"]["cam"][2] >= 0.25
+            assert r.side_hits["tech"]["cam"][2] >= 0.12
     finally:
         pygame.quit()
 

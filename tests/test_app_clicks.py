@@ -188,3 +188,34 @@ def test_keys_and_clicks_of_the_whole_game(monkeypatch, tmp_path):
     _play(monkeypatch, tmp_path, st, steps)
     assert clock_speed["v"] == 3
     assert (tmp_path / "kora.json").exists()
+
+
+def test_the_turning_map_and_the_tree_answer_clicks(monkeypatch, tmp_path):
+    """I : la carte des grands tournants ; un clic sur une ligne de sa legende
+    choisit le tournant montre ; dans l'arbre, un clic sur un tournant le
+    montre dans la fiche, « Adopter » l'apprend quand il est arrive."""
+    from src.kora import render_tech
+    from src.kora.layout import cam_on, tech_panel_layout
+
+    st = _money_state()
+    st.tribes[1].knowledge |= {"palabres", "mariages"}
+    st.tribes[1].tournants["don"] = 100.0
+    seen = {}
+    # L'arbre s'ouvre sur le tournant (la vue suit d'habitude la recherche en cours).
+    monkeypatch.setattr(render_tech, "focus_cam", lambda state, w, h: cam_on(tech_panel_layout(w, h)["view"], tech_panel_layout(w, h)["world"], "don", 1.0))
+
+    def need(cond, what):
+        assert cond, what
+
+    steps = [
+        lambda r: [],
+        lambda r: _key(pygame.K_i),
+        lambda r: need(r.map_mode == "tournants", r.map_mode) or _click(_center(r.turning_hits["terre_ancetres"])),
+        lambda r: need(r.turning_pick == "terre_ancetres", r.turning_pick) or _key(pygame.K_t),
+        lambda r: seen.update(cam=r.side_hits["tech"]["cam"]) or [],
+        lambda r: _click(_center(r.side_hits["items"]["tech:don"])),
+        lambda r: [],
+        lambda r: _click(_center(r.side_hits["items"]["learn"])),
+        lambda r: need(st.tribes[1].learning == "don", st.tribes[1].learning) or [],
+    ]
+    _play(monkeypatch, tmp_path, st, steps)

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import random
 import time
 from dataclasses import dataclass, field
 
@@ -329,7 +330,10 @@ class HostSession(_Base):
             base = self.resume
         else:
             others = {t: {"name": s.name, "color": s.color, "bonuses": s.bonuses} for t, s in self.seats.items() if t != 1 and s.present}
-            base = new_game(world, setup=self.setup, others=others)
+            setup = dict(self.setup)
+            # L'hote tire la graine du monde ; les amis recoivent la partie.
+            setup.setdefault("seed", random.SystemRandom().randrange(1, 2 ** 30))
+            base = new_game(world, setup=setup, others=others)
         text = dumps_game(base)
         state, _view = loads_game(text, base.world)
         state.viewer = 1

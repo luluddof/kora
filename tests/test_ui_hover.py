@@ -54,6 +54,12 @@ def test_every_screen_survives_the_mouse_everywhere(monkeypatch):
     screens = [("savoirs", {"tech_tab": "nombres"}), (None, {"treasury_open": True})]
     screens.append((None, {"country_open": True, "law_confirm": ("base", "12")}))
     screens.append(("suzerains", {}))
+    screens.append(("tournants", {}))
+    # La recherche refaite : un tournant ne, en chemin chez vous ; un tirage.
+    st.research["births"] = {"clan": [others[0], 3]}
+    st.tribes[others[0]].knowledge.add("clan")
+    me.tournants["clan"] = 40.0
+    screens.append(("savoirs", {"tech_cam": (0.0, 0.0, 0.5)}))
     for pick in others[:2]:
         screens.append(("peuples", {"people_pick": pick}))
     for panel in ("tribu", "savoirs", "journal", "armee"):
@@ -69,8 +75,8 @@ def test_every_screen_survives_the_mouse_everywhere(monkeypatch):
     for panel, extra in screens:
         ui = _fresh_ui()
         ui.update(extra)
-        r.map_mode = "suzerains" if panel == "suzerains" else "zones"
-        if panel == "suzerains":
+        r.map_mode = panel if panel in ("suzerains", "tournants") else "zones"
+        if panel in ("suzerains", "tournants"):
             panel = None
         if panel == "battle":
             foe = next(b for b in st.bands.values() if b.tribe_id != PLAYER_TRIBE_ID and not b.village and b.population > 0)

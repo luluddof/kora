@@ -51,11 +51,26 @@ def tree_text() -> str:
             techs = [t for t in tech.TECHS.values() if t.tier == tier]
             if not techs:
                 continue
-            cost = f"  (apprentissage : {tech.TIER_COST[tier]} points)" if tier else ""
-            out.append(f"Palier {tier} - {tech.TIER_NAMES[tier]}{cost}")
+            if tier in tech.TURNING_TIERS:
+                out.append(f"{tech.TIER_NAMES[tier]} (naissent chez un peuple, se repandent, s'adoptent)")
+            else:
+                cost = f"  (apprentissage : {tech.TIER_COST[tier]} points)" if tier else ""
+                out.append(f"Palier {tier} - {tech.TIER_NAMES[tier]}{cost}")
             out.append("-" * 60)
-            for t in sorted(techs, key=lambda t: t.branch):
-                out.append(f"  {t.name}   [{branches[t.branch]}]")
+            for t in sorted(techs, key=lambda t: (t.branch, t.slot)):
+                extra = ""
+                if t.turning:
+                    extra = f"  GRAND TOURNANT, {t.cost} points ; ouvre : " + ", ".join(p.name for p in tech.pan_of(t.id))
+                elif t.drawn:
+                    parts = []
+                    if t.group:
+                        parts.append(f"groupe exclusif « {tech.GROUPS[t.group][0]} »")
+                    elif t.world < 1.0:
+                        parts.append(f"{round(100 * t.world)} % dans le monde")
+                    if t.chance < 1.0:
+                        parts.append(f"{round(100 * t.chance)} % par peuple")
+                    extra = "  TIRE : " + ", ".join(parts)
+                out.append(f"  {t.name}   [{branches[t.branch]}]{extra}")
                 out.append(f"    {t.about}")
                 if t.prereqs:
                     out.append("    Il faut connaitre : " + ", ".join(tech.TECHS[p].name for p in t.prereqs))

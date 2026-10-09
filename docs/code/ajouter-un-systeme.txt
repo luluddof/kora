@@ -27,8 +27,8 @@ bas au plus haut :
   5  LES SYSTEMES     learning (comment on apprend), bands (les outils des
                       bandes), chiefs, sites, influence, production, diplo,
                       goods, money, approach, numbers, laws, chiefdom,
-                      confed, memory, villages, battle, situations, events,
-                      events_data
+                      confed, memory, draws, turning, villages, battle,
+                      situations, events, events_data
   6  l'IA             ai_war, orders, puis ai
   7  la semaine       sim
   8  les ordres       commands
@@ -103,9 +103,12 @@ bas au plus haut :
      moteur (events._TRIBE_CONDITIONS, _BAND_CONDITIONS, _TRIBE_EFFECTS,
      _BAND_EFFECTS ; band peut etre None pour les premieres).
 
-  g) Les savoirs qui l'ouvrent : tech.py (Tech, branche, palier ; le
-     palier d'un prerequis toujours plus bas ; ages : 0-3 tribal, 4-5
-     neolithique). Ce qui fait avancer un savoir : learning.py.
+  g) Les savoirs qui l'ouvrent : tech.py (Tech, branche, palier, slot ;
+     le palier d'un prerequis toujours plus bas ; ages : 0-3 tribal, 4-6
+     neolithique). Ce qui fait avancer un savoir : learning.py. Un pan
+     entier : un GRAND TOURNANT (kind="tournant", turning.py). Un savoir
+     qui peut ne pas venir : chance / world / group (draws.py) - jamais le
+     prerequis d'un savoir sur (test_tech).
 
   h) L'IA : une fonction _ai pour les peuples qui ne sont pas des joueurs
      (gamestate.is_human ; le peuple 1 est toujours traite en joueur). Une

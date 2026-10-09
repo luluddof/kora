@@ -151,6 +151,6 @@ def test_the_tribe_progresses_through_the_era(robot_game):
     known = st.tribes[PLAYER_TRIBE_ID].knowledge
     learned = known - set(tech.START_KNOWLEDGE)
     # Six ans de jeu raisonnable : tous les premiers savoirs ou presque,
-    # et deja des savoirs du clan.
+    # et deja des savoirs du clan (le grand tournant du clan compte).
     assert len(learned) >= 6
-    assert sum(1 for t in learned if tech.TECHS[t].tier >= 2) >= 2
+    assert sum(1 for t in learned if tech.TECHS[t].tier >= 1.5) >= 2

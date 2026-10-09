@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from src.kora import battle, chiefs, diplo, events, memory, records, sites, situations, tech, villages
+from src.kora import battle, chiefs, diplo, draws, events, memory, records, sites, situations, tech, turning, villages
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LOG_CAP, LogEntry, LogKind
 from src.kora.gamestate import GameState, Pov
@@ -313,6 +313,7 @@ def game_to_json(state: GameState, view: dict | None = None) -> dict:
         "situations": [situations.to_json(s) for s in state.situations],
         "battles": [battle.to_json(b) for b in state.battles if not b.outcome],
         "next_battle_uid": state.next_battle_uid,
+        "research": records.json_copy(state.research),
         "day": state.day,
         "step": state.step,
         "next_situation_uid": state.next_situation_uid,
@@ -396,6 +397,7 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         state.day = int(data.get("day", 0))
         state.step = int(data.get("step", data.get("tick_count", 0)))
         state.situation_last = {str(k): int(v) for k, v in data.get("situation_last", {}).items()}
+        state.research = dict(data.get("research") or {})
         for tribe in tribes.values():
             # Sauvegarde d'avant les peuples en donnees.
             if not tribe.culture:
@@ -477,6 +479,11 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         # tel qu'il est aujourd'hui ; puis ce qu'il voit.
         memory.seed(state)
         memory.update(state)
+        # Une partie d'avant les tirages et les grands tournants : sa graine
+        # (tiree de ses peuples), et les tournants a qui sait deja leur pan.
+        if "seed" not in state.research:
+            draws.set_seed(state, draws.seed_from(state))
+        turning.migrate(state)
         if "diplo" not in data and world.width >= 300 and len(tribes) <= 4:
             # Partie d'avant les petits peuples : ils naissent hors de ce que
             # le joueur a deja explore (ils etaient la, on ne les voyait pas).

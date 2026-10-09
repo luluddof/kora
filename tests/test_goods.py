@@ -31,7 +31,7 @@ def _world(res: dict | None = None, terrain=Terrain.VALLEE):
 
 def _village(known=(), res=None, pop=120, stock=3000.0, terrain=Terrain.VALLEE):
     world = _world(res, terrain)
-    tribe = Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"} | set(known), culture="joueur")
+    tribe = Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite"} | set(known), culture="joueur")
     st = GameState(world=world, clock=Clock(), tribes={1: tribe}, bands={1: Band(1, 1, offset_to_axial(*CENTER), pop, stock)}, next_band_id=2)
     world.fill_season(st.clock.season())
     chiefs.ensure(st)
@@ -186,7 +186,7 @@ def test_a_village_that_lost_people_keeps_the_teams_it_can():
 
 def _partners(known_b=("echanges",)):
     st, site, band = _village(known=("poterie", "echanges", "palabres"), res={"argile": (255, 2)})
-    b = Tribe(2, "Akor", 30, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"} | set(known_b), culture="steppe")
+    b = Tribe(2, "Akor", 30, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite"} | set(known_b), culture="steppe")
     st.tribes[2] = b
     other = Band(2, 2, offset_to_axial(CENTER[0] + 14, CENTER[1]), 100, 2000.0)
     st.bands[2] = other

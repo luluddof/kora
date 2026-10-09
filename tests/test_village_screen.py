@@ -11,7 +11,7 @@ from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
 
-def _state(known=("huttes", "semis"), pop=90, stock=3000.0):
+def _state(known=("huttes", "semis", "sedentarite"), pop=90, stock=3000.0):
     world = make_filled_world(60, 30, Terrain.VALLEE, wrap_x=True)
     tribe = Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE) | set(known), culture="joueur")
     st = GameState(world=world, clock=Clock(), tribes={1: tribe}, bands={1: Band(1, 1, offset_to_axial(30, 15), pop, stock)}, next_band_id=2)
@@ -47,7 +47,7 @@ def test_the_oath_changes_the_village_for_good():
     st2, band2 = _state()
     villages.found(st2, 1, oath="grenier")
     assert stock_max(band2, st2) > cap * 1.1
-    st3, band3 = _state(known=("huttes", "semis", "palissade"))
+    st3, band3 = _state(known=("huttes", "semis", "sedentarite", "palissade"))
     site3 = villages.found(st3, 1, oath="pieux")
     assert villages.build_weeks(site3, "palissade") == villages.PALISADE_WEEKS // 2
     assert villages.build_cost(st3, site3, "palissade") < villages.build_cost(st, plain, "palissade")
@@ -71,7 +71,7 @@ def test_a_building_costs_food_takes_weeks_then_works():
 
 
 def test_buildings_need_knowledge_and_room():
-    st, band = _state(pop=40, known=("huttes", "semis", "rites"))
+    st, band = _state(pop=40, known=("huttes", "semis", "sedentarite", "rites"))
     site = villages.found(st, 1)
     assert villages.building_status(st, site, "palissade") == "verrouille"
     assert "Palissades" in villages.build_block(st, 1, "palissade")
@@ -93,7 +93,7 @@ def test_old_palisades_are_read_as_buildings():
 
 
 def test_altar_tower_and_stone_reach_beyond_the_village():
-    st, band = _state(known=("huttes", "semis", "guetteurs", "rites", "megalithes"))
+    st, band = _state(known=("huttes", "semis", "sedentarite", "guetteurs", "rites", "megalithes"))
     site = villages.found(st, 1)
     site.data.buildings = ["autel", "tour", "pierre"]
     clan = Band(5, 1, offset_to_axial(33, 15), 20, 100.0)
@@ -164,7 +164,7 @@ def test_the_windows_draw_without_error():
     try:
         screen = pygame.display.set_mode((1280, 720))
         r = Renderer(screen)
-        st, band = _state(known=("huttes", "semis", "palissade"))
+        st, band = _state(known=("huttes", "semis", "sedentarite", "palissade"))
         r.draw_village_icon  # noqa: B018 (methode utilisee par l'ecran)
         render_village.draw_found(r, st, {"found": 1, "found_oath": "feu"})
         assert r.found_hits["ok"]

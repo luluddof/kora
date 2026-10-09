@@ -240,6 +240,7 @@ MAP_MODES = (
     ("relief", "Relief"),
     ("zones", "Influence [Z]"),
     ("suzerains", "Suzerains [U]"),
+    ("tournants", "Tournants [I]"),
     ("ressources", "Ressources [R]"),
     ("commerce", "Commerce [X]"),
 )
@@ -364,6 +365,13 @@ TREE_COLHEAD = 58
 TREE_BAND = 62
 
 
+# La rangee des grands tournants (turning.py) : plus haute, des cartes larges.
+TREE_TURN_ROW = 136
+
+
+TREE_TURN_H = 108
+
+
 TREE_ZOOM_MAX = 1.6
 
 
@@ -381,15 +389,18 @@ _TREE: dict = {}
 
 
 def tech_world() -> dict:
-    """La toile de l'arbre, a l'echelle 1 : une rangee par palier, une
-    colonne par branche, une banniere par age."""
+    """La toile de l'arbre, a l'echelle 1 : une rangee par palier (plusieurs
+    sous-rangees si une case porte plusieurs savoirs : Tech.slot), une
+    colonne par branche, une banniere par age ; la rangee des grands
+    tournants (tech.TURNING_TIERS) a ses cartes larges (Tech.span)."""
     if _TREE:
         return _TREE
     n_cols = max(len(b) for _n, _t, b in tech.ERAS)
     width = TREE_PAD + TREE_GUTTER + n_cols * TREE_COL + TREE_PAD
     y = TREE_PAD
     sections = []
-    rows: dict[int, int] = {}
+    rows: dict = {}
+    heights: dict = {}
     for i, (_name, tiers, _branches) in enumerate(tech.ERAS):
         head_h = TREE_COLHEAD if i == 0 else TREE_BAND
         head = (0, y, width, head_h)
@@ -397,21 +408,30 @@ def tech_world() -> dict:
         top = y
         for tier in tiers:
             rows[tier] = y
-            y += TREE_ROW
+            if tier in tech.TURNING_TIERS:
+                h = TREE_TURN_ROW
+            else:
+                h = TREE_ROW * (1 + max((t.slot for t in tech.TECHS.values() if t.tier == tier), default=0))
+            heights[tier] = h
+            y += h
         sections.append({"era": i, "head": head, "body": (0, top, width, y - top)})
     cols = [TREE_PAD + TREE_GUTTER + i * TREE_COL for i in range(n_cols)]
-    nodes = {
-        t.id: (cols[t.branch] + (TREE_COL - TREE_NODE_W) // 2, rows[t.tier] + (TREE_ROW - TREE_NODE_H) // 2, TREE_NODE_W, TREE_NODE_H)
-        for t in tech.TECHS.values()
-    }
-    _TREE.update({"size": (width, y + TREE_PAD), "cols": cols, "col_w": TREE_COL, "rows": rows, "sections": sections, "nodes": nodes})
+    nodes = {}
+    for t in tech.TECHS.values():
+        if t.turning:
+            w = t.span * TREE_COL - (TREE_COL - TREE_NODE_W)
+            nodes[t.id] = (cols[t.branch] + (TREE_COL - TREE_NODE_W) // 2, rows[t.tier] + (TREE_TURN_ROW - TREE_TURN_H) // 2, w, TREE_TURN_H)
+        else:
+            y0 = rows[t.tier] + t.slot * TREE_ROW
+            nodes[t.id] = (cols[t.branch] + (TREE_COL - TREE_NODE_W) // 2, y0 + (TREE_ROW - TREE_NODE_H) // 2, TREE_NODE_W, TREE_NODE_H)
+    _TREE.update({"size": (width, y + TREE_PAD), "cols": cols, "col_w": TREE_COL, "rows": rows, "heights": heights, "sections": sections, "nodes": nodes})
     return _TREE
 
 
 def tree_zoom_min(view, world) -> float:
     """Tout l'arbre tient dans la vue."""
     ww, wh = world["size"]
-    return max(0.25, min(view[2] / ww, view[3] / wh))
+    return max(0.12, min(view[2] / ww, view[3] / wh))
 
 
 def clamp_cam(cam, view, world) -> tuple:

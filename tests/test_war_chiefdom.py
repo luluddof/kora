@@ -19,8 +19,8 @@ def _state(terrain=Terrain.PLAINE, player=True):
         world=world,
         clock=Clock(),
         tribes={
-            1: Tribe(1, "Kora", 30, player, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "palissade"}, culture="joueur"),
-            2: Tribe(2, "Steppe", 30, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"}),
+            1: Tribe(1, "Kora", 30, player, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite", "palissade"}, culture="joueur"),
+            2: Tribe(2, "Steppe", 30, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite"}),
         },
         bands={},
         next_band_id=50,

@@ -1,4 +1,4 @@
-from src.kora import chiefdom, confed
+from src.kora import chiefdom, confed, diplo, turning
 from src.kora.peoples import color_of
 from src.kora.types import Season, Terrain
 
@@ -181,3 +181,28 @@ def seen_color(state, tid, lord) -> tuple:
         return own
     base = color_of(state.tribes[lord])
     return _mix(_mix(base, own, VASSAL_OWN), (255, 255, 255), VASSAL_LIGHT)
+
+
+# La carte des grands tournants (turning.py) : sombre ou il n'est pas arrive,
+# ocre a mesure qu'il arrive, or la ou il est adopte, blanc dore au berceau ;
+# gris : les peuples qu'on ne connait pas.
+TURN_NONE = (66, 58, 50)
+TURN_HERE = (214, 150, 70)
+TURN_ADOPTED = (246, 210, 118)
+TURN_CRADLE = (255, 244, 206)
+TURN_UNKNOWN = (92, 90, 88)
+
+
+def turning_color(state, tid: int, turn: str) -> tuple:
+    tribe = state.tribes.get(tid)
+    if tribe is None:
+        return TURN_UNKNOWN
+    if tid != state.viewer and tid not in diplo.contacts_of(state, state.viewer):
+        return TURN_UNKNOWN
+    place = turning.birthplace(state, turn)
+    if place is not None and place[0] == tid:
+        return TURN_CRADLE
+    if turn in tribe.knowledge:
+        return TURN_ADOPTED
+    p = turning.presence(tribe, turn) / 100.0
+    return _mix(TURN_NONE, TURN_HERE, p)

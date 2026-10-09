@@ -89,6 +89,14 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - À la fin du néolithique, les **grandes chefferies** : enceintes, festins de prestige, biens de prestige, chef des
   chefs, otages et serments pour gagner ou tenir des tributaires ; ou l'araire, le lait et la laine pour prospérer
   sans eux.
+- Les **savoirs** : un arbre qu'on parcourt à la souris (**T**). Certains sont de **grands tournants** (le clan, la
+  sédentarité, la domestication, la terre des ancêtres, le don et l'échange) : ils **naissent** chez le premier peuple
+  qui en remplit les conditions, se **répandent** chez ses voisins (plus vite entre alliés, partenaires, pays), et
+  ne s'**adoptent** que quand ils sont arrivés chez vous ; adoptés, ils ouvrent tout un pan de l'arbre. La sédentarité
+  permet de fonder un village. La **carte des tournants** (**I**) montre où ils sont nés et où ils arrivent.
+- D'autres savoirs sont **tirés au sort**, une fois par partie : certains ne viennent pas à tous les peuples (le
+  vôtre compris), d'autres ne naissent pas dans tous les mondes, et dans certains groupes un seul naît (les croyances,
+  les tombes des morts, le calendrier). L'arbre dit leur chance et ce que le sort a décidé.
 - Les **nombres** : le comptage par bâtons (l'addition), puis les nombres additifs, où vous **choisissez la base**
   de vos nombres (10 : on apprend mieux ; 12 : on vend mieux ; 20 : on compte les gens ; 60 : on mesure le grain),
   presque pour toujours (c'est une **loi** du pays : écran *Pays*, onglet *Lois*, touche **N**). Des
@@ -139,7 +147,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **H** | Honorer un clan (il reste fidèle) |
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
-| **Z** / **U** / **R** / **X** | Modes de carte : influence / suzerains / ressources / commerce |
+| **Z** / **U** / **I** / **R** / **X** | Modes de carte : influence / suzerains / tournants / ressources / commerce |
 | **F5** | Sauvegarder (le jeu sauvegarde aussi tout seul) |
 | **Entrée** | À plusieurs : écrire aux autres joueurs |
 | **Échap** | Fermer une fenêtre · menu (Reprendre, Sauvegarder, Menu principal, Quitter) |

@@ -1,9 +1,8 @@
 CARTE DU DEPOT — KORA
 (doc de code, pas de design de jeu)
 
-Date    : 2026-10-03 (0.9.0 : confederation, couleurs des pays, carte des
-          suzerains, lois et ecran du pays, budget en curseurs, memoire
-          du brouillard, terrain deforme)
+Date    : 2026-10-09 (0.10.0 : la recherche refaite, grands tournants et
+          tirages ; avant : 0.9 pays, lois, confederation, brouillard)
 Statut  : a jour avec le proto actuel (tribus vivantes : peuples,
           zone d'influence, campements, chefs, diplomatie, evenements,
           ressources du pays, villages du neolithique ; fondation,
@@ -111,7 +110,7 @@ Ici c'est plus petit, mais le meme decoupage :
                     resources.py, villages.py, orders.py, battle.py, units.py,
                     goods.py, situations.py, production.py, population.py,
                     chiefdom.py, numbers.py, money.py, laws.py, confed.py,
-                    memory.py
+                    memory.py, draws.py, turning.py
                     "une semaine avance (ou un jour, en bataille)"
 
   Persistance       persist.py, data/kora_map.json
@@ -200,6 +199,27 @@ src/kora/confed.py  (pas de pygame)
   : un tributaire en sort), shared_note, monthly (systems.MONTHLY : l'IA
   sans amis s'en va), ai_wants (diplo.ai_monthly, _propose_to_player ->
   carte "offre_confederation"), lines (ecran Peuples).
+
+src/kora/turning.py  (pas de pygame)
+  Les GRANDS TOURNANTS (tech.Tech kind="tournant", tech.turnings / pan_of
+  / descendants) : presence (Tribe.tournants), sources (d'ou il vient :
+  ses conditions, les peuples en contact), monthly_gain, monthly
+  (systems.MONTHLY : presence, naissances state.research["births"],
+  journal, carte "tournant_voyageurs"), birthplace / born / born_text,
+  adopted_by, own_conditions, lines (fiche), migrate (vieilles parties ;
+  persist, new_game), EVENT_EFFECTS "tournant". Statut dans
+  learning.status ("attente" tant qu'il n'est pas arrive) ; l'IA l'adopte
+  d'abord (learning.auto_choose).
+
+src/kora/draws.py  (pas de pygame)
+  Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :
+  set_seed / seed_of / seed_from (state.research["seed"] ; app._fresh_seed
+  et session pour une partie neuve), world_draw (le monde ; groupes
+  exclusifs), in_world, comes_to (par peuple), why_absent / absent /
+  short_why (et ce qui en depend : learning.status "absent"), revealed
+  (Tribe.revealed), chance_text, lines (fiche), monthly (systems.MONTHLY :
+  le journal annonce le sort). Hasard propre (sha512 de la graine et des
+  noms), jamais state.rng.
 
 src/kora/laws.py  (pas de pygame)
   Les LOIS du pays : all_laws (construites a la demande : money et numbers
@@ -630,6 +650,16 @@ src/kora/money.py  (pas de pygame)
   tribut des tributaires, solde, gages, presents, histoire ; IA : _ai).
   Les filons d'argent : resources.derive_silver (tire du relief au
   chargement, world.set_resources) ; les mineurs vont a goods.FAR_RES cases.
+
+src/kora/render_tech.py (la recherche)
+  L'arbre : cartes larges des grands tournants (_turning_card : etat,
+  presence, berceau), pastilles des savoirs tires (_chance_pill), etat
+  "absent" ; la fiche (learning.detail_lines : sections "Il faut le sort",
+  "Il faut qu'il soit arrive chez vous", lignes "info"). layout.tech_world :
+  rangees des tournants (TREE_TURN_ROW, Tech.span), sous-rangees (slot),
+  heights. La carte des tournants : render.shown_turning /
+  _draw_turning_legend (turning_hits, turning_pick ; app : touche I, clic
+  de legende), globe_draw.turn_pick, look.turning_color.
 
 src/kora/render_numbers.py
   Onglet « Les nombres » de l'ecran des savoirs : page_layout / items

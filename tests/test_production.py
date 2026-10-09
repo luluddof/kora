@@ -17,7 +17,7 @@ def _villages_state(tids=(1, 2)):
     st = new_game(_world())
     st.story = True
     for tid in tids:
-        for t in tech.TECHS:
+        for t in (t for t in tech.TECHS if not tech.TECHS[t].drawn):
             tech.grant(st.tribes[tid], t)
         band = next(b for b in st.bands.values() if b.tribe_id == tid)
         band.population, band.stock = 130, 3000.0

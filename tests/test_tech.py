@@ -41,13 +41,20 @@ def test_the_tree_is_sound():
         for pid in t.prereqs:
             assert pid in tech.TECHS
             assert tech.TECHS[pid].tier < t.tier
+            # Un savoir tire n'est jamais le prerequis d'un savoir sur : pas
+            # d'impasse (P2) quand il ne vient pas.
+            assert t.drawn or not tech.TECHS[pid].drawn, (t.id, pid)
         if t.tier == 0:
             assert not t.prereqs and t.id in tech.START_KNOWLEDGE
         else:
             assert t.prereqs and t.conds
+        # Les grands tournants : sur leur rangee, jamais tires.
+        assert t.turning == (t.tier in tech.TURNING_TIERS), t.id
+        assert not (t.turning and t.drawn), t.id
+        assert not t.group or t.group in tech.GROUPS
     for tier in range(1, 4):
         assert sum(1 for t in tech.TECHS.values() if t.tier == tier) >= 4
-    places = [(t.tier, t.branch) for t in tech.TECHS.values()]
+    places = [(t.tier, t.branch, t.slot) for t in tech.TECHS.values()]
     assert len(places) == len(set(places))
 
 
@@ -215,7 +222,7 @@ def test_sowing_lets_camp_land_recover_faster():
     for h in (far, near):
         st.world.set_exhaustion(h, 0.5)
     st.last_pressure = {}
-    st.tribes[1].knowledge.add("semis")
+    st.tribes[1].knowledge.update(("semis", "sedentarite"))
     update_exhaustion(st)
     assert st.world.exhaustion(near) > st.world.exhaustion(far)
 

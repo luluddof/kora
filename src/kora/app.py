@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 import pygame
 
 from src.kora import (
@@ -246,10 +248,19 @@ def _continue_boot(worlds, sw: int, sh: int):
     return _start_view(state, _refresh_selection(state, view.get("selected")), sw, sh)
 
 
+def _fresh_seed() -> int:
+    """La graine d'une partie neuve (le hasard de la machine : l'interface
+    seulement ; la partie, elle, la garde et la sauve)."""
+    return random.SystemRandom().randrange(1, 2 ** 30)
+
+
 def _new_boot(worlds, setup: dict | None, sw: int, sh: int):
     """Une partie neuve (menu de demarrage) ; l'ancienne sauvegarde est
     mise de cote, pas effacee."""
     moved = set_aside_save(default_save_path())
+    # Chaque partie tire son monde (les savoirs tires, draws.py).
+    setup = dict(setup or {})
+    setup.setdefault("seed", _fresh_seed())
     state = new_game(worlds.fresh(), setup=setup)
     if moved is not None:
         note(state, LogKind.DECOUVERTE, f"Ancienne partie mise de côté : {moved.name}")
@@ -394,7 +405,6 @@ def title_screen(renderer, clock, worlds, message: str = ""):
     """Le menu de demarrage, la creation du peuple, le menu du multijoueur.
     Rend ("continue",), ("new", setup), ("host", setup), ("join", setup),
     ("resume_mp",) ou ("quit",)."""
-    import random
 
     scene = render_menu.TitleScene(worlds.shown)
     info = peek_save(default_save_path())
@@ -1516,6 +1526,8 @@ class Play:
                 self.toast("Les lois viennent avec Valeurs d'échange ou Nombres additifs.")
                 return None
             self.open_screen("pays", toggle=True)
+        elif event.key == pygame.K_i:
+            self.renderer.map_mode = "relief" if self.renderer.map_mode == "tournants" else "tournants"
         elif event.key == pygame.K_u:
             self.renderer.map_mode = "relief" if self.renderer.map_mode == "suzerains" else "suzerains"
         elif event.key == pygame.K_r:
@@ -1585,6 +1597,11 @@ class Play:
                 return None
             if choice is not None:
                 self.side_click(choice)
+                return None
+            # La carte des grands tournants : une ligne de sa legende le choisit.
+            pick = next((tid for tid, rect in self.renderer.turning_hits.items() if _in_rect(rect, mx, my)), None)
+            if pick is not None:
+                self.renderer.turning_pick = pick
                 return None
             mode = map_mode_hit(self.renderer.mode_hits, mx, my)
             if mode is not None:

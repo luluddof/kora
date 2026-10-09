@@ -40,6 +40,7 @@ from src.kora import (
     render_village,
     screens,
     tech,
+    turning,
     theme,
 )
 from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
@@ -156,7 +157,7 @@ BAND_ICONS = {
     "honor": "honorer",
     "army": "armee",
 }
-MAP_MODE_ICONS = {"relief": "relief", "zones": "zones", "suzerains": "chef", "ressources": "ressources", "commerce": "commerce"}
+MAP_MODE_ICONS = {"relief": "relief", "zones": "zones", "suzerains": "chef", "tournants": "savoir", "ressources": "ressources", "commerce": "commerce"}
 
 
 SEASON_FR = {
@@ -254,6 +255,9 @@ class Renderer:
         # "zones" (teinte des zones d'influence) ou "relief".
         self.map_mode = "zones"
         self.mode_hits: dict = {}
+        # La carte des grands tournants : le tournant choisi, ses lignes.
+        self.turning_pick: str | None = None
+        self.turning_hits: dict = {}
         self.panel_hits: dict = {}
         self.event_hits: dict = {}
         # Le bandeau des situations (uid -> dalle) et leur fenetre.
@@ -303,8 +307,9 @@ class Renderer:
         planet = self._planet_for(state.world)
         sw, sh = self.screen.get_size()
         cx, cy, focal, dist = view_params(zoom, sw, sh, HUD_HEIGHT)
-        planet.zones_on = self.map_mode in ("zones", "suzerains")
+        planet.zones_on = self.map_mode in ("zones", "suzerains", "tournants")
         planet.realm_on = self.map_mode == "suzerains"
+        planet.turn_pick = self.shown_turning(state) if self.map_mode == "tournants" else None
         planet.res_on = self.map_mode == "ressources"
         planet.trade_on = self.map_mode == "commerce"
         if planet.zones_on:
@@ -827,6 +832,9 @@ class Renderer:
             self._draw_trade_legend(layout, w)
         if self.map_mode == "suzerains":
             self._draw_realm_legend(layout, w)
+        self.turning_hits = {}
+        if self.map_mode == "tournants":
+            self._draw_turning_legend(layout, w)
         if self.map_mode == "ressources":
             x0 = layout["relief"][0]
             y = layout["relief"][1] + 36
@@ -838,6 +846,61 @@ class Renderer:
                 cy = y + 8 + (i // 2) * 18
                 pygame.draw.polygon(self.screen, COLORS[name], theme.chamfer((cx, cy + 3, 11, 11), 2))
                 theme.text(self.screen, LABELS[name], "mini", C.lin, (cx + 16, cy), bw // 2 - 26)
+
+    def shown_turning(self, state) -> str:
+        """Le grand tournant montre sur sa carte : celui qu'on a choisi,
+        sinon le premier ne qu'on n'a pas encore adopte."""
+        turns = tech.turnings()
+        if self.turning_pick in tech.TECHS:
+            return self.turning_pick
+        me = state.tribes.get(state.viewer)
+        for t in turns:
+            if turning.born(state, t.id) and me is not None and t.id not in me.knowledge:
+                return t.id
+        return turns[0].id
+
+    def _draw_turning_legend(self, layout, w) -> None:
+        """Legende de la carte des grands tournants : une ligne par tournant
+        (un clic la choisit), son etat chez vous, son berceau ; les couleurs."""
+        state = getattr(self, "_legend_state", None)
+        if state is None:
+            return
+        me = state.tribes.get(state.viewer)
+        if me is None:
+            return
+        x0 = layout["relief"][0]
+        y = layout["relief"][1] + 36
+        bw = w - TAB_W - 14 - x0
+        turns = tech.turnings()
+        pick = self.shown_turning(state)
+        bh = 12 + 18 + 22 * len(turns) + 18 * 3
+        theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
+        theme.text(self.screen, "Les grands tournants : où ils sont nés, où ils arrivent (cliquez pour choisir)", "mini", C.os, (x0 + 12, y + 6), bw - 24)
+        yy = y + 28
+        mx, my = pygame.mouse.get_pos()
+        for t in turns:
+            row = (x0 + 8, yy - 2, bw - 16, 20)
+            self.turning_hits[t.id] = row
+            if t.id == pick or _contains(row, mx, my):
+                pygame.draw.rect(self.screen, (70, 52, 32) if t.id == pick else (50, 38, 26), row, border_radius=4)
+            pygame.draw.circle(self.screen, look.TURN_ADOPTED if t.id == pick else C.cendre, (x0 + 18, yy + 8), 5, 0 if t.id == pick else 1)
+            if t.id in me.knowledge:
+                here = "adopté"
+            elif turning.presence(me, t.id) > 0:
+                here = f"chez vous {turning.presence(me, t.id):.0f} %"
+            else:
+                here = "pas encore chez vous"
+            born = turning.born_text(state, state.viewer, t.id)
+            theme.text(self.screen, f"{t.name} : {here} · {born.lower() if born.startswith('Pas') else born} · {len(turning.adopted_by(state, t.id))} peuples l'ont adopté", "mini", C.lin, (x0 + 30, yy), bw - 42)
+            yy += 22
+        for color, text in (
+            (look.TURN_CRADLE, "Blanc doré : son berceau · or : il y est adopté"),
+            (look.TURN_HERE, "Ocre : il y arrive (plus c'est clair, plus il est présent)"),
+            (look.TURN_UNKNOWN, "Gris : des peuples que vous ne connaissez pas"),
+        ):
+            pygame.draw.circle(self.screen, color, (x0 + 18, yy + 8), 5)
+            theme.text(self.screen, text, "mini", C.cendre, (x0 + 30, yy), bw - 42)
+            yy += 18
 
     def _draw_realm_legend(self, layout, w) -> None:
         """Legende de la carte des suzerains : les grands pays (un suzerain et

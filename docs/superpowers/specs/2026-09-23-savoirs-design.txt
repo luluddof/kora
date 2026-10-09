@@ -181,6 +181,14 @@ Palier 1 - Premiers savoirs  (apprentissage : 40 points)
     -> Cadeaux aux autres peuples : +50 % d'effet
     -> Vos propositions aux autres peuples : +10 d'acceptation
 
+Grand tournant (naissent chez un peuple, se repandent, s'adoptent)
+------------------------------------------------------------
+  Le clan   [Pays et campements]  GRAND TOURNANT, 90 points ; ouvre : Pistes et repères, Récits autour du feu, Peintures des cavernes, Mariages entre clans, Comptage par bâtons, Grandes chasses collectives, Chamanes et esprits animaux, La Grande Mère
+    Au-delà du foyer, une grande famille : des ancêtres communs, des mariages, une parole transmise. Tout ce qui fait un peuple vient de là.
+    Il faut connaitre : Rites et sépultures, Dons et palabres
+    Il faut avoir vecu : Peuple 50 ; 2 hivers traversés ; Avoir eu 2 bandes
+    -> Attachement des clans à la tribu : +5
+
 Palier 2 - Savoirs du clan  (apprentissage : 90 points)
 ------------------------------------------------------------
   Arc et flèches   [Chasse et guerre]
@@ -190,11 +198,25 @@ Palier 2 - Savoirs du clan  (apprentissage : 90 points)
     -> Forêt : +6 % de nourriture
     -> Force au combat : +15 %
 
+  Propulseur   [Chasse et guerre]  TIRE : 70 % dans le monde, 60 % par peuple
+    Un bois à crochet qui prolonge le bras : la sagaie part plus loin et plus fort.
+    Il faut connaitre : Chasse à l'épieu
+    Il faut avoir vecu : Peuple 40 ; 10 sem. en plaine ou steppe
+    -> Plaine et steppe : +6 % de nourriture
+    -> Force au combat : +8 %
+
   Garde des troupeaux   [Terre et cueillette]
     Suivre et garder un troupeau plutôt que le chasser : la steppe devient un garde-manger.
     Il faut connaitre : Chasse à l'épieu
     Il faut avoir vecu : Steppe en vue ; 4 sem. en steppe ; Peuple 10
     -> Steppe : nourriture x1,35 au printemps, x1,65 en été, x1,5 en automne et en hiver
+
+  Brûlis du sous-bois   [Terre et cueillette]  TIRE : 60 % dans le monde
+    On met le feu aux broussailles : l'herbe tendre repousse et le gibier revient.
+    Il faut connaitre : Cueillette
+    Il faut avoir vecu : 20 sem. en forêt
+    -> Forêt : +5 % de nourriture
+    -> Dans votre zone d'influence : +5 % de nourriture
 
   Salaison   [Réserves]
     Le sel garde la viande et le poisson : des réserves plus grandes, des caches qui durent.
@@ -221,7 +243,7 @@ Palier 2 - Savoirs du clan  (apprentissage : 90 points)
 
   Pistes et repères   [Pays et campements]
     Chaque source, chaque gué, chaque passage des bêtes a un nom : on connaît son pays.
-    Il faut connaitre : Huttes et campements
+    Il faut connaitre : Huttes et campements, Le clan
     Il faut avoir vecu : Avoir eu 2 bandes ; 3 hivers traversés
     -> Zone d'influence : +1 case autour de vos bandes et camps
     -> Dans votre zone d'influence : +8 % de nourriture
@@ -229,22 +251,29 @@ Palier 2 - Savoirs du clan  (apprentissage : 90 points)
 
   Récits autour du feu   [Foyer et société]
     Les anciens racontent les hivers passés : la tribu se souvient et se tient.
-    Il faut connaitre : Feu
+    Il faut connaitre : Le clan
     Il faut avoir vecu : 3 hivers traversés ; Peuple 70
     -> Naissances : +5 %
     -> Emprise du chef : +3 cases
     -> Prestige à la fin de l'hiver : +6 sans famine, -4 avec (au lieu de +4 / -6)
 
+  Peintures des cavernes   [Foyer et société]  TIRE : 50 % par peuple
+    Des bêtes peintes à la lueur des torches, au fond des grottes : on y apprend, on s'y souvient.
+    Il faut connaitre : Rites et sépultures, Le clan
+    Il faut avoir vecu : 3 hivers traversés
+    -> Prestige à la fin de l'hiver : +6 sans famine, -6 avec (au lieu de +4 / -6)
+    -> Apprentissage des savoirs : +5 %
+
   Mariages entre clans   [Voisins]
     On donne ses filles et ses fils aux voisins : les alliances se scellent par le sang.
-    Il faut connaitre : Dons et palabres
+    Il faut connaitre : Dons et palabres, Le clan
     Il faut avoir vecu : Peuple 80 ; 1 peuple cordial (relation 20)
     -> Attachement des clans à la tribu : +4
     -> Vous pouvez proposer une alliance (mariages entre les chefs)
 
   Comptage par bâtons   [Nombres]
     Des encoches sur un bâton, une par lune, une par bête : on compte ce qu'on ne voit plus.
-    Il faut connaitre : Rites et sépultures
+    Il faut connaitre : Le clan
     Il faut avoir vecu : 3 hivers traversés
     -> On compte : l'addition (+), et l'onglet des nombres dans les savoirs
 
@@ -258,14 +287,20 @@ Palier 3 - Aube du néolithique  (apprentissage : 160 points)
     -> Vue : +4 cases autour de vos bandes
     -> Renforts : vos bandes s'entraident jusqu'à 3 cases (au lieu de 2)
 
+  Grandes chasses collectives   [Chasse et guerre]  TIRE : 50 % par peuple
+    Tous les clans ensemble rabattent les troupeaux vers un ravin ou un enclos : la viande de toute une saison.
+    Il faut connaitre : Arc et flèches, Le clan
+    Il faut avoir vecu : Peuple 120 ; Avoir eu 3 bandes
+    -> Plaine et steppe : +8 % de nourriture
+    -> Vallée : +5 % de nourriture
+
   Premières semailles   [Terre et cueillette]
     Replanter les graines des meilleures plantes près du camp : le début des champs.
     Il faut connaitre : Cueillette, Fumage et séchage
-    Il faut avoir vecu : Peuple 160 ; 5 hivers traversés ; 20 sem. près de céréales ou de racines sauvages
+    Il faut avoir vecu : Peuple 120 ; 4 hivers traversés ; 20 sem. près de céréales ou de racines sauvages
     -> Vallée : +20 % de nourriture
     -> Plaine : +10 % de nourriture
     -> Terres épuisées autour de vos camps : se refont 2 fois plus vite
-    -> Vous pouvez fonder un village sur un de vos campements (bouton Village)
 
   Poterie   [Réserves]
     Des pots d'argile cuite : grain et graisse à l'abri de l'humidité et des rongeurs.
@@ -300,6 +335,13 @@ Palier 3 - Aube du néolithique  (apprentissage : 160 points)
     -> Naissances des bandes au campement : +10 %
     -> Zone d'influence : +1 case autour de vos bandes et camps
 
+  Chamanes et esprits animaux   [Pays et campements]  TIRE : groupe exclusif « Les croyances »
+    Le chamane voyage chez les esprits des bêtes : la chasse est permise, le clan protégé.
+    Il faut connaitre : Rites et sépultures, Le clan
+    Il faut avoir vecu : 4 hivers traversés
+    -> Forêt et steppe : +5 % de nourriture
+    -> Attachement des clans à la tribu : +3
+
   Chefferie   [Foyer et société]
     Un chef reconnu par plusieurs clans : la tribu peut s'étendre sans se défaire.
     Il faut connaitre : Récits autour du feu
@@ -310,6 +352,13 @@ Palier 3 - Aube du néolithique  (apprentissage : 160 points)
     -> Attachement des clans à la tribu : +8
     -> Emprise du chef : +8 cases
 
+  La Grande Mère   [Foyer et société]  TIRE : groupe exclusif « Les croyances »
+    Une mère de toutes choses, aux formes généreuses, qu'on sculpte dans l'ivoire et la pierre : la vie revient.
+    Il faut connaitre : Rites et sépultures, Le clan
+    Il faut avoir vecu : 4 hivers traversés
+    -> Famine pendant l'hiver local : -5 % de morts
+    -> Naissances : +6 %
+
   Confédération   [Voisins]
     Plusieurs peuples sous les mêmes serments : les petits se joignent aux grands.
     Il faut connaitre : Mariages entre clans
@@ -319,36 +368,62 @@ Palier 3 - Aube du néolithique  (apprentissage : 160 points)
 
 === Néolithique ===
 
+Grands tournants (naissent chez un peuple, se repandent, s'adoptent)
+------------------------------------------------------------
+  La sédentarité   [Champs]  GRAND TOURNANT, 140 points ; ouvre : Palissades, Champs cultivés, Greniers, Maisons de terre, Nombres additifs
+    On ne suit plus le gibier : on reste, on sème, on bâtit. La révolution qui change tout : les villages, les champs, les greniers.
+    Il faut connaitre : Premières semailles, Huttes et campements
+    Il faut avoir vecu : Peuple 140 ; 4 hivers traversés
+    -> Villages : +1
+
+  La domestication   [Valeurs et passages]  GRAND TOURNANT, 200 points ; ouvre : Chèvres et moutons, Le cheval monté
+    On ne chasse plus la bête : on la garde, on la fait naître, on choisit les plus douces. Les troupeaux deviennent une richesse.
+    Il faut connaitre : Chasse à l'épieu
+    Il faut avoir vecu : 30 sem. près de bêtes sauvages à apprivoiser ; Peuple 160 ; 6 hivers traversés
+    -> Famine pendant l'hiver local : -5 % de morts
+
+  La terre des ancêtres   [Villages]  GRAND TOURNANT, 240 points ; ouvre : Culte des ancêtres
+    Les morts gardent la terre où ils reposent : les lignées s'y enracinent, les chefs parlent en leur nom.
+    Il faut connaitre : Rites et sépultures, Chefferie
+    Il faut avoir vecu : 1 village ; 10 hivers traversés
+    -> Stabilité de vos villages : +2
+
+  Le don et l'échange   [Échanges]  GRAND TOURNANT, 200 points ; ouvre : Valeurs d'échange, Échanges lointains, Jetons d'argile
+    Ce qu'on donne oblige, ce qu'on reçoit se rend : entre les peuples, les biens circulent et lient.
+    Il faut connaitre : Dons et palabres, Mariages entre clans
+    Il faut avoir vecu : Connaître 3 autres peuples ; Peuple 120
+    -> Vos propositions aux autres peuples : +5 d'acceptation
+
 Palier 4 - Premiers villages  (apprentissage : 240 points)
 ------------------------------------------------------------
   Palissades   [Guerre et défense]
     Des pieux plantés en cercle autour des maisons : le village ne fuit pas, il se défend.
-    Il faut connaitre : Premières semailles
+    Il faut connaitre : La sédentarité
     Il faut avoir vecu : 1 village
     -> Vos villages peuvent bâtir une palissade (défense x1,6) et une maison des guerriers
 
   Champs cultivés   [Champs]
     On choisit les meilleures graines, on désherbe, on garde les oiseaux : les champs rendent enfin.
-    Il faut connaitre : Premières semailles
+    Il faut connaitre : La sédentarité
     Il faut avoir vecu : Un village tenu 2 ans ; 20 sem. près de céréales ou de racines
     -> Récolte des champs : +40 %
 
   Greniers   [Greniers et artisans]
     Des greniers surélevés, à l'abri des rats et de l'eau : le grain dure.
-    Il faut connaitre : Poterie
+    Il faut connaitre : Poterie, La sédentarité
     Il faut avoir vecu : 1 village ; 8 hivers traversés
     -> Greniers des villages : +8 semaines de réserve
     -> Grain perdu au grenier (rats, humidité) : -50 %
 
   Valeurs d'échange   [Valeurs et passages]
     Les perles, les coquillages, les haches polies valent tant : on paie, on doit, on garde un trésor.
-    Il faut connaitre : Comptage par bâtons, Premières semailles
+    Il faut connaitre : Comptage par bâtons, Le don et l'échange
     Il faut avoir vecu : Connaître 2 autres peuples ; Un village tenu 2 ans
     -> L'argent : un trésor, un budget (impôt, solde, gages), le commerce en argent
 
   Chèvres et moutons   [Troupeaux]
     Des bêtes qui suivent le berger : du lait, de la laine, de la viande sur pied.
-    Il faut connaitre : Chasse à l'épieu
+    Il faut connaitre : La domestication
     Il faut avoir vecu : 20 sem. près des chèvres sauvages ; Peuple 120
     -> Colline et montagne : +20 % de nourriture
     -> Plaine : +5 % de nourriture
@@ -357,21 +432,21 @@ Palier 4 - Premiers villages  (apprentissage : 240 points)
 
   Maisons de terre   [Villages]
     Des murs de terre et de bois, des toits de chaume : on vit mieux, on tombe moins malade.
-    Il faut connaitre : Camp permanent
+    Il faut connaitre : Camp permanent, La sédentarité
     Il faut avoir vecu : Un village tenu 3 ans
     -> Fièvres dans les villages : -40 %
     -> Naissances dans les villages : +10 %
 
   Culte des ancêtres   [Esprits et pouvoir]
     Les morts reposent sous les maisons : le village appartient à ceux qui y sont nés.
-    Il faut connaitre : Rites et sépultures
+    Il faut connaitre : La terre des ancêtres
     Il faut avoir vecu : 1 village ; 10 hivers traversés
     -> Stabilité de vos villages : +10
     -> Prestige à la fin de l'hiver : +6 sans famine, -6 avec (au lieu de +4 / -6)
 
   Échanges lointains   [Échanges]
     Du silex contre du sel, des perles contre des peaux : les biens voyagent de main en main.
-    Il faut connaitre : Dons et palabres
+    Il faut connaitre : Le don et l'échange
     Il faut avoir vecu : Connaître 3 autres peuples ; Peuple 150
     -> Cadeaux aux autres peuples : +25 % d'effet
     -> Vos propositions aux autres peuples : +5 d'acceptation
@@ -380,7 +455,7 @@ Palier 4 - Premiers villages  (apprentissage : 240 points)
 
   Nombres additifs   [Nombres et métal]
     Un signe pour un, un autre pour dix, et on les aligne : les nombres s'écrivent. Il faut choisir sa base.
-    Il faut connaitre : Comptage par bâtons, Premières semailles
+    Il faut connaitre : Comptage par bâtons, La sédentarité
     Il faut avoir vecu : 1 village
     -> Choisir la base de vos nombres (10, 12, 20 ou 60), chacune son avantage
     -> Un métier : les calculateurs, qui trouvent de nouvelles opérations
@@ -402,6 +477,12 @@ Palier 5 - Villages prospères  (apprentissage : 360 points)
     Il faut avoir vecu : Un village tenu 5 ans
     -> Récolte des champs : +20 %
     -> Épuisement des champs : -50 %
+
+  Rigoles d'irrigation   [Champs]  TIRE : 40 % par peuple
+    On détourne un peu de la rivière vers les champs : la sécheresse fait moins peur.
+    Il faut connaitre : Champs cultivés
+    Il faut avoir vecu : Un village tenu 4 ans ; 20 sem. en vallée
+    -> Récolte des champs : +10 %
 
   Tissage   [Greniers et artisans]
     Le lin et la laine tissés : des vêtements chauds, et des étoffes qu'on échange.
@@ -457,6 +538,13 @@ Palier 5 - Villages prospères  (apprentissage : 360 points)
     -> Un métier : les mineurs d'argent (filons des collines) ; l'impôt rentre mieux (+25 %)
     -> Métier du village : mineurs d'argent (argent (métal) des terres)
 
+  Jetons d'argile   [Nombres et métal]  TIRE : 60 % dans le monde, 50 % par peuple
+    Un petit cône d'argile pour une mesure de grain, une bille pour une bête : on garde les comptes dans une bourse.
+    Il faut connaitre : Nombres additifs, Le don et l'échange
+    Il faut avoir vecu : Un village tenu 3 ans
+    -> Prix de vos ventes sur les routes : +3 %
+    -> Rendement de l'impôt : +10 %
+
 Palier 6 - Grandes chefferies  (apprentissage : 500 points)
 ------------------------------------------------------------
   Enceintes et fossés   [Guerre et défense]
@@ -478,12 +566,28 @@ Palier 6 - Grandes chefferies  (apprentissage : 500 points)
     -> Vos voisins sont invités à la grande fête : relation +8 ; pendant un an, ils se mettent plus volontiers sous votre protection (+10)
     -> Coût d'une grande fête : -25 %
 
+  Le cheval monté   [Valeurs et passages]  TIRE : 40 % dans le monde, 35 % par peuple
+    On ne mange plus le cheval : on le monte. La steppe rétrécit, et les cavaliers frappent loin.
+    Il faut connaitre : La domestication, Chèvres et moutons
+    Il faut avoir vecu : 20 sem. près des chevaux sauvages ; Peuple 150
+    -> Force au combat : +10 %
+    -> Marche en plaine : 7,5 cases/semaine (au lieu de 6)
+    -> Marche en steppe : 8,6 cases/semaine (au lieu de 6)
+    -> Vue : +1 cases autour de vos bandes
+
   Lait et laine   [Troupeaux]
     On trait les vaches et les chèvres, on tond les moutons : les bêtes vivantes nourrissent et habillent.
     Il faut connaitre : Bœufs et vaches
     Il faut avoir vecu : Un village tenu 5 ans
     -> Stabilité de vos villages : +3
     -> Collecte autour des villages (troupeaux) : +8 %
+
+  Fromages et laitages   [Troupeaux]  TIRE : 50 % par peuple
+    Le lait caillé se garde des mois : l'hiver devient moins maigre.
+    Il faut connaitre : Chèvres et moutons
+    Il faut avoir vecu : Un village tenu 4 ans
+    -> Famine pendant l'hiver local : -7 % de morts
+    -> Collecte autour des villages (troupeaux) : +4 %
 
   Chef des chefs   [Villages]
     D'autres chefs viennent s'asseoir à vos pieds : un chef au-dessus des chefs de village.
@@ -493,11 +597,25 @@ Palier 6 - Grandes chefferies  (apprentissage : 500 points)
     -> Tribut de vos tributaires : +50 %
     -> Prendre un peuple sous sa protection : il suffit d'être deux fois plus fort (au lieu de deux fois et demie)
 
+  Tumulus des chefs   [Villages]  TIRE : groupe exclusif « Les tombes des morts », 60 % par peuple
+    Le chef repose seul sous une colline de terre, avec ses armes et ses chevaux : son nom ne meurt pas.
+    Il faut connaitre : Culte des ancêtres
+    Il faut avoir vecu : Un village tenu 5 ans
+    -> Prestige gagné : +12 %
+    -> Agitation de vos tributaires : -10 %
+
   Otages et serments   [Esprits et pouvoir]
     Les fils des chefs soumis grandissent chez vous, et chacun a juré devant les ancêtres.
     Il faut connaitre : Culte des ancêtres
     Il faut avoir vecu : 1 tributaire
     -> Agitation de vos tributaires : -40 %
+
+  Tombes collectives   [Esprits et pouvoir]  TIRE : groupe exclusif « Les tombes des morts »
+    Une grande chambre de pierre où dorment tous les morts du village : on est d'ici, ensemble.
+    Il faut connaitre : Culte des ancêtres
+    Il faut avoir vecu : Un village tenu 5 ans
+    -> Attachement des clans à la tribu : +3
+    -> Stabilité de vos villages : +3
 
   Biens de prestige   [Échanges]
     Haches de jade, parures de coquillages venues de loin : le chef les donne, et ceux qui les portent lui sont liés.
@@ -505,4 +623,26 @@ Palier 6 - Grandes chefferies  (apprentissage : 500 points)
     Il faut avoir vecu : Connaître 4 autres peuples
     -> Cadeaux aux autres peuples : +50 % d'effet
     -> Un peuple qui reçoit vos dons vous est obligé : il se met plus volontiers sous votre protection (+12) et paie plus volontiers un tribut (+8)
+
+  Calendrier des pierres levées   [Échanges]  TIRE : groupe exclusif « Le calendrier »
+    Le soleil se lève dans l'axe des pierres au plus long jour : on sait quand semer.
+    Il faut connaitre : Pierres levées
+    Il faut avoir vecu : Un village tenu 6 ans
+    -> Prestige à la fin de l'hiver : +5 sans famine, -6 avec (au lieu de +4 / -6)
+    -> Récolte des champs : +5 %
+
+  Le cuivre martelé   [Nombres et métal]  TIRE : 50 % dans le monde, 50 % par peuple
+    Une pierre verte qu'on chauffe et qu'on bat : des perles, des poinçons, des haches qui brillent.
+    Il faut connaitre : Haches polies, Valeurs d'échange
+    Il faut avoir vecu : Un village tenu 5 ans ; Peuple 200
+    -> Force au combat : +6 %
+    -> Prestige gagné : +10 %
+    -> Prix de vos ventes sur les routes : +4 %
+
+  Calendrier des lunes   [Nombres et métal]  TIRE : groupe exclusif « Le calendrier »
+    Une encoche par lune sur l'os gravé : on compte les mois, on prévoit les greniers.
+    Il faut connaitre : Nombres additifs
+    Il faut avoir vecu : Un village tenu 6 ans
+    -> Grain perdu au grenier (rats, humidité) : -7 %
+    -> Apprentissage des savoirs : +5 %
 

@@ -10,7 +10,20 @@ Un savoir connu d'un voisin s'apprend plus vite (diffusion, diplo.py).
 Les effets sont des donnees (Tech.effects) ; le texte affiche au joueur
 en est tire (effect_lines) : ce qui est ecrit est ce qui est simule.
 Au depart, tout le monde connait le feu et les outils de pierre.
-Un seul arbre : l'age tribal (paliers 0 a 3) puis le neolithique (4 et 5).
+Un seul arbre : l'age tribal (paliers 0 a 3) puis le neolithique (4 a 6).
+
+Deux sortes de savoirs :
+  - les GRANDS TOURNANTS (kind="tournant", turning.py) : de grosses
+    recherches qui ouvrent tout un pan de l'arbre (ceux qui les ont en
+    prerequis, et leurs suites). Ils NAISSENT chez un peuple qui remplit
+    leurs conditions, puis se REPANDENT chez ses voisins ; on ne peut les
+    adopter que quand ils sont arrives chez soi (comme les institutions
+    d'Europa Universalis V). Ils ont leur rangee dans l'arbre (1,5 et 3,5).
+  - les savoirs, dont certains sont TIRES (draws.py, comme Terra Invicta) :
+    chance : chaque peuple a cette chance de le voir venir ;
+    world : le monde a cette chance de le voir naitre (une fois par partie) ;
+    group : un groupe EXCLUSIF : un seul de ses savoirs nait dans le monde.
+    Un savoir tire n'est le prerequis d'aucun savoir sur (pas d'impasse).
 """
 
 from __future__ import annotations
@@ -44,12 +57,16 @@ TIER_COST = {0: 0, 1: 40, 2: 90, 3: 160, 4: 240, 5: 360, 6: 500}
 TIER_NAMES = {
     0: "Connu",
     1: "Premiers savoirs",
+    1.5: "Grand tournant",
     2: "Savoirs du clan",
     3: "Aube du néolithique",
     4: "Premiers villages",
+    3.5: "Grands tournants",
     5: "Villages prospères",
     6: "Grandes chefferies",
 }
+# Les rangees des grands tournants (turning.py) dans l'arbre.
+TURNING_TIERS = (1.5, 3.5)
 BRANCHES = (
     "Chasse et guerre",
     "Terre et cueillette",
@@ -77,9 +94,16 @@ NEO_BRANCHES = (
 )
 # (nom de l'age, paliers, noms des colonnes)
 ERAS = (
-    ("Âge tribal", (0, 1, 2, 3), BRANCHES),
-    ("Néolithique", (4, 5, 6), NEO_BRANCHES),
+    ("Âge tribal", (0, 1, 1.5, 2, 3), BRANCHES),
+    ("Néolithique", (3.5, 4, 5, 6), NEO_BRANCHES),
 )
+# Les groupes EXCLUSIFS (draws.py) : un seul de leurs savoirs nait dans le
+# monde ; (nom, chance qu'aucun ne naisse).
+GROUPS = {
+    "croyances": ("Les croyances", 0.0),
+    "morts": ("Les tombes des morts", 0.0),
+    "calendriers": ("Le calendrier", 0.25),
+}
 START_KNOWLEDGE = ("feu", "outils")
 # Conditions de la pirogue et du troupeau (reprises des anciennes decisions).
 PIROGUE_POP = 50
@@ -120,16 +144,38 @@ class Cond:
 class Tech:
     id: str
     name: str
-    tier: int
+    tier: float
     branch: int
     about: str
     prereqs: tuple = ()
     conds: tuple = ()
     effects: dict = field(default_factory=dict)
+    # "tournant" : un grand tournant (turning.py) ; ses conds sont celles de
+    # sa NAISSANCE chez un peuple, ses prereqs ce qu'il faut pour l'adopter.
+    kind: str = "savoir"
+    # Dans l'arbre : colonnes occupees (un tournant), sous-rangee de sa case.
+    span: int = 1
+    slot: int = 0
+    # Un cout a lui (les tournants) ; 0 : celui de son palier.
+    price: int = 0
+    # Les tirages (draws.py) : chance par peuple, chance du monde, groupe
+    # exclusif (GROUPS).
+    chance: float = 1.0
+    world: float = 1.0
+    group: str = ""
 
     @property
     def cost(self) -> int:
-        return TIER_COST[self.tier]
+        return self.price or TIER_COST[self.tier]
+
+    @property
+    def turning(self) -> bool:
+        return self.kind == "tournant"
+
+    @property
+    def drawn(self) -> bool:
+        """Un savoir tire : il peut ne pas venir (draws.py)."""
+        return self.chance < 1.0 or self.world < 1.0 or bool(self.group)
 
 
 def _weeks(need: int, *terrains, label: str) -> Cond:
@@ -262,21 +308,21 @@ TECHS: dict[str, Tech] = {
         Tech(
             "reperes", "Pistes et repères", 2, 5,
             "Chaque source, chaque gué, chaque passage des bêtes a un nom : on connaît son pays.",
-            prereqs=("huttes",),
+            prereqs=("huttes", "clan"),
             conds=(Cond("bands", 2), Cond("winters", 3)),
             effects={"influence_radius": 1, "home_food": 1.08, "chief_reach": 4},
         ),
         Tech(
             "conte", "Récits autour du feu", 2, 6,
             "Les anciens racontent les hivers passés : la tribu se souvient et se tient.",
-            prereqs=("feu",),
+            prereqs=("clan",),
             conds=(Cond("winters", 3), Cond("pop", 70)),
             effects={"winter_prestige": 2, "famine_prestige": 2, "growth": 1.05, "chief_reach": 3},
         ),
         Tech(
             "mariages", "Mariages entre clans", 2, 7,
             "On donne ses filles et ses fils aux voisins : les alliances se scellent par le sang.",
-            prereqs=("palabres",),
+            prereqs=("palabres", "clan"),
             conds=(Cond("pop", 80), Cond("friends", 1)),
             effects={"alliance": True, "loyalty": 4},
         ),
@@ -293,11 +339,11 @@ TECHS: dict[str, Tech] = {
             "Replanter les graines des meilleures plantes près du camp : le début des champs.",
             prereqs=("cueillette", "fumage"),
             conds=(
-                Cond("pop", 160),
-                Cond("winters", 5),
+                Cond("pop", 120),
+                Cond("winters", 4),
                 Cond("res", 20, ("cereales", "racines"), "près de céréales ou de racines sauvages"),
             ),
-            effects={"food": {_T.VALLEE: 1.2, _T.PLAINE: 1.1}, "recovery": 0.1, "villages": 1},
+            effects={"food": {_T.VALLEE: 1.2, _T.PLAINE: 1.1}, "recovery": 0.1},
         ),
         Tech(
             "poterie", "Poterie", 3, 2,
@@ -351,21 +397,21 @@ TECHS: dict[str, Tech] = {
         Tech(
             "palissade", "Palissades", 4, 0,
             "Des pieux plantés en cercle autour des maisons : le village ne fuit pas, il se défend.",
-            prereqs=("semis",),
+            prereqs=("sedentarite",),
             conds=(Cond("villages", 1),),
             effects={"palisade": True},
         ),
         Tech(
             "champs", "Champs cultivés", 4, 1,
             "On choisit les meilleures graines, on désherbe, on garde les oiseaux : les champs rendent enfin.",
-            prereqs=("semis",),
+            prereqs=("sedentarite",),
             conds=(Cond("village_years", 2), Cond("res", 20, ("cereales", "racines"), "près de céréales ou de racines")),
             effects={"field_yield": 1.4},
         ),
         Tech(
             "chevres", "Chèvres et moutons", 4, 4,
             "Des bêtes qui suivent le berger : du lait, de la laine, de la viande sur pied.",
-            prereqs=("epieu",),
+            prereqs=("domestication",),
             conds=(Cond("res", 20, ("chevres",), "près des chèvres sauvages"), Cond("pop", 120)),
             effects={
                 "food": {_T.COLLINE: 1.2, _T.MONTAGNE: 1.2, _T.PLAINE: 1.05},
@@ -376,28 +422,28 @@ TECHS: dict[str, Tech] = {
         Tech(
             "greniers", "Greniers", 4, 2,
             "Des greniers surélevés, à l'abri des rats et de l'eau : le grain dure.",
-            prereqs=("poterie",),
+            prereqs=("poterie", "sedentarite"),
             conds=(Cond("villages", 1), Cond("winters", 8)),
             effects={"granary": 8, "grain_rot": 0.5},
         ),
         Tech(
             "maisons", "Maisons de terre", 4, 5,
             "Des murs de terre et de bois, des toits de chaume : on vit mieux, on tombe moins malade.",
-            prereqs=("campement",),
+            prereqs=("campement", "sedentarite"),
             conds=(Cond("village_years", 3),),
             effects={"disease": 0.6, "village_growth": 1.1},
         ),
         Tech(
             "ancetres", "Culte des ancêtres", 4, 6,
             "Les morts reposent sous les maisons : le village appartient à ceux qui y sont nés.",
-            prereqs=("rites",),
+            prereqs=("terre_ancetres",),
             conds=(Cond("villages", 1), Cond("winters", 10)),
             effects={"stability": 10, "winter_prestige": 2},
         ),
         Tech(
             "echanges", "Échanges lointains", 4, 7,
             "Du silex contre du sel, des perles contre des peaux : les biens voyagent de main en main.",
-            prereqs=("palabres",),
+            prereqs=("don",),
             conds=(Cond("contacts", 3), Cond("pop", 150)),
             effects={"diffusion": 0.1, "gifts": 1.25, "diplo": 5, "commerce": True},
         ),
@@ -460,21 +506,21 @@ TECHS: dict[str, Tech] = {
         Tech(
             "comptage", "Comptage par bâtons", 2, 8,
             "Des encoches sur un bâton, une par lune, une par bête : on compte ce qu'on ne voit plus.",
-            prereqs=("rites",),
+            prereqs=("clan",),
             conds=(Cond("winters", 3),),
             effects={"math": True},
         ),
         Tech(
             "nombres", "Nombres additifs", 4, 8,
             "Un signe pour un, un autre pour dix, et on les aligne : les nombres s'écrivent. Il faut choisir sa base.",
-            prereqs=("comptage", "semis"),
+            prereqs=("comptage", "sedentarite"),
             conds=(Cond("villages", 1),),
             effects={"numbers": True},
         ),
         Tech(
             "valeurs", "Valeurs d'échange", 4, 3,
             "Les perles, les coquillages, les haches polies valent tant : on paie, on doit, on garde un trésor.",
-            prereqs=("comptage", "semis"),
+            prereqs=("comptage", "don"),
             conds=(Cond("contacts", 2), Cond("village_years", 2)),
             effects={"money": True},
         ),
@@ -544,8 +590,198 @@ TECHS: dict[str, Tech] = {
             conds=(Cond("contacts", 4),),
             effects={"gifts": 1.5, "obligations": True},
         ),
+        # --- les GRANDS TOURNANTS (turning.py) --------------------------------
+        # Leurs conds : leur NAISSANCE chez un peuple ; ensuite ils se
+        # repandent chez les voisins. Leurs prereqs : ce qu'il faut savoir
+        # pour les adopter.
+        Tech(
+            "clan", "Le clan", 1.5, 5,
+            "Au-delà du foyer, une grande famille : des ancêtres communs, des mariages, une parole transmise. Tout ce qui fait un peuple vient de là.",
+            prereqs=("rites", "palabres"),
+            conds=(Cond("pop", 50), Cond("winters", 2), Cond("bands", 2)),
+            effects={"loyalty": 5},
+            kind="tournant", span=2, price=90,
+        ),
+        Tech(
+            "sedentarite", "La sédentarité", 3.5, 1,
+            "On ne suit plus le gibier : on reste, on sème, on bâtit. La révolution qui change tout : les villages, les champs, les greniers.",
+            prereqs=("semis", "huttes"),
+            conds=(Cond("pop", 140), Cond("winters", 4)),
+            effects={"villages": 1},
+            kind="tournant", span=2, price=140,
+        ),
+        Tech(
+            "domestication", "La domestication", 3.5, 3,
+            "On ne chasse plus la bête : on la garde, on la fait naître, on choisit les plus douces. Les troupeaux deviennent une richesse.",
+            prereqs=("epieu",),
+            conds=(Cond("res", 30, ("chevres", "aurochs", "chevaux"), "près de bêtes sauvages à apprivoiser"), Cond("pop", 160), Cond("winters", 6)),
+            effects={"winter_famine": 0.95},
+            kind="tournant", span=2, price=200,
+        ),
+        Tech(
+            "terre_ancetres", "La terre des ancêtres", 3.5, 5,
+            "Les morts gardent la terre où ils reposent : les lignées s'y enracinent, les chefs parlent en leur nom.",
+            prereqs=("rites", "chefferie"),
+            conds=(Cond("villages", 1), Cond("winters", 10)),
+            effects={"stability": 2},
+            kind="tournant", span=2, price=240,
+        ),
+        Tech(
+            "don", "Le don et l'échange", 3.5, 7,
+            "Ce qu'on donne oblige, ce qu'on reçoit se rend : entre les peuples, les biens circulent et lient.",
+            prereqs=("palabres", "mariages"),
+            conds=(Cond("contacts", 3), Cond("pop", 120)),
+            effects={"diplo": 5},
+            kind="tournant", span=2, price=200,
+        ),
+        # --- des savoirs TIRES (draws.py) ------------------------------------
+        # Age tribal.
+        Tech(
+            "propulseur", "Propulseur", 2, 0,
+            "Un bois à crochet qui prolonge le bras : la sagaie part plus loin et plus fort.",
+            prereqs=("epieu",),
+            conds=(Cond("pop", 40), _weeks(10, _T.PLAINE, _T.STEPPE, label="plaine ou steppe")),
+            effects={"combat": 1.08, "food": {_T.PLAINE: 1.06, _T.STEPPE: 1.06}},
+            slot=1, world=0.7, chance=0.6,
+        ),
+        Tech(
+            "brulis", "Brûlis du sous-bois", 2, 1,
+            "On met le feu aux broussailles : l'herbe tendre repousse et le gibier revient.",
+            prereqs=("cueillette",),
+            conds=(_weeks(20, _T.FORET, label="forêt"),),
+            effects={"home_food": 1.05, "food": {_T.FORET: 1.05}},
+            slot=1, world=0.6,
+        ),
+        Tech(
+            "peintures", "Peintures des cavernes", 2, 6,
+            "Des bêtes peintes à la lueur des torches, au fond des grottes : on y apprend, on s'y souvient.",
+            prereqs=("rites", "clan"),
+            conds=(Cond("winters", 3),),
+            effects={"winter_prestige": 2, "learn": 1.05},
+            slot=1, chance=0.5,
+        ),
+        Tech(
+            "rabattages", "Grandes chasses collectives", 3, 0,
+            "Tous les clans ensemble rabattent les troupeaux vers un ravin ou un enclos : la viande de toute une saison.",
+            prereqs=("arc", "clan"),
+            conds=(Cond("pop", 120), Cond("bands", 3)),
+            effects={"food": {_T.PLAINE: 1.08, _T.STEPPE: 1.08, _T.VALLEE: 1.05}},
+            slot=1, chance=0.5,
+        ),
+        Tech(
+            "chamanes", "Chamanes et esprits animaux", 3, 5,
+            "Le chamane voyage chez les esprits des bêtes : la chasse est permise, le clan protégé.",
+            prereqs=("rites", "clan"),
+            conds=(Cond("winters", 4),),
+            effects={"food": {_T.FORET: 1.05, _T.STEPPE: 1.05}, "loyalty": 3},
+            slot=1, group="croyances",
+        ),
+        Tech(
+            "deesse", "La Grande Mère", 3, 6,
+            "Une mère de toutes choses, aux formes généreuses, qu'on sculpte dans l'ivoire et la pierre : la vie revient.",
+            prereqs=("rites", "clan"),
+            conds=(Cond("winters", 4),),
+            effects={"growth": 1.06, "winter_famine": 0.95},
+            slot=1, group="croyances",
+        ),
+        # Neolithique.
+        Tech(
+            "irrigation", "Rigoles d'irrigation", 5, 1,
+            "On détourne un peu de la rivière vers les champs : la sécheresse fait moins peur.",
+            prereqs=("champs",),
+            conds=(Cond("village_years", 4), _weeks(20, _T.VALLEE, label="vallée")),
+            effects={"field_yield": 1.1},
+            slot=1, chance=0.4,
+        ),
+        Tech(
+            "jetons", "Jetons d'argile", 5, 8,
+            "Un petit cône d'argile pour une mesure de grain, une bille pour une bête : on garde les comptes dans une bourse.",
+            prereqs=("nombres", "don"),
+            conds=(Cond("village_years", 3),),
+            effects={"tax": 1.1, "trade_price": 1.03},
+            slot=1, world=0.6, chance=0.5,
+        ),
+        Tech(
+            "cheval", "Le cheval monté", 6, 3,
+            "On ne mange plus le cheval : on le monte. La steppe rétrécit, et les cavaliers frappent loin.",
+            prereqs=("domestication", "chevres"),
+            conds=(Cond("res", 20, ("chevaux",), "près des chevaux sauvages"), Cond("pop", 150)),
+            effects={"move": {_T.PLAINE: 8, _T.STEPPE: 7}, "combat": 1.1, "vision": 1},
+            world=0.4, chance=0.35,
+        ),
+        Tech(
+            "cuivre", "Le cuivre martelé", 6, 8,
+            "Une pierre verte qu'on chauffe et qu'on bat : des perles, des poinçons, des haches qui brillent.",
+            prereqs=("haches", "valeurs"),
+            conds=(Cond("village_years", 5), Cond("pop", 200)),
+            effects={"combat": 1.06, "prestige_gain": 1.1, "trade_price": 1.04},
+            world=0.5, chance=0.5,
+        ),
+        Tech(
+            "fromage", "Fromages et laitages", 6, 4,
+            "Le lait caillé se garde des mois : l'hiver devient moins maigre.",
+            prereqs=("chevres",),
+            conds=(Cond("village_years", 4),),
+            effects={"village_food": 1.04, "winter_famine": 0.93},
+            slot=1, chance=0.5,
+        ),
+        Tech(
+            "kourganes", "Tumulus des chefs", 6, 5,
+            "Le chef repose seul sous une colline de terre, avec ses armes et ses chevaux : son nom ne meurt pas.",
+            prereqs=("ancetres",),
+            conds=(Cond("village_years", 5),),
+            effects={"prestige_gain": 1.12, "vassal_unrest": 0.9},
+            slot=1, group="morts", chance=0.6,
+        ),
+        Tech(
+            "dolmens", "Tombes collectives", 6, 6,
+            "Une grande chambre de pierre où dorment tous les morts du village : on est d'ici, ensemble.",
+            prereqs=("ancetres",),
+            conds=(Cond("village_years", 5),),
+            effects={"stability": 3, "loyalty": 3},
+            slot=1, group="morts",
+        ),
+        Tech(
+            "calendrier_soleil", "Calendrier des pierres levées", 6, 7,
+            "Le soleil se lève dans l'axe des pierres au plus long jour : on sait quand semer.",
+            prereqs=("megalithes",),
+            conds=(Cond("village_years", 6),),
+            effects={"field_yield": 1.05, "winter_prestige": 1},
+            slot=1, group="calendriers",
+        ),
+        Tech(
+            "calendrier_lune", "Calendrier des lunes", 6, 8,
+            "Une encoche par lune sur l'os gravé : on compte les mois, on prévoit les greniers.",
+            prereqs=("nombres",),
+            conds=(Cond("village_years", 6),),
+            effects={"learn": 1.05, "grain_rot": 0.93},
+            slot=1, group="calendriers",
+        ),
     )
 }
+
+
+def pan_of(tid: str) -> list[Tech]:
+    """Le PAN d'un tournant : les savoirs qui l'ont en prerequis (il les
+    ouvre), dans l'ordre de l'arbre."""
+    return sorted((t for t in TECHS.values() if tid in t.prereqs), key=lambda t: (t.tier, t.branch, t.slot))
+
+
+def descendants(tid: str) -> set:
+    """Tout ce qui vient apres un savoir (ses suites, et leurs suites)."""
+    out: set = set()
+    todo = [tid]
+    while todo:
+        cur = todo.pop()
+        for t in TECHS.values():
+            if cur in t.prereqs and t.id not in out:
+                out.add(t.id)
+                todo.append(t.id)
+    return out
+
+
+def turnings() -> list[Tech]:
+    return sorted((t for t in TECHS.values() if t.turning), key=lambda t: (t.tier, t.branch))
 
 # Specialites de depart et gout de l'IA : voir peoples.CULTURES.
 

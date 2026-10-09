@@ -11,7 +11,7 @@ from src.kora.types import Band, Order, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
 
-def _village(pop=150, stock=5000.0, known=("huttes", "semis")):
+def _village(pop=150, stock=5000.0, known=("huttes", "semis", "sedentarite")):
     world = make_filled_world(60, 30, Terrain.VALLEE, wrap_x=True)
     tribe = Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE) | set(known), culture="joueur")
     st = GameState(world=world, clock=Clock(), tribes={1: tribe}, bands={1: Band(1, 1, offset_to_axial(30, 15), pop, stock)}, next_band_id=2)
@@ -38,7 +38,7 @@ def test_each_role_has_its_best_type_by_age():
 
 
 def test_a_second_company_joins_the_troop_at_the_village():
-    st, village, site = _village(known=("huttes", "semis", "arc"))
+    st, village, site = _village(known=("huttes", "semis", "sedentarite", "arc"))
     first = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "guerriers")
     second = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "archers")
     assert second is first
@@ -48,7 +48,7 @@ def test_a_second_company_joins_the_troop_at_the_village():
 
 
 def test_troops_merge_into_one_stack_and_detach_again():
-    st, village, site = _village(known=("huttes", "semis", "arc"))
+    st, village, site = _village(known=("huttes", "semis", "sedentarite", "arc"))
     a = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "guerriers")
     a.position = offset_to_axial(36, 15)
     b = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "archers")
@@ -84,7 +84,7 @@ def test_a_dissolved_troop_walks_home_and_rejoins_the_village():
 
 
 def test_archers_shoot_first_and_shields_hold():
-    st, village, site = _village(known=("huttes", "semis", "arc", "palissade"))
+    st, village, site = _village(known=("huttes", "semis", "sedentarite", "arc", "palissade"))
     # Loin les unes des autres : pas de renforts entre elles.
     archers = Band(20, 1, offset_to_axial(5, 5), 30, 100.0, kind="armee", units=[["archers", 30, site.id]])
     shields = Band(21, 1, offset_to_axial(15, 25), 30, 100.0, kind="armee", units=[["boucliers", 30, site.id]])
@@ -107,7 +107,7 @@ def test_losses_fall_first_on_the_exposed():
 
 
 def test_reequip_at_the_village_for_the_new_age():
-    st, village, site = _village(known=("huttes", "semis", "epieu"))
+    st, village, site = _village(known=("huttes", "semis", "sedentarite", "epieu"))
     army = villages.raise_army(st, 1)
     assert army.units[0][0] == "epieux"
     assert "Rien" in villages.reequip_block(st, army.id)
@@ -118,7 +118,7 @@ def test_reequip_at_the_village_for_the_new_age():
 
 
 def test_the_battle_report_lists_companies():
-    st, village, site = _village(known=("huttes", "semis", "arc"))
+    st, village, site = _village(known=("huttes", "semis", "sedentarite", "arc"))
     army = villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "guerriers")
     villages.raise_army(st, 1, villages.LEVY_SHARE["poignee"], "archers")
     army.position = offset_to_axial(45, 15)
@@ -134,7 +134,7 @@ def test_the_battle_report_lists_companies():
 def test_companies_are_saved(tmp_path):
     world = make_filled_world(40, 20, Terrain.VALLEE, wrap_x=True)
     st = new_game(world)
-    st.tribes[1].knowledge.update(("huttes", "semis", "arc"))
+    st.tribes[1].knowledge.update(("huttes", "semis", "sedentarite", "arc"))
     st.bands[1].population = 150
     st.bands[1].stock = 5000.0
     sites.make_camp(st, 1)

@@ -94,7 +94,7 @@ def test_the_army_tab_comes_with_the_first_village():
     from src.kora.render_panels import army_ready
 
     st = _state()
-    st.tribes[1].knowledge.update(("semis",))
+    st.tribes[1].knowledge.update(("semis", "sedentarite"))
     st.world = make_filled_world(60, 30, Terrain.VALLEE, wrap_x=True)
     st.world.fill_season(st.clock.season())
     assert not army_ready(st)
@@ -121,7 +121,7 @@ def test_the_army_panel_and_square_villages_draw():
         screen = pygame.display.set_mode((1280, 720))
         r = Renderer(screen)
         st = _state()
-        st.tribes[1].knowledge.update(("semis",))
+        st.tribes[1].knowledge.update(("semis", "sedentarite"))
         st.world = make_filled_world(60, 30, Terrain.VALLEE, wrap_x=True)
         st.world.fill_season(st.clock.season())
         st.bands[1].population = 120

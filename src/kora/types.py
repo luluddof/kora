@@ -224,6 +224,10 @@ class Tribe:
     money_hist: list = field(default_factory=list)
     # Les lois du pays (laws.py) : loi -> option tenue.
     laws: dict[str, str] = field(default_factory=dict)
+    # Les grands tournants (turning.py) : leur presence chez ce peuple (0 a
+    # 100 %) ; les savoirs tires dont le tirage lui a ete annonce (draws.py).
+    tournants: dict[str, float] = field(default_factory=dict)
+    revealed: set[str] = field(default_factory=set)
     # L'approche de son chef envers les autres peuples (approach.py), depuis
     # quand, et le chef qui l'a prise.
     approach: str = ""

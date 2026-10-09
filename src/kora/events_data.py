@@ -546,6 +546,21 @@ EVENTS: dict[str, Event] = {
                 Option("Refuser", effects=(("relation", -5),), text="Vous gardez votre diplomatie à vous.", ai=1.0),
             ),
         ),
+        # --- les grands tournants (turning.py) ------------------------------
+        Event(
+            "tournant_voyageurs",
+            "Des voyageurs parlent d'un grand tournant",
+            "Des gens des {other} s'arrêtent au camp. Ils parlent de ce qui change chez eux : {tournant}. "
+            "Les anciens écoutent, les jeunes posent mille questions. Que faire de ces voyageurs ?",
+            trigger="tournant_voyageurs",
+            player_only=True,
+            mood="peuple",
+            options=(
+                Option("Les accueillir et les écouter", effects=(("tournant", 20), ("relation", 5)), text="On garde les voyageurs tout l'hiver : {tournant} n'a plus beaucoup de secrets.", ai=1.2),
+                Option("Envoyer des jeunes vivre chez eux", effects=(("tournant", 40), ("prestige", -5)), text="Des jeunes partent chez les {other} ; ils reviendront avec ce qu'ils ont appris.", ai=0.8),
+                Option("Les renvoyer", effects=(), text="Les voyageurs repartent. Les choses nouvelles attendront."),
+            ),
+        ),
         # --- la conquete (battle.py, chiefdom.py) ------------------------------
         Event(
             "conquete",

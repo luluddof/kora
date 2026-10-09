@@ -12,7 +12,7 @@ from src.kora.world import make_filled_world, offset_to_axial
 
 def _tribe(settled=True):
     world = make_filled_world(80, 30, Terrain.VALLEE, wrap_x=True)
-    tribe = Tribe(1, "Kora", 40, True, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"}, culture="joueur")
+    tribe = Tribe(1, "Kora", 40, True, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite"}, culture="joueur")
     st = GameState(
         world=world,
         clock=Clock(),
@@ -166,7 +166,7 @@ def test_the_tribe_tab_becomes_the_villages_when_no_nomad_is_left():
 
 def test_ai_peoples_emancipate_too_even_when_they_honor():
     st = _tribe()
-    ai = Tribe(5, "Steppe", 90, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"}, culture="steppe", settled_at=0)
+    ai = Tribe(5, "Steppe", 90, False, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite"}, culture="steppe", settled_at=0)
     st.tribes[5] = ai
     st.bands[20] = Band(20, 5, offset_to_axial(70, 5), 60, 400.0)
     st.bands[21] = Band(21, 5, offset_to_axial(70, 25), 30, 300.0)

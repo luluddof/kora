@@ -89,6 +89,9 @@ class GameState:
     next_battle_uid: int = 1
     day: int = 0
     step: int = 0
+    # La recherche : la graine des tirages (draws.py), les berceaux des
+    # grands tournants (turning.py) ; du JSON simple, sauve tel quel.
+    research: dict = field(default_factory=dict)
 
 
 @dataclass

@@ -23,6 +23,7 @@ from src.kora import (
     sites,
     tech,
     theme,
+    turning,
     units,
     villages as _v,
     villages,
@@ -705,9 +706,17 @@ def draw_peoples(r, state, layout, ui) -> None:
         _text(r, r.tiny, f"{_signed(value):>4}", GOOD if value > 0 else BAD, x, y)
         _text(r, r.tiny, r._fit(r.tiny, label, half - 46), SOFT, x + 38, y)
     cy += 16 * ((min(8, len(reasons)) + 1) // 2) + 8
+    # Leurs grands tournants (turning.py) : adoptes, en chemin.
+    them = state.tribes[pick]
+    adopted = [t.name for t in tech.turnings() if t.id in them.knowledge]
+    coming = [f"{t.name} {turning.presence(them, t.id):.0f} %" for t in tech.turnings() if t.id not in them.knowledge and turning.presence(them, t.id) > 0]
+    if adopted or coming:
+        line = "Grands tournants : " + (", ".join(adopted) if adopted else "aucun adopté") + (f" · en chemin : {', '.join(coming)}" if coming else "")
+        _text(r, r.tiny, r._fit(r.tiny, line, cw - 8), (236, 196, 110), cx + 4, cy)
+        cy += 16
     # Savoirs a apprendre d'eux.
     mine = state.tribes[state.viewer].knowledge
-    theirs = sorted(t.knowledge - mine, key=lambda k: (tech.TECHS[k].tier, k))
+    theirs = sorted((k for k in t.knowledge - mine if k in tech.TECHS), key=lambda k: (tech.TECHS[k].tier, k))
     teach = pick in getattr(state.diplo, "neighbors", {}).get(state.viewer, [])
     if theirs:
         names = ", ".join(tech.TECHS[k].name for k in theirs[:6]) + ("..." if len(theirs) > 6 else "")

@@ -1,0 +1,152 @@
+Kora - La recherche refaite : les grands tournants et les tirages
+=================================================================
+Date : 2026-10-09. Statut : FAIT (version 0.10.0).
+
+Sa demande (ses mots) :
+  "Le rework du systeme de recherche : je m'inspirerais un peu de Terra
+  Invicta et d'Europa Universalis 5, dans le sens ou il y aura, comme dans
+  EU5, un systeme d'institutions (pas dans le nom, mais qui imite son
+  fonctionnement) : des sortes de grosses recherches qui en debloquent tout
+  un pan avec plein d'autres recherches. La ou il va y avoir le cote Terra
+  Invicta, c'est que certaines recherches auront un % de chance de ne pas
+  apparaitre, dans tous les pays dont le notre : sur chaque pays il y a une
+  chance qu'elle n'apparaisse pas. Pareil a l'echelle mondiale : pour
+  d'autres techs, un tirage mondial pour savoir si elles vont apparaitre ou
+  non, puis pour certaines, apres ce tirage, un tirage pour chaque pays.
+  Aussi des technologies qui, si l'une apparait dans le monde, l'autre est
+  incompatible."
+
+Point par point :
+  1. Des "institutions" sans le nom, qui en imitent le fonctionnement : les
+     GRANDS TOURNANTS (section 1). Comme dans EU5 : ils naissent quelque
+     part, se repandent, et on ne les adopte que quand ils sont arrives chez
+     soi ; adoptes, ils ouvrent un pan entier de l'arbre.
+  2. Une chance par pays (le joueur compris) : Tech.chance (section 2).
+  3. Un tirage mondial, puis pour certaines un tirage par pays : Tech.world
+     (et chance) (section 2).
+  4. Des savoirs incompatibles a l'echelle du monde : les groupes EXCLUSIFS
+     (Tech.group, tech.GROUPS) (section 2).
+
+
+1. LES GRANDS TOURNANTS (turning.py ; tech.Tech kind="tournant")
+-----------------------------------------------------------------
+  Cinq, chacun une large carte sur sa rangee de l'arbre (paliers 1,5 et
+  3,5) :
+    Le clan (age tribal, 90 pts)           ouvre Pistes et reperes, Recits
+        autour du feu, Mariages entre clans, Comptage par batons (et ce qui
+        suit : Chefferie, Camp permanent, Confederation...), Peintures des
+        cavernes, Grandes chasses, les croyances.
+        Nait : Rites et sepultures, Dons et palabres ; peuple 50, 2 hivers,
+        2 bandes. Effet : attachement des clans +5.
+    La sedentarite (neolithique, 140 pts)  ouvre Palissades, Champs
+        cultives, Greniers, Maisons de terre, Nombres additifs. C'est elle,
+        et non plus Premieres semailles, qui permet de FONDER UN VILLAGE.
+        Nait : Premieres semailles, Huttes ; peuple 140, 4 hivers.
+    La domestication (200 pts)             ouvre Chevres et moutons, Le
+        cheval monte. Nait : Chasse a l'epieu ; 30 sem. pres de chevres,
+        aurochs ou chevaux ; peuple 160, 6 hivers. Famine d'hiver -5 %.
+    La terre des ancetres (240 pts)        ouvre Culte des ancetres (et
+        Pierres levees, Festins, Chef des chefs, Otages, les tombes...).
+        Nait : Rites, Chefferie ; un village, 10 hivers. Stabilite +2.
+    Le don et l'echange (200 pts)          ouvre Valeurs d'echange,
+        Echanges lointains, Jetons d'argile (et Routes, Peages, Biens de
+        prestige, Argent pese, le cuivre). Nait : Palabres, Mariages ;
+        3 peuples connus, peuple 120. Propositions +5.
+  Comment ils vivent (chaque mois, systems.MONTHLY "turning.monthly") :
+    - PRESENCE (Tribe.tournants, 0 a 100 %) : +12 par mois pour qui en
+      remplit lui-meme les conditions de naissance ;
+    - NAISSANCE : le premier peuple du monde a 100 % en est le berceau
+      (state.research["births"]) : prestige +10 ; le journal le dit au
+      joueur (chez vous / chez un peuple connu / "on raconte qu'au loin") ;
+    - DIFFUSION : ensuite, chaque peuple en contact avec un peuple ou il est
+      present le recoit : 1 par mois, +2 voisins, +2 accord commercial,
+      +2 alliance, +3 meme pays (suzerain, tributaires, confederes), +1
+      villages freres ; x1,5 si ce peuple l'a adopte ; 12 par mois au plus
+      venus des autres ;
+    - ADOPTION : a 100 % chez soi (et ses prerequis connus), le tournant se
+      recherche comme un savoir (son prix ; les voisins qui l'ont adopte le
+      font aller plus vite) ; adopte, il ouvre son pan. L'IA l'adopte en
+      premier des qu'elle peut.
+    - LES VOYAGEURS : une fois par tournant, quand il arrive chez vous
+      (entre 15 et 80 %), une carte : les accueillir (+20 %, relation +5),
+      envoyer des jeunes chez eux (+40 %, prestige -5), les renvoyer.
+  Ce que le joueur voit :
+    - l'arbre : la rangee des grands tournants ; leur carte dit leur etat
+      (pas encore ne / arrive chez vous 41 %, +6 par mois / arrive : a
+      adopter / adopte), une barre (la presence, puis l'adoption), le
+      berceau et combien de peuples l'ont adopte ; la fiche : ce qu'il
+      ouvre, ou il est ne, d'ou il vient chez vous et en combien de mois ;
+      "Adopter" ;
+    - la CARTE DES TOURNANTS (touche I, comme la carte des institutions
+      d'EU5) : chaque peuple connu a la couleur de la presence du tournant
+      choisi (sombre -> ocre ; or : adopte ; blanc dore : son berceau ;
+      gris : inconnus) ; la legende liste les cinq tournants (un clic en
+      choisit un) ;
+    - l'ecran Peuples : leurs grands tournants, adoptes et en chemin.
+  Les vieilles parties (turning.migrate, au chargement) : un peuple qui
+  sait deja un savoir du pan d'un tournant l'a adopte (la sedentarite :
+  qui a un village) ; ces tournants sont "nes avant que l'on s'en
+  souvienne".
+
+
+2. LES TIRAGES (draws.py ; Tech.chance, world, group)
+-----------------------------------------------------
+  La GRAINE de la partie (state.research["seed"]) : tiree au menu (et par
+  l'hote en multijoueur) ; une vieille partie en recoit une, tiree de ses
+  peuples (toujours la meme). Les tirages sont un hasard propre (le nom du
+  savoir, du peuple), jamais state.rng : rien d'autre ne change, le
+  multijoueur tire pareil sur chaque machine, recharger ne change rien.
+  Trois sortes :
+    PAR PEUPLE (chance) : tire quand le peuple en connait les prerequis
+      (le journal le dit : "Le sort vous sourit / ne vous sourit pas").
+        Peintures des cavernes 50 %, Grandes chasses collectives 50 %,
+        Rigoles d'irrigation 40 %, Fromages et laitages 50 %.
+    PAR MONDE (world), puis pour certains PAR PEUPLE :
+        Brulis du sous-bois 60 % (monde seulement) ; Propulseur 70 % puis
+        60 % ; Jetons d'argile 60 % puis 50 % ; Le cheval monte 40 % puis
+        35 % ; Le cuivre martele 50 % puis 50 %.
+    EXCLUSIFS (group) : un seul du groupe nait dans le monde :
+        Les croyances : Chamanes et esprits animaux / La Grande Mere ;
+        Les tombes des morts : Tombes collectives / Tumulus des chefs (puis
+          60 % par peuple) ;
+        Le calendrier : Calendrier des pierres levees / Calendrier des lunes
+          (25 % : aucun).
+  Un savoir qui ne viendra pas est ABSENT ("Ne viendra pas" : sa carte est
+  eteinte et barree, sa raison : "Le sort a dit non", "Pas ne dans ce
+  monde", "L'autre est ne ici") ; tout ce qui en depend aussi. Avant son
+  tirage, une pastille dit sa chance ("50 % ?") ; apres, "le sort a
+  souri". La fiche dit le tirage et son resultat.
+  Regle (verifiee par test) : un savoir tire n'est le prerequis d'aucun
+  savoir sur, et un tournant n'est jamais tire : pas d'impasse (P2).
+
+
+3. L'ARBRE
+----------
+  Deux rangees de grands tournants (1,5 : "Grand tournant" ; 3,5 : "Grands
+  tournants", au debut du neolithique) ; des cases a deux savoirs (Tech.slot)
+  ou il le fallait ; 72 savoirs (52 avant). Le detail :
+  2026-09-23-savoirs-design.txt, section 5 (tools/arbre_savoirs.py --spec).
+
+
+4. EQUILIBRAGE ET VERIFICATIONS
+-------------------------------
+  Partie neuve, 46 ans, robot joueur et IA (avant -> apres) :
+    premier village : an 10 -> an 11 (la sedentarite nait an 9) ;
+    an 46 : population 8 080 -> 9 050 ; villages 49 -> 47 ; peuples 55 -> 53.
+    Les tournants : le clan ne an 4, la domestication an 7, la sedentarite
+    an 9, la terre des ancetres an 14, le don et l'echange an 19 ; a l'an
+    46, adoptes par 49, 49, 42, 36 et 35 peuples (sur 53).
+  Premier reglage trop lent (premier village an 15 : la sedentarite
+  demandait un campement d'un an, 5 hivers, 200 pts ; le clan naissait a
+  l'an 5 et retardait les savoirs du clan) -> naissance +12 par mois (au
+  lieu de 8), clan 90 pts, sedentarite 140 pts sans campement ; la
+  domestication, nee a l'an 6, est plus exigeante (6 hivers, peuple 160).
+  SA partie (copie, an 36 -> 51) : tous ses savoirs gardes, les tournants
+  donnes d'apres son arbre ; population 12 660 (0.9.1) -> 12 260 (le
+  hasard d'un essai).
+  Tests : test_research.py (12 : tirages fixes par la graine, un seul par
+  groupe, chance par peuple, absent et journal, naissance, diffusion,
+  adoption, IA, voyageurs, vieilles parties, sauvegarde, carte, arbre sans
+  chevauchement), test_app_clicks (touche I, la legende, "Adopter"),
+  test_ui_hover (l'arbre, la carte des tournants), et la suite : 610.
+  Empreinte re-enregistree (le jeu change) ; multijoueur identique.

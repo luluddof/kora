@@ -10,7 +10,7 @@ from src.kora.types import Band, Season, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
 
-def _state(known=("huttes", "semis"), pop=60, stock=600.0, week=1):
+def _state(known=("huttes", "semis", "sedentarite"), pop=60, stock=600.0, week=1):
     world = make_filled_world(60, 30, Terrain.VALLEE, wrap_x=True)
     tribe = Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE) | set(known), culture="joueur")
     band = Band(1, 1, offset_to_axial(30, 15), pop, stock)
@@ -37,7 +37,7 @@ def _to_season(st, season):
 def test_a_village_needs_sowing_knowledge_and_a_camp():
     st, band = _state(known=("huttes",))
     assert "Premières semailles" in villages.found_block(st, 1)
-    st.tribes[1].knowledge.add("semis")
+    st.tribes[1].knowledge.update(("semis", "sedentarite"))
     assert "campements" in villages.found_block(st, 1)
     sites.make_camp(st, 1)
     assert villages.found_block(st, 1) == ""
@@ -105,7 +105,7 @@ def test_no_seed_the_granary_sows_and_without_grain_no_fields():
 
 def test_better_fields_with_neolithic_knowledge():
     plain, pb, ps = _village(pop=60)
-    wise, wb, ws = _village(pop=60, known=("huttes", "semis", "champs"))
+    wise, wb, ws = _village(pop=60, known=("huttes", "semis", "sedentarite", "champs"))
     assert villages.expected_harvest(wise, ws) > villages.expected_harvest(plain, ps) * 1.2
 
 
@@ -122,7 +122,7 @@ def test_a_village_does_not_flee_it_is_pillaged():
 
 
 def test_a_palisade_takes_time_and_food_then_defends():
-    st, band, site = _village(known=("huttes", "semis", "palissade"), stock=900.0)
+    st, band, site = _village(known=("huttes", "semis", "sedentarite", "palissade"), stock=900.0)
     assert villages.palisade_block(st, 1) == ""
     assert villages.build_palisade(st, 1)
     assert villages.palisade_state(site) == "building"
@@ -150,7 +150,7 @@ def test_leaving_turns_the_village_back_into_a_camp():
 def test_villages_are_saved(tmp_path):
     world = make_filled_world(40, 20, Terrain.VALLEE, wrap_x=True)
     st = new_game(world)
-    st.tribes[1].knowledge.update(("huttes", "semis"))
+    st.tribes[1].knowledge.update(("huttes", "semis", "sedentarite"))
     st.bands[1].stock = 400.0
     sites.make_camp(st, 1)
     site = villages.found(st, 1)

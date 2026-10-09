@@ -143,7 +143,7 @@ def test_a_palisade_makes_the_village_hold():
             world=world,
             clock=Clock(),
             tribes={
-                1: Tribe(1, "Kora", 20, True, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "palissade"}),
+                1: Tribe(1, "Kora", 20, True, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite", "palissade"}),
                 2: Tribe(2, "Pillards", 20, False, knowledge=set(tech.START_KNOWLEDGE)),
             },
             bands={1: Band(1, 1, offset_to_axial(20, 12), 60, 900.0)},
@@ -176,7 +176,7 @@ def test_a_beaten_village_is_pillaged_and_stays():
         world=world,
         clock=Clock(),
         tribes={
-            1: Tribe(1, "Kora", 20, True, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis"}),
+            1: Tribe(1, "Kora", 20, True, knowledge=set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite"}),
             2: Tribe(2, "Pillards", 20, False, knowledge=set(tech.START_KNOWLEDGE)),
         },
         bands={1: Band(1, 1, offset_to_axial(20, 12), 60, 900.0)},
