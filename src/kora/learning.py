@@ -26,6 +26,7 @@ from src.kora.tech import (
     effect_lines,
     grant,
     missing_prereqs,
+    pan_of,
     summary,
 )
 from src.kora.types import Season, Terrain
@@ -369,6 +370,10 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
     out.extend((f"  {line}", "effet") for line in effect_lines(tech))
     if tech.turning:
         out.extend(("  " + text, "effet") for text, kind in turning.lines(state, tribe_id, tech_id)[:1])
+    else:
+        after = pan_of(tech_id)
+        if after:
+            out.append(("  Mène à : " + ", ".join(t.name for t in after), "effet"))
     if st == "connu":
         out.append(("Savoir connu.", "ok"))
         return out

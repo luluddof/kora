@@ -482,6 +482,10 @@ lente, bandes dessinees petites a taille fixe.
     et s'adoptent quand ils sont arrives (carte des tournants, touche I) ;
     14 savoirs TIRES (par peuple, par monde, par monde puis peuple, trois
     groupes exclusifs), fixes par la graine de la partie.
+  - "L'arbre n'est pas bien fait : on voit mal les dependances et les liens
+    entre les techs." FAIT (0.10.1) : liens a angles droits dans les
+    couloirs (jamais au travers d'une carte), et au survol la chaine d'un
+    savoir s'eclaire (or : ce qu'il faut avant ; bleu : ce qu'il ouvre).
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------

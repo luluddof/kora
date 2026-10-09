@@ -208,3 +208,26 @@ def test_the_tree_lays_turning_points_in_their_rows_without_overlap():
             assert not (ra[0] < rb[0] + rb[2] and rb[0] < ra[0] + ra[2] and ra[1] < rb[1] + rb[3] and rb[1] < ra[1] + ra[3]), (a, b)
     for t in tech.turnings():
         assert world["nodes"][t.id][2] > world["nodes"]["feu"][2], "un tournant est une large carte"
+
+
+def test_the_links_run_in_the_corridors_and_never_cross_a_card():
+    from src.kora.layout import chain_of, tech_world
+
+    world = tech_world()
+    nodes, links = world["nodes"], world["links"]
+    assert set(links) == {(p, t.id) for t in tech.TECHS.values() for p in t.prereqs}
+    for (pid, tid), pts in links.items():
+        # Du bas du prerequis au haut du savoir, a angles droits.
+        assert pts[0][1] == nodes[pid][1] + nodes[pid][3] and pts[-1][1] == nodes[tid][1]
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            assert x0 == x1 or y0 == y1, (pid, tid)
+            for other, (nx, ny, nw, nh) in nodes.items():
+                if other in (pid, tid):
+                    continue
+                crosses = (
+                    x0 == x1 and nx < x0 < nx + nw and min(y0, y1) < ny + nh and max(y0, y1) > ny
+                ) or (y0 == y1 and ny < y0 < ny + nh and min(x0, x1) < nx + nw and max(x0, x1) > nx)
+                assert not crosses, (pid, tid, other)
+    up, down = chain_of("chefferie")
+    assert {"conte", "clan", "rites", "palabres", "feu"} <= up
+    assert {"terre_ancetres", "ancetres", "grand_chef"} <= down

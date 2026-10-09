@@ -8,7 +8,12 @@ a la recherche en cours.
   - une banniere par age, avec son chiffre romain et le nom des colonnes ;
   - des cartes de savoir dont le detail suit le zoom : medaillon et nom ;
     puis l'etat (cout, semaines, ce qui manque) ; puis le premier effet ;
-  - des liens en courbes, dores quand le chemin est ouvert ;
+  - des liens a angles droits qui passent dans les couloirs entre les
+    cartes (layout.tree_links), jamais au travers : dores quand le chemin
+    est connu, verts quand il mene a un savoir disponible ;
+  - au survol d'un savoir (ou quand il est choisi), sa CHAINE s'eclaire :
+    ce qu'il faut avant lui en or, ce qu'il ouvre en bleu ; le reste
+    s'efface ;
   - en tete, la recherche en cours ; en bas, la fiche du savoir choisi ;
   - au survol d'une carte, une bulle avec ses premiers effets ;
   - les GRANDS TOURNANTS (turning.py) : de larges cartes sur leur rangee,
@@ -234,21 +239,6 @@ def _ornate_frame(screen, rect) -> None:
         pygame.draw.polygon(screen, C.ocre, [(cx, cy - 4), (cx + 4, cy), (cx, cy + 4), (cx - 4, cy)])
 
 
-def _bezier(p0, p3, steps: int = 14) -> list:
-    x0, y0 = p0
-    x3, y3 = p3
-    dy = (y3 - y0) * 0.55
-    p1 = (x0, y0 + dy)
-    p2 = (x3, y3 - dy)
-    pts = []
-    for i in range(steps + 1):
-        t = i / steps
-        u = 1 - t
-        x = u * u * u * x0 + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * x3
-        y = u * u * u * y0 + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * y3
-        pts.append((x, y))
-    return pts
-
 
 def _button(screen, font, rect, label: str, on: bool, hover: bool) -> None:
     """Le bouton principal de la charte (ocre plein)."""
@@ -366,33 +356,14 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
             x = int(sx(cols[i]))
             pygame.draw.line(screen, _lerp(tint, (255, 255, 255), 0.035), (x, body[1]), (x, body[1] + body[3]))
     nodes = lay["nodes"]
-    # Liens en courbes : dores si le prerequis est connu.
-    arrow = max(3, int(5 * z))
-    for t in tech.TECHS.values():
-        for pid in t.prereqs:
-            ax, ay, aw, ah = nodes[pid]
-            cx, cy, cw, _ch = nodes[t.id]
-            p0 = (ax + aw / 2, ay + ah)
-            p3 = (cx + cw / 2, cy - 1)
-            if max(p0[1], p3[1]) < vy or min(p0[1], p3[1]) > vy + vh:
-                continue
-            known = states[pid] == "connu"
-            child = states[t.id]
-            if known and child == "connu":
-                color, width = (200, 164, 92), 2
-            elif known and child in ("disponible", "en_cours"):
-                color, width = STYLE[child]["edge"], 2
-            elif known:
-                color, width = (110, 104, 88), 1
-            else:
-                color, width = (80, 60, 42), 1
-            width = max(1, int(round(width * min(1.4, z))))
-            pts = _bezier(p0, p3) if abs(p0[0] - p3[0]) > 1 else [p0, p3]
-            if width > 1:
-                pygame.draw.lines(screen, _lerp(color, (0, 0, 0), 0.55), False, pts, width + 2)
-                pygame.draw.lines(screen, color, False, pts, width)
-            pygame.draw.aalines(screen, color, False, pts)
-            pygame.draw.polygon(screen, color, [(p3[0] - arrow + 1, p3[1] - arrow), (p3[0] + arrow - 1, p3[1] - arrow), (p3[0], p3[1])])
+    # Le savoir montre : celui sous la souris, sinon celui qu'on a choisi ;
+    # sa chaine (ce qu'il faut avant, ce qu'il ouvre) s'eclaire.
+    focus = None
+    if vx <= mx <= vx + vw and vy <= my <= vy + vh:
+        focus = next((tid for tid, (x_, y_, w_, h_) in nodes.items() if tid in lay["visible"] and x_ <= mx <= x_ + w_ and y_ <= my <= y_ + h_), None)
+    focus = focus or pick
+    up, down = layout.chain_of(focus) if focus in tech.TECHS else (set(), set())
+    _links(screen, world, states, cam, view, z, focus, up, down)
     # Noms des ages, des colonnes, des paliers (par-dessus les liens).
     gutter = TREE_GUTTER * z
     small = z < 0.62
@@ -512,12 +483,26 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
             pygame.draw.line(screen, (120, 70, 60), (x + 6, y + h - 6), (x + w - 6, y + 6), 1)
         if t.drawn and st != "connu":
             _chance_pill(r, state, tribe, t, st, x + w, y, z)
+    if focus is not None:
+        # Hors de la chaine : effaces ; dans la chaine : un liseré de sa couleur.
+        veil = None
+        for tid, rect in nodes.items():
+            if tid not in lay["visible"] or tid == focus:
+                continue
+            x, y, w, h = (int(v) for v in rect)
+            if tid in up or tid in down:
+                pygame.draw.rect(screen, CHAIN_UP if tid in up else CHAIN_DOWN, (x - 2, y - 2, w + 4, h + 4), 2, border_radius=7)
+                continue
+            if veil is None or veil.get_size() != (w, h):
+                veil = pygame.Surface((w, h), pygame.SRCALPHA)
+                veil.fill((12, 9, 7, 150))
+            screen.blit(veil, (x, y))
     screen.set_clip(None)
     pygame.draw.rect(screen, GOLD_DEEP, view, 1)
     _controls(r, lay, mx, my)
     sx0, sy0, _sw, sh0 = lay["strip"]
     zoom = f"zoom {int(round(100 * z))} %"
-    hint = r.tiny.render(f"Glisser (n'importe quel bouton) : se déplacer  ·  molette : zoomer  ·  flèches, + et -  ·  {zoom}", True, NOTE)
+    hint = r.tiny.render(f"Survolez un savoir : en or ce qu'il faut avant, en bleu ce qu'il ouvre  ·  glisser : se déplacer  ·  molette : zoomer  ·  {zoom}", True, NOTE)
     hx = sx0 + 4
     if lay.get("tabs"):
         t = lay["tabs"]["nombres"]
@@ -529,6 +514,52 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
     _detail(r, state, tribe, lay, pick, states, head_font)
     if hovered is not None and hovered != pick:
         _hover_tip(r, state, hovered, states[hovered], mx, my)
+
+
+# La chaine d'un savoir : ce qu'il faut avant lui (or), ce qu'il ouvre (bleu).
+CHAIN_UP = (246, 200, 96)
+CHAIN_DOWN = (104, 182, 232)
+
+
+def _links(screen, world, states, cam, view, z, focus, up, down) -> None:
+    """Les liens de l'arbre (layout.tree_links), a angles droits. Sans
+    savoir montre : dores (connus), verts (ils menent a un savoir
+    disponible), sombres (pas encore). Un savoir montre : sa chaine en or
+    (avant lui) et en bleu (apres lui), plus epaisse ; le reste en filigrane."""
+    vx, vy, vw, vh = view
+    x0, y0, _z = cam
+    arrow = max(3, int(5 * min(1.3, z)))
+    order = []
+    for (pid, tid), pts in world["links"].items():
+        if focus is not None and (pid == focus or pid in up) and (tid == focus or tid in up):
+            rank, color, width = 2, CHAIN_UP, 3
+        elif focus is not None and (pid == focus or pid in down) and (tid in down):
+            rank, color, width = 2, CHAIN_DOWN, 3
+        else:
+            known = states[pid] == "connu"
+            child = states[tid]
+            if known and child == "connu":
+                rank, color, width = 1, (190, 156, 88), 2
+            elif known and child in ("disponible", "en_cours"):
+                rank, color, width = 1, STYLE[child]["edge"], 2
+            elif child == "absent":
+                rank, color, width = 0, (72, 52, 46), 1
+            else:
+                rank, color, width = 0, (104, 84, 62), 1
+            if focus is not None:
+                rank, color, width = 0, _lerp(color, (20, 16, 12), 0.7), 1
+        order.append((rank, pid, tid, pts, color, width))
+    # Les liens montres par-dessus les autres.
+    for rank, _pid, _tid, pts, color, width in sorted(order, key=lambda o: (o[0], o[1], o[2])):
+        sp = [(vx + (px - x0) * z, vy + (py - y0) * z) for px, py in pts]
+        if max(p[1] for p in sp) < vy or min(p[1] for p in sp) > vy + vh:
+            continue
+        w = max(1, int(round(width * min(1.3, z))))
+        if w > 1:
+            pygame.draw.lines(screen, _lerp(color, (0, 0, 0), 0.6), False, sp, w + 2)
+        pygame.draw.lines(screen, color, False, sp, w)
+        end = sp[-1]
+        pygame.draw.polygon(screen, color, [(end[0] - arrow, end[1] - arrow - 1), (end[0] + arrow, end[1] - arrow - 1), (end[0], end[1])])
 
 
 def _chance_pill(r, state, tribe, t, st, right: int, top: int, z: float) -> None:
@@ -748,6 +779,11 @@ def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
     t = tech.TECHS[tid]
     lines = [(t.name, INK), (STATE_LABEL[st], STYLE[st]["edge"])]
     lines += [("+ " + line, (178, 205, 140)) for line in tech.effect_lines(t)[:3]]
+    if t.prereqs:
+        lines.append(("Il faut : " + ", ".join(tech.TECHS[p].name for p in t.prereqs), CHAIN_UP))
+    after = tech.pan_of(tid)
+    if after and not t.turning:
+        lines.append(("Mène à : " + ", ".join(a.name for a in after), CHAIN_DOWN))
     if t.turning:
         lines.append(("Ouvre : " + ", ".join(p.name for p in tech.pan_of(t.id)), TURN_GOLD))
     if t.drawn:

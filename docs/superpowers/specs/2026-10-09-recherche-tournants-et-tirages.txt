@@ -1,6 +1,6 @@
 Kora - La recherche refaite : les grands tournants et les tirages
 =================================================================
-Date : 2026-10-09. Statut : FAIT (version 0.10.0).
+Date : 2026-10-09. Statut : FAIT (version 0.10.0 ; l'arbre lisible : 0.10.1, section 5).
 
 Sa demande (ses mots) :
   "Le rework du systeme de recherche : je m'inspirerais un peu de Terra
@@ -150,3 +150,23 @@ Point par point :
   chevauchement), test_app_clicks (touche I, la legende, "Adopter"),
   test_ui_hover (l'arbre, la carte des tournants), et la suite : 610.
   Empreinte re-enregistree (le jeu change) ; multijoueur identique.
+
+
+5. L'ARBRE LISIBLE (0.10.1)
+---------------------------
+  Sa remarque : "l'arbre n'est pas bien fait : on voit mal les dependances
+  et les autres liens entre les techs." Les liens etaient des courbes en
+  diagonale qui traversaient les cartes et se croisaient.
+  - Les liens passent desormais dans les COULOIRS (layout.tree_links) : du
+    bas du prerequis, dans le couloir sous sa rangee, puis, si une carte
+    est sur le chemin, dans un couloir entre deux colonnes, puis dans le
+    couloir au-dessus du savoir, ou il entre par le haut (une fleche). A
+    angles droits ; jamais au travers d'une carte (test) ; les liens d'un
+    meme couloir sont decales pour qu'on les suive un a un.
+  - Couleurs : dores (chemin connu), vert/orange (ils menent a un savoir
+    disponible ou en cours), sombres (pas encore), rouge sombre (vers un
+    savoir absent).
+  - La CHAINE d'un savoir : au survol (ou quand il est choisi), tout ce qu'il
+    faut avant lui s'eclaire en OR, tout ce qu'il ouvre en BLEU (liens
+    epais, cartes cerclees) ; le reste de l'arbre s'efface.
+  - La bulle et la fiche disent "Il faut : ..." et "Mene a : ...".
