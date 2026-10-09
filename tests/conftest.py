@@ -20,3 +20,13 @@ def _fresh_theme():
 
     theme.reset()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _whole_tree():
+    """L'arbre complet au depart de chaque test (une partie dessinee cache
+    les savoirs que son sort a ecartes : layout.set_tree_hidden)."""
+    from src.kora import layout
+
+    layout.set_tree_hidden(frozenset())
+    yield

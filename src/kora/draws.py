@@ -87,6 +87,24 @@ def world_draw(state) -> dict:
     return out
 
 
+def hidden(state) -> frozenset:
+    """Les savoirs qu'on ne montre pas dans l'arbre : ceux d'un groupe
+    EXCLUSIF dont un autre membre est ne dans ce monde (ils ne viendront
+    jamais), et ce qui depend d'eux. Un groupe ou rien n'est ne reste
+    visible (barre : "le sort a dit non")."""
+    drawn = world_draw(state)
+    born = {tech.TECHS[t].group for t, ok in drawn.items() if ok and tech.TECHS[t].group}
+    out = {t for t, ok in drawn.items() if not ok and tech.TECHS[t].group in born}
+    grew = True
+    while grew:
+        grew = False
+        for t in tech.TECHS.values():
+            if t.id not in out and any(p in out for p in t.prereqs):
+                out.add(t.id)
+                grew = True
+    return frozenset(out)
+
+
 def in_world(state, tid: str) -> bool:
     return world_draw(state).get(tid, True)
 

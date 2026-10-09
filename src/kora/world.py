@@ -10,6 +10,18 @@ import functools
 from src.kora.clock import Clock
 
 INSHORE_MOVE_COST = 10
+# Chaque case a sa petite variation du cout de marche (en pour cent, de
+# COST_VAR_MIN a COST_VAR_MAX) : un sous-bois plus clair, une plaine plus
+# boueuse. Elle varie doucement d'une case a sa voisine (un bruit lisse,
+# tire des coordonnees : le meme sur toutes les machines), pour que les
+# chemins suivent le pays et pas les rangees d'hexagones. Le cout reste un
+# entier (cout * pct // 100) : le plus petit cout (plaine 10) devient 9,
+# l'heuristique d'A* (path.py) compte 9 par case.
+COST_VAR_MIN = 90
+COST_VAR_MAX = 112
+# La taille des taches du bruit (en cases), et le poids de chaque octave.
+COST_VAR_CELLS = (7, 3)
+COST_VAR_WEIGHTS = (0.7, 0.3)
 
 MOVE_COST = {
     Terrain.PLAINE: 10,
@@ -511,15 +523,96 @@ def is_inshore(world: World, h: Hex) -> bool:
     return world.inshore_at(*idx)
 
 
+def _lattice(ix: int, iy: int, octave: int) -> float:
+    """Une valeur de 0 a 1 attachee a un noeud de la grille du bruit."""
+    h = (ix * 73856093) ^ (iy * 19349663) ^ (octave * 83492791) ^ 0x5BD1E995
+    h = (h ^ (h >> 13)) * 1274126177 & 0xFFFFFFFF
+    h ^= h >> 16
+    return (h & 0xFFFF) / 65535.0
+
+
+def _octave(width: int, height: int, wrap: bool, cell: int, octave: int) -> list:
+    """Une octave du bruit lisse, case par case (de 0 a 1) : les valeurs des
+    noeuds de la grille, interpolees en douceur ; la planete se referme en
+    largeur, les noeuds aussi."""
+    nx = max(1, width // cell) if wrap else None
+    cols = []
+    for col in range(width):
+        f = col / cell
+        x0 = int(f)
+        t = f - x0
+        t = t * t * (3 - 2 * t)
+        a, b = (x0 % nx, (x0 + 1) % nx) if nx else (x0, x0 + 1)
+        cols.append((a, b, t))
+    rows = []
+    for row in range(height):
+        f = row / cell
+        y0 = int(f)
+        t = f - y0
+        rows.append((y0, t * t * (3 - 2 * t)))
+    node: dict = {}
+
+    def at(ix, iy):
+        v = node.get((ix, iy))
+        if v is None:
+            v = node[(ix, iy)] = _lattice(ix, iy, octave)
+        return v
+
+    out = []
+    for y0, ty in rows:
+        line = []
+        for a, b, tx in cols:
+            top = at(a, y0) * (1 - tx) + at(b, y0) * tx
+            bottom = at(a, y0 + 1) * (1 - tx) + at(b, y0 + 1) * tx
+            line.append(top * (1 - ty) + bottom * ty)
+        out.append(line)
+    return out
+
+
+# La variation ne depend que de la taille de la carte : une fois par taille.
+_COST_GRIDS: dict = {}
+
+
+def cost_pct(world: World) -> list:
+    """La variation du cout de marche de chaque case, en pour cent :
+    cost_pct(world)[row][col] (calculee une fois par taille de carte ; en
+    nombres de Python : la meme sur toutes les machines)."""
+    grid = getattr(world, "_cost_pct", None)
+    if grid is not None:
+        return grid
+    key = (world.width, world.height, world.wrap_x)
+    grid = _COST_GRIDS.get(key)
+    if grid is None:
+        layers = [
+            _octave(world.width, world.height, world.wrap_x, cell, octave)
+            for octave, cell in enumerate(COST_VAR_CELLS)
+        ]
+        total = sum(COST_VAR_WEIGHTS)
+        span = COST_VAR_MAX - COST_VAR_MIN
+        grid = []
+        for r in range(world.height):
+            rows = [layer[r] for layer in layers]
+            grid.append([
+                COST_VAR_MIN + int(round(span * sum(w * rw[c] for w, rw in zip(COST_VAR_WEIGHTS, rows)) / total))
+                for c in range(world.width)
+            ])
+        _COST_GRIDS[key] = grid
+    world._cost_pct = grid
+    return grid
+
+
 def enter_cost_for(world: World, h: Hex, water_ok: bool, costs: dict | None = None) -> int | None:
     # costs : couts de marche de la tribu (savoirs) ; par defaut MOVE_COST.
+    # Sur la terre, la variation de la case (cost_pct).
     idx = world._index(h)
     if idx is None:
         return None
     col, row = idx
     cost = (costs or MOVE_COST).get(world._terrains[row][col])
-    if cost is not None or not water_ok:
-        return cost
+    if cost is not None:
+        return cost * cost_pct(world)[row][col] // 100
+    if not water_ok:
+        return None
     return INSHORE_MOVE_COST if world.inshore_at(col, row) else None
 
 

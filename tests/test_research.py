@@ -279,3 +279,48 @@ def test_each_new_game_draws_its_own_luck():
         st = new_game(_default_world(), setup={"seed": app._fresh_seed()})
         seen.add((tuple(sorted(draws.world_draw(st).items())), tuple(draws.comes_to(st, 1, t) for t in drawn)))
     assert len(seen) >= 4, "cinq parties neuves : des tirages différents"
+
+
+def test_a_resource_received_by_trade_counts_for_the_knowledge():
+    """Un peuple sans silex chez lui, qui recoit des haches polies par
+    l'echange : chaque semaine ou il en a compte comme une semaine pres du
+    silex (la condition des Haches polies se remplit) ; la condition le dit."""
+    world = make_filled_world(40, 20, Terrain.PLAINE, wrap_x=True)
+    world.resources = {"silex": None}
+    world.resources_near = lambda h: set()
+    tribe = Tribe(1, "Kora", 30, True, knowledge=set(tech.START_KNOWLEDGE))
+    st = GameState(world=world, clock=Clock(), tribes={1: tribe}, bands={1: Band(1, 1, offset_to_axial(5, 5), 60, 100.0)}, next_band_id=2)
+    cond = next(c for c in tech.TECHS["haches"].conds if c.kind == "res")
+    for _ in range(5):
+        learning.update_practice(st)
+    assert learning.cond_progress(st, tribe, cond)[0] == 0
+    tribe.goods = {"haches": 3.0}
+    for _ in range(cond.need):
+        learning.update_practice(st)
+    have, need, label = learning.cond_progress(st, tribe, cond)
+    assert have >= need and "par l'échange" in label and "haches polies" in label
+
+
+def test_the_tree_hides_what_an_exclusive_group_ruled_out():
+    """Un groupe exclusif dont un savoir est ne : les autres (et ce qui en
+    depend) ne sont plus dans l'arbre ; un groupe ou rien n'est ne reste
+    visible."""
+    from src.kora import layout
+    from src.kora.sim import _default_world, new_game
+
+    st = new_game(_default_world(), setup={"seed": 12345})
+    drawn = draws.world_draw(st)
+    gone = draws.hidden(st)
+    for group in tech.GROUPS:
+        members = [t.id for t in tech.TECHS.values() if t.group == group]
+        born = [m for m in members if drawn.get(m)]
+        if born:
+            assert set(members) - set(born) <= gone and not set(born) & gone
+        else:
+            assert not set(members) & gone
+    layout.set_tree_hidden(gone)
+    nodes = layout.tech_world()["nodes"]
+    assert not gone & set(nodes) and set(tech.TECHS) - gone <= set(nodes)
+    assert all(a not in gone and b not in gone for a, b in layout.tech_world()["links"])
+    layout.set_tree_hidden(frozenset())
+    assert set(tech.TECHS) <= set(layout.tech_world()["nodes"])

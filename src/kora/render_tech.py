@@ -28,7 +28,7 @@ import pygame
 import pygame.gfxdraw
 
 from src.kora import draws, layout, learning, render_numbers, tech, theme, turning
-from src.kora.layout import TREE_GUTTER, TREE_PAD, TREE_ROW, TREE_TURN_ROW, cam_on, tech_panel_layout, to_screen  # noqa: F401
+from src.kora.layout import TREE_GUTTER, TREE_PAD, TREE_ROW, TREE_TURN_ROW, cam_on, set_tree_hidden, tech_panel_layout, to_screen  # noqa: F401
 from src.kora.theme import C
 from src.kora.theme import (  # noqa: F401
     _CACHE,
@@ -287,6 +287,7 @@ def _button(screen, font, rect, label: str, on: bool, hover: bool) -> None:
 def focus_cam(state, width: int, height: int) -> tuple:
     """La vue posee sur la recherche en cours (sinon un savoir disponible)."""
     tribe = state.tribes.get(state.viewer)
+    set_tree_hidden(draws.hidden(state))
     lay = tech_panel_layout(width, height)
     focus = tribe.learning if tribe is not None else None
     if focus is None:
@@ -788,11 +789,12 @@ def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
     lines += [("+ " + line, (178, 205, 140)) for line in tech.lines_for(state.tribes.get(state.viewer), t)[:3]]
     if t.prereqs:
         lines.append(("Il faut : " + ", ".join(tech.TECHS[p].name for p in t.prereqs), SOFT))
-    after = tech.pan_of(tid)
+    gone = draws.hidden(state)
+    after = [a for a in tech.pan_of(tid) if a.id not in gone]
     if after and not t.turning:
         lines.append(("Mène à : " + ", ".join(a.name for a in after), SOFT))
     if t.turning:
-        lines.append(("Ouvre : " + ", ".join(p.name for p in tech.pan_of(t.id)), TURN_GOLD))
+        lines.append(("Ouvre : " + ", ".join(p.name for p in tech.pan_of(t.id) if p.id not in gone), TURN_GOLD))
     if t.drawn:
         lines.append((draws.chance_text(state, state.viewer, tid), (220, 190, 120)))
         if st == "absent":

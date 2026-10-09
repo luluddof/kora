@@ -25,6 +25,7 @@ from src.kora import (
     chiefs,
     confed,
     diplo,
+    draws,
     goods,
     laws,
     learning,
@@ -95,6 +96,7 @@ from src.kora.layout import (  # noqa: F401
     _GAP,
     _SQUARE,
     _TREE,
+    set_tree_hidden,
     _clip,
     _contains,
     _cube_round,
@@ -405,6 +407,8 @@ class Renderer:
     ) -> None:
         self.screen.fill((14, 11, 9))
         w, h = self.screen.get_size()
+        # L'arbre de cette partie : sans les savoirs que le sort a ecartes.
+        set_tree_hidden(draws.hidden(state))
         self._draw_sphere(state, globe_yaw, globe_pitch, zoom)
         gcx, gcy, focal, dist = view_params(zoom, w, h, HUD_HEIGHT)
         if self.map_mode == "commerce":

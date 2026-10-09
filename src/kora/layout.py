@@ -400,6 +400,16 @@ TECH_GUTTER = TREE_GUTTER
 
 
 _TREE: dict = {}
+# Les toiles deja placees, par ensemble de savoirs caches (draws.hidden) ; la
+# partie en cours dit lesquels (set_tree_hidden, a chaque image).
+_TREES: dict = {}
+_HIDDEN: frozenset = frozenset()
+
+
+def set_tree_hidden(hidden: frozenset) -> None:
+    """Les savoirs que l'arbre ne montre pas dans la partie en cours."""
+    global _HIDDEN
+    _HIDDEN = frozenset(hidden)
 
 
 def tech_world() -> dict:
@@ -407,11 +417,14 @@ def tech_world() -> dict:
     (tree_graph.py : une couche par palier, l'ordre qui croise le moins,
     chacun sous ce dont il depend, la place laissee aux liens), une
     banniere par age ; la marge de gauche nomme les paliers."""
-    if _TREE:
-        return _TREE
-    geo = tree_graph.geometry(TREE_PAD + TREE_GUTTER, TREE_PAD, {0: TREE_COLHEAD, 1: TREE_BAND})
+    hit = _TREES.get(_HIDDEN)
+    if hit is not None:
+        return hit
+    geo = tree_graph.geometry(TREE_PAD + TREE_GUTTER, TREE_PAD, {0: TREE_COLHEAD, 1: TREE_BAND}, _HIDDEN)
     width, height = geo["size"]
-    _TREE.update({
+    tree: dict = {} if _HIDDEN else _TREE
+    _TREES[_HIDDEN] = tree
+    tree.update({
         "size": (width, height + TREE_PAD),
         "cols": [],
         "col_w": TREE_COL,
@@ -421,7 +434,7 @@ def tech_world() -> dict:
         "nodes": geo["nodes"],
         "links": geo["links"],
     })
-    return _TREE
+    return tree
 
 
 

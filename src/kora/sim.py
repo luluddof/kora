@@ -38,6 +38,7 @@ from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
 from src.kora.types import Band, FightMark, Hex, Order, OrderKind, Season, Terrain, Tribe, stay_order
 from src.kora.world import (
     World,
+    cost_pct,
     enter_cost_for,
     food_production,
     load_world,
@@ -190,6 +191,7 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
         "zone": zone,
         "site": site_info,
         "resources": state.world.resource_lines(placed) if getattr(state.world, "resources", None) else [],
+        "walk": walk_line(state, placed),
     }
 
 
@@ -317,8 +319,23 @@ def band_warn_from(info: dict) -> int:
     return 3 + len(info.get("extra") or []) + (1 if info.get("site") else 0)
 
 
+def walk_line(state: GameState, h: Hex) -> str:
+    """La marche sur cette case : son cout et ce qui le rend plus ou moins
+    facile que le terrain d'ordinaire (world.cost_pct)."""
+    idx = state.world._index(h)
+    base = costs_of(state, state.viewer).get(state.world.terrain(h))
+    if idx is None or base is None:
+        return ""
+    col, row = idx
+    pct = cost_pct(state.world)[row][col]
+    word = "facile" if pct <= 96 else "difficile" if pct >= 106 else "ordinaire"
+    return f"Marche : {base * pct // 100} ({word} pour ce terrain, {pct - 100:+d} %)"
+
+
 def inspect_lines(info: dict) -> list[str]:
     lines = [info["terrain_fr"], f"Saison : {info['season_fr']}"]
+    if info.get("walk"):
+        lines.append(info["walk"])
     if info.get("winter_weeks") is not None:
         lines.append(f"Durée de l'hiver : {info['winter_weeks']} sem./an")
     if info.get("visible"):

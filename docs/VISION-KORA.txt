@@ -553,6 +553,18 @@ lente, bandes dessinees petites a taille fixe.
     declaree ne s'efface plus au premier combat.
   - "Le hasard des savoirs change-t-il d'une partie a l'autre ?" VERIFIE :
     oui (graine tiree a chaque partie neuve ; test).
+2026-10-13
+  - "Les techs incompatibles ne doivent pas etre visibles si une autre a
+    ete choisie." FAIT (0.15.0 ; spec 2026-10-13-arbre-tire-terrain-
+    echanges.txt) : hors de l'arbre, avec ce qui en depend.
+  - "Chaque case d'un type de sol a une petite variation de son cout."
+    FAIT : -10 % a +12 %, doux d'une case a l'autre ; au survol.
+  - "Les ressources obtenues par l'echange valident les conditions."
+    FAIT (c'etait en partie vrai) : tous les biens, et la condition le dit.
+  - "Dis-moi les ameliorations evidentes." PROPOSE (spec, section 4) :
+    G1 debut guide, G2 sauvegardes, G3 son, G4 ecran des guerres, G5
+    sentiers, G6 troupes IA et vivres, G7 faim des villages IA, G8 suite
+    de l'arbre, G9 rapport de force avant l'attaque.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -695,6 +707,13 @@ lente, bandes dessinees petites a taille fixe.
   raison (ennemi commun, meme guerre) ou elle s'use. Un module nouveau
   appele seulement par systems.py est embarque dans l'exe par KORA_MODULES
   (les deux specs) : TOUJOURS essayer l'exe (essai reseau) avant de publier.
+  0.15.0 : REGLES NOUVELLES : un cout de marche passe par
+  world.enter_cost_for (ou path.astar), qui applique la variation de la
+  case (world.cost_pct) - jamais MOVE_COST seul ; une grille tiree des
+  coordonnees se calcule en nombres de Python (pas numpy : le multijoueur)
+  et une fois par taille de carte ; l'arbre ne montre pas draws.hidden
+  (layout.set_tree_hidden ; les tests repartent de l'arbre complet :
+  conftest).
   A FAIRE plus tard (pistes) : des tournants pour les ages suivants
   (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
   les evenements ; le siege des ages suivants (beliers, echelles, tours :

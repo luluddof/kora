@@ -41,7 +41,8 @@ def test_land_is_not_inshore():
     world = _coast_world()
     land = offset_to_axial(2, 2)
     assert not is_inshore(world, land)
-    assert enter_cost_for(world, land, False) == 10
+    # Une plaine : 10, a la variation de la case pres (world.cost_pct).
+    assert 9 <= enter_cost_for(world, land, False) <= 11
 
 
 def test_astar_blocks_inshore_without_flag():

@@ -16,7 +16,9 @@ pour que le graphe se lise.
      dans le couloir entre les deux ; a travers une rangee, la verticale de
      leur point de passage. Ils ne passent jamais sur une carte, et chacun
      garde sa trace (pas de cables partages).
-Tout est calcule une fois (layout.tech_world le garde). Deterministe.
+Les savoirs que le sort a ecartes d'un groupe exclusif ne sont pas places
+(draws.hidden). Tout est calcule une fois par monde (layout.tech_world le
+garde). Deterministe.
 Pur : ni pygame ni partie.
 """
 
@@ -52,15 +54,17 @@ def _height(nid) -> int:
     return TURN_H if tech.TECHS[nid].turning else CARD_H
 
 
-def build() -> dict:
+def build(hidden: frozenset = frozenset()) -> dict:
     """Le graphe place : {"order": [[noeuds par couche]], "x": {noeud: centre},
     "layer_of": {noeud: couche}, "edges": {(prerequis, savoir): [noeuds]}}.
-    Un point de passage est un tuple (prerequis, savoir, couche)."""
+    Un point de passage est un tuple (prerequis, savoir, couche).
+    hidden : les savoirs absents de l'arbre (draws.hidden)."""
     layers = _layers()
     index = {tier: i for i, tier in enumerate(layers)}
-    layer_of: dict = {t.id: index[t.tier] for t in tech.TECHS.values()}
+    shown = [t for t in tech.TECHS.values() if t.id not in hidden]
+    layer_of: dict = {t.id: index[t.tier] for t in shown}
     order: list[list] = [[] for _ in layers]
-    for t in sorted(tech.TECHS.values(), key=lambda t: (t.branch, t.slot, t.id)):
+    for t in sorted(shown, key=lambda t: (t.branch, t.slot, t.id)):
         order[layer_of[t.id]].append(t.id)
     # Les liens, et leurs points de passage.
     edges: dict = {}
@@ -71,8 +75,8 @@ def build() -> dict:
         down.setdefault(a, []).append(b)
         up.setdefault(b, []).append(a)
 
-    for t in sorted(tech.TECHS.values(), key=lambda t: t.id):
-        for pid in sorted(t.prereqs):
+    for t in sorted(shown, key=lambda t: t.id):
+        for pid in sorted(p for p in t.prereqs if p not in hidden):
             chain = [pid]
             for k in range(layer_of[pid] + 1, layer_of[t.id]):
                 d = (pid, t.id, k)
@@ -195,11 +199,11 @@ def _positions(order: list, up: dict, down: dict) -> dict:
     return {n: v - lo for n, v in x.items()}
 
 
-def geometry(left: float, top: float, heads: dict) -> dict:
+def geometry(left: float, top: float, heads: dict, hidden: frozenset = frozenset()) -> dict:
     """Les rectangles a l'echelle 1 de la toile, a partir de (left, top) ;
     heads : {age: hauteur de sa banniere}. Rend nodes, rows, heights,
     sections, links, size."""
-    g = build()
+    g = build(hidden)
     order, x, layers = g["order"], g["x"], g["layers"]
     width = max(x[n] + _width(n) / 2 for n in x)
     rows: dict = {}

@@ -88,3 +88,26 @@ def test_pick_spawn_keeps_one_ai_on_player_continent():
     assert len(set(spots)) == 4
     player = spots[0]
     assert any(same_landmass(world, player, other) for other in spots[1:])
+
+
+def test_each_hex_varies_a_little_and_smoothly_in_walking_cost():
+    """Le monde moins hexagonal : chaque case a sa variation du cout de
+    marche (world.cost_pct), douce d'une case a sa voisine, la meme a
+    chaque chargement ; A* reste exact (son heuristique compte le plus
+    petit cout)."""
+    from src.kora.path import astar, travel_weeks
+    from src.kora.world import COST_VAR_MAX, COST_VAR_MIN, cost_pct, enter_cost_for, make_filled_world, offset_to_axial
+
+    world = make_filled_world(60, 30, Terrain.PLAINE, wrap_x=True)
+    grid = cost_pct(world)
+    values = {v for row in grid for v in row}
+    assert min(values) >= COST_VAR_MIN and max(values) <= COST_VAR_MAX and len(values) > 8
+    jumps = [abs(grid[r][c] - grid[r][c + 1]) for r in range(30) for c in range(59)]
+    assert max(jumps) <= 6, "doux d'une case à sa voisine"
+    assert cost_pct(make_filled_world(60, 30, Terrain.PLAINE, wrap_x=True)) == grid
+    a, b = offset_to_axial(5, 15), offset_to_axial(40, 15)
+    path = astar(world, a, b)
+    assert path and path[-1] == b
+    cost = sum(enter_cost_for(world, h, False) for h in path)
+    assert 9 * len(path) <= cost <= 11 * len(path)
+    assert travel_weeks(world, a, path) >= 1

@@ -96,6 +96,10 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
         if cond.label == "hiver local":
             return have, need, f"{need} sem. d'hiver local"
         if kind == "res":
+            by_trade = trade_goods_for(cond.terrains)
+            if by_trade:
+                names = " ou ".join(_GOOD_NAMES[g] for g in by_trade)
+                return have, need, f"{need} sem. {cond.label}, ou en ayant {names} par l'échange"
             return have, need, f"{need} sem. {cond.label}"
         return have, need, f"{need} sem. en {cond.label}"
     if kind == "winters":
@@ -303,9 +307,9 @@ def update_practice(state, count: bool = True) -> None:
         if goods and has_res:
             # Le sel, les pots, les haches qui arrivent par l'echange : on
             # apprend a connaitre ce qu'on n'a pas chez soi.
-            for good, res in _GOOD_RESOURCE.items():
+            for good, found in _GOOD_RESOURCE.items():
                 if goods.get(good, 0.0) > 0:
-                    near.add(res)
+                    near.update(found)
         for terrain in seen:
             tribe.practice[terrain.value] = min(999, tribe.practice.get(terrain.value, 0) + 1)
         for res in near:
@@ -320,7 +324,22 @@ def update_practice(state, count: bool = True) -> None:
             tribe.steppe_weeks += 1
 
 
-_GOOD_RESOURCE = {"sel": "sel", "poteries": "argile", "haches": "silex", "etoffes": "chevres", "cuirs": "aurochs"}
+# Les biens qui font connaitre une ressource qu'on n'a pas chez soi : tant
+# qu'on en a en reserve (par l'echange), chaque semaine compte comme une
+# semaine "pres de" cette ressource (les conditions "res" des savoirs).
+_GOOD_RESOURCE = {
+    "sel": ("sel",),
+    "poteries": ("argile",),
+    "haches": ("silex",),
+    "etoffes": ("chevres",),
+    "cuirs": ("aurochs", "chevaux", "chevres", "rennes"),
+}
+_GOOD_NAMES = {"sel": "du sel", "poteries": "des poteries", "haches": "des haches polies", "etoffes": "des étoffes", "cuirs": "des cuirs"}
+
+
+def trade_goods_for(terrains) -> list[str]:
+    """Les biens qui, recus par l'echange, valent ces ressources."""
+    return [g for g, found in _GOOD_RESOURCE.items() if any(r in found for r in terrains)]
 
 
 def count_winter(state) -> None:

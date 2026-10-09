@@ -2,9 +2,11 @@ import heapq
 
 from src.kora.types import Hex
 from src.kora.world import (
+    COST_VAR_MIN,
     INSHORE_MOVE_COST,
     MOVE_COST,
     NEIGHBOR_DELTAS,
+    cost_pct,
     World,
     enter_cost_for,
 )
@@ -39,8 +41,11 @@ def astar(
     width, height, wrap = world.width, world.height, world.wrap_x
     terrains = world._terrains
     inshore = world.inshore_at
-    # Heuristique 10 x distance : valable tant qu'aucun cout n'est sous 10.
+    # Heuristique : le plus petit cout d'une case (plaine 10 a COST_VAR_MIN %,
+    # soit 9) par case de distance ; valable tant qu'aucun cout n'est dessous.
     move_cost = costs or MOVE_COST
+    pct = cost_pct(world)
+    step = min(10 * COST_VAR_MIN // 100, INSHORE_MOVE_COST)
     goal_c, goal_r = goal_i
     goal_q = goal_c - (goal_r - (goal_r & 1)) // 2
     goal_s = -goal_q - goal_r
@@ -56,7 +61,7 @@ def astar(
                 d = (abs(q - gq) + abs(s + gq + goal_r) + dr) // 2
                 if d < best:
                     best = d
-        return best * 10
+        return best * step
 
     start_key = start_i[1] * width + start_i[0]
     goal_key = goal_r * width + goal_c
@@ -100,6 +105,8 @@ def astar(
                 if not water_ok or not inshore(nc, nr):
                     continue
                 cost = INSHORE_MOVE_COST
+            else:
+                cost = cost * pct[nr][nc] // 100
             tentative = g_cur + cost
             if max_cost is not None and tentative > max_cost:
                 continue

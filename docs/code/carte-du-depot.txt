@@ -275,6 +275,14 @@ diplo.py, 0.14 : PEACE_PACTS / peace_pact (le commerce n'en est pas : P4),
   le village pris (VILLAGE_SCORE) ; conquer "soumettre" passe par
   diplo.submit ; ai_choice suit le but.
 
+0.15 : world.cost_pct (la variation douce du cout de marche, COST_VAR_* ;
+  _octave, _lattice, _COST_GRIDS), appliquee par enter_cost_for et
+  path.astar ; sim.walk_line (le survol d'une case). draws.hidden (les
+  savoirs ecartes d'un groupe exclusif et leurs suites) -> layout
+  .set_tree_hidden / tech_world (_TREES), tree_graph.build(hidden).
+  learning._GOOD_RESOURCE / trade_goods_for : les biens qui valent une
+  ressource (conditions "res").
+
 src/kora/draws.py  (pas de pygame)
   Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :
   set_seed / seed_of / seed_from (state.research["seed"] ; app._fresh_seed

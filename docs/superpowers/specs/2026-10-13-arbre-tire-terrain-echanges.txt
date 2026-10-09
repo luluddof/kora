@@ -1,0 +1,101 @@
+Kora - L'arbre selon le sort, un terrain moins hexagonal, les ressources par l'echange
+====================================================================================
+Date : 2026-10-13. Statut : FAIT (version 0.15.0) ; section 4 : PROPOSE.
+
+Ses mots (raccourcis) :
+  1. "Les techs incompatibles avec d'autres ne doivent pas etre visibles si
+     une autre a ete choisie."
+  2. "Pour rendre le monde encore moins hexagonal, chaque case d'un type de
+     sol (foret, plaine...) a une petite marge de variation de son cout."
+  3. "Les technologies qui necessitent des ressources : si par les echanges
+     on a ces ressources pendant un certain temps, la condition se valide
+     aussi."
+  4. "Dis-moi si tu vois des ameliorations evidentes (gameplay, game
+     design ou autre)."
+
+
+1. L'ARBRE SANS LES SAVOIRS ECARTES (draws.hidden, tree_graph, layout)
+---------------------------------------------------------------------
+  Dans un groupe EXCLUSIF (les croyances, les tombes des morts, le
+  calendrier), quand le monde a vu naitre l'un des savoirs, les autres -
+  et tout ce qui depend d'eux - ne sont plus dans l'arbre (ni carte ni
+  lien ; l'arbre est replace sans eux, comme un graphe). Exemple : la
+  Grande Mere nee, Chamanes et esprits animaux disparait. Un groupe ou rien
+  n'est ne (le calendrier, une fois sur quatre) reste visible, barre ("le
+  sort a dit non"). La bulle "Mene a" ne cite pas les savoirs caches.
+  (layout.set_tree_hidden : la partie dessinee dit lesquels ; une toile
+  placee par ensemble cache.)
+
+
+2. UN TERRAIN MOINS HEXAGONAL (world.cost_pct)
+----------------------------------------------
+  Chaque case a sa variation du cout de marche, de -10 % a +12 % : un
+  sous-bois plus clair, une plaine plus boueuse. Elle varie DOUCEMENT d'une
+  case a sa voisine (un bruit lisse de deux octaves, des taches de 7 et 3
+  cases), la meme sur toutes les machines (calcul en nombres de Python,
+  pas numpy : le multijoueur reste identique). Le cout reste un entier :
+  une plaine coute 9 a 11, une foret 18 a 22, une montagne 54 a 67.
+  Les chemins suivent le pays plutot que les rangees d'hexagones. A* reste
+  exact (son heuristique compte 9 par case). Au survol d'une case :
+  "Marche : 11 (difficile pour ce terrain, +8 %)".
+  Calculee une fois par taille de carte (0,4 s au premier lancement).
+
+
+3. LES RESSOURCES PAR L'ECHANGE (learning.update_practice)
+----------------------------------------------------------
+  C'etait deja vrai en partie (depuis le commerce) ; c'est maintenant
+  complet et dit. Chaque semaine ou le peuple a en reserve un bien recu (ou
+  fait), il compte comme une semaine "pres de" la ressource :
+    sel -> le sel ; poteries -> l'argile ; haches polies -> le silex ;
+    etoffes -> les chevres ; cuirs -> les aurochs, les chevaux, les chevres,
+    les rennes (avant : les aurochs seulement).
+  La condition le dit : "20 sem. pres du silex, ou en ayant des haches
+  polies par l'echange". Dans SA partie, ces conditions etaient deja
+  remplies (il a vecu pres du silex, des aurochs, des chevaux) ; un test
+  montre un peuple sans silex qui remplit la condition des Haches polies
+  avec des haches recues.
+
+
+4. AMELIORATIONS EVIDENTES (PROPOSITIONS, rien de code)
+------------------------------------------------------
+  Vues en jouant et en sondant la partie ces derniers jours, par ordre
+  d'evidence :
+  G1. UN DEBUT GUIDE pour ses amis (itch.io) : le jeu est riche et rien
+      n'explique la premiere heure. Quelques objectifs ("Trouvez un lieu
+      pour l'hiver", "Fondez un campement", "Apprenez un savoir"...) dans
+      un petit panneau, chacun qui montre le bouton a utiliser.
+  G2. PLUSIEURS SAUVEGARDES : une seule aujourd'hui (une partie neuve met
+      l'ancienne de cote). Des emplacements nommes, et "Charger" au menu.
+  G3. LE SON : aucun. Une ambiance par saison et quelques bruits (combat,
+      evenement, savoir appris) changent beaucoup la sensation.
+  G4. UN ECRAN DES GUERRES : qui est en guerre contre qui, le but,
+      l'avantage, les sieges et les ost en cours, la treve possible -
+      aujourd'hui disperse dans l'ecran Peuples.
+  G5. LES SENTIERS : une case ou l'on passe souvent devient un sentier
+      (moins chere, tracee sur la carte), entre villages partenaires
+      surtout : la suite naturelle du terrain varie, et le monde se dessine
+      tout seul.
+  G6. LES TROUPES IA ET LEURS VIVRES : vu en essai, une troupe IA poursuit
+      un clan qui fuit a 50 cases et meurt de faim en route. Ne pas
+      poursuivre au-dela de ses vivres ; rentrer quand ils baissent.
+  G7. LA FAIM CHRONIQUE DES VILLAGES IA : en 35 ans, 1 200 achats de grain
+      en vraie faim (environ 35 par an) : les villages IA mangent trop
+      juste. Les faire semer et stocker selon l'hiver qui vient.
+  G8. LA SUITE DE L'ARBRE : il s'epuise vers l'an 50 (deja note) ; un age
+      du cuivre et du bronze (le metal, les villes, l'ecriture, les
+      beliers et les echelles du siege).
+  G9. LE RAPPORT DE FORCE AVANT L'ATTAQUE : au survol d'une bande
+      etrangere avec une des siennes choisie, montrer les chances (le
+      calcul existe : battle.odds) avant le clic droit.
+
+
+5. VERIFICATIONS
+----------------
+  Tests : test_research (les savoirs ecartes hors de l'arbre ; le silex
+  par l'echange), test_world (la variation douce, la meme a chaque
+  chargement, A* exact), test_inshore. Empreinte re-enregistree (les
+  chemins changent) ; temps 15,7 s (14,9 s avant : la grille calculee une
+  fois) ; multijoueur identique, avec les exe aussi.
+  Partie neuve, 31 ans (0.14 -> 0.15) : population 6 231 -> 6 593,
+  villages 42 -> 43, combats 29 -> 90 (les chemins varies font se croiser
+  davantage les bandes ; le compte varie beaucoup d'un essai a l'autre).

@@ -69,7 +69,8 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - Le bouton **Carte** (en bas à gauche) déroule les modes de carte : relief, influence, suzerains, tournants,
   ressources, commerce.
 - **Espace** : pause. **1 à 5** : vitesse du temps.
-- Survolez une case pour voir ce qu'elle produit ; un clic l'épingle.
+- Survolez une case pour voir ce qu'elle produit et ce qu'y coûte la marche (chaque case varie un peu, doucement
+  d'une case à sa voisine : les chemins suivent le pays) ; un clic l'épingle.
 - Le **journal** (à droite) raconte ce qui arrive ; un clic sur une ligne y emmène la caméra.
 - Les **cartes d'événements** apparaissent à gauche de l'écran : cliquez pour lire et choisir (ou **E**).
 - Les **situations** s'affichent sous la barre du haut : des **crises** (disette, épidémie, gibier épuisé, grand hiver,
@@ -117,7 +118,9 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   permet de fonder un village. La **carte des tournants** (**I**) montre où ils sont nés et où ils arrivent.
 - D'autres savoirs sont **tirés au sort**, une fois par partie : certains ne viennent pas à tous les peuples (le
   vôtre compris), d'autres ne naissent pas dans tous les mondes, et dans certains groupes un seul naît (les croyances,
-  les tombes des morts, le calendrier). L'arbre dit leur chance et ce que le sort a décidé.
+  les tombes des morts, le calendrier) : les autres disparaissent alors de l'arbre. L'arbre dit leur chance et ce
+  que le sort a décidé. Une condition « près du silex » (ou du sel, de l'argile, des bêtes) se remplit aussi en
+  recevant ce bien par l'échange.
 - Les **nombres** : le comptage par bâtons (l'addition), puis les nombres additifs, où vous **choisissez la base**
   de vos nombres (10 : on apprend mieux ; 12 : on vend mieux ; 20 : on compte les gens ; 60 : on mesure le grain),
   presque pour toujours (c'est une **loi** du pays : écran *Pays*, onglet *Lois*, touche **N**). Des
