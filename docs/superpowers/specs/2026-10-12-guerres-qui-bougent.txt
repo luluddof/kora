@@ -1,0 +1,138 @@
+Kora - Des guerres qui bougent : buts de guerre, alliances qui s'usent, motifs
+==========================================================================
+Date : 2026-10-12. Statut : FAIT (version 0.14.0).
+
+Ses mots (raccourcis) :
+  1. "Les quatre" : les propositions P1-P4 de la spec 2026-10-11 (section 7)
+     - P1 des alliances qui s'usent sans ennemi commun ;
+     - P2 les chefs conquerants qui trahissent un voisin faible ;
+     - P3 des causes de guerre (la terre, le silex, une succession) ;
+     - P4 l'accord commercial n'empeche plus la guerre.
+  2. "Plus des guerres pour rendre tributaire une ville ; et comme on ne
+     peut etre tributaire que d'un seul, ca peut declarer la guerre a la
+     ville et/ou au pays entier : si elle est tributaire, le suzerain et
+     tous les vassaux."
+  3. "Pour les techs qui arrivent selon un %, es-tu sur que d'une partie a
+     l'autre le hasard change ?"
+
+
+1. LES BUTS DE GUERRE : SOUMETTRE (diplo.py)
+--------------------------------------------
+  - DECLARER LA GUERRE (ecran Peuples) a un peuple qui a un village, quand
+    on en a un : le BUT est de le SOUMETTRE (en faire son tributaire). On ne
+    sert qu'un suzerain : s'il est deja tributaire, le soumettre c'est le
+    prendre a son suzerain ; la guerre est donc contre TOUT LE PAYS (le
+    suzerain et tous ses tributaires ; c'etait deja la regle du pays), et
+    la bulle le dit : "Ils sont tributaires des Senta : on ne sert qu'un
+    suzerain, c'est la guerre a tout leur pays (Senta et 1 tributaire)".
+  - GUERRE A TOUT LEUR PAYS (nouveau bouton, pour un tributaire) : le but
+    est son grand suzerain ; soumis, il vous suit avec tous ses tributaires.
+  - Le but est atteint :
+      * en prenant leur village et en le soumettant (la carte de conquete ;
+        l'IA soumet toujours le village qu'elle voulait soumettre) ;
+      * en EXIGEANT LEUR SOUMISSION (le bouton remplace "Declarer la guerre"
+        pendant la guerre) : ils acceptent selon l'AVANTAGE dans la guerre
+        (+10 par combat gagne, -10 par combat perdu, +30 par village pris,
+        +2 par semaine de siege ; de -100 a +100), le rapport de forces, un
+        siege en cours (+15), leur fierte, l'approche de leur chef. Un
+        joueur somme de se soumettre recoit une carte (se soumettre /
+        refuser).
+    Alors : ils deviennent vos tributaires et quittent leur ancien
+    suzerain ; la guerre entre vous finit ; l'ancien suzerain, qui a perdu
+    son tributaire, fait une treve de deux ans. Le journal le dit.
+  - La fiche : "En guerre (depuis N sem.) pour les soumettre, avantage
+    +40" (ou ": ils veulent vous soumettre").
+  - L'IA : un chef qui a des villages fait la guerre pour soumettre (sauf
+    un affame : il veut du grain) ; elle exige la soumission quand elle a
+    l'avantage (casus._ai_submissions).
+  - CORRIGE (bogue de 0.12) : le premier combat d'une guerre declaree
+    effacait la guerre avec le reste du pays ennemi (diplo._drop_war
+    retirait aussi les guerres). Une guerre declaree reste declaree.
+
+
+2. P1 : LES ALLIANCES S'USENT (diplo._wear_alliances)
+-----------------------------------------------------
+  Une alliance vit d'un ENNEMI COMMUN (une relation de -30 ou moins avec
+  le meme peuple) ou d'une MEME GUERRE : chaque mois ou c'est le cas, elle
+  se renouvelle. Sans ennemi commun pendant 8 ans (ALLIANCE_WEAR), elle se
+  denoue ; un an avant, le journal previent et la fiche le montre
+  ("Alliance (sans ennemi commun, se denoue dans N sem.)"). L'IA ne
+  s'allie plus que pour un ennemi commun, une meme guerre, ou une grande
+  amitie (relation 75).
+
+
+3. P2 : LES CONQUERANTS TRAHISSENT (casus._ai_wars)
+---------------------------------------------------
+  Un chef IA CONQUERANT vise un voisin (30 cases) dont tout le pays, allies
+  compris, est deux fois plus faible que le sien : s'ils sont allies, il
+  rompt l'alliance - une TRAHISON (prestige -10, tous s'en souviennent) - et
+  lui declare la guerre pour le soumettre (8 % par mois ou il regarde).
+  Les autres chefs ne le font qu'avec un MOTIF, selon leur envie de
+  tribut (approche).
+
+
+4. P3 : LES CAUSES DE GUERRE (casus.py)
+---------------------------------------
+  Des MOTIFS naissent, et durent tant que leur cause dure :
+    - LA TERRE : deux peuples a villages dont les zones se chevauchent sur
+      12 cases : le plus nombreux a un motif ("Terres disputees") ;
+    - UNE RESSOURCE : un peuple qui connait un metier (silex, sel, argile,
+      argent) sans gisement chez lui, quand il y en a un a 8 cases de son
+      village dans la zone d'un voisin ("Le silex de leurs terres") ;
+    - UNE SUCCESSION : un chef meurt ; ceux dont les chefs sont lies au sien
+      par des mariages peuvent reclamer, un sur deux ("Succession
+      disputee", 2 ans) ;
+    - (deja) un tribut refuse.
+  Un motif : declarer la guerre SANS HONTE (pas de prestige perdu, pas de
+  rancune des autres peuples), contre ce peuple ou n'importe quel peuple de
+  son pays ; l'IA raide un voisin meme cordial (relation < 40). La fiche du
+  peuple : "Votre motif : le silex de leurs terres" / "Leur motif : ...".
+  Le journal annonce un motif nouveau au joueur.
+
+
+5. P4 : L'ACCORD COMMERCIAL N'EMPECHE PLUS LA GUERRE
+----------------------------------------------------
+  Seuls la treve, l'alliance, le tribut, le lien de tributaire et la
+  confederation sont des pactes de paix (diplo.PEACE_PACTS, peace_pact).
+  Un peuple sans la diplomatie peut raider un partenaire commercial : ce
+  n'est pas une trahison, l'accord tombe. La guerre declaree le fait tomber
+  aussi (deja).
+
+
+6. LE HASARD DES SAVOIRS D'UNE PARTIE A L'AUTRE (sa question)
+-------------------------------------------------------------
+  Verifie : chaque partie neuve tire sa GRAINE au hasard de la machine
+  (app._fresh_seed ; en multijoueur, l'hote : session.py), et tout tirage
+  des savoirs en depend (draws.py). Six parties neuves : six mondes
+  differents (de 2 a 6 savoirs nes dans le monde), six tirages differents
+  pour le joueur (de 8 a 12 savoirs sur 15 qui lui viendront). Une partie
+  garde sa graine (sauvee) : recharger ne change pas son sort. Une
+  vieille partie sans graine en a une tiree de ses noms (fixe pour elle).
+  Test : test_research.test_each_new_game_draws_its_own_luck.
+
+
+7. EQUILIBRAGE (robot joueur et IA)
+-----------------------------------
+  SA partie, 30 ans (an 36 -> 66), 0.13 -> 0.14 :
+    combats 32 -> 43 ; a l'an 66 : alliances 231 -> 57, tributaires 24
+    (9 au depart), 21 soumissions ou changements de suzerain, 152 guerres
+    declarees (entre pays : chaque peuple de chaque cote compte), 7 sieges,
+    population 17 275.
+  Partie neuve, 41 ans : 92 combats (0.13 : 27 a 41 ans), 5 tributaires
+    soumis par la guerre, population 7 536 (0.13 : 7 802).
+
+
+8. VERIFICATIONS
+----------------
+  Tests : test_war_goals (14 : P4, P1 et la meme guerre, P3 terre / silex
+  / succession, la guerre a un tributaire = a tout son pays, la guerre a
+  tout le pays, la soumission qui change de suzerain et la treve, le
+  village pris soumis par l'IA, la carte au joueur, P2 le conquerant qui
+  trahit, la sauvegarde, la guerre qui ne s'efface plus au premier
+  combat), test_research (le hasard d'une partie a l'autre), test_goods
+  (le commerce n'est plus un pacte de paix). Empreinte re-enregistree ;
+  multijoueur identique, avec les exe aussi.
+  CORRIGE AVANT DE PUBLIER : l'exe plantait au premier mois - casus.py
+  n'est appele que par systems.py (import a la demande) et PyInstaller ne
+  l'embarquait pas. Les deux specs embarquent maintenant tous les modules
+  de src/kora (KORA_MODULES) ; test_architecture le verifie.

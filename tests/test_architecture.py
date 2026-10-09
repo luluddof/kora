@@ -289,3 +289,13 @@ def test_every_icon_named_in_the_code_is_there():
                     used.add(a.value)
     missing = sorted(k for k in used if k not in ICON_FILES)
     assert not missing, f"icones sans fichier (theme.ICON_FILES) : {missing}"
+
+
+def test_the_exe_bundles_every_game_module():
+    """Les modules appeles seulement par systems.py (import a la demande)
+    manqueraient a l'exe : les deux specs PyInstaller les embarquent tous
+    (le 0.14 l'a appris : casus.py manquait, l'exe plantait au premier mois)."""
+    root = pathlib.Path(__file__).resolve().parents[1]
+    for name in ("Kora.spec", "Kora-unfichier.spec"):
+        spec = (root / name).read_text(encoding="utf-8")
+        assert "hiddenimports=KORA_MODULES" in spec and '"src", "kora", "*.py"' in spec, name

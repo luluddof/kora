@@ -313,3 +313,9 @@ class Diplomacy:
     neighbors: dict = field(default_factory=dict)
     # Routes commerciales (goods.py).
     routes: list = field(default_factory=list)
+    # Le motif d'une guerre (casus) : (qui, contre qui) -> raison (casus.py).
+    casus_why: dict = field(default_factory=dict)
+    # Les buts de guerre : (qui, peuple a soumettre) -> semaine de la
+    # declaration ; l'avantage dans une guerre : (a, b) -> points de a.
+    goals: dict = field(default_factory=dict)
+    scores: dict = field(default_factory=dict)

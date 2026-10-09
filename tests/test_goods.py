@@ -207,7 +207,8 @@ def test_a_trade_pact_needs_the_knowledge_and_villages():
     v = diplo.evaluate(st, 1, 2, "commerce")
     assert not v.blocked and v.accepted
     msg = diplo.perform(st, 1, 2, "commerce")
-    assert diplo.has_pact(st, 1, 2, "commerce") and diplo.at_peace(st, 1, 2)
+    # L'accord commercial n'est pas un pacte de paix : il n'empeche pas la guerre.
+    assert diplo.has_pact(st, 1, 2, "commerce") and not diplo.peace_pact(st, 1, 2)
     assert "Accord commercial" in diplo.status_line(st, 1, 2) and msg
     assert diplo.evaluate(st, 1, 2, "commerce").blocked
 

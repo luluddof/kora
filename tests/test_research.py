@@ -264,3 +264,18 @@ def test_the_tree_is_laid_out_as_a_graph_and_links_never_cross_a_card():
     for k, layer in enumerate(g["order"]):
         start[k] = sorted(layer, key=lambda n: (tech.TECHS[n].branch, tech.TECHS[n].slot) if n in tech.TECHS else (99, 0))
     assert tree_graph.crossings(g["order"], down) < tree_graph.crossings(start, down)
+
+
+def test_each_new_game_draws_its_own_luck():
+    """D'une partie a l'autre, le hasard des savoirs change (graine tiree par
+    la machine a chaque partie neuve : app._fresh_seed, session) ; une
+    partie, elle, garde la sienne."""
+    from src.kora import app, draws, tech
+    from src.kora.sim import _default_world, new_game
+
+    drawn = sorted(t.id for t in tech.TECHS.values() if t.chance < 1.0)
+    seen = set()
+    for _ in range(5):
+        st = new_game(_default_world(), setup={"seed": app._fresh_seed()})
+        seen.add((tuple(sorted(draws.world_draw(st).items())), tuple(draws.comes_to(st, 1, t) for t in drawn)))
+    assert len(seen) >= 4, "cinq parties neuves : des tirages différents"

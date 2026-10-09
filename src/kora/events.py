@@ -620,6 +620,8 @@ def _eff_pact(state, inst, tribe, band, *args) -> None:
         elif what == "confederation":
             if not confed.block(state, inst.other, tribe.id):
                 confed.form(state, inst.other, tribe.id)
+        elif what == "soumission":
+            diplo.submit(state, inst.other, tribe.id)
 
 
 def _eff_conquest(state, inst, tribe, band, *args) -> None:
@@ -1003,7 +1005,7 @@ EFFECT_TEXT = {
     "tech_progress_id": lambda a: f"{_tech_name(a[0])} avance de {round(a[1] * 100)} %",
     "learn_boost": lambda a: f"le savoir en cours avance de {round(a[0] * 100)} %",
     "reveal": lambda a: "une contree lointaine apparaît sur la carte",
-    "pact": lambda a: {"treve": "trêve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : échanges chaque mois", "protection": "vous devenez leurs tributaires (une part de vos réserves chaque mois ; vous les suivez à la guerre)", "confederation": "confédération : un seul pays au dehors (paix et guerre partagées), chacun maître chez soi"}.get(a[0], a[0]),
+    "pact": lambda a: {"treve": "trêve de 2 ans", "alliance": "alliance", "tribut_paye": "vous payez un tribut (2 ans)", "commerce": "accord commercial : échanges chaque mois", "protection": "vous devenez leurs tributaires (une part de vos réserves chaque mois ; vous les suivez à la guerre)", "confederation": "confédération : un seul pays au dehors (paix et guerre partagées), chacun maître chez soi", "soumission": "vous devenez leurs tributaires (et quittez votre suzerain) ; la guerre finit"}.get(a[0], a[0]),
     "conquest": lambda a: {"soumettre": "ils deviennent vos tributaires : une part de leurs réserves chaque mois, ils vous suivent à la guerre", "piller": "champs brûlés, grain pris, un bâtiment peut-être perdu"}.get(a[0], a[0]),
     "casus": lambda a: "ils pourront vous raider sans trahir",
     "stock_pct": lambda a: f"{round(a[0] * 100)} % du grenier" if a[0] < 0 else f"+{round(a[0] * 100)} % au grenier",

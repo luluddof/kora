@@ -28,7 +28,8 @@ bas au plus haut :
                       bandes), chiefs, sites, influence, production, diplo,
                       goods, money, approach, numbers, laws, chiefdom,
                       confed, memory, draws, turning, villages, battle,
-                      siege, ost, grain, situations, events, events_data
+                      siege, ost, grain, casus, situations, events,
+                      events_data
   6  l'IA             ai_war, orders, puis ai
   7  la semaine       sim
   8  les ordres       commands

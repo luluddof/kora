@@ -132,6 +132,9 @@ def copy_diplo(d: Diplomacy) -> Diplomacy:
         raids=dict(d.raids),
         neighbors={k: list(v) for k, v in d.neighbors.items()},
         routes=[TradeRoute(**vars(r)) for r in d.routes],
+        casus_why=dict(d.casus_why),
+        goals=dict(d.goals),
+        scores=dict(d.scores),
     )
 
 
@@ -250,6 +253,15 @@ def allied(state, a: int, b: int) -> bool:
     return has_pact(state, a, b, "alliance")
 
 
+# Les pactes qui empechent la guerre : l'accord commercial n'en est pas un
+# (des partenaires peuvent se brouiller ; la guerre le fait tomber).
+PEACE_PACTS = ("treve", "alliance", "tribut", "vassal", "confederation")
+
+
+def peace_pact(state, a: int, b: int) -> bool:
+    return any(p.kind in PEACE_PACTS for p in _pacts(state, a, b))
+
+
 WAR = "guerre"
 # Sans combat entre les deux pays depuis ce temps, la guerre s'eteint.
 WAR_FADE_WEEKS = 156
@@ -273,14 +285,15 @@ def declared_war(state, a: int, b: int) -> bool:
 
 
 def at_peace(state, a: int, b: int) -> bool:
-    """Treve, alliance, tribut ou accord commercial : pas de raid entre eux ;
-    deux peuples qui ont la diplomatie sont en paix tant que la guerre n'est
-    pas declaree."""
+    """Treve, alliance, tribut, tributaire, confederation : pas de raid entre
+    eux (l'accord commercial, lui, n'empeche pas la guerre) ; deux peuples
+    qui ont la diplomatie sont en paix tant que la guerre n'est pas
+    declaree."""
     if a == b:
         return True
     if declared_war(state, a, b):
         return False
-    if has_pact(state, a, b):
+    if peace_pact(state, a, b):
         return True
     return needs_declaration(state, a, b)
 
@@ -428,11 +441,20 @@ def status_line(state, a: int, b: int) -> str:
         left = max(0, p.until - state.tick_count) if p.until else 0
         if p.kind == WAR:
             weeks = state.tick_count - p.since
-            parts.append(f"En guerre (depuis {weeks} sem.)")
+            text = f"En guerre (depuis {weeks} sem.)"
+            if goal_of(state, a, b):
+                text += " pour les soumettre"
+            elif goal_of(state, b, a):
+                text += " : ils veulent vous soumettre"
+            adv = score(state, a, b)
+            if adv:
+                text += f", avantage {'+' if adv > 0 else ''}{adv:.0f}"
+            parts.append(text)
         elif p.kind == "treve":
             parts.append(f"Trêve ({left} sem.)")
         elif p.kind == "alliance":
-            parts.append("Alliance")
+            left = alliance_left(state, p)
+            parts.append("Alliance" + (f" (sans ennemi commun, se dénoue dans {left} sem.)" if left is not None else ""))
         elif p.kind == "tribut":
             who = "ils vous paient" if p.payer == b else "vous payez"
             parts.append(f"Tribut : {who} ({left} sem.)")
@@ -442,6 +464,11 @@ def status_line(state, a: int, b: int) -> str:
             parts.append("Accord commercial")
         elif p.kind == confed.KIND:
             parts.append("Confédérés")
+    mine, theirs = casus_of(state, a, b), casus_of(state, b, a)
+    if mine:
+        parts.append(f"Votre motif : {mine[0].lower() + mine[1:]}")
+    if theirs:
+        parts.append(f"Leur motif : {theirs[0].lower() + theirs[1:]}")
     return " · ".join(parts)
 
 
@@ -467,10 +494,14 @@ def on_fight(state, attacker: int, defender: int, attacker_won: bool, hunted: bo
             add_mod(state, attacker, m, "raid_pays", -10, actor=attacker)
     for x, y in confed.war_pairs(state, attacker, defender):
         _drop_war(state, x, y)
+    # L'avantage dans la guerre (la soumission se demande au vainqueur).
+    add_score(state, attacker, defender, WIN_SCORE if attacker_won else -WIN_SCORE)
     if has_pact(state, attacker, defender):
         excused = d.casus.get((attacker, defender), -1) >= state.tick_count
+        # Rompre un accord commercial n'est pas une trahison (P4).
+        sworn = peace_pact(state, attacker, defender)
         d.pacts.pop(pair(attacker, defender), None)
-        if not excused:
+        if sworn and not excused:
             betray(state, attacker, defender)
 
 
@@ -535,6 +566,188 @@ def may_start(state, a: int, b: int) -> str:
     return f"Un tributaire ne déclare pas la guerre : les {state.tribes[lords[-1]].name} ne combattent pas les {state.tribes[b].name}"
 
 
+# --- motifs, buts de guerre, avantage -----------------------------------------------
+# Un MOTIF (casus) : declarer la guerre sans honte (pas de prestige perdu,
+# pas d'agresseur) ; l'IA s'en sert (casus.py fait naitre les motifs : la
+# terre, une ressource, une succession ; un tribut refuse en est un).
+# Un BUT : soumettre un peuple (en faire son tributaire) ; atteint quand son
+# village est pris et soumis, ou quand il accepte de se soumettre (action
+# "soumission", selon l'AVANTAGE dans la guerre : batailles, sieges,
+# villages pris).
+WIN_SCORE = 10.0
+VILLAGE_SCORE = 30.0
+SIEGE_SCORE = 2.0
+SCORE_CAP = 100.0
+SUBMIT_BASE = -40
+
+
+def set_casus(state, a: int, b: int, weeks: int, why: str) -> None:
+    """a a un motif contre b pendant `weeks` semaines."""
+    d = _d(state)
+    until = state.tick_count + weeks
+    if d.casus.get((a, b), -1) < until:
+        d.casus[(a, b)] = until
+    d.casus_why[(a, b)] = why
+
+
+def motive_against(state, a: int, b: int) -> str:
+    """Le motif de a contre b ou contre un peuple de son pays (une guerre
+    contre l'un est une guerre contre tous)."""
+    for t in [b] + sorted(chiefdom.country(state, b) - {b}):
+        why = casus_of(state, a, t)
+        if why:
+            return why
+    return ""
+
+
+def casus_of(state, a: int, b: int) -> str:
+    """Le motif de a contre b ("" : aucun)."""
+    d = _d(state)
+    if d.casus.get((a, b), -1) < state.tick_count:
+        return ""
+    return d.casus_why.get((a, b), "Ils ont refusé votre tribut")
+
+
+def add_score(state, a: int, b: int, v: float) -> None:
+    """L'avantage de a sur b (et le contraire pour b), en guerre declaree."""
+    if not v or not declared_war(state, a, b):
+        return
+    d = _d(state)
+    now = max(-SCORE_CAP, min(SCORE_CAP, d.scores.get((a, b), 0.0) + v))
+    d.scores[(a, b)] = now
+    d.scores[(b, a)] = -now
+
+
+def score(state, a: int, b: int) -> float:
+    return _d(state).scores.get((a, b), 0.0) if declared_war(state, a, b) else 0.0
+
+
+def goal_of(state, a: int, b: int) -> bool:
+    """a fait la guerre pour soumettre b."""
+    return (a, b) in _d(state).goals and declared_war(state, a, b)
+
+
+def goals_of(state, tid: int) -> list[int]:
+    return sorted(b for (a, b) in _d(state).goals if a == tid and declared_war(state, a, b))
+
+
+def submit(state, actor: int, target: int, how: str = "soumission") -> None:
+    """target devient le tributaire de actor (on ne sert qu'un suzerain :
+    il quitte l'ancien). La guerre entre eux finit ; l'ancien suzerain, qui
+    a perdu son tributaire, fait la treve."""
+    old = chiefdom.top_lord(state, target)
+    chiefdom.make_vassal(state, actor, target, "force")
+    goal_done(state, actor, target, old if old != target else 0)
+    if how == "soumission":
+        tribe = state.tribes[actor]
+        gain_prestige(state, tribe, 5)
+
+
+def goal_done(state, actor: int, target: int, old_lord: int = 0) -> None:
+    """Le but de guerre atteint : plus de guerre avec le pays vaincu."""
+    d = _d(state)
+    had = (actor, target) in d.goals
+    d.goals.pop((actor, target), None)
+    for k in [k for k in d.scores if set(k) == {actor, target}]:
+        d.scores.pop(k, None)
+    if old_lord and old_lord in state.tribes and declared_war(state, actor, old_lord):
+        end_war(state, actor, old_lord)
+        add_pact(state, actor, old_lord, "treve", TRUCE_WEEKS)
+        for me, other in ((actor, old_lord), (old_lord, actor)):
+            if state.tribes[me].is_player:
+                _note(state, LogKind.POLITIQUE, f"La guerre avec les {state.tribes[other].name} s'achève : les {state.tribes[target].name} ont changé de suzerain. Trêve de 2 ans.", to=me)
+    if had:
+        for me in (actor, target):
+            if state.tribes[me].is_player:
+                text = (
+                    f"But de guerre atteint : les {state.tribes[target].name} sont vos tributaires."
+                    if me == actor
+                    else f"Vous voilà tributaires des {state.tribes[actor].name}."
+                )
+                _note(state, LogKind.POLITIQUE, text, to=me)
+
+
+def _submit_verdict(state, actor: int, target: int) -> Verdict:
+    if not declared_war(state, actor, target):
+        return Verdict(blocked="Exiger leur soumission : il faut être en guerre contre eux")
+    if target in chiefdom.country(state, actor):
+        return Verdict(blocked="Ils sont de votre pays")
+    if chiefdom.lords_of(state, actor):
+        return Verdict(blocked="Un tributaire ne prend pas de tributaires")
+    if not chiefdom.has_chiefdom(state, actor):
+        return Verdict(blocked="Il vous faut un village")
+    if not chiefdom.has_chiefdom(state, target):
+        return Verdict(blocked="Ils n'ont pas de village")
+    if len(chiefdom.vassals_of(state, actor)) >= chiefdom.vassal_cap(state, actor):
+        return Verdict(blocked="Vous avez déjà autant de tributaires que vous pouvez en tenir")
+    out = [("Base", SUBMIT_BASE)]
+    out.append(("Votre avantage dans la guerre", round(score(state, actor, target))))
+    ratio = max(1.0, power(state, actor)) / max(1.0, power(state, target))
+    out.append(("Rapport de forces", max(-20, min(30, round((ratio - 1.0) * 15)))))
+    site = next((s for s in state.sites.values() if s.kind == "village" and s.tribe_id == target and getattr(s.data, "siege", 0)), None)
+    if site is not None:
+        out.append(("Leur village est assiégé", 15))
+    lord = chiefdom.overlord_of(state, target)
+    if lord:
+        out.append((f"Ils changeraient de suzerain (les {state.tribes[lord].name})", 5))
+    if state.tribes[target].prestige >= 50:
+        out.append(("Trop fiers pour plier", -10))
+    seen = approach.accept(state, target, "proteger")
+    if seen is not None:
+        out.append(seen)
+    out = [(label, v) for label, v in out if v]
+    return Verdict(score=sum(v for _l, v in out), reasons=out)
+
+
+# --- l'usure des alliances (P1) -------------------------------------------------------
+# Une alliance vit d'un ennemi commun : tant que les deux allies en ont un
+# (une relation <= -30 avec le meme peuple) ou font la meme guerre, elle se
+# renouvelle (Pact.paid). Sans ennemi commun pendant ALLIANCE_WEAR semaines,
+# elle se denoue ; le journal previent ALLIANCE_WARN semaines avant.
+ALLIANCE_WEAR = 416
+ALLIANCE_WARN = 52
+
+
+def _shared_war(state, a: int, b: int) -> bool:
+    return any(declared_war(state, b, t) for t in wars_of(state, a) if t != b)
+
+
+def alliance_bound(state, a: int, b: int) -> bool:
+    """Un ennemi commun, ou une meme guerre : l'alliance a une raison."""
+    return _common_enemy(state, a, b) or _shared_war(state, a, b)
+
+
+def alliance_left(state, p) -> int | None:
+    """Semaines avant que l'alliance se denoue, si c'est bientot (None sinon)."""
+    left = ALLIANCE_WEAR - (state.tick_count - max(p.paid, p.since))
+    return max(0, left) if left <= ALLIANCE_WARN else None
+
+
+def _wear_alliances(state) -> None:
+    d = _d(state)
+    for (a, b), pacts in sorted(d.pacts.items()):
+        ally = next((p for p in pacts if p.kind == "alliance"), None)
+        if ally is None or a not in state.tribes or b not in state.tribes:
+            continue
+        if alliance_bound(state, a, b):
+            ally.paid = state.tick_count
+            continue
+        idle = state.tick_count - max(ally.paid, ally.since)
+        if idle >= ALLIANCE_WEAR:
+            d.pacts[(a, b)] = [p for p in pacts if p is not ally]
+            if not d.pacts[(a, b)]:
+                d.pacts.pop((a, b), None)
+            for me, other in ((a, b), (b, a)):
+                d.cooldown[f"alliance:{me}:{other}"] = state.tick_count
+                if state.tribes[me].is_player:
+                    _note(state, LogKind.POLITIQUE, f"Faute d'ennemi commun, l'alliance avec les {state.tribes[other].name} s'est dénouée.", to=me)
+        elif ALLIANCE_WEAR - ALLIANCE_WARN <= idle < ALLIANCE_WEAR - ALLIANCE_WARN + 4:
+            # Une fois (le mois passe une fois dans cette fenetre).
+            for me, other in ((a, b), (b, a)):
+                if state.tribes[me].is_player:
+                    _note(state, LogKind.POLITIQUE, f"Sans ennemi commun, l'alliance avec les {state.tribes[other].name} se dénouera dans un an.", to=me)
+
+
 # --- pactes et paiements -------------------------------------------------------------
 
 
@@ -551,10 +764,11 @@ def add_pact(state, a: int, b: int, kind: str, weeks: int = 0, payer: int = 0, s
 
 
 def _drop_war(state, a: int, b: int) -> None:
-    """La guerre entre deux pays : plus de treve, d'alliance, de commerce."""
+    """La guerre entre deux pays : plus de treve, d'alliance, de commerce
+    (une guerre declaree reste declaree)."""
     d = _d(state)
     k = pair(a, b)
-    kept = [p for p in d.pacts.get(k, []) if p.kind == "vassal"]
+    kept = [p for p in d.pacts.get(k, []) if p.kind in ("vassal", WAR)]
     if kept:
         d.pacts[k] = kept
     else:
@@ -672,6 +886,11 @@ def monthly(state) -> None:
         else:
             d.pacts.pop(k, None)
     d.casus = {k: v for k, v in d.casus.items() if v >= state.tick_count}
+    d.casus_why = {k: v for k, v in d.casus_why.items() if k in d.casus}
+    d.goals = {k: v for k, v in d.goals.items() if declared_war(state, *k)}
+    d.scores = {k: v for k, v in d.scores.items() if declared_war(state, *k)}
+    with frozen_relations(state):
+        _wear_alliances(state)
     _fade_wars(state)
     update_contacts(state)
     _update_neighbors(state)
@@ -794,12 +1013,17 @@ def pop_of(state, tid: int) -> int:
 
 # --- propositions -----------------------------------------------------------------------
 
-ACTIONS = ("cadeau", "present", "guerre", "treve", "alliance", "commerce", "tribut", "proteger", "confederer", "union", "rompre")
+ACTIONS = (
+    "cadeau", "present", "guerre", "guerre_pays", "soumission", "treve", "alliance", "commerce", "tribut", "proteger",
+    "confederer", "union", "rompre",
+)
 ACTION_LABELS = {
     "proteger": "Prendre sous sa protection",
     "cadeau": "Offrir des vivres",
     "present": "Offrir des sicles",
     "guerre": "Déclarer la guerre",
+    "guerre_pays": "Guerre à tout leur pays",
+    "soumission": "Exiger leur soumission",
     "treve": "Proposer une trêve",
     "alliance": "Proposer une alliance",
     "commerce": "Proposer des échanges",
@@ -878,6 +1102,13 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
         return Verdict(score=1, reasons=out)
     if action == "guerre":
         return _war_verdict(state, actor, target)
+    if action == "guerre_pays":
+        lord = chiefdom.top_lord(state, target)
+        if lord == target:
+            return Verdict(blocked="Ils ne sont les tributaires de personne : « Déclarer la guerre » vise déjà tout leur pays")
+        return _war_verdict(state, actor, lord)
+    if action == "soumission":
+        return _submit_verdict(state, actor, target)
     if action == "rompre":
         if not has_pact(state, actor, target):
             return Verdict(blocked="Aucun pacte avec eux")
@@ -1062,8 +1293,21 @@ def _war_verdict(state, actor: int, target: int) -> Verdict:
     if has_pact(state, actor, target, "treve"):
         return Verdict(blocked="Une trêve vous lie : rompez-la d'abord")
     out = [(f"Relation {DECLARE_RELATION}", 0)]
-    if _d(state).casus.get((actor, target), -1) >= state.tick_count:
-        out.append(("Vous avez un motif (ils ont refusé votre tribut) : pas de honte", 0))
+    if chiefdom.has_chiefdom(state, actor) and chiefdom.has_chiefdom(state, target):
+        out.append(("But : les soumettre (prendre leur village, ou exiger leur soumission)", 0))
+    lord = chiefdom.top_lord(state, target)
+    if lord != target:
+        vassals = len(chiefdom.descendants(state, lord))
+        out.append(
+            (
+                f"Ils sont tributaires des {state.tribes[lord].name} : on ne sert qu'un suzerain, c'est la guerre "
+                f"à tout leur pays ({state.tribes[lord].name} et {vassals} tributaire{'s' if vassals > 1 else ''})",
+                0,
+            )
+        )
+    why = motive_against(state, actor, target)
+    if why:
+        out.append((f"Vous avez un motif ({why[0].lower() + why[1:]}) : pas de honte", 0))
     else:
         out.append((f"Sans motif : prestige -{DECLARE_PRESTIGE}, et les autres peuples s'en souviennent", 0))
     if has_pact(state, actor, target, "commerce"):
@@ -1077,17 +1321,23 @@ def _war_verdict(state, actor: int, target: int) -> Verdict:
     return Verdict(score=1, reasons=out)
 
 
-def declare_war(state, actor: int, target: int) -> str:
+def declare_war(state, actor: int, target: int, goal: int = 0) -> str:
     """actor declare la guerre a target : les deux pays (et les allies de
-    target) sont en guerre ; la paix et le commerce entre eux tombent."""
+    target) sont en guerre ; la paix et le commerce entre eux tombent.
+    goal : le peuple qu'il veut soumettre (target, ou son grand suzerain)."""
     d = _d(state)
     pairs = war_pairs(state, actor, target)
-    motive = d.casus.get((actor, target), -1) >= state.tick_count
+    motive = bool(motive_against(state, actor, target))
     for x, y in pairs:
         _drop_war(state, x, y)
         k = pair(x, y)
-        d.pacts.setdefault(k, []).append(Pact(WAR, state.tick_count, 0, actor, state.tick_count))
+        if not declared_war(state, x, y):
+            d.pacts.setdefault(k, []).append(Pact(WAR, state.tick_count, 0, actor, state.tick_count))
         make_contact(state, x, y, quiet=True)
+        d.scores.pop((x, y), None)
+        d.scores.pop((y, x), None)
+    if goal:
+        d.goals[(actor, goal)] = state.tick_count
     add_mod(state, actor, target, "guerre_declaree", DECLARE_RELATION, actor=actor)
     tribe = state.tribes[actor]
     if not motive:
@@ -1168,7 +1418,10 @@ def gift_value(state, actor: int, target: int, amount: float) -> float:
 
 
 # Proposer a un autre joueur : il recoit la carte que l'IA lui enverrait.
-HUMAN_OFFERS = {"treve": "offre_treve", "alliance": "offre_alliance", "commerce": "offre_commerce", "tribut": "exige_tribut", "proteger": "offre_protection", "confederer": "offre_confederation"}
+HUMAN_OFFERS = {
+    "treve": "offre_treve", "alliance": "offre_alliance", "commerce": "offre_commerce", "tribut": "exige_tribut",
+    "proteger": "offre_protection", "confederer": "offre_confederation", "soumission": "exige_soumission",
+}
 
 
 def perform(state, actor: int, target: int, action: str, amount: float = 0.0) -> str:
@@ -1210,7 +1463,11 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
             _note(state, LogKind.POLITIQUE, f"Les {tribe.name} vous offrent {amount:.0f} sicles.", to=target)
         return f"Les {names} acceptent vos {amount:.0f} sicles."
     if action == "guerre":
-        return declare_war(state, actor, target)
+        goal = target if chiefdom.has_chiefdom(state, actor) and chiefdom.has_chiefdom(state, target) else 0
+        return declare_war(state, actor, target, goal)
+    if action == "guerre_pays":
+        lord = chiefdom.top_lord(state, target)
+        return declare_war(state, actor, lord, lord if chiefdom.has_chiefdom(state, actor) else 0)
     if action == "rompre":
         break_pact(state, actor, target)
         if human:
@@ -1226,7 +1483,12 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         d.cooldown[f"{action}:{actor}:{target}"] = state.tick_count
         return f"Proposition portée aux {names} : à eux de décider."
     d.cooldown[f"{action}:{actor}:{target}"] = state.tick_count
+    if action == "soumission" and verdict.accepted:
+        submit(state, actor, target)
+        return f"Les {names} se soumettent : ils sont vos tributaires."
     if not verdict.accepted:
+        if action == "soumission":
+            return f"Les {names} refusent de se soumettre : la guerre continue."
         if action == "tribut":
             add_mod(state, actor, target, "tribut_refuse", -10, actor=target)
             d.casus[(actor, target)] = state.tick_count + 52
@@ -1385,7 +1647,12 @@ def ai_monthly(state) -> None:
                 if evaluate(state, tid, other, "treve").accepted:
                     perform(state, tid, other, "treve")
                     continue
-            if rel >= 45 + approach.factor(state, tid, "alliance_rel") and not allied(state, tid, other) and tech.bonuses(tribe).alliance:
+            if (
+                rel >= 45 + approach.factor(state, tid, "alliance_rel")
+                and not allied(state, tid, other)
+                and tech.bonuses(tribe).alliance
+                and (rel >= AI_ALLY_FRIENDS or alliance_bound(state, tid, other))
+            ):
                 if evaluate(state, tid, other, "alliance").accepted:
                     perform(state, tid, other, "alliance")
                     continue
@@ -1442,6 +1709,8 @@ def ai_monthly(state) -> None:
 
 
 AI_WAR_WEEKS = 78
+# Sans ennemi commun, l'IA ne s'allie qu'a un grand ami.
+AI_ALLY_FRIENDS = 75
 
 
 PROPOSE_EVERY = 52
@@ -1538,6 +1807,9 @@ def to_json(d: Diplomacy) -> dict:
             [r.exporter, r.importer, r.good, r.level, r.by, r.since, round(r.units, 3), round(r.paid, 2), r.status, r.idle]
             for r in d.routes
         ],
+        "casus_why": [[a, b, v] for (a, b), v in sorted(d.casus_why.items())],
+        "goals": [[a, b, v] for (a, b), v in sorted(d.goals.items())],
+        "scores": [[a, b, round(v, 2)] for (a, b), v in sorted(d.scores.items())],
     }
 
 
@@ -1557,6 +1829,9 @@ def from_json(data) -> Diplomacy:
     d.betrayed = {int(k): int(v) for k, v in data.get("betrayed", {}).items()}
     d.raids = {(int(a), int(b)): (int(t), bool(w)) for a, b, t, w in data.get("raids", [])}
     d.neighbors = {int(k): [int(x) for x in v] for k, v in data.get("neighbors", {}).items()}
+    d.casus_why = {(int(a), int(b)): str(v) for a, b, v in data.get("casus_why", [])}
+    d.goals = {(int(a), int(b)): int(v) for a, b, v in data.get("goals", [])}
+    d.scores = {(int(a), int(b)): float(v) for a, b, v in data.get("scores", [])}
     for row in data.get("routes", []):
         try:
             exp, imp, good, level, by, since, units, paid, status, idle = row

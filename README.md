@@ -59,7 +59,12 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   qu'elle y marche. Une de vos bandes choisie, un **clic droit** sur une bande étrangère l'**attaque** (attention, les
   combats sont durs) ; un **clic gauche** sur un autre peuple ouvre sa diplomatie. Entre peuples qui connaissent la
   **diplomatie** (Dons et palabres), on ne s'attaque qu'après avoir **déclaré la guerre** (écran Peuples) : les
-  pays (tributaires, confédérés) et les alliés suivent ; une trêve y met fin.
+  pays (tributaires, confédérés) et les alliés suivent ; une trêve y met fin. La guerre a un **but** : les
+  **soumettre** (prendre leur village, ou **exiger leur soumission** quand vous avez l'avantage). On ne sert qu'un
+  suzerain : soumettre un tributaire, c'est le prendre à son suzerain, et la guerre est contre tout son pays (ou
+  visez son suzerain : **Guerre à tout leur pays**). Un **motif** (terres disputées, silex ou sel de leurs terres,
+  succession disputée, tribut refusé) permet de déclarer la guerre sans honte. Les alliances sans ennemi commun
+  s'usent ; un accord commercial n'empêche pas la guerre.
 - **Clic droit maintenu** (ou molette maintenue) et glisser : tourner la planète. **Molette** : zoomer.
 - Le bouton **Carte** (en bas à gauche) déroule les modes de carte : relief, influence, suzerains, tournants,
   ressources, commerce.

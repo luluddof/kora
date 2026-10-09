@@ -517,6 +517,21 @@ EVENTS: dict[str, Event] = {
             ),
         ),
         Event(
+            "exige_soumission",
+            "Ils exigent votre soumission",
+            "Les {other}, qui vous font la guerre, exigent que vous deveniez leurs tributaires : une part de vos "
+            "réserves chaque mois, et vous les suivrez à la guerre. On ne sert qu'un suzerain : si vous en "
+            "avez un, vous le quittez. Sinon, la guerre continue.",
+            trigger="exige_soumission",
+            player_only=True,
+            conds=(("other_alive",),),
+            mood="danger",
+            options=(
+                Option("Se soumettre", effects=(("pact", "soumission"),), text="Vous voilà tributaires des {other}.", ai=0.6),
+                Option("Refuser", effects=(("relation", -5),), text="Vous refusez : la guerre continue contre les {other}.", ai=1.2),
+            ),
+        ),
+        Event(
             "offre_protection",
             "Une offre de protection",
             "Les {other}, puissants et nombreux, proposent de vous prendre sous leur protection : vous leur "

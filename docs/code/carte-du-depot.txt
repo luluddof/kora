@@ -111,7 +111,7 @@ Ici c'est plus petit, mais le meme decoupage :
                     goods.py, situations.py, production.py, population.py,
                     chiefdom.py, numbers.py, money.py, laws.py, confed.py,
                     memory.py, draws.py, turning.py, siege.py, ost.py,
-                    grain.py
+                    grain.py, casus.py
                     "une semaine avance (ou un jour, en bataille)"
 
   Persistance       persist.py, data/kora_map.json
@@ -256,6 +256,24 @@ src/kora/grain.py  (pas de pygame)
   "grain"), ai_weekly (systems.WEEKLY : l'IA achete en vraie faim,
   AI_DEARTH_WEEKS), tip_lines (la tuile GRENIER de l'ecran du village :
   clic = acheter, render_village / app.village_click "vgrain").
+
+src/kora/casus.py  (pas de pygame)
+  LES CAUSES DE GUERRE (0.14) : _land_claims (state.overlap >= LAND_CELLS),
+  _resource_claims (CLAIM_RES a RES_RADIUS d'un village qui n'en a pas ;
+  _deposits_near memorise), _successions (Tribe.flags["chef_pid"] ; les
+  mariages), _claim -> diplo.set_casus ; LES GUERRES DE SOUMISSION de l'IA :
+  _ai_wars (conquerant : trahit son allie faible, P2 ; les autres avec un
+  motif), _ai_submissions (exiger la soumission quand l'avantage est la).
+  systems.MONTHLY apres diplo.ai_monthly.
+diplo.py, 0.14 : PEACE_PACTS / peace_pact (le commerce n'en est pas : P4),
+  set_casus / casus_of / motive_against (Diplomacy.casus_why), buts et
+  avantage (Diplomacy.goals / scores : declare_war(goal), add_score,
+  score, goal_of, goals_of, submit, goal_done, _submit_verdict ; actions
+  "guerre_pays" et "soumission", carte "exige_soumission"), l'usure des
+  alliances (ALLIANCE_WEAR, alliance_bound, alliance_left,
+  _wear_alliances ; l'IA : AI_ALLY_FRIENDS). chiefdom.village_taken compte
+  le village pris (VILLAGE_SCORE) ; conquer "soumettre" passe par
+  diplo.submit ; ai_choice suit le but.
 
 src/kora/draws.py  (pas de pygame)
   Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :

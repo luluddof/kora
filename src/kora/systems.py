@@ -53,6 +53,8 @@ MONTHLY = (
     "turning.monthly",
     "draws.monthly",
     "diplo.ai_monthly",
+    # Les causes de guerre, les guerres de soumission de l'IA.
+    "casus.monthly",
     "confed.monthly",
     "events.monthly",
     "situations.monthly",

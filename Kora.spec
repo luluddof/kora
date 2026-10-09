@@ -1,12 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 
+# Tous les modules du jeu : certains ne sont appeles que par le tableau des
+# systemes (systems.py, import a la demande) et PyInstaller ne les verrait
+# pas (tests/test_architecture.py le verifie).
+import glob
+import os
+
+KORA_MODULES = sorted(
+    "src.kora." + os.path.splitext(os.path.basename(p))[0]
+    for p in glob.glob(os.path.join(SPECPATH, "src", "kora", "*.py"))
+    if not p.endswith("__init__.py")
+)
+
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
     datas=[('data/kora_map.json', 'data'), ('data/fonts', 'data/fonts'), ('data/icons', 'data/icons')],
-    hiddenimports=[],
+    hiddenimports=KORA_MODULES,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

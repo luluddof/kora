@@ -540,8 +540,19 @@ lente, bandes dessinees petites a taille fixe.
     (chacun selon sa vie : chasseurs, champs, metiers) ; une levee prend la
     meme part de chaque categorie ; les partis restent dans la leur.
     CONSTAT (spec, section 7) : dans SA partie, le monde IA se fige en
-    alliances (plus un combat apres l'an 41) ; propositions P1-P4 en
-    attente de son choix.
+    alliances (plus un combat apres l'an 41) ; propositions P1-P4.
+2026-10-12
+  - "Les quatre (P1-P4), plus des guerres pour rendre tributaire une
+    ville ; on n'est tributaire que d'un seul, donc la guerre peut viser la
+    ville et/ou tout le pays : son suzerain et tous ses vassaux." FAIT
+    (0.14.0 ; spec 2026-10-12-guerres-qui-bougent.txt) : le BUT de guerre
+    "soumettre" (prendre le village, ou exiger la soumission selon
+    l'avantage), "Guerre a tout leur pays" ; alliances qui s'usent ;
+    conquerants qui trahissent ; motifs (terre, ressource, succession) ;
+    le commerce n'empeche plus la guerre. Bogue corrige : une guerre
+    declaree ne s'efface plus au premier combat.
+  - "Le hasard des savoirs change-t-il d'une partie a l'autre ?" VERIFIE :
+    oui (graine tiree a chaque partie neuve ; test).
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -676,6 +687,14 @@ lente, bandes dessinees petites a taille fixe.
   semaine apres les marches, par systems.WEEKLY ; un achat en argent passe
   par money.book / earn avec sa cle (KEY_NAMES). Piste D de l'argent faite ;
   restent A (rancon), B (mercenaires), C (acheter la paix), E-H.
+  0.14.0 : REGLES NOUVELLES : une guerre a un BUT (diplo.goals) et un
+  AVANTAGE (diplo.add_score) ; soumettre passe par diplo.submit (on ne
+  sert qu'un suzerain ; l'ancien fait la treve) ; un pacte de paix =
+  diplo.PEACE_PACTS (pas le commerce) ; un motif de guerre = diplo.set_casus
+  avec sa raison (casus.py en fait naitre) ; une alliance doit avoir une
+  raison (ennemi commun, meme guerre) ou elle s'use. Un module nouveau
+  appele seulement par systems.py est embarque dans l'exe par KORA_MODULES
+  (les deux specs) : TOUJOURS essayer l'exe (essai reseau) avant de publier.
   A FAIRE plus tard (pistes) : des tournants pour les ages suivants
   (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
   les evenements ; le siege des ages suivants (beliers, echelles, tours :

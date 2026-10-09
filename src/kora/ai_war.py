@@ -26,6 +26,8 @@ from src.kora.types import Band, OrderKind, stay_order
 from src.kora.vision import is_visible
 
 AI_RAID_REST = 12
+# Avec un motif (casus.py), on raide un voisin jusqu'a cette relation.
+MOTIVE_RELATION = 40
 AI_RAID_EDGE = 1.25
 AI_CALL_RANGE = 10
 AI_MERGE_RANGE = 3
@@ -63,17 +65,19 @@ def wins(state: GameState, bands: list[Band], prey: Band, edge: float = AI_RAID_
 
 
 def fair_game(state: GameState, band: Band, prey: Band, hungry: bool) -> bool:
-    """Un peuple qu'on peut raider : pas de pacte ; un voisin cordial,
-    seulement quand on a faim. Entre peuples qui ont la diplomatie, il faut
-    pouvoir lui declarer la guerre (go_to_war le fera au depart du raid)."""
+    """Un peuple qu'on peut raider : pas de pacte de paix (un accord
+    commercial n'en est pas un) ; un voisin cordial, seulement quand on a
+    faim ou qu'on a un motif (casus.py). Entre peuples qui ont la diplomatie,
+    il faut pouvoir lui declarer la guerre (go_to_war le fera au depart du
+    raid)."""
     a, b = band.tribe_id, prey.tribe_id
-    if a == b or diplo.has_pact(state, a, b):
+    if a == b or diplo.peace_pact(state, a, b):
         return False
     if diplo.may_start(state, a, b):
         return False
     if diplo.needs_declaration(state, a, b) and not diplo.declared_war(state, a, b) and diplo.evaluate(state, a, b, "guerre").blocked:
         return False
-    if not hungry and diplo.relation(state, band.tribe_id, prey.tribe_id) >= 15:
+    if not hungry and diplo.relation(state, band.tribe_id, prey.tribe_id) >= (MOTIVE_RELATION if diplo.casus_of(state, a, b) else 15):
         return False
     return True
 
@@ -177,7 +181,10 @@ def go_to_war(state: GameState, band: Band, prey: Band) -> None:
     d'abord la guerre (diplo.declare_war)."""
     a, b = band.tribe_id, prey.tribe_id
     if diplo.needs_declaration(state, a, b) and not diplo.declared_war(state, a, b):
-        diplo.declare_war(state, a, b)
+        # Un chef qui a des villages fait la guerre pour soumettre (sauf un
+        # affame : il veut du grain).
+        wants = chiefdom.has_chiefdom(state, a) and chiefdom.has_chiefdom(state, b) and chiefdom.ai_choice(state, a, b) == "soumettre"
+        diplo.declare_war(state, a, b, b if wants else 0)
 
 
 def start_plan(state: GameState, band: Band, plan) -> None:
