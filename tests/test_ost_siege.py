@@ -9,7 +9,7 @@ from src.kora.sim import apply_movement, resolve_joins, tick
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
-NEO = {"huttes", "semis", "sedentarite", "palissade", "arc", "palabres"}
+NEO = {"huttes", "semis", "sedentarite", "palissade", "arc", "palabres", "messagers"}
 
 
 def _state():

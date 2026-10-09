@@ -269,7 +269,7 @@ TECHS: dict[str, Tech] = {
             "Échanger des présents, s'asseoir autour du même feu : on parle avant de se battre.",
             prereqs=("feu",),
             conds=(Cond("contacts", 1),),
-            effects={"gifts": 1.5, "diplo": 10, "diplomacy": True},
+            effects={"gifts": 1.5, "diplo": 10},
         ),
         # --- palier 2 : savoirs du clan ------------------------------------
         Tech(
@@ -456,6 +456,17 @@ TECHS: dict[str, Tech] = {
             prereqs=("don",),
             conds=(Cond("contacts", 3), Cond("pop", 150)),
             effects={"diffusion": 0.1, "gifts": 1.25, "diplo": 5, "commerce": True},
+        ),
+        # La DIPLOMATIE vient avec les villages : avant elle, des bandes qui
+        # s'accrochent ; avec elle (des deux cotes), on declare la guerre et
+        # l'on fait la paix (diplo.needs_declaration).
+        Tech(
+            "messagers", "Messagers et serments", 4, 7,
+            "Des messagers vont de village en village, porteurs de paroles et de serments : on déclare la guerre, on fait la paix, et l'on s'y tient.",
+            prereqs=("palabres", "sedentarite"),
+            conds=(Cond("villages", 1), Cond("contacts", 2)),
+            effects={"diplomacy": True, "diplo": 5},
+            slot=1,
         ),
         # --- neolithique, palier 5 : villages prosperes -----------------------
         Tech(

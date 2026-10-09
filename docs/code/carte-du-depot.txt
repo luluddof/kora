@@ -305,14 +305,29 @@ persist : saves_dir, new_save_path, list_saves, latest_save, trash_save
   draw_settings ; app.Settings (la fenetre des reglages, commune aux deux
   menus), title_screen (page "load"), play(..., save_path, director).
 src/kora/music.py (presentation) : Director (update(state | None, dt),
-  set_volume, listening, prefs, stop), wants_war_music ; la boucle
-  data/music/casus_bellis.ogg, faite par tools/boucle_musique.py.
+  set_volume, listening, prefs, stop, heard_volume), wants_war_music ;
+  data/music/casus_bellis.ogg (le morceau et ses points de boucle), fait
+  par tools/boucle_musique.py.
 
 0.17 (l'intendant) : goods.ai_crafts / _keeps_hands (les champs d'abord ;
   la disette en vue rend les gens de metier), ai._village_ai (AI_FOOD_MARGIN :
   ni chantier ni levee sans marge), grain.shortfall / PLANNED_MARKUP /
   PLAN_MARGIN / PLAN_EVERY (le grain d'avance, l'IA et le joueur : tuile
   GRENIER "Disette en vue").
+
+0.18 : la diplomatie vient de Messagers et serments (tech "messagers",
+  effet "diplomacy" ; diplo.migrate pour les vieilles parties, appele par
+  persist et sim.new_game) ; LA LASSITUDE : diplo.weariness / WEARY_SEASON /
+  WEARY_STEP / WEARY_CAP, _truce_mood (lassitude, LEAD_PER / LEAD_CAP : qui
+  mene la guerre) dans evaluate("treve") ; _long_war (un an : la relation
+  ne filtre plus, ai_monthly et _propose_to_player) -> carte "offre_paix_blanche"
+  (events_data, data {mois}) ; render_wars : "lassitude +N pour une treve".
+  La fiche des savoirs : render_tech.missing_first (ce qui manque d'abord),
+  _more (ce qui deborde est annonce), learning.missing_lines (le survol).
+  La musique part du debut : music.Director joue en flux
+  (pygame.mixer.music ; heard_volume) ; tools/boucle_musique.py ecrit le
+  morceau entier + fondu enchaine et les etiquettes LOOPSTART / LOOPLENGTH
+  (mutagen, outil de preparation).
 
 src/kora/draws.py  (pas de pygame)
   Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :

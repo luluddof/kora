@@ -586,6 +586,28 @@ lente, bandes dessinees petites a taille fixe.
     levee sans marge, le grain achete d'avance et moins cher (le joueur
     aussi, sur la tuile du grenier). Famine IA : 11,5 % -> 7,2 % des
     semaines ; partie neuve +22 % de population.
+2026-10-16
+  - "Pourquoi je ne peux pas rechercher Premieres semailles alors que
+    j'ai les conditions affichees ?" BOGUE D'AFFICHAGE CORRIGE (0.18.0 ;
+    spec 2026-10-16-diplomatie-paix-blanche.txt) : la 3e condition (pres de
+    cereales ou de racines, 0/20 dans SA partie) etait coupee en bas d'une
+    colonne trop courte ; les regles n'avaient pas change. Ce qui MANQUE
+    passe d'abord, ce qui deborde est annonce, le survol le dit, et ou
+    trouver la ressource (touche R).
+  - "Des recherches de diplomatie ; avant, pas de guerre tant que les deux
+    pays ne l'ont pas : des conflits entre bandes ; la diplomatie vient
+    avec les villes." FAIT : Messagers et serments (apres Dons et
+    palabres et la sedentarite, avec un village) ; une partie d'avant la
+    garde la ou il y a un village.
+  - "La musique en guerre commence par son debut." FAIT : le morceau part
+    de sa montee, puis boucle sur son coeur (points de boucle dans le
+    fichier).
+  - "Plus la guerre dure, plus les parties sont enclines a la paix
+    blanche." FAIT : la lassitude (+4 par saison, +96 au plus, en six
+    ans) ; celui qui mene resiste, celui qui perd veut en sortir ; une
+    relation au plus bas n'empeche plus l'IA de proposer la paix apres un
+    an ; une IA lasse propose au joueur une paix blanche ("Ils sont las de
+    la guerre").
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -745,6 +767,14 @@ lente, bandes dessinees petites a taille fixe.
   0.17.0 : REGLE NOUVELLE : une decision IA qui coute des vivres ou des
   bras regarde d'abord villages.food_outlook (la marge a la recolte) ; un
   metier IA ne prend jamais les bras des champs (goods._keeps_hands).
+  0.18.0 : REGLES NOUVELLES : la diplomatie (guerre declaree, paix) vient
+  de Messagers et serments, avec les villages (diplo.diplomatic) ; une
+  reponse a une treve passe par diplo._truce_mood (la lassitude :
+  diplo.weariness, et le cours de la guerre) ; apres un an de guerre
+  (diplo._long_war), la relation ne filtre plus les offres de paix ; une fiche qui coupe ses lignes l'annonce, et
+  ce qui manque passe d'abord (render_tech.missing_first) ; une musique
+  qui boucle porte ses points de boucle (LOOPSTART / LOOPLENGTH) et se
+  joue en flux (pygame.mixer.music).
   A FAIRE plus tard (pistes) : des tournants pour les ages suivants
   (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
   les evenements ; le siege des ages suivants (beliers, echelles, tours :

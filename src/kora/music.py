@@ -2,11 +2,12 @@
 
 Elle ne joue QUE quand le joueur est en guerre : une guerre declaree qui
 l'implique (diplo.wars_of), ou une bataille ou se battent ses gens. Elle
-monte en douceur (FADE_IN) quand la guerre commence et s'eteint en douceur
-(FADE_OUT) quand elle finit ; elle tourne en boucle sans couture
-(data/music/casus_bellis.ogg : tools/boucle_musique.py en a fait une
-boucle, le raccord ne s'entend pas) - jouee comme un son entier (pas en
-flux), le melangeur la reprend a l'echantillon pres.
+part du DEBUT du morceau (sa propre montee) quand la guerre commence et
+s'eteint en douceur (FADE_OUT) quand elle finit ; ensuite elle boucle sur
+le coeur du morceau, sans couture (data/music/casus_bellis.ogg :
+tools/boucle_musique.py y a mis un fondu enchaine et les etiquettes
+LOOPSTART / LOOPLENGTH, que SDL_mixer suit a l'echantillon pres ; jouee
+en flux par pygame.mixer.music).
 Le volume (0 a 100 %) et la musique coupee sont des reglages du joueur
 (reglages.json : "music_volume", "music_on" ; l'ecran des Reglages).
 Interface seulement : la partie ne change pas (le multijoueur non plus).
@@ -21,7 +22,8 @@ from src.kora import battle, diplo
 from src.kora.theme import data_dir
 
 WAR_TRACK = "casus_bellis.ogg"
-FADE_IN = 4.0
+# Le morceau a sa propre montee : un fondu d'entree tres court (pas de clic).
+FADE_IN = 0.5
 FADE_OUT = 6.0
 DEFAULT_VOLUME = 0.6
 # La musique ne repart pas tout de suite apres une treve : HOLD secondes.
@@ -51,8 +53,7 @@ class Director:
         prefs = prefs or {}
         self.volume = float(prefs.get("music_volume", DEFAULT_VOLUME))
         self.on = bool(prefs.get("music_on", True))
-        self.sound = None
-        self.channel = None
+        self.loaded = False
         self.broken = False
         self.playing = False
         self.calm = 0.0
@@ -68,19 +69,26 @@ class Director:
         try:
             if not pygame.mixer.get_init():
                 pygame.mixer.init(frequency=48000, size=-16, channels=2)
-            if self.sound is None:
-                self.sound = pygame.mixer.Sound(str(data_dir() / "music" / WAR_TRACK))
+            if not self.loaded:
+                pygame.mixer.music.load(str(data_dir() / "music" / WAR_TRACK))
+                self.loaded = True
         except (pygame.error, OSError, FileNotFoundError):
             self.broken = True
             return False
         return True
 
+    def heard_volume(self) -> float:
+        """Le volume que joue le melangeur (0 quand rien ne joue)."""
+        if not self.playing or not pygame.mixer.get_init():
+            return 0.0
+        return pygame.mixer.music.get_volume()
+
     def set_volume(self, volume: float, on: bool | None = None) -> None:
         self.volume = max(0.0, min(1.0, volume))
         if on is not None:
             self.on = on
-        if self.channel is not None:
-            self.channel.set_volume(self.volume if self.on else 0.0)
+        if self.playing:
+            pygame.mixer.music.set_volume(self.volume if self.on else 0.0)
 
     def update(self, state, dt: float) -> None:
         """state : la partie (None au menu de demarrage)."""
@@ -94,12 +102,17 @@ class Director:
         if want:
             self.calm = 0.0
             if not self.playing and self._ready():
-                self.channel = self.sound.play(loops=-1, fade_ms=int(FADE_IN * 1000))
-                if self.channel is not None:
-                    self.channel.set_volume(self.volume)
-                    self.playing = True
-            elif self.channel is not None:
-                self.channel.set_volume(self.volume)
+                # Depuis le debut du morceau (meme si un fondu de sortie
+                # finissait encore) ; la boucle suit les etiquettes du fichier.
+                try:
+                    pygame.mixer.music.set_volume(self.volume)
+                    pygame.mixer.music.play(loops=-1, fade_ms=int(FADE_IN * 1000))
+                except pygame.error:
+                    self.broken = True
+                    return
+                self.playing = True
+            elif self.playing:
+                pygame.mixer.music.set_volume(self.volume)
             return
         if self.playing:
             self.calm += dt
@@ -110,7 +123,7 @@ class Director:
         return {"music_volume": round(self.volume, 2), "music_on": self.on}
 
     def stop(self, fade: float = FADE_OUT) -> None:
-        if self.channel is not None:
-            self.channel.fadeout(int(fade * 1000))
+        """S'eteint en douceur (fadeout ne bloque pas le jeu)."""
+        if self.playing and pygame.mixer.get_init():
+            pygame.mixer.music.fadeout(int(fade * 1000))
         self.playing = False
-        self.channel = None

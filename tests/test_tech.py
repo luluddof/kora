@@ -303,3 +303,36 @@ def test_effect_numbers_are_those_of_the_people_not_of_the_start():
     # Un savoir deja connu : "sans lui".
     conte = " ".join(tech.lines_for(tribe, tech.TECHS["conte"]))
     assert "+8 sans famine" in conte and "sans lui +6" in conte
+
+
+def test_the_tech_card_shows_what_is_missing_first():
+    """Premieres semailles avait trois conditions ; la troisieme (la
+    ressource), coupee en bas d'une colonne trop courte, ne se voyait pas.
+    Ce qui manque passe d'abord (avec sa ligne d'aide), le reste ensuite."""
+    from src.kora.render_tech import missing_first
+
+    need = [
+        ("Il faut avoir vécu :", "section"),
+        ("  120 personnes  (130/120)", "ok"),
+        ("  4 hivers  (5/4)", "ok"),
+        ("  près de céréales  (0/20)", "manque"),
+        ("  Où les trouver : la carte des Ressources (touche R)", "info"),
+    ]
+    rows = missing_first(need)
+    assert rows[0] == ("Il manque :", "section")
+    assert rows[1][1] == "manque" and rows[2][1] == "info", "l'aide suit sa condition"
+    assert ("Déjà là :", "section") in rows and rows[-1][0].strip().startswith("4 hivers")
+    assert missing_first([("  ok", "ok")]) == [("  ok", "ok")]
+
+
+def test_missing_lines_name_the_missing_resource():
+    from test_approach import _state
+
+    st = _state()
+    st.tribes[3].knowledge.discard("semis")
+    tech.invalidate()
+    missing = learning.missing_lines(st, 3, "semis")
+    assert any("céréales" in line for line in missing), missing
+    lines = learning.detail_lines(st, 3, "semis")
+    i = next(i for i, (t, k) in enumerate(lines) if "céréales" in t)
+    assert "carte des Ressources" in lines[i + 1][0]

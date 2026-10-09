@@ -558,6 +558,7 @@ def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
         if "seed" not in state.research:
             draws.set_seed(state, draws.seed_from(state))
         turning.migrate(state)
+        diplo.migrate(state)
         if "diplo" not in data and world.width >= 300 and len(tribes) <= 4:
             # Partie d'avant les petits peuples : ils naissent hors de ce que
             # le joueur a deja explore (ils etaient la, on ne les voyait pas).

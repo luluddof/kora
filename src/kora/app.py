@@ -1724,7 +1724,7 @@ class Play:
             self.renderer.map_mode = "relief" if self.renderer.map_mode == "zones" else "zones"
         elif event.key == pygame.K_w:
             if not wars_ready(self.state):
-                self.toast("Les guerres se déclarent avec Dons et palabres (la diplomatie).")
+                self.toast("Les guerres se déclarent avec Messagers et serments (la diplomatie vient avec les villages).")
                 return None
             self.open_screen("guerres", toggle=True)
         elif event.key == pygame.K_n:

@@ -79,7 +79,7 @@ def test_war_music_plays_only_while_the_player_is_at_war():
     d.update(st, 1.0)
     if d.broken:
         return  # pas de carte son : rien ne joue, rien ne plante
-    assert d.playing and abs(d.channel.get_volume() - 0.5) < 0.01
+    assert d.playing and abs(d.heard_volume() - 0.5) < 0.01
     diplo.end_war(st, 1, 2)
     d.update(st, 1.0)
     assert d.playing, "elle attend un peu (HOLD) avant de s'eteindre"
@@ -124,3 +124,20 @@ def test_the_settings_change_the_volume_and_remember_it(monkeypatch, tmp_path):
     assert d.on is False and persist.load_prefs()["music_on"] is False
     s.handle(r, pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE, mod=0, unicode="", scancode=0))
     assert not s.open
+
+
+def test_the_war_music_starts_at_its_beginning_and_loops_on_its_heart():
+    """Le fichier commence au debut du morceau (sa montee) ; ses etiquettes
+    LOOPSTART / LOOPLENGTH (que suit SDL_mixer) font reprendre la boucle
+    APRES la montee, sur le coeur du morceau (tools/boucle_musique.py)."""
+    import re
+
+    from src.kora.theme import data_dir
+
+    raw = (data_dir() / "music" / music.WAR_TRACK).read_bytes()[:65536]
+    start = re.search(rb"LOOPSTART=(\d+)", raw, re.IGNORECASE)
+    length = re.search(rb"LOOPLENGTH=(\d+)", raw, re.IGNORECASE)
+    assert start and length, "les points de boucle sont dans le fichier"
+    rate = 48000
+    assert 3 * rate < int(start.group(1)) < 20 * rate, "la boucle reprend apres la montee, pas au début"
+    assert int(length.group(1)) > 120 * rate, "la boucle est le cœur du morceau, pas un bout"

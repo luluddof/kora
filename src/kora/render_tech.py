@@ -745,7 +745,7 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
     elif st == "absent":
         _column(r, right, "IL NE VIENDRA PAS", need)
     else:
-        _column(r, right, "CE QU'IL DEMANDE", need)
+        _column(r, right, "CE QU'IL DEMANDE", missing_first(need))
     if st != "connu":
         mx, my = pygame.mouse.get_pos()
         rect = lay["learn"]
@@ -755,21 +755,48 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
         _button(screen, head_font, rect, label, on, hover)
 
 
+def missing_first(need: list) -> list:
+    """Ce qu'un savoir demande, ce qui MANQUE d'abord (sous "Il manque"),
+    puis ce qui est deja la : le blocage se voit toujours, meme si la
+    colonne est courte."""
+    # Une ligne et ses precisions (les lignes "info" qui la suivent).
+    groups: list = []
+    for t, k in need:
+        if k == "section":
+            continue
+        if k == "info" and groups:
+            groups[-1].append((t, k))
+        else:
+            groups.append([(t, k)])
+    missing = [line for g in groups if g[0][1] == "manque" for line in g]
+    if not missing:
+        return need
+    rest = [line for g in groups if g[0][1] != "manque" for line in g]
+    return [("Il manque :", "section")] + missing + ([("Déjà là :", "section")] + rest if rest else [])
+
+
 def _column(r, rect, title: str, rows: list) -> None:
+    """Une colonne de la fiche ; ce qui ne tient pas est annonce (jamais
+    coupe en silence)."""
     screen = r.screen
     x, y, w, h = rect
     screen.blit(r.tiny.render(title, True, GOLD), (x, y))
     yy = y + 18
-    for text, kind in rows:
+    for i, (text, kind) in enumerate(rows):
+        left = sum(1 for _t, k in rows[i:] if k != "section")
         if kind == "section":
-            if yy + 16 > y + h:
-                break
+            if yy + 32 > y + h:
+                _more(r, x, yy, left)
+                return
             screen.blit(r.tiny.render(text.rstrip(" :"), True, GOLD_DIM), (x, yy))
             yy += 16
             continue
         color = {"texte": SOFT, "effet": (178, 205, 140), "ok": GOOD, "manque": BAD, "info": SOFT}.get(kind, SOFT)
         indent = 18 if kind in ("effet", "ok", "manque", "info") else 0
         for k, part in enumerate(_wrap(r.tiny, text.strip(), w - indent - 4)):
+            if yy + 30 > y + h and left > 1 and k == 0:
+                _more(r, x, yy, left)
+                return
             if yy + 15 > y + h:
                 return
             if k == 0 and kind == "effet":
@@ -781,6 +808,10 @@ def _column(r, rect, title: str, rows: list) -> None:
             screen.blit(r.tiny.render(part, True, color), (x + indent, yy))
             yy += 15
         yy += 2
+
+
+def _more(r, x: int, yy: int, left: int) -> None:
+    r.screen.blit(r.tiny.render(f"... et {left} autre{'s' if left > 1 else ''}, déjà là (une fenêtre plus grande les montre)", True, NOTE), (x, yy))
 
 
 def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
@@ -800,7 +831,16 @@ def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
         if st == "absent":
             lines.append((draws.why_absent(state, state.viewer, tid), STYLE["absent"]["text"]))
     if st in ("attente", "verrouille"):
-        lines.append(("Cliquez pour voir ce qu'il demande", NOTE))
+        # Ce qui manque, tout de suite (sans cliquer).
+        missing = learning.missing_lines(state, state.viewer, tid)
+        for text in missing[:4]:
+            lines.append(("Il manque : " + text, BAD))
+        if any(c.kind == "res" for c in t.conds) and any(" près " in m for m in missing):
+            lines.append(("Où sont ces ressources : la carte des Ressources (touche R)", NOTE))
+        if len(missing) > 4:
+            lines.append((f"... et {len(missing) - 4} autres : cliquez pour la fiche", NOTE))
+        elif not missing:
+            lines.append(("Cliquez pour voir ce qu'il demande", NOTE))
     w = max(r.tiny.size(text)[0] for text, _c in lines) + 20
     h = 10 + 16 * len(lines)
     sw, sh = r.screen.get_size()

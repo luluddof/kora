@@ -1279,7 +1279,7 @@ def resolve(state, inst: Instance, index: int) -> str:
 
 # Les propositions d'un peuple a un autre (diplo) : si elles viennent d'un
 # joueur, il apprend la reponse.
-OFFERS = ("offre_treve", "offre_alliance", "offre_commerce", "exige_tribut", "offre_protection", "offre_confederation")
+OFFERS = ("offre_treve", "offre_paix_blanche", "offre_alliance", "offre_commerce", "exige_tribut", "offre_protection", "offre_confederation")
 
 
 def _log(state, tid: int, kind, text: str, where=None) -> None:

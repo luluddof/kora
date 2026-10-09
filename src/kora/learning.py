@@ -78,6 +78,12 @@ def _bands(state, tribe_id: int) -> int:
     return sum(1 for b in state.bands.values() if b.tribe_id == tribe_id and b.population > 0)
 
 
+def missing_lines(state, tribe_id: int, tech_id: str) -> list[str]:
+    """Ce qui manque encore pour ce savoir (les lignes "manque" de
+    detail_lines, sans leur retrait) : ce que le joueur doit voir d'abord."""
+    return [text.strip() for text, kind in detail_lines(state, tribe_id, tech_id) if kind == "manque"]
+
+
 def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, int, str]:
     """(valeur, besoin, libelle) d'une condition pour cette tribu.
     eased : savoir vu chez un voisin, les semaines vecues comptent double."""
@@ -423,6 +429,8 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
             have, need, label = cond_progress(state, tribe, cond, bool(teachers))
             shown = f"  {label}  ({min(have, need)}/{need})" if cond.kind not in ("seen", "flag") else f"  {label}"
             out.append((shown, "ok" if have >= need else "manque"))
+            if cond.kind == "res" and have < need:
+                out.append(("  Où les trouver : la carte des Ressources (touche R)", "info"))
     if teachers:
         names = ", ".join(state.tribes[t].name for t in teachers[:3])
         bonus = round(100 * diffusion_bonus(state, tribe_id, tech_id))

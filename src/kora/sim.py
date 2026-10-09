@@ -935,6 +935,7 @@ def new_game(
     # sans elle, la meme pour toutes : les tests, l'empreinte).
     draws.set_seed(st, int((setup or {}).get("seed", 1)))
     turning.migrate(st)
+    diplo.migrate(st)
     if minor_peoples is None:
         # Les petites cartes des tests restent a 4 peuples.
         minor_peoples = MINOR_START if world.width >= 300 else 0

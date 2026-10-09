@@ -8,7 +8,7 @@ from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 
-NEO = set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite", "chefferie", "maisons", "ancetres", "echanges", "palabres", "greniers", "poterie"}
+NEO = set(tech.START_KNOWLEDGE) | {"huttes", "semis", "sedentarite", "chefferie", "maisons", "ancetres", "echanges", "palabres", "messagers", "greniers", "poterie"}
 
 
 def _world():

@@ -8,7 +8,7 @@ from test_approach import _state
 
 def _two():
     st = _state()
-    # NEO (test_approach) : Dons et palabres, la diplomatie.
+    # NEO (test_approach) : Messagers et serments, la diplomatie.
     assert diplo.diplomatic(st, 2) and diplo.diplomatic(st, 3)
     return st
 
@@ -17,10 +17,10 @@ def test_two_diplomatic_peoples_are_at_peace_until_war_is_declared():
     st = _two()
     assert diplo.at_peace(st, 2, 3) and not diplo.hostile_intent(st, 2, 3)
     # Sans la diplomatie chez l'un : les raids restent libres.
-    st.tribes[3].knowledge.discard("palabres")
+    st.tribes[3].knowledge.discard("messagers")
     tech.invalidate()
     assert not diplo.needs_declaration(st, 2, 3) and not diplo.at_peace(st, 2, 3)
-    st.tribes[3].knowledge.add("palabres")
+    st.tribes[3].knowledge.add("messagers")
     tech.invalidate()
     v = diplo.evaluate(st, 2, 3, "guerre")
     assert not v.blocked and any("prestige" in label for label, _v in v.reasons)

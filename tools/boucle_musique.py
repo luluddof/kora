@@ -2,21 +2,22 @@
 
     python tools/boucle_musique.py source.wav data/music/casus_bellis.ogg
 
-Le jeu fait lui-meme le fondu d'entree (et de sortie) : la boucle prend le
-coeur du morceau, apres sa montee et avant son extinction.
+Le morceau commence par son debut (sa montee), puis boucle sur son coeur,
+apres sa montee et avant son extinction (etiquettes LOOPSTART / LOOPLENGTH,
+lues par SDL_mixer : pygame.mixer.music).
   1. Le debut A : la ou la montee est finie (le volume atteint son plein).
   2. La fin B : dans les dernieres secondes avant l'extinction, la ou les
      XFADE secondes qui suivent B ressemblent le plus aux XFADE secondes
      qui suivent A (le meme accord, le meme temps du rythme) : on compare
      les spectres (bandes d'energie), puis on cale la phase a l'echantillon
      pres (correlation de la forme d'onde).
-  3. La boucle = le morceau de A a B ; ses XFADE premieres secondes sont un
-     fondu enchaine (a puissance egale) entre la suite de B et le debut A :
-     la fin de la boucle s'enchaine sur la suite naturelle de B, qui se
-     fond dans le debut. On n'entend pas le raccord.
-Ecrit un OGG Vorbis (soundfile) et dit ce qu'il a choisi, et la mesure du
-raccord (le saut d'echantillon, la difference de spectre au raccord, comparee
-a celle d'une couture ordinaire du morceau).
+  3. Le fichier = le morceau de 0 a B, puis XFADE secondes de fondu
+     enchaine (a puissance egale) entre la suite de B et le passage apres A ;
+     la boucle repart a A + XFADE : on n'entend pas le raccord.
+Ecrit un OGG Vorbis (soundfile), ses points de boucle (mutagen), et dit ce
+qu'il a choisi et la mesure du raccord (le saut d'echantillon, compare aux
+sauts ordinaires du morceau). Outils de preparation : soundfile, mutagen
+(pas des dependances du jeu).
 """
 
 from __future__ import annotations
@@ -89,22 +90,35 @@ def build(src: str, dst: str) -> dict:
     shifts = range(-span, span + 1)
     corr = [float(np.dot(ref, mono[B + d : B + d + len(ref)])) for d in shifts]
     B += list(shifts)[int(np.argmax(corr))]
-    loop = data[A:B].copy()
+    # Le fichier : le morceau depuis son TOUT DEBUT (sa propre montee)
+    # jusqu'a B, puis XFADE secondes de fondu enchaine (la suite de B
+    # s'eteint, le passage apres A monte). Les etiquettes LOOPSTART /
+    # LOOPLENGTH (lues par SDL_mixer) font repartir la lecture a A + XFADE :
+    # la fin du fondu (le passage apres A) s'enchaine sans couture.
     t = np.linspace(0.0, np.pi / 2, L, dtype=np.float32)[:, None]
-    loop[:L] = data[A : A + L] * np.sin(t) + data[B : B + L] * np.cos(t)
-    # La mesure du raccord : le saut d'echantillon a la couture (fin -> debut),
+    xfade = data[B : B + L] * np.cos(t) + data[A : A + L] * np.sin(t)
+    song = np.concatenate([data[:B], xfade])
+    loop_start, loop_end = A + L, B + L
+    # La mesure du raccord : le saut d'echantillon a la couture (fin -> reprise),
     # compare aux sauts ordinaires d'un echantillon au suivant.
-    seam = float(np.abs(loop[0] - loop[-1]).max())
+    seam = float(np.abs(song[loop_start] - song[loop_end - 1]).max())
+    entry = float(np.abs(song[B] - song[B - 1]).max())
     ordinary = float(np.percentile(np.abs(np.diff(data[A:B], axis=0)).max(axis=1), 99))
     # Par blocs : libsndfile plante en ecrivant un long OGG d'un seul coup.
-    with sf.SoundFile(dst, "w", rate, loop.shape[1], format="OGG", subtype="VORBIS") as out:
-        for i in range(0, len(loop), 1 << 15):
-            out.write(loop[i : i + (1 << 15)])
-    return {
-        "debut": A / rate, "fin": B / rate, "duree": (B - A) / rate, "ressemblance": score,
-        "saut_raccord": seam, "saut_ordinaire_99": ordinary,
-    }
+    with sf.SoundFile(dst, "w", rate, song.shape[1], format="OGG", subtype="VORBIS") as out:
+        for i in range(0, len(song), 1 << 15):
+            out.write(song[i : i + (1 << 15)])
+    from mutagen.oggvorbis import OggVorbis
 
+    tags = OggVorbis(dst)
+    tags["LOOPSTART"] = str(loop_start)
+    tags["LOOPLENGTH"] = str(loop_end - loop_start)
+    tags["TITLE"] = "Casus bellis"
+    tags.save()
+    return {
+        "debut_boucle": loop_start / rate, "fin": loop_end / rate, "boucle": (loop_end - loop_start) / rate,
+        "ressemblance": score, "saut_raccord": seam, "saut_entree_fondu": entry, "saut_ordinaire_99": ordinary,
+    }
 
 if __name__ == "__main__":
     out = build(sys.argv[1], sys.argv[2])

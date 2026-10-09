@@ -12,7 +12,7 @@ from test_ost_siege import _state, _village
 
 
 def _three():
-    """Trois peuples a villages, qui se connaissent (diplomatie : palabres)."""
+    """Trois peuples a villages, qui se connaissent (diplomatie : messagers)."""
     st = _state()
     a, _sa = _village(st, 1, 1, pop=300, col=10)
     b, _sb = _village(st, 2, 2, pop=120, col=22)
@@ -32,7 +32,7 @@ def test_a_trade_accord_no_longer_prevents_war():
     assert not diplo.evaluate(st, 1, 2, "guerre").blocked
     # Sans la diplomatie : un partenaire commercial peut etre raide, et ce
     # n'est pas une trahison.
-    st.tribes[1].knowledge.discard("palabres")
+    st.tribes[1].knowledge.discard("messagers")
     tech.invalidate()
     assert not diplo.at_peace(st, 1, 2)
     assert ai_war.fair_game(st, st.bands[1], st.bands[2], hungry=True)

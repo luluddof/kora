@@ -169,6 +169,9 @@ def _draw_front(r, state, me, front, area, lay, mx, my, tips) -> None:
     told = _declared(state, me, front)
     if told:
         info += f"  ·  {told}"
+    worn = diplo.weariness(state, me, front.key)
+    if worn:
+        info += f"  ·  lassitude +{worn} pour une trêve"
     theme.text(screen, info, "mini", NOTE, (x, y + 24))
     y += 48
     # L'avantage : une barre de -100 a +100.

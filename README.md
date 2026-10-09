@@ -57,9 +57,11 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   s'éteignent (le panneau *Tribu* dit combien de temps il leur reste).
 - **Clic gauche** sur une de vos bandes (un rond à votre couleur) pour la choisir, puis **clic gauche sur la carte** pour
   qu'elle y marche. Une de vos bandes choisie, un **clic droit** sur une bande étrangère l'**attaque** (attention, les
-  combats sont durs) ; un **clic gauche** sur un autre peuple ouvre sa diplomatie. Entre peuples qui connaissent la
-  **diplomatie** (Dons et palabres), on ne s'attaque qu'après avoir **déclaré la guerre** (écran Peuples) : les
-  pays (tributaires, confédérés) et les alliés suivent ; une trêve y met fin. La guerre a un **but** : les
+  combats sont durs) ; un **clic gauche** sur un autre peuple ouvre sa diplomatie. La **diplomatie** vient avec les
+  villages (le savoir **Messagers et serments**) : avant, des bandes qui s'accrochent ; entre deux peuples qui la
+  connaissent, on ne s'attaque qu'après avoir **déclaré la guerre** (écran Peuples) : les
+  pays (tributaires, confédérés) et les alliés suivent ; une trêve (la paix blanche) y met fin. Plus une guerre
+  dure, plus les deux camps sont **las** et prêts à la paix blanche (celui qui mène la guerre résiste davantage). La guerre a un **but** : les
   **soumettre** (prendre leur village, ou **exiger leur soumission** quand vous avez l'avantage). On ne sert qu'un
   suzerain : soumettre un tributaire, c'est le prendre à son suzerain, et la guerre est contre tout son pays (ou
   visez son suzerain : **Guerre à tout leur pays**). Un **motif** (terres disputées, silex ou sel de leurs terres,
@@ -74,7 +76,8 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   camps, les troupes en campagne, les sièges, les derniers combats ; exiger la soumission, proposer une trêve.
 - Chaque partie a **sa sauvegarde** : *Continuer* reprend la plus récente, *Charger une partie* les montre toutes
   (jouer, supprimer) ; dans la partie, *Échap* puis *Sauvegarder une copie*.
-- La **musique de guerre** (*Casus bellis*) monte quand vous êtes en guerre et s'éteint à la paix ; son volume se
+- La **musique de guerre** (*Casus bellis*) part de son début quand vous entrez en guerre, boucle sans couture et
+  s'éteint à la paix ; son volume se
   règle dans *Réglages* (menu de démarrage et *Échap*).
 - **Espace** : pause. **1 à 5** : vitesse du temps.
 - Survolez une case pour voir ce qu'elle produit et ce qu'y coûte la marche (chaque case varie un peu, doucement
@@ -251,5 +254,5 @@ La vision du jeu et les règles de travail : `docs/VISION-KORA.txt`, `CLAUDE.md`
   [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) ; la liste est dans `data/icons/CREDITS.txt`.
 - Polices : Alegreya SC et Alegreya Sans (The Alegreya Project Authors, Huerta Tipográfica), licence
   [SIL Open Font License](https://openfontlicense.org) ; `data/fonts/OFL.txt`.
-- Musique : *Casus bellis*, fournie par l'auteur du jeu ; la boucle (`data/music/casus_bellis.ogg`) est faite par
-  `tools/boucle_musique.py`.
+- Musique : *Casus bellis*, fournie par l'auteur du jeu ; le fichier du jeu (`data/music/casus_bellis.ogg` : le
+  morceau, un fondu enchaîné et ses points de boucle) est fait par `tools/boucle_musique.py`.

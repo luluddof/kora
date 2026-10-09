@@ -1,0 +1,117 @@
+Kora - La diplomatie avec les villages, la paix blanche, la fiche des savoirs, la musique
+=========================================================================================
+Date : 2026-10-16. Statut : FAIT (version 0.18.0).
+
+Ses mots : "faut des recherches de diplomatie et avant ca y a pas de guerre
+tant que les deux pays n'ont pas cette recherche, c'est des conflits
+classiques entre bandes, la diplomatie vient avec les villes" ; "pourquoi
+je peux pas rechercher Premieres semailles alors que j'ai les conditions
+affichees ?" ; "la musique en guerre commence par son debut" ; "plus la
+guerre dure plus les parties sont enclines a la paix blanche".
+
+
+1. PREMIERES SEMAILLES : UN BOGUE D'AFFICHAGE (pas un changement de regle)
+-------------------------------------------------------------------------
+  Le savoir demande trois choses : 120 personnes, 4 hivers, et 20 semaines
+  pres de cereales ou de racines sauvages. Dans SA partie (an 12) : 129
+  personnes (oui), les hivers (oui), mais 0/20 semaines pres de cereales.
+  La fiche en bas de l'arbre est courte (1280 x 720) : la troisieme ligne
+  etait COUPEE sans rien dire ; on ne voyait que deux conditions remplies.
+  Les regles n'avaient pas change ; c'est la fiche qui mentait par omission.
+  CORRIGE :
+  - ce qui MANQUE passe d'abord ("Il manque", en rouge, avec sa ligne
+    d'aide), puis ce qui est "Deja la" (render_tech.missing_first) ;
+  - une colonne qui deborde le dit ("... et N autres, deja la") au lieu de
+    couper en silence (render_tech._column / _more) ;
+  - le survol d'un savoir dit ce qui manque (jusqu'a 4 lignes,
+    learning.missing_lines) ;
+  - une ressource qui manque dit ou la trouver : la carte des Ressources
+    (touche R).
+
+
+2. LA DIPLOMATIE VIENT AVEC LES VILLAGES
+----------------------------------------
+  Avant : Dons et palabres (un savoir de bandes) donnait la diplomatie.
+  Maintenant : MESSAGERS ET SERMENTS (palier 4, colonne 7), apres Dons et
+  palabres et la Sedentarite ; il faut un village et deux peuples connus.
+  "Des messagers vont de village en village, porteurs de paroles et de
+  serments : on declare la guerre, on fait la paix, et l'on s'y tient."
+  - Tant que l'un des deux peuples ne l'a pas : des bandes qui
+    s'accrochent (raids libres, pas de declaration) ; "Declarer la guerre"
+    le dit (il vous faut Messagers et serments / ils ne connaissent pas la
+    diplomatie : attaquez-les au clic droit).
+  - Entre deux peuples qui l'ont : la paix par defaut, la guerre declaree.
+  - Dons et palabres garde ses cadeaux et son +10 aux propositions.
+  - Une partie d'avant 0.18 : un peuple qui avait Dons et palabres ET un
+    village garde la diplomatie (diplo.migrate, une seule fois). Dans SA
+    vieille partie (an 36), les peuples a village l'ont gardee ; les
+    bandes sans village l'ont perdue.
+  - Le libelle "Dons et palabres" des reponses (qui additionnait cinq
+    savoirs) devient "Votre art de la parole (vos savoirs)".
+
+
+3. LA PAIX BLANCHE ET LA LASSITUDE DE LA GUERRE
+-----------------------------------------------
+  Une treve en pleine guerre declaree, c'est la PAIX BLANCHE : ni
+  vainqueur ni vaincu (la soumission, elle, est la victoire).
+  - LA LASSITUDE (diplo.weariness) : +4 pour la treve par saison de guerre
+    (13 semaines), +96 au plus (six ans). Les deux camps la sentent.
+  - LE COURS DE LA GUERRE : celui qui mene (avantage >= 10) veut sa
+    victoire, -1 pour 4 points d'avantage (-20 au plus) ; celui qui perd
+    veut en sortir (+1 pour 4, +20 au plus).
+  - LE VERROU QUI FAISAIT DURER LES GUERRES : l'IA ne proposait aucune
+    treve sous -60 de relation ; or une longue guerre la fait tomber a
+    -100. Apres un an de guerre (diplo._long_war), ce filtre saute : c'est
+    la reponse complete (relation comprise) qui decide.
+  - Un vainqueur net (avantage, raids qui reussissent) resiste longtemps :
+    il vise la soumission, qui finit aussi la guerre. Au bout de six ans,
+    meme un peuple guerrier et conquerant cede, sauf s'il gagne nettement.
+  - Une IA lasse (un an de guerre declaree) propose au joueur une paix
+    blanche : la carte "Ils sont las de la guerre" ("Apres N mois de
+    guerre...") : Faire la paix / Continuer la guerre.
+  - L'ecran des guerres dit "lassitude +N pour une treve" ; la fiche du
+    bouton "Proposer une treve" detaille (Lassitude de la guerre (20 mois)
+    +24, Ils menent la guerre...).
+  ESSAI ECARTE : "l'IA ne fait la paix avec une autre IA que si les deux la
+  veulent". Mesure dans SA partie recente (an 12, 30 ans) : les treves
+  tombaient de 22 a 10 et les guerres s'allongeaient (moyenne 64 -> 76
+  semaines) : l'inverse de sa demande. Retire.
+  MESURE (robot joueur, meme graine ; un essai par partie, donc du bruit) :
+    SA vieille partie (an 36), 20 ans : duree mediane 48 -> 32 semaines,
+      moyenne 59 -> 45, la plus longue 156 -> 80, plus de deux ans 5 -> 0.
+    SA partie recente (an 12), 30 ans : mediane 80 (egale), moyenne 64 ->
+      70, treves 22 -> 24. La plus longue (311 semaines, dans les deux)
+      est celle du robot joueur contre les Akor : plus forts, guerriers,
+      chef conquerant, leurs raids reussissent ; leur reponse a la treve
+      monte de -92 (sans lassitude) a 0 a 69 mois, et ils imposent un
+      tribut juste avant les six ans. C'est la regle voulue : celui qui
+      gagne resiste ; un vrai joueur peut aussi proposer la treve, ou payer.
+
+
+4. LA MUSIQUE PART DU DEBUT
+---------------------------
+  Avant : seul le coeur du morceau, en boucle, avec un fondu d'entree.
+  Maintenant : data/music/casus_bellis.ogg est le morceau ENTIER jusqu'a
+  185 s, puis 2 s de fondu enchaine ; ses etiquettes LOOPSTART /
+  LOOPLENGTH (suivies par SDL_mixer) font reprendre la lecture a 8,2 s,
+  apres la montee. Mesure : le saut au raccord (0,0037) est 23 fois plus
+  petit qu'un saut ordinaire du morceau (0,085). Verifie a l'ecoute du
+  lecteur : 184,0 184,5 185,0 -> 8,67 9,17.
+  music.Director joue en flux (pygame.mixer.music) : depuis le debut a
+  chaque guerre (fondu d'entree de 0,5 s, contre les clics), fondu de
+  sortie de 6 s a la paix (non bloquant).
+  tools/boucle_musique.py : soundfile et mutagen (outils de preparation,
+  pas des dependances du jeu).
+
+
+5. VERIFICATIONS
+----------------
+  Tests : test_white_peace (la diplomatie avec les villages et la
+  migration ; la lassitude par saison et son plafond ; une longue guerre
+  qui fait accepter la treve ; qui mene / qui perd ; une relation au plus
+  bas n'empeche plus la paix apres six ans ; la carte de paix blanche au
+  joueur),
+  test_tech (ce qui manque d'abord, la ressource et ou la trouver),
+  test_saves_music (les points de boucle apres la montee).
+  Captures dans SA partie : la fiche de Premieres semailles (an 12), l'arbre
+  (Messagers et serments, an 36), l'ecran des guerres lasses, la carte.

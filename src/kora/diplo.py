@@ -11,7 +11,7 @@ donne une semaine de vivres par saison). Raider un peuple avec qui l'on
 a un pacte : trahison.
 
 LA GUERRE DECLAREE : deux peuples qui connaissent tous deux la diplomatie
-(Dons et palabres : le bonus "diplomacy") sont EN PAIX par defaut ; pour se
+(Messagers et serments, avec les villages : le bonus "diplomacy") sont EN PAIX par defaut ; pour se
 battre, l'un doit DECLARER LA GUERRE (action "guerre" : un pacte "guerre"
 entre les deux pays - tributaires et confederes compris -, et les allies de
 l'attaque entrent en guerre a ses cotes). Sans declaration, ni le joueur ni
@@ -267,6 +267,21 @@ WAR = "guerre"
 WAR_FADE_WEEKS = 156
 DECLARE_RELATION = -30
 DECLARE_PRESTIGE = 5
+
+
+def migrate(state) -> None:
+    """Une partie d'avant 0.18 : la diplomatie venait de Dons et palabres ;
+    elle vient desormais de Messagers et serments (avec les villages). Un
+    peuple qui l'avait (palabres) et qui a un village la garde."""
+    research = getattr(state, "research", None)
+    if research is None or research.get("messagers"):
+        return
+    with_village = {s.tribe_id for s in state.sites.values() if s.kind == "village"}
+    for tid, tribe in state.tribes.items():
+        if "palabres" in tribe.knowledge and tid in with_village and "messagers" not in tribe.knowledge:
+            tech.grant(tribe, "messagers")
+    research["messagers"] = 1
+    tech.invalidate()
 
 
 def diplomatic(state, tid: int) -> bool:
@@ -579,6 +594,18 @@ VILLAGE_SCORE = 30.0
 SIEGE_SCORE = 2.0
 SCORE_CAP = 100.0
 SUBMIT_BASE = -40
+# LA LASSITUDE : plus une guerre declaree dure, plus les deux camps sont
+# enclins a la paix blanche (une treve, sans soumission) : +WEARY_STEP
+# points pour la treve par saison de guerre (13 semaines), WEARY_CAP au plus
+# (atteint apres six ans : alors meme un conquerant s'y resout, sauf s'il
+# gagne nettement - c'est alors la soumission qui finit la guerre). Le camp qui mene la guerre veut sa
+# victoire (LEAD_PER points de moins par point d'avantage, LEAD_CAP au
+# plus), celui qui la perd veut en sortir ; la lassitude finit par l'emporter.
+WEARY_SEASON = 13
+WEARY_STEP = 4
+WEARY_CAP = 96
+LEAD_PER = 0.25
+LEAD_CAP = 20
 
 
 def set_casus(state, a: int, b: int, weeks: int, why: str) -> None:
@@ -620,6 +647,38 @@ def add_score(state, a: int, b: int, v: float) -> None:
 
 def score(state, a: int, b: int) -> float:
     return _d(state).scores.get((a, b), 0.0) if declared_war(state, a, b) else 0.0
+
+
+def weariness(state, a: int, b: int) -> int:
+    """La lassitude de la guerre declaree entre a et b (0 : pas de guerre
+    declaree, ou moins d'une saison)."""
+    war = next((p for p in _pacts(state, a, b) if p.kind == WAR), None)
+    if war is None:
+        return 0
+    seasons = max(0, state.tick_count - war.since) // WEARY_SEASON
+    return min(WEARY_CAP, seasons * WEARY_STEP)
+
+
+def _long_war(state, a: int, b: int) -> bool:
+    """Une guerre declaree depuis un an : la lassitude se dit."""
+    return weariness(state, a, b) >= 4 * WEARY_STEP
+
+
+def _truce_mood(state, actor: int, target: int) -> list[tuple[str, int]]:
+    """Ce que la duree et le cours de la guerre declaree font a la reponse de
+    `target` a une treve (la paix blanche)."""
+    out = []
+    worn = weariness(state, actor, target)
+    if worn:
+        war = next(p for p in _pacts(state, actor, target) if p.kind == WAR)
+        months = (state.tick_count - war.since) * 12 // 52
+        out.append((f"Lassitude de la guerre ({months} mois)", worn))
+    lead = score(state, target, actor)
+    if lead >= 10:
+        out.append(("Ils mènent la guerre", -min(LEAD_CAP, round(lead * LEAD_PER))))
+    elif lead <= -10:
+        out.append(("Ils perdent la guerre", min(LEAD_CAP, round(-lead * LEAD_PER))))
+    return out
 
 
 def goal_of(state, a: int, b: int) -> bool:
@@ -1130,6 +1189,7 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
             out.append(("Ils ont d'autres ennemis", 10))
         if _warlike(state, target):
             out.append(("Peuple guerrier", -5))
+        out.extend(_truce_mood(state, actor, target))
     elif action == "alliance":
         if not bonus.alliance:
             return Verdict(blocked="Il faut connaître Mariages entre clans")
@@ -1249,7 +1309,7 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
     if seen is not None:
         out.append(seen)
     if bonus.diplo:
-        out.append(("Dons et palabres", bonus.diplo))
+        out.append(("Votre art de la parole (vos savoirs)", bonus.diplo))
     if _betrayer(state, actor):
         out.append(("Vous avez trahi une parole", -25))
     out = [(label, v) for label, v in out if v]
@@ -1278,7 +1338,7 @@ def war_pairs(state, actor: int, target: int) -> list[tuple[int, int]]:
 
 def _war_verdict(state, actor: int, target: int) -> Verdict:
     if not diplomatic(state, actor):
-        return Verdict(blocked="Il faut connaître Dons et palabres (la diplomatie)")
+        return Verdict(blocked="Il faut connaître Messagers et serments (la diplomatie vient avec les villages)")
     if not diplomatic(state, target):
         return Verdict(blocked="Ils ne connaissent pas la diplomatie : attaquez-les au clic droit, sans déclaration")
     if declared_war(state, actor, target):
@@ -1643,7 +1703,9 @@ def ai_monthly(state) -> None:
             fought = _recent_raid(state, tid, other, 52) is not None or _recent_raid(state, other, tid, 52) is not None
             war = next((p for p in _pacts(state, tid, other) if p.kind == WAR), None)
             weary = war is not None and state.tick_count - war.since >= AI_WAR_WEEKS
-            if not at_peace(state, tid, other) and (fought or weary) and rel > -60:
+            # La paix blanche : une relation au plus bas ne l'empeche plus
+            # apres un an de guerre (la lassitude ; la reponse decide).
+            if not at_peace(state, tid, other) and (fought or weary) and (rel > -60 or _long_war(state, tid, other)):
                 if evaluate(state, tid, other, "treve").accepted:
                     perform(state, tid, other, "treve")
                     continue
@@ -1728,8 +1790,18 @@ def _propose_to_player(state, ai: int, player: int) -> None:
     kind = ""
     war = next((p for p in _pacts(state, ai, player) if p.kind == WAR), None)
     weary = war is not None and state.tick_count - war.since >= AI_WAR_WEEKS
-    if not at_peace(state, ai, player) and (fought or weary) and rel > -60 and evaluate(state, player, ai, "treve").accepted:
+    data = {}
+    if (
+        not at_peace(state, ai, player)
+        and (fought or weary)
+        and (rel > -60 or _long_war(state, ai, player))
+        and evaluate(state, player, ai, "treve").accepted
+    ):
         kind = "offre_treve"
+        # Une guerre declaree qui dure depuis un an : ils sont las, et le disent.
+        if _long_war(state, ai, player):
+            kind = "offre_paix_blanche"
+            data = {"mois": (state.tick_count - war.since) * 12 // 52}
     elif rel >= 45 + approach.factor(state, ai, "alliance_rel") and not allied(state, ai, player) and tech.bonuses(state.tribes[ai]).alliance:
         if evaluate(state, player, ai, "alliance").accepted or rel >= 60:
             kind = "offre_alliance"
@@ -1785,7 +1857,7 @@ def _propose_to_player(state, ai: int, player: int) -> None:
     d.cooldown[key] = state.tick_count
     found = gift_carrier(state, player, ai)
     band_id = found[0].id if found is not None else 0
-    events.hook(state, kind, tribe_id=player, band_id=band_id, other=ai)
+    events.hook(state, kind, tribe_id=player, band_id=band_id, other=ai, data=data)
 
 
 # --- sauvegarde ------------------------------------------------------------------------

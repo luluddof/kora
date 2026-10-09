@@ -63,7 +63,7 @@ def test_the_panel_can_show_why_they_would_accept_before_asking():
     st, a, b = _state(known=("palabres",))
     diplo.make_contact(st, 1, 2)
     v = diplo.evaluate(st, 1, 2, "treve")
-    assert v.reasons and ("Dons et palabres", 10) in v.reasons
+    assert v.reasons and ("Votre art de la parole (vos savoirs)", 10) in v.reasons
     assert diplo.evaluate(st, 1, 2, "alliance").blocked.startswith("Il faut")
     assert diplo.evaluate(st, 1, 2, "union").blocked
 

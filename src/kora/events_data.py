@@ -476,6 +476,21 @@ EVENTS: dict[str, Event] = {
             ),
         ),
         Event(
+            "offre_paix_blanche",
+            "Ils sont las de la guerre",
+            "Après {mois} mois de guerre, des envoyés des {other} arrivent sans armes. Leurs gens sont las des "
+            "morts et des champs laissés en friche : ils proposent une paix blanche, sans vainqueur ni vaincu, "
+            "et une trêve de deux ans.",
+            trigger="offre_paix_blanche",
+            player_only=True,
+            conds=(("other_alive",),),
+            mood="peuple",
+            options=(
+                Option("Faire la paix", effects=(("pact", "treve"),), text="La paix blanche est faite avec les {other} : chacun rentre chez soi.", ai=1.3),
+                Option("Continuer la guerre", effects=(("relation", -5),), text="Vous renvoyez les envoyés des {other} : la guerre continue."),
+            ),
+        ),
+        Event(
             "offre_alliance",
             "Une offre d'alliance",
             "Les {other} proposent une alliance, scellée par des mariages entre les familles des chefs.",
