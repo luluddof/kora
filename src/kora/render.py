@@ -233,6 +233,11 @@ def _darken(color: tuple[int, int, int], factor: float) -> tuple[int, int, int]:
     )
 
 
+# La fiche de survol d'une case : jamais plus large (les lignes longues vont
+# a la ligne).
+INSPECT_MAX_W = 360
+
+
 class Renderer:
     def __init__(self, screen: pygame.Surface) -> None:
         self.screen = screen
@@ -1328,17 +1333,21 @@ class Renderer:
         theme.tooltip(self.screen, lines, mx + 18, my + 18, 430)
 
     def draw_inspect(self, hover_info: dict | None, pin_info: dict | None) -> None:
+        """La fiche d'une case : au survol (pres de la souris, INSPECT_MAX_W au
+        plus) et epinglee (en bas a gauche)."""
         w, h = self.screen.get_size()
         if pin_info:
-            pin_lines = inspect_lines(pin_info)
+            pin_lines = self._wrapped(inspect_lines(pin_info), 270)
             ph = 18 + 24 + 18 * max(0, len(pin_lines) - 1)
             self._draw_inspect_card(pin_info, 12, h - ph - 12 - MAP_BUTTON_H - 10, 270, ph, pinned=True)
         if hover_info and (pin_info is None or hover_info.get("hex") != pin_info.get("hex")):
             mx, my = pygame.mouse.get_pos()
             lines = self._inspect_lines(hover_info)
             f0, f1 = theme.font("h3"), theme.font("petit")
-            tw = max([f0.size(lines[0])[0]] + [f1.size(line)[0] for line in lines[1:]]) + 30
-            th = 18 + 24 + 18 * max(0, len(lines) - 1)
+            # Une fiche de survol ne s'elargit pas au-dela d'INSPECT_MAX_W :
+            # une ligne trop longue passe a la ligne.
+            tw = min(INSPECT_MAX_W, max([f0.size(lines[0])[0]] + [f1.size(line)[0] for line in lines[1:]]) + 30)
+            th = 18 + 24 + 18 * max(0, len(self._wrapped(lines, tw)) - 1)
             tx = mx + 18
             ty = max(HUD_HEIGHT + 8, my + 20)
             if tx + tw > w - 8:
@@ -1350,9 +1359,16 @@ class Renderer:
     def _inspect_lines(self, info: dict) -> list[str]:
         return inspect_lines(info)
 
+    def _wrapped(self, lines: list[str], width: int) -> list[str]:
+        """Le titre, puis chaque ligne coupee a la largeur de la fiche."""
+        out = lines[:1]
+        for line in lines[1:]:
+            out += theme.wrap(theme.font("petit"), line, width - 26)
+        return out
+
     def _draw_inspect_card(self, info: dict, x: int, y: int, bw: int, bh: int, pinned: bool) -> None:
         theme.panel(self.screen, (x, y, bw, bh), "peau" if pinned else "infobulle")
-        lines = self._inspect_lines(info)
+        lines = self._wrapped(self._inspect_lines(info), bw)
         yy = y + 9
         for i, line in enumerate(lines):
             if i == 0:
