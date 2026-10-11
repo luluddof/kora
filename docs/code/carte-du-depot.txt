@@ -330,6 +330,33 @@ src/kora/music.py (presentation) : Director (update(state | None, dt),
   morceau entier + fondu enchaine et les etiquettes LOOPSTART / LOOPLENGTH
   (mutagen, outil de preparation).
 
+0.20 (LES NOUVELLES PLANETES ; spec 2026-10-18-nouvelles-planetes-design.txt) :
+src/kora/planets.py (etage 3, pas de pygame) : catalogue (data/planetes/
+  index.json), ids, info, name_of, thumbnail_path, default_id, choose (RANDOM),
+  load (une planete fraiche ; LEGACY = "kora", l'ancienne carte).
+tools/cuire_planetes.py : PLANETS (id, nom, graine), check (le controle),
+  thumbnail, bake ; data/planetes/<id>.json (terrain, rivieres, ressources,
+  cost_pct, atlas, "planet") et <id>.png.
+mapgen : PLANET_WIDTH 1536, _rivers (couche sens | taille << 3), _biomes v2
+  (toundra, savane, jungle, marais, vallees des rivieres), _polar("G"),
+  generate_layers_v2 (LIVING en aires, DEPOSITS en gisements, FISH_COVER),
+  generate_world(..., v2=True).
+world : Terrain TOUNDRA, GLACE, MARAIS, JUNGLE, SAVANE ; rivers, set_rivers,
+  river, river_at, flow_at (le cours), river_pct, direction, step_cost,
+  RIVER_PCT / FORD_PCT / FORD_BIG_PCT, DIRECTION_FR, RIVER_SIZE_FR ;
+  pick_spawn_continents (SPAWN_SEP) ; landmass_grid en cache ; save/load :
+  "rivers", "cost_pct", "planet". path.astar et travel_weeks : le courant.
+resources : 19 ressources, BAKED (ancienne carte), BAKED_V2, REVEALED_BY,
+  hidden_for. goods : bucherons, teinturiers, obsidiennes, ambriers,
+  fondeurs ; FAR_RES. villages : RIVER_FIELDS, RIVER_IRRIGATION, WILD_HERD,
+  herd_mult. peoples : cultures marais, jungle, savane ; MINOR_START_PLANET.
+persist : "map" -> "id", map_id, game_from_json charge la planete de la
+  sauvegarde. session : le salon dit la planete. app : _Worlds.fresh(pid),
+  preview ; render_menu : planet_choices, _draw_planet_pick, planet_lines.
+layout : zoom_scale, max_zoom_for, focus_zoom_for. globe_draw : river_size,
+  RIVER_COLOR / RIVER_TINT, _draw_rivers, _centers_of / _corners_of (plus de
+  maillage precalcule), res_hidden. sim : river_line (le survol).
+
 0.19 : learning.status (les prerequis d'abord, meme avec des points ou en
   cours), learning.kept_points, update_learning (s'arrete sans prerequis) ;
   music.wants_war_music = une guerre declaree. L'ARMEE ET LES GUERRES :

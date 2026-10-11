@@ -1,0 +1,42 @@
+[
+ {
+  "id": "aurane",
+  "name": "Aurane",
+  "seed": 42,
+  "continents": 6,
+  "traits": "des terres variées",
+  "rivers": 0.0397
+ },
+ {
+  "id": "velmire",
+  "name": "Velmire",
+  "seed": 1207,
+  "continents": 5,
+  "traits": "des steppes et des jungles",
+  "rivers": 0.0368
+ },
+ {
+  "id": "ondesie",
+  "name": "Ondésie",
+  "seed": 1909,
+  "continents": 5,
+  "traits": "des montagnes et des forêts",
+  "rivers": 0.0412
+ },
+ {
+  "id": "caldere",
+  "name": "Caldère",
+  "seed": 606,
+  "continents": 5,
+  "traits": "des déserts et des jungles",
+  "rivers": 0.0334
+ },
+ {
+  "id": "sylvene",
+  "name": "Sylvène",
+  "seed": 808,
+  "continents": 5,
+  "traits": "des terres variées",
+  "rivers": 0.0405
+ }
+]

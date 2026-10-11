@@ -15,6 +15,14 @@ class Terrain(Enum):
     EAU = "eau"
     COTE = "cote"
     DESERT = "desert"
+    # Les sols des nouvelles planetes (0.20) : le grand nord, les calottes et
+    # glaciers (infranchissables), les terres noyees, les forets et les herbes
+    # des tropiques.
+    TOUNDRA = "toundra"
+    GLACE = "glace"
+    MARAIS = "marais"
+    JUNGLE = "jungle"
+    SAVANE = "savane"
 
     # Les membres sont uniques : le hachage par identite (en C) remplace
     # celui d'Enum (en Python), appele des millions de fois par partie.

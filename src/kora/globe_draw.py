@@ -1,7 +1,11 @@
 """Dessin de la planete avec numpy.
 
 Loin : lancer de rayons par pixel (une case hexagonale par pixel touche).
-Pres : polygones des hexagones, geometrie calculee en bloc.
+Pres : polygones des hexagones, geometrie calculee en bloc (pour les seules
+cases a l'ecran : une planete de 1536 x 768 ne tient pas en coins
+precalcules) ; les RIVIERES (0.20) en traits qui suivent leur cours, plus
+epais pour un fleuve ; de loin, les rivieres et les fleuves teintent leurs
+cases.
 Memes formules que l'ancien rendu Python pur (projection, ombrage
 0.34 + 0.66 z, brouillard 0.45 / 0.55) ; le cout depend de l'ecran,
 plus de la taille de la carte.
@@ -38,6 +42,9 @@ _PALETTE = np.array(
     [[season_color(t, s) for t in TERRAINS] for s in SEASONS], dtype=np.float32
 )
 _INFLATE = 1.12
+RIVER_COLOR = np.array((62, 118, 196), dtype=np.float32)
+# Les rivieres de loin : la part de bleu sur la case (ruisseau, riviere, fleuve).
+RIVER_TINT = np.array((0.0, 0.0, 0.55, 0.8), dtype=np.float32)
 
 
 def hex_screen_px(world, focal: float, dist: float) -> float:
@@ -95,6 +102,15 @@ class Planet:
         self.trade_on = False
         self._res_color = None
         self._res_alpha = None
+        # Les ressources que le joueur ne reconnait pas encore (resources.hidden_for).
+        self.res_hidden: frozenset = frozenset()
+        self._res_key = None
+        # Les rivieres : la taille de chaque case (0 : sans riviere).
+        rivers = world.rivers
+        self.river_size = (
+            (np.frombuffer(rivers, dtype=np.uint8).reshape(self.height, self.width) >> 3)
+            if rivers else np.zeros((self.height, self.width), dtype=np.uint8)
+        )
 
     # --- saisons et brouillard ---------------------------------------
 
@@ -164,9 +180,11 @@ class Planet:
     # --- zones d'influence -------------------------------------------
 
     def _neighbors(self):
+        """Pour chaque direction : la rangee du voisin (une colonne, diffusee)
+        et sa colonne (int32) - peu de memoire sur une grande planete."""
         if self._nb is None:
-            rows = np.arange(self.height)[:, None]
-            cols = np.arange(self.width)[None, :]
+            rows = np.arange(self.height, dtype=np.int32)[:, None]
+            cols = np.arange(self.width, dtype=np.int32)[None, :]
 
             def half(r):
                 return (r - (r & 1)) // 2
@@ -174,8 +192,8 @@ class Planet:
             out = []
             for dq, dr in NEIGHBOR_DELTAS:
                 nr = rows + dr
-                nc = (cols + dq + half(nr) - half(rows)) % self.width
-                out.append((np.clip(nr, 0, self.height - 1) + 0 * cols, nc + 0 * rows))
+                nc = ((cols + dq + half(nr) - half(rows)) % self.width).astype(np.int32)
+                out.append((np.clip(nr, 0, self.height - 1), nc))
             self._nb = out
         return self._nb
 
@@ -252,16 +270,17 @@ class Planet:
         return key
 
     def zone_key(self) -> tuple:
-        return (self.zones_on, self.realm_on, self.turn_pick, self._zone_key, self.res_on, self.trade_on)
+        return (self.zones_on, self.realm_on, self.turn_pick, self._zone_key, self.res_on, self.trade_on, self.res_hidden)
 
     def _resources(self):
-        if self._res_color is None:
+        if self._res_color is None or self._res_key != self.res_hidden:
             world = self.world
+            self._res_key = self.res_hidden
             color = np.zeros((self.height, self.width, 3), dtype=np.float32)
             best = np.zeros((self.height, self.width), dtype=np.float32)
             for name in NAMES:
                 layer = world.resources.get(name)
-                if not layer:
+                if not layer or name in self.res_hidden:
                     continue
                 v = np.frombuffer(layer, dtype=np.uint8).reshape(self.height, self.width) / np.float32(255.0)
                 win = (v > best) & (v >= 0.15)
@@ -275,6 +294,10 @@ class Planet:
 
     def _colors(self, rows, cols) -> tuple[np.ndarray, np.ndarray]:
         base = _PALETTE[self.seasons()[rows, cols], self.terr[rows, cols]]
+        size = self.river_size[rows, cols]
+        if size.any():
+            a = RIVER_TINT[size][:, None]
+            base = base * (1.0 - a) + RIVER_COLOR * a
         if self.trade_on:
             grey = base.mean(axis=-1, keepdims=True)
             base = (base * 0.35 + grey * 0.65) * 0.55
@@ -404,41 +427,28 @@ class Planet:
 
     # --- pres : polygones ------------------------------------------------
 
-    def _mesh(self):
-        if self._centers is not None:
-            return self._centers, self._corners
-        width, height = self.width, self.height
-        cols = np.arange(width)
-        rows = np.arange(height)
-        lon = 2.0 * math.pi * (cols + 0.5) / width - math.pi
-        lat = (math.pi / 2.0) - (math.pi * rows / (height - 1)) if height > 1 else rows * 0.0
-        cl = np.cos(lat)[:, None]
-        centers = np.stack(
-            [
-                cl * np.sin(lon)[None, :],
-                np.repeat(np.sin(lat)[:, None], width, axis=1),
-                cl * np.cos(lon)[None, :],
-            ],
-            axis=-1,
-        )
+    def _centers_of(self, rr, cc) -> np.ndarray:
+        """Le point de la sphere au centre des cases (rr, cc)."""
+        lon = 2.0 * math.pi * (cc + 0.5) / self.width - math.pi
+        lat = (math.pi / 2.0) - (math.pi * rr / (self.height - 1)) if self.height > 1 else rr * 0.0
+        cl = np.cos(lat)
+        return np.stack([cl * np.sin(lon), np.sin(lat), cl * np.cos(lon)], axis=-1)
 
-        def half(x):
-            return (x - (x & 1)) // 2
+    def _neighbor_of(self, rr, cc, k: int):
+        dq, dr = NEIGHBOR_DELTAS[k]
+        raw = rr + dr
+        half = lambda x: (x - (x & 1)) // 2  # noqa: E731
+        return np.clip(raw, 0, self.height - 1), (cc + dq + half(raw) - half(rr)) % self.width
 
-        nbs = []
-        for dq, dr in NEIGHBOR_DELTAS:
-            raw_r = rows + dr
-            dc = dq + half(raw_r) - half(rows)
-            nc = (cols[None, :] + dc[:, None]) % width
-            nr = np.clip(raw_r, 0, height - 1)
-            nbs.append(centers[nr[:, None], nc])
-        corners = np.empty((height, width, 6, 3), dtype=np.float32)
+    def _corners_of(self, rr, cc) -> np.ndarray:
+        """Les six coins des cases (rr, cc), comme l'ancien maillage."""
+        cen = self._centers_of(rr, cc)
+        nbs = [self._centers_of(*self._neighbor_of(rr, cc, k)) for k in range(6)]
+        out = np.empty((len(rr), 6, 3), dtype=np.float32)
         for k in range(6):
-            v = _normalize(centers + nbs[k] + nbs[(k + 1) % 6])
-            corners[:, :, k, :] = _normalize(centers + (v - centers) * _INFLATE)
-        self._centers = centers
-        self._corners = corners
-        return centers, corners
+            v = _normalize(cen + nbs[k] + nbs[(k + 1) % 6])
+            out[:, k, :] = _normalize(cen + (v - cen) * _INFLATE)
+        return out
 
     def _warped(self, cor: np.ndarray) -> np.ndarray:
         """Le terrain sans nid d'abeille, de pres : chaque bord en trois,
@@ -463,7 +473,6 @@ class Planet:
 
     def draw_hexes(self, screen, state, yaw, pitch, cx, cy, focal, dist) -> None:
         self.sync_fog(state)
-        centers, corners = self._mesh()
         world = self.world
         sw, sh = screen.get_size()
         col_c, row_c = look_center(world, yaw, pitch)
@@ -481,7 +490,7 @@ class Planet:
         rr, cc = rr[seen], cc[seen]
         if not len(rr):
             return
-        cen = centers[rr, cc]
+        cen = self._centers_of(rr, cc)
         x, y, z = _rotate(cen[:, 0], cen[:, 1], cen[:, 2], yaw, pitch)
         depth = dist - z
         ok = (z * dist >= 0.98) & (depth > 0.04)
@@ -491,7 +500,7 @@ class Planet:
         rr, cc = rr[ok], cc[ok]
         if not len(rr):
             return
-        cor = self._warped(corners[rr, cc].astype(np.float64))
+        cor = self._warped(self._corners_of(rr, cc).astype(np.float64))
         x, y, z = _rotate(cor[..., 0], cor[..., 1], cor[..., 2], yaw, pitch)
         depth = dist - z
         good = ((z * dist >= 0.98) & (depth > 0.04)).all(axis=1)
@@ -504,3 +513,53 @@ class Planet:
         draw = pygame.draw.polygon
         for i in np.nonzero(good)[0].tolist():
             draw(screen, colors[i].tolist(), pts[i].tolist())
+        self._draw_rivers(screen, rr[good], cc[good], fog[good], yaw, pitch, cx, cy, focal, dist)
+
+    def _draw_rivers(self, screen, rr, cc, fog, yaw, pitch, cx, cy, focal, dist) -> None:
+        """Les rivieres des cases dessinees : un trait du centre de la case au
+        centre de la case en aval (le terrain deforme, comme les cases)."""
+        rivers = self.world.rivers
+        if not rivers or not len(rr):
+            return
+        code = np.frombuffer(rivers, dtype=np.uint8).reshape(self.height, self.width)[rr, cc]
+        on = code > 0
+        if not on.any():
+            return
+        rr, cc, code, fog = rr[on], cc[on], code[on], fog[on]
+        k = (code & 7).astype(np.int64) - 1
+        nr = np.empty_like(rr)
+        nc = np.empty_like(cc)
+        for d in range(6):
+            sel = k == d
+            if sel.any():
+                nr[sel], nc[sel] = self._neighbor_of(rr[sel], cc[sel], d)
+        hex_px = focal * (2.0 * math.pi / max(1, self.width)) / max(1e-3, dist - 1.0)
+        widths = np.maximum(1, np.round(hex_px * np.array((0.0, 0.07, 0.13, 0.22))[code >> 3])).astype(np.int64)
+        ends = []
+        for r_, c_ in ((rr, cc), (nr, nc)):
+            p_ = self._warp_points(self._centers_of(r_, c_))
+            x, y, z = _rotate(p_[:, 0], p_[:, 1], p_[:, 2], yaw, pitch)
+            depth = dist - z
+            ok = (z * dist >= 0.98) & (depth > 0.04)
+            depth = np.where(ok, depth, 1.0)
+            ends.append((cx + focal * x / depth, cy - focal * y / depth, ok))
+        (ax, ay, aok), (bx, by, bok) = ends
+        color = tuple(int(c) for c in RIVER_COLOR)
+        dim = tuple(int(c * 0.55) for c in RIVER_COLOR)
+        line = pygame.draw.line
+        # Du centre de la case au centre de la case en aval.
+        for i in np.nonzero(aok & bok)[0].tolist():
+            line(screen, color if fog[i] == 2 else dim, (ax[i], ay[i]), (bx[i], by[i]), int(widths[i]))
+
+    def _warp_points(self, p: np.ndarray) -> np.ndarray:
+        """Des points de la sphere deplaces comme le terrain (globe.warp)."""
+        width, height = self.width, self.height
+        lon = np.arctan2(p[..., 0], p[..., 2])
+        lat = np.arcsin(np.clip(p[..., 1], -1.0, 1.0))
+        xf = (lon + math.pi) * (width / (2.0 * math.pi)) - 0.5
+        yf = (math.pi / 2.0 - lat) * ((height - 1) / math.pi)
+        dx, dy = globe.warp(xf, yf, width, np.sin, np.sqrt, np.minimum)
+        lon = (xf - dx + 0.5) * (2.0 * math.pi / width) - math.pi
+        lat = math.pi / 2.0 - (yf - dy) * (math.pi / max(1, height - 1))
+        cl = np.cos(lat)
+        return np.stack([cl * np.sin(lon), np.sin(lat), cl * np.cos(lon)], axis=-1)

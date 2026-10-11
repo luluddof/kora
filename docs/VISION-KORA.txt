@@ -619,8 +619,20 @@ lente, bandes dessinees petites a taille fixe.
     onglet Guerre, l'ecran "L'armee et les guerres" (A : l'armee, W : les
     guerres).
   - "Rework de la carte et des ressources : l'agrandir et l'ameliorer
-    (nouvelle carte)." ETAT DES LIEUX FAIT (spec, section 4) ; PROPOSITION
-    en attente de ses choix.
+    (nouvelle carte)." ETAT DES LIEUX FAIT (spec, section 4) ; proposition
+    C1-C8.
+2026-10-18
+  - C1 "1536 x 768", C2 "pourquoi pas", C3 "oui, et un bonus/malus selon le
+    sens du courant", C4-C7 oui, C8 "ouiiii, parfait pour le multi ; notre
+    civilisation apparait comme les autres au hasard sur un continent".
+    FAIT (0.20.0 ; spec 2026-10-18-nouvelles-planetes-design.txt) : cinq
+    planetes cuites (1536 x 768, 5 a 6 continents, controlees), choisies au
+    menu ou au hasard (l'hote en multijoueur) ; tous les peuples au hasard
+    sur un continent ; rivieres (sens, taille) et courant (x0,7 / x1,3,
+    gue x1,25) ; toundra, glace, marais, jungle, savane ; 19 ressources
+    (aires du vivant, gisements des matieres ; cuivre et etain caches) ;
+    champs des rives, troupeaux pres des betes sauvages, cinq metiers ;
+    l'ancienne carte garde les anciennes parties.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -780,6 +792,15 @@ lente, bandes dessinees petites a taille fixe.
   0.17.0 : REGLE NOUVELLE : une decision IA qui coute des vivres ou des
   bras regarde d'abord villages.food_outlook (la marge a la recolte) ; un
   metier IA ne prend jamais les bras des champs (goods._keeps_hands).
+  0.20.0 : REGLES NOUVELLES : une planete se CUIT (tools/cuire_planetes.py,
+  numpy) et se livre (data/planetes, les deux specs) ; le jeu ne genere
+  rien ; une partie note sa planete (world.planet, "map" -> "id") ; un pas
+  de marche se compte par world.step_cost (le courant : de la case de
+  depart a celle d'arrivee), jamais par enter_cost_for seul ; un sol
+  nouveau = une valeur dans CHAQUE table par sol (test_planets les liste) ;
+  une ressource nouvelle : sa couche (LIVING ou DEPOSITS), sa couleur, sa
+  visibilite (REVEALED_BY) ; un tableau numpy pleine planete se justifie
+  (1,18 million de cases) : calculer pour l'ecran, pas pour la planete.
   0.19.0 : REGLES NOUVELLES : un savoir sans tous ses prerequis est
   verrouille, quoi qu'il arrive (des points ne le debloquent pas :
   learning.status) ; la musique de guerre ne joue que pour une guerre

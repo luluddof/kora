@@ -22,6 +22,7 @@ from src.kora import (
     memory,
     ost,
     places,
+    planets,
     population,
     records,
     siege,
@@ -41,13 +42,20 @@ from src.kora.world import (
     World,
     cost_pct,
     enter_cost_for,
+    step_cost,
     food_production,
     load_world,
     make_filled_world,
     offset_to_axial,
+    pick_spawn_continents,
     pick_spawn_hexes,
     save_world,
+    DIRECTION_FR,
+    FORD_BIG_PCT,
+    FORD_PCT,
+    RIVER_SIZE_FR,
 )
+from src.kora.resources import hidden_for
 
 # L'etat de la partie et ses joueurs vivent dans gamestate.py ; note_seen
 # dans vision.py. sim les rend aussi (anciens appels, tests).
@@ -74,6 +82,7 @@ from src.kora.peoples import (
     MINOR_BAND_CUT,
     MINOR_POP,
     MINOR_START,
+    MINOR_START_PLANET,
     civ_of,
     civ_villages,
     culture_for_place,
@@ -191,8 +200,9 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
         "winter_weeks": local_winter_weeks(state.world, placed),
         "zone": zone,
         "site": site_info,
-        "resources": state.world.resource_lines(placed) if getattr(state.world, "resources", None) else [],
+        "resources": state.world.resource_lines(placed, hidden_for(state.tribes.get(me))) if getattr(state.world, "resources", None) else [],
         "walk": walk_line(state, placed),
+        "river": river_line(state.world, placed),
     }
 
 
@@ -334,8 +344,27 @@ def walk_line(state: GameState, h: Hex) -> str:
     return f"Marche : {base * pct // 100} ({word} pour ce terrain, {pct - 100:+d} %)"
 
 
+def river_line(world, h: Hex) -> str:
+    """La riviere d'une case (ou de sa rive) : sa taille, ou elle coule, et
+    ce que le courant fait a la marche (world.RIVER_PCT)."""
+    river = world.river(h)
+    if river is not None:
+        k, size = river
+        return (
+            f"{RIVER_SIZE_FR[size]} : coule vers {DIRECTION_FR[k]} (à le suivre : marche x0,7 ; "
+            f"à contre-courant x1,3 ; le traverser : x{(FORD_BIG_PCT if size >= 3 else FORD_PCT) / 100:.2f})".replace(".", ",")
+        )
+    idx = world._index(h)
+    if idx is not None and world.flow_at(*idx):
+        k = world.flow_at(*idx) - 1
+        return f"Au bord d'une rivière qui coule vers {DIRECTION_FR[k]} (le long de l'eau : x0,7 en aval, x1,3 en amont)".replace(".", ",")
+    return ""
+
+
 def inspect_lines(info: dict) -> list[str]:
     lines = [info["terrain_fr"], f"Saison : {info['season_fr']}"]
+    if info.get("river"):
+        lines.append(info["river"])
     if info.get("walk"):
         lines.append(info["walk"])
     if info.get("winter_weeks") is not None:
@@ -570,7 +599,7 @@ def apply_movement(state: GameState) -> None:
         points = MOVE_POINTS_PER_WEEK
         while band.path and points > 0:
             nxt = band.path[0]
-            cost = enter_cost_for(state.world, nxt, water_ok, costs)
+            cost = step_cost(state.world, band.position, nxt, water_ok, costs)
             if cost is None:
                 # Chemin coupe : ordre annule, la bande reste (spec du 14).
                 band.path = []
@@ -830,33 +859,21 @@ def _restore(state: GameState, saved: _Snap) -> None:
     recompute_vision(state)
 
 
-def _default_world() -> World:
-    candidates: list[Path] = []
-    if getattr(sys, "frozen", False):
-        meipass = getattr(sys, "_MEIPASS", None)
-        if meipass:
-            candidates.append(Path(meipass) / "data" / "kora_map.json")
-        exe_dir = Path(sys.executable).resolve().parent
-        candidates.append(exe_dir / "data" / "kora_map.json")
-        candidates.append(exe_dir / "_internal" / "data" / "kora_map.json")
-    else:
-        candidates.append(
-            Path(__file__).resolve().parents[2] / "data" / "kora_map.json"
-        )
-    for map_path in candidates:
-        if not map_path.exists():
-            continue
-        try:
-            loaded = load_world(map_path)
-        except (KeyError, ValueError, json.JSONDecodeError):
-            continue
-        if loaded.wrap_x and loaded.width >= 300:
-            return loaded
-    # Pas de carte cuite : on la genere (numpy, lent ; seulement dans ce cas).
-    world = generate_world(seed=42)
+def _default_world(pid: str | None = None) -> World:
+    """La planete d'une partie : pid (planets.py), sinon la planete par
+    defaut (la premiere livree ; l'ancienne carte si aucune)."""
+    world = planets.load(pid or planets.default_id())
+    if world is None and pid not in (None, planets.LEGACY):
+        world = planets.load(planets.LEGACY)
+    if world is not None:
+        return world
+    # Pas de carte cuite : on genere l'ancienne (numpy, lent ; seulement dans
+    # ce cas, en developpement).
+    world = generate_world(seed=42, width=768, height=384, v2=False)
+    world.planet = planets.LEGACY
     if not getattr(sys, "frozen", False):
         try:
-            save_world(world, candidates[0])
+            save_world(world, Path(__file__).resolve().parents[2] / "data" / "kora_map.json")
         except OSError:
             pass
     return world
@@ -896,17 +913,21 @@ def new_game(
     # Chaque tribu part sur le biome de son nom, avec de quoi nourrir
     # sa bande au printemps. La Steppe connait deja le troupeau, la Cote
     # le cabotage : c'est leur savoir de depart.
-    spots = pick_spawn_hexes(
-        world,
-        4,
-        prefs=[
-            {Terrain.VALLEE, Terrain.PLAINE},
-            {Terrain.STEPPE},
-            {Terrain.FORET},
-            {Terrain.COTE},
-        ],
-        min_forage=[40.0, 30.0, 32.0, 24.0],
-    )
+    prefs = [
+        {Terrain.VALLEE, Terrain.PLAINE},
+        {Terrain.STEPPE, Terrain.SAVANE},
+        {Terrain.FORET},
+        {Terrain.COTE},
+    ]
+    if world.rivers:
+        # Les nouvelles planetes : chacun au hasard sur un continent (la graine
+        # de la partie : la meme pour tous les joueurs).
+        spots = pick_spawn_continents(
+            world, 4, random.Random(int((setup or {}).get("seed", 1)) * 7919 + 11),
+            prefs=prefs, min_forage=[40.0, 30.0, 32.0, 24.0],
+        )
+    else:
+        spots = pick_spawn_hexes(world, 4, prefs=prefs, min_forage=[40.0, 30.0, 32.0, 24.0])
     for tribe in tribes.values():
         tech.start_knowledge(tribe)
     # Les autres joueurs gardent le savoir de leur pays (troupeau pour la
@@ -938,7 +959,7 @@ def new_game(
     diplo.migrate(st)
     if minor_peoples is None:
         # Les petites cartes des tests restent a 4 peuples.
-        minor_peoples = MINOR_START if world.width >= 300 else 0
+        minor_peoples = (MINOR_START_PLANET if world.rivers else MINOR_START) if world.width >= 300 else 0
     if minor_peoples:
         add_minor_peoples(st, minor_peoples)
     recompute_vision(st)

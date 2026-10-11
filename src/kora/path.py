@@ -6,9 +6,12 @@ from src.kora.world import (
     INSHORE_MOVE_COST,
     MOVE_COST,
     NEIGHBOR_DELTAS,
+    RIVER_PCT,
     cost_pct,
     World,
     enter_cost_for,
+    river_pct,
+    step_cost,
 )
 
 # Le monde est grand : 4 cases de plaine par semaine (cout 10).
@@ -45,7 +48,12 @@ def astar(
     # soit 9) par case de distance ; valable tant qu'aucun cout n'est dessous.
     move_cost = costs or MOVE_COST
     pct = cost_pct(world)
+    # Le pas le moins cher : la plaine au plus bas de sa variation, et, avec
+    # des rivieres, dans le sens du courant (river_pct).
     step = min(10 * COST_VAR_MIN // 100, INSHORE_MOVE_COST)
+    rivers = bool(world._flow)
+    if rivers:
+        step = step * min(RIVER_PCT) // 100
     goal_c, goal_r = goal_i
     goal_q = goal_c - (goal_r - (goal_r & 1)) // 2
     goal_s = -goal_q - goal_r
@@ -91,7 +99,7 @@ def astar(
         cr, cc = divmod(current, width)
         cq = cc - (cr - (cr & 1)) // 2
         g_cur = g[current]
-        for dq, dr in NEIGHBOR_DELTAS:
+        for k, (dq, dr) in enumerate(NEIGHBOR_DELTAS):
             nr = cr + dr
             if nr < 0 or nr >= height:
                 continue
@@ -107,6 +115,8 @@ def astar(
                 cost = INSHORE_MOVE_COST
             else:
                 cost = cost * pct[nr][nc] // 100
+                if rivers:
+                    cost = cost * river_pct(world, cc, cr, nc, nr, k) // 100
             tentative = g_cur + cost
             if max_cost is not None and tentative > max_cost:
                 continue
@@ -126,8 +136,10 @@ def travel_weeks(
         return 0
     weeks = 0
     points = 0
+    here = start
     for nxt in path:
-        cost = enter_cost_for(world, nxt, water_ok, costs)
+        cost = step_cost(world, here, nxt, water_ok, costs)
+        here = nxt
         if cost is None:
             return weeks
         if points < cost:

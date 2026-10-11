@@ -73,7 +73,7 @@ MARCH_MORALE = -10.0
 LEADER_MORALE = 5.0
 WELD_MORALE = -8.0
 _T = Terrain
-COVER = {_T.COLLINE: 1.2, _T.FORET: 1.15, _T.MONTAGNE: 1.35, _T.SOMMET: 1.35}
+COVER = {_T.COLLINE: 1.2, _T.FORET: 1.15, _T.MONTAGNE: 1.35, _T.SOMMET: 1.35, _T.JUNGLE: 1.25, _T.MARAIS: 1.1}
 # Facilite de la poursuite : terrain ouvert, on rattrape ; bois et collines,
 # on s'echappe.
 ESCAPE = {
@@ -84,6 +84,10 @@ ESCAPE = {
     _T.COLLINE: 0.7,
     _T.MONTAGNE: 0.5,
     _T.SOMMET: 0.5,
+    _T.SAVANE: 1.2,
+    _T.TOUNDRA: 1.15,
+    _T.JUNGLE: 0.5,
+    _T.MARAIS: 0.6,
 }
 PURSUIT = 0.15
 ARMY_PURSUIT = 1.5
@@ -108,6 +112,11 @@ PLACE = {
     _T.COTE: "sur la côte",
     _T.DESERT: "dans le désert",
     _T.EAU: "sur l'eau",
+    _T.TOUNDRA: "dans la toundra",
+    _T.GLACE: "sur la glace",
+    _T.MARAIS: "dans les marais",
+    _T.JUNGLE: "dans la jungle",
+    _T.SAVANE: "dans la savane",
 }
 
 

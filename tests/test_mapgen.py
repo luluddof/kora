@@ -10,11 +10,11 @@ from src.kora.world import offset_to_axial
 
 
 @functools.lru_cache(maxsize=None)
-def generate_world(seed=42, width=None, height=None):
-    # Une planete pleine taille prend ~15 s : chaque graine n'est generee
-    # qu'une fois pour tout le fichier (les tests ne la modifient pas).
-    size = {k: v for k, v in (("width", width), ("height", height)) if v is not None}
-    return _generate_world(seed=seed, **size)
+def generate_world(seed=42, width=768, height=384):
+    # Les planetes du jeu (1536 x 768, ~3 min) se cuisent a part
+    # (tools/cuire_planetes.py) ; le generateur ne depend pas de la taille :
+    # les tests prennent 768 x 384 (~40 s), une fois par graine.
+    return _generate_world(seed=seed, width=width, height=height)
 
 
 def test_two_seeds_produce_different_land():
@@ -81,7 +81,7 @@ def test_mountains_follow_ranges_not_continent_cores():
             t = world.terrain(offset_to_axial(col, row))
             if t is Terrain.EAU:
                 continue
-            if lat > 0.80 and t is Terrain.SOMMET:
+            if (lat > 0.80 and t is Terrain.SOMMET) or t is Terrain.GLACE:
                 continue
             land += 1
             if t in (Terrain.MONTAGNE, Terrain.SOMMET):
@@ -210,7 +210,7 @@ def _continent_aspects(world) -> list[tuple[int, float]]:
 
 def test_poles_are_ice_or_ocean():
     world = generate_world(seed=11, width=96, height=48)
-    allowed = {Terrain.EAU, Terrain.SOMMET, Terrain.COTE}
+    allowed = {Terrain.EAU, Terrain.GLACE, Terrain.COTE}
     for col in range(world.width):
         for row in (0, 1, world.height - 2, world.height - 1):
             t = world.terrain(offset_to_axial(col, row))
@@ -243,3 +243,40 @@ def test_atlas_names_several_oceans_and_the_continents():
     assert kinds.count("land") >= 3
     assert kinds.count("sea") >= 4
     assert len({lab.name for lab in labels}) == len(labels)
+
+
+
+def test_new_planets_have_every_soil_and_ice_caps():
+    world = generate_world(seed=42)
+    found = {t for row in world._terrains for t in row}
+    for needed in (Terrain.TOUNDRA, Terrain.GLACE, Terrain.MARAIS, Terrain.JUNGLE, Terrain.SAVANE):
+        assert needed in found, f"manque {needed}"
+    land = _count(world, *(t for t in Terrain if t not in (Terrain.EAU, Terrain.GLACE)))
+    for soil, lo, hi in ((Terrain.TOUNDRA, 0.04, 0.25), (Terrain.JUNGLE, 0.03, 0.2), (Terrain.SAVANE, 0.04, 0.3), (Terrain.MARAIS, 0.004, 0.06)):
+        share = _count(world, soil) / land
+        assert lo <= share <= hi, (soil, share)
+
+
+def test_rivers_run_downhill_to_the_sea_or_a_lake():
+    """Chaque case de riviere a un sens ; en le suivant, on arrive toujours a
+    l'eau (une mer, un lac), et le cours ne grossit jamais en descendant moins."""
+    from src.kora.world import NEIGHBOR_DELTAS, axial_to_offset
+
+    world = generate_world(seed=42)
+    assert world.rivers
+    land = _count(world, *(t for t in Terrain if t not in (Terrain.EAU, Terrain.GLACE)))
+    cells = [i for i, v in enumerate(world.rivers) if v]
+    assert 0.015 <= len(cells) / land <= 0.08
+    for i in cells[:: max(1, len(cells) // 300)]:
+        row, col = divmod(i, world.width)
+        size = world.rivers[i] >> 3
+        for _ in range(4000):
+            v = world.rivers[row * world.width + col]
+            if not v:
+                break
+            assert v >> 3 >= size or world._terrains[row][col] is Terrain.EAU
+            size = v >> 3
+            h = offset_to_axial(col, row)
+            dq, dr = NEIGHBOR_DELTAS[(v & 7) - 1]
+            col, row = axial_to_offset(world.canonicalize(type(h)(h.q + dq, h.r + dr)))
+        assert world._terrains[row][col] in (Terrain.EAU, Terrain.MARAIS, Terrain.VALLEE, Terrain.COTE) or not world.rivers[row * world.width + col], "une rivière qui se perd"

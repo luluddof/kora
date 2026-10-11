@@ -1,0 +1,214 @@
+Kora - Les nouvelles planetes (carte agrandie et amelioree) : conception
+=======================================================================
+Date : 2026-10-18. Statut : FAIT (version 0.20.0).
+
+Ses mots (reponse a la proposition C1-C8 du 2026-10-17) :
+  C1 "taille de 1536 x 768" ; C2 "pourquoi pas" ; C3 "oui, et donne un
+  bonus/malus de proximite selon le sens du courant : a contre-sens malus,
+  dans le sens du courant bonus" ; C4 oui ; C5 oui ; C6 oui ; C7 oui ;
+  C8 "ouiiii, ce sera parfait aussi pour le multi (aussi notre
+  civilisation apparait comme les autres aleatoirement sur un continent)".
+
+
+0. CE QUI NE CHANGE PAS
+-----------------------
+  - Le jeu reste deterministe (multijoueur) : rien de numpy en partie ; la
+    generation (numpy) ne sert qu'a CUIRE les planetes, livrees avec le jeu.
+  - L'unite de jeu reste la case : vue 8, marche 4 cases de plaine par
+    semaine. Une planete 2 x plus large et 2 x plus haute = un monde 4 fois
+    plus grand a parcourir ("le monde doit paraitre GRAND").
+  - Les anciennes parties gardent l'ancienne carte (C7).
+
+
+1. LES PLANETES (C1, C2, C8)
+----------------------------
+  - Taille : 1536 x 768 cases (1 180 000 cases, 4 fois l'ancienne).
+  - Plusieurs planetes cuites a l'avance (tools/cuire_planetes.py), livrees
+    dans data/planetes/<id>.json, chacune avec son nom, sa graine et une
+    vignette (data/planetes/<id>.png) ; l'ancienne carte reste
+    data/kora_map.json (id "kora", "L'ancienne Kora").
+  - Chaque planete passe un CONTROLE avant d'etre gardee : 5 a 7
+    continents habitables, le plus grand entre 70 000 et 160 000 cases
+    habitables, des rivieres (au moins 1,5 % des terres), tous les sols
+    presents, chaque ressource presente sur plusieurs continents.
+  - Plus de terres (part des terres 0,36 au lieu de 0,32), des continents
+    plus varies (tailles, iles, archipels), de la VRAIE GLACE aux poles
+    (infranchissable) au lieu de sommets.
+  - Le menu "Nouvelle partie" propose de choisir la planete (vignette, nom,
+    continents, sols) ou "Au hasard" (par defaut) ; en multijoueur, l'hote
+    choisit, les amis chargent la meme.
+  - TOUS LES PEUPLES, le joueur compris, partent au hasard (la graine de la
+    partie) sur un continent habitable : chaque peuple tire son continent
+    (pondere par sa place), puis un lieu qui lui convient ; un peuple de sa
+    souche part pres de lui. Plus de "le joueur sur le plus grand
+    continent".
+
+
+2. LES RIVIERES (C3)
+--------------------
+  - Cuites avec la planete : chaque case de riviere a un SENS (la case en
+    aval, une des 6 directions) et une TAILLE (ruisseau, riviere, fleuve)
+    ; une couche "rivers" de la carte (octets : sens 1..6, taille en
+    dizaines). Les vallees (sol VALLEE) bordent les rivieres et s'elargissent
+    en plaines alluviales le long des fleuves ; marais dans les deltas et les
+    plats humides.
+  - LE COURANT (sa demande) : une marche le long d'une riviere (de la
+    riviere ou de sa rive vers la riviere ou sa rive) dans le SENS DU
+    COURANT coute moins (x0,7 en plein dans le sens, x0,85 de biais), a
+    CONTRE-COURANT plus (x1,3, de biais x1,15). On le voit au survol du
+    chemin et dans la fiche de la case ("Riviere : coule vers le sud-est").
+  - TRAVERSER une riviere hors de son cours : un gue, x1,25 (fleuve x1,6).
+  - La riviere nourrit : poisson d'eau douce (la peche), champs plus
+    fertiles sur ses rives (+25 %, x1,1 de plus avec Rigoles d'irrigation),
+    les premiers villages de l'IA la cherchent ; les crues existent deja
+    (vallees).
+  - Sur la carte : un trait bleu qui suit le cours, plus epais pour un
+    fleuve ; dans le mode Ressources aussi.
+
+
+3. LES SOLS (C4)
+----------------
+  Nouveaux : TOUNDRA (le grand nord : rennes, peu de vivres, hivers
+  longs), GLACE (calottes et glaciers : infranchissable), MARAIS (lent,
+  poisson, oiseaux, roseaux ; pas de champ sans drainage), JUNGLE (foret
+  tropicale : lente, riche en fruits, champs seulement apres brulis),
+  SAVANE (herbes hautes des tropiques secs : gros gibier, marche facile).
+  Chacun a : cout de marche, nourriture, saisons, couleurs (et neige),
+  couvert en bataille, fertilite au village, propagation de l'influence,
+  noms dans les textes, place dans les cultures (nouvelles : peuple des
+  marais, peuple de la jungle, peuple de la savane ; le grand froid prend la
+  toundra) et dans les savoirs (ceux qui nourrissent par terrain s'y
+  etendent quand c'est logique : la chasse en savane, les raquettes en
+  toundra, la peche dans les marais).
+
+
+4. LES RESSOURCES (C5, C6)
+--------------------------
+  - Deux familles : les ETRES VIVANTS (cereales, racines, fruits, miel,
+    aurochs, chevaux, chevres, rennes, poisson) vivent dans des AIRES (des
+    taches de tailles variees qui suivent le climat et les sols) ; les
+    MATIERES (silex, argile, sel, ocre, obsidienne, ambre, cuivre, etain,
+    argent, bois) sont des GISEMENTS : des points, de 1 a 4 cases, plus ou
+    moins riches, pres des reliefs, des rivieres, des volcans, des cotes.
+  - Nouvelles : fruits et noix, miel, ocre, obsidienne, ambre, bois
+    d'oeuvre, cuivre, etain.
+  - Visibles : tout, sauf le cuivre et l'etain (ils se reconnaissent avec
+    Le cuivre martelé ; l'etain sert au bronze, a l'age suivant).
+  - Au village (C6) : les champs plus fertiles pres des cereales (deja) et
+    au bord des rivieres ; les troupeaux (chevres, boeufs) donnent plus pres
+    de leurs betes sauvages ; de nouveaux metiers prennent la matiere a
+    portee : bucherons (bois : chantiers moins chers, palissade), teinturiers
+    (ocre : prestige), tailleurs d'obsidienne (lames : force), parures
+    d'ambre (un bien de prestige qui se vend cher), forgerons du cuivre
+    (avec Le cuivre martelé) ; fruits et miel nourrissent la cueillette.
+
+
+5. LA COMPATIBILITE (C7)
+------------------------
+  - Une sauvegarde note sa planete ("map": {"id", "width", "height"}) ; une
+    ancienne (sans id) est sur "kora". On charge la bonne planete.
+  - Le multijoueur : l'hote envoie l'id de la planete ; un ami qui ne l'a
+    pas (une autre version) recoit un message clair.
+
+
+6. CE QUI EST FAIT (le detail, par module)
+-----------------------------------------
+  GENERATION (mapgen.py, tools/cuire_planetes.py)
+  - PLANET 1536 x 768, LAND_SHARE 0,36, 22 a 29 plaques, 5 a 7 continents
+    voulus ; _drainage rend aussi le receveur de chaque case ; _rivers : la
+    couche (sens | taille), 3,4 % des terres en ruisseau, 1,1 % en riviere,
+    0,35 % en fleuve (debit) ; vallees le long des rivieres et fleuves,
+    plaines alluviales des fleuves, marais des plats humides et des deltas ;
+    une temperature des sols moins sensible a l'altitude (sinon la toundra
+    couvrait les plateaux) ; la savane et la jungle (les 38 % les plus
+    humides des tropiques chauds), la taiga et la toundra au nord, la glace
+    aux poles (seuils mesures par quantiles : les terres sont hautes).
+  - generate_layers_v2 : 10 etres vivants en aires (deux bruits, un large et
+    un fin), 9 matieres en gisements (DEPOSITS : nombre, rayon ; un tirage
+    pondere par la geologie, un ecart minimal) ; le poisson se compte sur
+    les cases d'eau et de rive (FISH_COVER).
+  - L'outil de cuisson : un CONTROLE (5 a 8 continents habitables, le plus
+    grand de 70 000 a 260 000 cases, des rivieres, chaque sol, chaque
+    ressource sur deux continents), des graines reperees en petit (3 s), les
+    noms de l'atlas melanges par planete, une vignette, le catalogue
+    (index.json : nom, continents, traits). ~3 min 30 par planete.
+  MOTEUR
+  - types.Terrain : TOUNDRA, GLACE, MARAIS, JUNGLE, SAVANE ; chacun dans
+    MOVE_COST (la glace non), BIOME_INDEX, season_multiplier (toundra : un
+    ete genereux, un hiver de faim ; jungle : peu de saisons ; savane : une
+    saison seche douce, des troupeaux toute l'annee), look (couleurs,
+    saisons), battle (couvert, fuite, lieux), villages.FERTILITY, influence,
+    log, tech (noms, savoirs etendus : epieu, cueillette, peche, arc,
+    troupeau, portage, chiens, bovins, propulseur, brulis, rabattages,
+    chamanes, cheval, bonus de depart), peoples (cultures marais, jungle,
+    savane ; le grand froid a la toundra), sites, units.
+  - world : rivers, _flow (le cours : rivieres et rives), river(), flow_at,
+    river_pct (RIVER_PCT, FORD_PCT, FORD_BIG_PCT), direction, step_cost ;
+    path.astar (le courant dans chaque pas, une heuristique qui reste
+    admissible) et travel_weeks ; sim (le pas des bandes) ; landmass_grid en
+    cache ; la variation du cout de marche cuite dans la planete (3 s de
+    moins au lancement) ; pick_spawn_continents (chacun au hasard sur un
+    continent, a 40 cases au moins des autres ; la graine de la partie) ;
+    14 petits peuples sur une planete (6 sur l'ancienne carte),
+    pick_minor_spots en temps lineaire.
+  - planets.py : catalogue, load, choose, default_id ; sim._default_world ;
+    persist ("map" -> "id", map_id ; une sauvegarde charge sa planete) ;
+    session (le salon dit la planete) ; app (_Worlds.fresh(pid), preview ;
+    _new_boot et l'hote tirent la planete) ; render_menu (le choix : <
+    vignette, nom, continents, traits >, le globe du menu la montre).
+  - La camera : layout.zoom_scale / max_zoom_for / focus_zoom_for (les memes
+    cases a l'ecran que sur l'ancienne carte).
+  DESSIN (globe_draw.py, render.py, sim.hex_inspect)
+  - Les rivieres : de pres, un trait du centre de la case au centre de la
+    case en aval (plus epais pour un fleuve), sur le terrain deforme ; de
+    loin, rivieres et fleuves teintent leurs cases. La geometrie des cases
+    n'est plus precalculee (85 Mo sur une grande planete) : calculee pour
+    les cases a l'ecran ; les voisins des zones en int32 (113 Mo -> 28).
+  - La carte des ressources et sa legende : ce que la planete porte et que
+    le joueur reconnait (resources.hidden_for) ; le survol d'une case : la
+    riviere ("Une riviere : coule vers le sud-est (a la suivre : x0,7 ...)").
+  JEU (C6)
+  - Les champs au bord de l'eau : x1,25, x1,1 de plus avec Rigoles
+    d'irrigation (villages.fertility) ; l'IA, qui fonde la ou c'est fertile,
+    cherche donc les rivieres.
+  - Les troupeaux pres de leurs betes sauvages : x1,05 (chevres, boeufs).
+  - Cinq metiers (goods.CRAFTS) : bucherons (bois : chantiers -15 %),
+    teinturiers (ocre : stabilite +3, prestige), tailleurs d'obsidienne
+    (force x1,08), polisseurs d'ambre (prestige, 22 vivres la charge aux
+    echanges), batteurs de cuivre (Le cuivre martelé : force x1,06,
+    prestige) ; la page des metiers passe sur deux colonnes ; les gisements
+    se cherchent plus loin que les champs (FAR_RES).
+
+
+7. LES PLANETES LIVREES
+----------------------
+  Aurane (graine 42, 6 continents, des terres variees), Velmire (1207, 5,
+  des steppes et des jungles), Ondesie (1909, 5, des montagnes et des
+  forets), Caldere (606, 5, des deserts et des jungles), Sylvene (808, 5,
+  des terres variees). ~2,9 Mo chacune ; refusees au controle : 11 graines
+  (3 ou 4 continents, trop peu de desert ou de marais, un grand continent
+  trop petit).
+
+
+8. MESURES ET VERIFICATIONS
+---------------------------
+  - Acces d'un village a chaque ressource (400 lieux tires sur Aurane, ses
+    terres, ses gisements a portee) : silex 37 %, argile 34, aurochs 32,
+    ocre 23, cereales 18, bois 18, poisson 16 (premier essai : 4 % - le
+    seuil du poisson se comptait sur toutes les terres : corrige), argent
+    16, sel 15, cuivre 14, obsidienne 9, ambre 6, etain 4.
+  - Partie de robot, 30 ans : Aurane 13 500 habitants, 77 villages, 84
+    peuples ; Caldere 12 400, 74, 81 ; 6 a 9 s par an de jeu (l'ancienne
+    carte : environ 4 s) ; ~460 Mo par partie.
+  - Guerres, 30 ans sur Aurane : 19 guerres declarees, duree mediane 42
+    semaines, aucune au-dela de deux ans (treves, tributs, soumissions).
+  - SES PARTIES (an 26, an 36) : chargees sur l'ancienne carte, jouees 26
+    semaines, resauvegardees et relues ; le rendu est le meme.
+  - Tests : test_planets (registre, sauvegarde qui retrouve sa planete,
+    departs au hasard et deterministes, courant et gue, ressources cachees,
+    sols complets, champs des rives, nouveaux metiers), test_mapgen (sols,
+    rivieres qui vont a l'eau), test_resources (aires et gisements),
+    test_architecture (l'exe embarque les planetes), test_start_menu (le
+    choix de la planete) ; 697 tests verts ; empreinte re-enregistree ;
+    multijoueur identique (Python et exe : "planete : hote aurane
+    1536 x 768, ami aurane 1536 x 768").

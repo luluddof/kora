@@ -39,7 +39,8 @@ def test_new_game_names_the_peoples_and_adds_a_few_small_ones_far_apart():
     st = new_game(_default_world())
     assert st.tribes[1].name == "Kora"
     minors = [t for t in st.tribes.values() if t.minor]
-    assert len(minors) == peoples.MINOR_START
+    # 0.20 : une planete (4 fois l'ancienne) a plus de petits peuples.
+    assert len(minors) == (peoples.MINOR_START_PLANET if st.world.rivers else peoples.MINOR_START)
     positions = [b.position for b in st.bands.values()]
     for i, a in enumerate(positions):
         for b in positions[i + 1:]:

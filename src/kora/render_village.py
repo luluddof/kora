@@ -204,6 +204,33 @@ def glyph(surf, key: str, color, s: int) -> None:
         line(surf, color, (s * 0.18, s * 0.88), (s * 0.6, s * 0.3), w + 1)
         pygame.draw.arc(surf, color, (s * 0.3, s * 0.06, s * 0.6, s * 0.5), math.pi * 0.15, math.pi * 0.95, w + 1)
         poly(surf, color, [(s * 0.56, s * 0.9), (s * 0.66, s * 0.7), (s * 0.94, s * 0.7), (s * 0.94, s * 0.9)])
+    elif key == "bucherons":
+        # Une hache plantee dans une bille de bois.
+        pygame.draw.rect(surf, color, (s * 0.1, s * 0.62, s * 0.8, s * 0.24), w)
+        line(surf, color, (s * 0.3, s * 0.62), (s * 0.62, s * 0.12), w + 1)
+        poly(surf, color, [(s * 0.5, s * 0.1), (s * 0.78, s * 0.16), (s * 0.7, s * 0.36), (s * 0.56, s * 0.3)])
+    elif key == "teinturiers":
+        # Un pot et une main peinte.
+        pygame.draw.ellipse(surf, color, (s * 0.12, s * 0.5, s * 0.36, s * 0.4), w)
+        for k in range(4):
+            x = s * (0.56 + 0.09 * k)
+            line(surf, color, (x, s * 0.5), (x, s * 0.16 + 0.03 * s * abs(k - 1.5)), w)
+        pygame.draw.ellipse(surf, color, (s * 0.52, s * 0.46, s * 0.4, s * 0.36))
+    elif key == "obsidiennes":
+        # Une lame noire, longue et fine.
+        poly(surf, color, [(s * 0.2, s * 0.86), (s * 0.66, s * 0.12), (s * 0.8, s * 0.2), (s * 0.34, s * 0.9)])
+        line(surf, color, (s * 0.14, s * 0.92), (s * 0.3, s * 0.82), w + 1)
+    elif key == "ambriers":
+        # Un collier de perles.
+        pygame.draw.arc(surf, color, (s * 0.14, s * 0.06, s * 0.72, s * 0.72), math.pi * 1.1, math.pi * 1.9, w)
+        for k in range(5):
+            a = math.pi * (1.15 + 0.175 * k)
+            pygame.draw.circle(surf, color, (int(c + s * 0.36 * math.cos(a)), int(s * 0.42 - s * 0.36 * math.sin(a))), max(2, s // 10))
+    elif key == "fondeurs":
+        # Un marteau sur une enclume de pierre.
+        poly(surf, color, [(s * 0.12, s * 0.7), (s * 0.88, s * 0.7), (s * 0.76, s * 0.9), (s * 0.24, s * 0.9)])
+        line(surf, color, (s * 0.3, s * 0.12), (s * 0.62, s * 0.56), w + 1)
+        pygame.draw.rect(surf, color, (s * 0.16, s * 0.08, s * 0.3, s * 0.16))
     else:
         pygame.draw.circle(surf, color, (c, c), s // 3, w)
 
@@ -460,17 +487,22 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     # echanges a droite.
     craft_w = int(inner * 0.58)
     crafts = {}
-    # Huit metiers : en petite fenetre, des cartes basses (une ligne de nom,
+    # Treize metiers (0.20) : une colonne si les cartes restent lisibles,
+    # sinon deux ; en petite fenetre, des cartes basses (une ligne de nom,
     # une d'etat).
-    gap = 6 if (body_h - 24) // len(goods.CRAFT_ORDER) >= 54 else 4
-    row_h = max(38, min(96, (body_h - 24) // len(goods.CRAFT_ORDER) - gap))
+    n_crafts = len(goods.CRAFT_ORDER)
+    cols = 1 if (body_h - 24) // n_crafts >= 52 else 2
+    per_col = -(-n_crafts // cols)
+    gap = 6 if (body_h - 24) // per_col >= 54 else 4
+    row_h = max(38, min(96, (body_h - 24) // per_col - gap))
+    col_w = (craft_w - 8 * (cols - 1)) // cols
     for i, cid in enumerate(goods.CRAFT_ORDER):
-        rx = bx + 24
-        ry = body_y + 24 + i * (row_h + gap)
+        rx = bx + 24 + (i // per_col) * (col_w + 8)
+        ry = body_y + 24 + (i % per_col) * (row_h + gap)
         by_ = ry + (10 if row_h >= 48 else (row_h - 22) // 2)
-        plus = (rx + craft_w - 12 - 26, by_, 26, 22)
+        plus = (rx + col_w - 12 - 26, by_, 26, 22)
         minus = (plus[0] - 8 - 44 - 8 - 26, by_, 26, 22)
-        crafts[cid] = {"card": (rx, ry, craft_w, row_h), "minus": minus, "plus": plus}
+        crafts[cid] = {"card": (rx, ry, col_w, row_h), "minus": minus, "plus": plus}
     stores = (bx + 24 + craft_w + 16, body_y, inner - craft_w - 16, body_h)
     trade_btn = (stores[0], stores[1] + stores[3] - 30, stores[2], 28)
     # Page du chef : le grenier et la levee a gauche, les familles a droite.
@@ -797,7 +829,8 @@ def numbers_mult(state, tid: int) -> float:
 def _draw_crafts(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     screen = r.screen
     first = lay["crafts"][goods.CRAFT_ORDER[0]]["card"]
-    x0, cw = first[0], first[2]
+    last = lay["crafts"][goods.CRAFT_ORDER[-1]]["card"]
+    x0, cw = first[0], last[0] + last[2] - first[0]
     y0 = lay["stores"][1]
     busy = goods.workers(site, band)
     _section(r, x0, y0, cw, f"MÉTIERS  ·  équipes {goods.total_teams(site)}/{goods.team_cap(band)} (une par {goods.TEAM_POP} habitants, {goods.TEAM} gens chacune)")

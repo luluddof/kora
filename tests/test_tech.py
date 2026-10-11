@@ -71,7 +71,7 @@ def test_everyone_starts_with_fire_and_tools_ai_with_its_speciality():
 def test_effect_text_is_drawn_from_the_numbers():
     lines = tech.effect_lines(tech.TECHS["epieu"])
     assert any("Force au combat : +10 %" in line for line in lines)
-    assert any("Plaine et steppe : +10 % de nourriture" in line for line in lines)
+    assert any("Plaine, steppe et savane : +10 % de nourriture" in line for line in lines)
     portage = " ".join(tech.effect_lines(tech.TECHS["portage"]))
     assert "forêt : 4 cases/semaine (au départ 3)" in portage
     assert "Déjà pris en compte" in tech.effect_lines(tech.TECHS["feu"])[0]

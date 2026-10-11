@@ -161,9 +161,44 @@ CRAFTS = {
             ("De l'argent pour le trésor",),
             special="argent",
         ),
+        # Les matieres des nouvelles planetes (0.20) : chaque metier prend sa
+        # matiere a portee du village (riches, FAR_RES).
+        Craft(
+            "bucherons", "Bûcherons", "poutres", "Poutres et planches", ("bois",), "huttes",
+            "On abat les grands arbres, on fend, on équarrit : de quoi bâtir vite et solide.",
+            ("Chantiers 15 % moins chers",),
+            value=5.0,
+        ),
+        Craft(
+            "teinturiers", "Teinturiers", "teintures", "Teintures et peintures", ("ocre",), "rites",
+            "On broie l'ocre rouge et jaune : les visages, les habits et les murs se peignent.",
+            ("Stabilité +3", "+1 prestige à chaque fin d'hiver"),
+            value=9.0,
+        ),
+        Craft(
+            "obsidiennes", "Tailleurs d'obsidienne", "lames", "Lames d'obsidienne", ("obsidienne",), "outils",
+            "Le verre noir des volcans se taille en lames plus fines que le silex.",
+            ("Troupes : force x1,08",),
+            value=14.0,
+        ),
+        Craft(
+            "ambriers", "Polisseurs d'ambre", "parures_ambre", "Parures d'ambre", ("ambre",), "echanges",
+            "La pierre de soleil des rivages froids, percée et polie : on la porte, on la donne, on la vend cher.",
+            ("+1 prestige à chaque fin d'hiver", "Se vend très cher aux échanges"),
+            value=22.0,
+        ),
+        Craft(
+            "fondeurs", "Batteurs de cuivre", "objets_cuivre", "Objets de cuivre", ("cuivre",), "cuivre",
+            "Le cuivre natif, chauffé et battu : des perles, des poinçons, des haches qui brillent.",
+            ("Troupes : force x1,06", "+1 prestige à chaque fin d'hiver"),
+            value=18.0,
+        ),
     )
 }
-CRAFT_ORDER = ("potiers", "sauniers", "tisserands", "pelletiers", "tailleurs", "pecheurs", "calculateurs", "mineurs")
+CRAFT_ORDER = (
+    "potiers", "sauniers", "tisserands", "pelletiers", "tailleurs", "pecheurs", "calculateurs", "mineurs",
+    "bucherons", "teinturiers", "obsidiennes", "ambriers", "fondeurs",
+)
 GOODS = tuple(CRAFTS[c].good for c in CRAFT_ORDER if CRAFTS[c].good)
 GOOD_NAMES = {c.good: c.good_name for c in CRAFTS.values() if c.good}
 GOOD_CRAFT = {c.good: c.id for c in CRAFTS.values() if c.good}
@@ -174,11 +209,20 @@ GOOD_COLORS = {
     "etoffes": (190, 140, 210),
     "cuirs": (170, 120, 70),
     "haches": (140, 170, 190),
+    "poutres": (150, 105, 60),
+    "teintures": (205, 95, 40),
+    "lames": (70, 60, 90),
+    "parures_ambre": (255, 190, 60),
+    "objets_cuivre": (200, 120, 70),
 }
 
 
 # "du sel", "des poteries" : pour les phrases du journal.
-GOOD_SOME = {"poteries": "des poteries", "sel": "du sel", "etoffes": "des étoffes", "cuirs": "des cuirs et fourrures", "haches": "des haches polies"}
+GOOD_SOME = {
+    "poteries": "des poteries", "sel": "du sel", "etoffes": "des étoffes", "cuirs": "des cuirs et fourrures", "haches": "des haches polies",
+    "poutres": "du bois d'œuvre", "teintures": "des teintures", "lames": "des lames d'obsidienne", "parures_ambre": "des parures d'ambre",
+    "objets_cuivre": "des objets de cuivre",
+}
 
 
 def value(good: str) -> float:
@@ -190,7 +234,9 @@ def value(good: str) -> float:
 
 # Les filons d'argent comptent jusqu'a cette distance du village (les mineurs
 # montent aux collines voisines) ; les autres ressources : ses terres.
-FAR_RES = {"argent": 6}
+# Les gisements (des points sur les nouvelles planetes) : on va les chercher
+# plus loin que les champs.
+FAR_RES = {"argent": 6, "cuivre": 6, "etain": 6, "obsidienne": 6, "ambre": 5, "ocre": 5, "silex": 5, "sel": 5, "argile": 4}
 
 
 def riches(world, h) -> dict:
@@ -506,6 +552,8 @@ def stability_parts(state, tribe_id: int) -> list[tuple[str, float]]:
     out = []
     if supplied(state, tribe_id, "sel"):
         out.append(("Sel", 3.0))
+    if supplied(state, tribe_id, "teintures"):
+        out.append(("Teintures", 3.0))
     if supplied(state, tribe_id, "etoffes"):
         out.append(("Étoffes", 6.0))
     if supplied(state, tribe_id, "cuirs"):
@@ -518,15 +566,23 @@ def yield_mult(state, tribe_id: int) -> float:
 
 
 def army_mult(state, tribe_id: int) -> float:
-    return 1.1 if supplied(state, tribe_id, "haches") else 1.0
+    mult = 1.1 if supplied(state, tribe_id, "haches") else 1.0
+    if supplied(state, tribe_id, "lames"):
+        mult *= 1.08
+    if supplied(state, tribe_id, "objets_cuivre"):
+        mult *= 1.06
+    return mult
 
 
 def build_mult(state, tribe_id: int) -> float:
-    return 0.75 if supplied(state, tribe_id, "haches") else 1.0
+    mult = 0.75 if supplied(state, tribe_id, "haches") else 1.0
+    if supplied(state, tribe_id, "poutres"):
+        mult *= 0.85
+    return mult
 
 
 def winter_prestige(state, tribe_id: int) -> int:
-    return 1 if supplied(state, tribe_id, "etoffes") else 0
+    return sum(1 for g in ("etoffes", "teintures", "parures_ambre", "objets_cuivre") if supplied(state, tribe_id, g))
 
 
 def forage_mult(site, band) -> float:
@@ -1046,7 +1102,10 @@ def _note_player(state) -> None:
 # --- IA ----------------------------------------------------------------------------
 
 # Ce que l'IA met au travail, dans l'ordre : le sel et les pots d'abord.
-AI_ORDER = ("sauniers", "potiers", "tisserands", "pelletiers", "tailleurs", "pecheurs", "calculateurs", "mineurs")
+AI_ORDER = (
+    "sauniers", "potiers", "tisserands", "pelletiers", "tailleurs", "pecheurs", "bucherons", "obsidiennes",
+    "fondeurs", "teinturiers", "ambriers", "calculateurs", "mineurs",
+)
 
 
 def _keeps_hands(state, site, band, cid: str) -> bool:

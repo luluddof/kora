@@ -33,7 +33,7 @@ LAYERS = (
     ("world",),
     # 3. ce qui se pose dessus : chemins, atlas, cuisson, l'etat de la partie,
     #    les peuples, les lieux (et ce qu'on y lit)
-    ("path", "atlas", "mapgen", "gamestate", "peoples", "places"),
+    ("path", "atlas", "mapgen", "planets", "gamestate", "peoples", "places"),
     # 4. les savoirs (l'arbre et ses effets), les unites, la vue, les gens
     ("tech", "units", "vision", "population"),
     # 5. LES SYSTEMES : ils se parlent entre eux (en tete s'il n'y a pas de

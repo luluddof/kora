@@ -10,6 +10,17 @@ import functools
 from src.kora.clock import Clock
 
 INSHORE_MOVE_COST = 10
+# LE COURANT DES RIVIERES (0.20, sa demande) : une marche le long d'une
+# riviere (de la riviere ou de sa rive vers la riviere ou sa rive) coute,
+# en pour cent, selon l'ecart entre la direction de la marche et le sens du
+# courant (0 : en plein dans le sens ... 3 : en plein contre) ; entrer dans
+# une riviere hors de son cours, c'est la traverser a gue.
+RIVER_PCT = (70, 85, 115, 130, 115, 85)
+# Les directions de NEIGHBOR_DELTAS, en clair (la rangee 0 est au nord).
+DIRECTION_FR = ("l'est", "le nord-est", "le nord-ouest", "l'ouest", "le sud-ouest", "le sud-est")
+RIVER_SIZE_FR = ("", "Un ruisseau", "Une rivière", "Un fleuve")
+FORD_PCT = 125
+FORD_BIG_PCT = 160
 # Chaque case a sa petite variation du cout de marche (en pour cent, de
 # COST_VAR_MIN a COST_VAR_MAX) : un sous-bois plus clair, une plaine plus
 # boueuse. Elle varie doucement d'une case a sa voisine (un bruit lisse,
@@ -32,6 +43,11 @@ MOVE_COST = {
     Terrain.MONTAGNE: 60,
     Terrain.COTE: 12,
     Terrain.DESERT: 11,
+    # 0.20 : la glace ne se traverse pas (pas de cout).
+    Terrain.TOUNDRA: 12,
+    Terrain.MARAIS: 26,
+    Terrain.JUNGLE: 24,
+    Terrain.SAVANE: 10,
 }
 
 BIOME_INDEX = {
@@ -45,6 +61,11 @@ BIOME_INDEX = {
     Terrain.DESERT: 0.35,
     Terrain.SOMMET: 0.0,
     Terrain.EAU: 0.0,
+    Terrain.TOUNDRA: 0.45,
+    Terrain.GLACE: 0.0,
+    Terrain.MARAIS: 0.85,
+    Terrain.JUNGLE: 0.85,
+    Terrain.SAVANE: 0.85,
 }
 
 NEIGHBOR_DELTAS = (
@@ -69,6 +90,11 @@ CHAR_TO_TERRAIN = {
     "E": Terrain.EAU,
     "O": Terrain.COTE,
     "D": Terrain.DESERT,
+    "T": Terrain.TOUNDRA,
+    "G": Terrain.GLACE,
+    "Z": Terrain.MARAIS,
+    "J": Terrain.JUNGLE,
+    "A": Terrain.SAVANE,
 }
 TERRAIN_TO_CHAR = {v: k for k, v in CHAR_TO_TERRAIN.items()}
 
@@ -169,6 +195,69 @@ class World:
         self._radius_cache: dict = {}
         self._big_radius_cache: dict = {}
         self._inshore_memo: dict[tuple[int, int], bool] = {}
+        # Les RIVIERES (0.20, mapgen._rivers) : octets rangee par rangee ;
+        # 0 sans riviere, sinon (sens + 1) | (taille << 3) ; vide sur
+        # l'ancienne carte.
+        self.rivers = b""
+        self._flow = b""
+        self.planet = ""
+
+    # --- les rivieres ------------------------------------------------------------
+
+    def set_rivers(self, layer: bytes) -> None:
+        self.rivers = bytes(layer) if len(layer) == self.width * self.height else b""
+        self._flow = b""
+        if not self.rivers:
+            return
+        # Le sens du courant de chaque case du COURS (la riviere et ses
+        # rives) : celui de la riviere, ou de la premiere riviere voisine
+        # (ordre des cases, puis de NEIGHBOR_DELTAS : le meme partout).
+        width, height = self.width, self.height
+        flow = bytearray(width * height)
+        rivers = self.rivers
+        for i, v in enumerate(rivers):
+            if v:
+                flow[i] = v & 7
+        for i, v in enumerate(rivers):
+            if not v:
+                continue
+            row, col = divmod(i, width)
+            q = col - (row - (row & 1)) // 2
+            for dq, dr in NEIGHBOR_DELTAS:
+                nr = row + dr
+                if nr < 0 or nr >= height:
+                    continue
+                nc = q + dq + (nr - (nr & 1)) // 2
+                if self.wrap_x:
+                    nc %= width
+                elif nc < 0 or nc >= width:
+                    continue
+                j = nr * width + nc
+                if not flow[j] and self._terrains[nr][nc] in MOVE_COST:
+                    flow[j] = v & 7
+        self._flow = bytes(flow)
+
+    def flow_at(self, col: int, row: int) -> int:
+        """Le sens du courant d'une case du cours (riviere ou rive) : 1..6
+        (indice dans NEIGHBOR_DELTAS + 1), 0 hors du cours."""
+        flow = self._flow
+        return flow[row * self.width + col] if flow else 0
+
+    def river_at(self, col: int, row: int) -> int:
+        """L'octet de riviere d'une case (col, row) : 0 sans riviere."""
+        rivers = self.rivers
+        return rivers[row * self.width + col] if rivers else 0
+
+    def river(self, h: Hex) -> tuple[int, int] | None:
+        """(sens vers l'aval : indice dans NEIGHBOR_DELTAS, taille 1 a 3) ou
+        None."""
+        idx = self._index(h)
+        if idx is None or not self.rivers:
+            return None
+        v = self.rivers[idx[1] * self.width + idx[0]]
+        if not v:
+            return None
+        return (v & 7) - 1, v >> 3
 
     def canonicalize(self, h: Hex) -> Hex | None:
         col, row = axial_to_offset(h)
@@ -362,9 +451,11 @@ class World:
         memo[idx] = out
         return out
 
-    def resource_lines(self, h: Hex) -> list[str]:
+    def resource_lines(self, h: Hex, hidden=frozenset()) -> list[str]:
         parts = []
         for name in NAMES:
+            if name in hidden:
+                continue
             v = self.resource(h, name)
             word = level_word(v)
             if word:
@@ -616,6 +707,59 @@ def enter_cost_for(world: World, h: Hex, water_ok: bool, costs: dict | None = No
     return INSHORE_MOVE_COST if world.inshore_at(col, row) else None
 
 
+def river_pct(world: World, c0: int, r0: int, c1: int, r1: int, k: int) -> int:
+    """Le courant sur un pas de (c0, r0) a sa voisine (c1, r1) dans la
+    direction k (indice de NEIGHBOR_DELTAS) : un pourcentage du cout."""
+    flow = world._flow
+    if not flow:
+        return 100
+    width = world.width
+    fa = flow[r0 * width + c0]
+    fb = flow[r1 * width + c1]
+    into = world.rivers[r1 * width + c1]
+    if fa and fb:
+        diff = (k - (fa - 1)) % 6
+        if into and not world.rivers[r0 * width + c0] and diff in (2, 3, 4):
+            # De la rive dans la riviere, contre le courant : on la traverse.
+            return FORD_BIG_PCT if into >> 3 >= 3 else FORD_PCT
+        return RIVER_PCT[diff]
+    if into:
+        return FORD_BIG_PCT if into >> 3 >= 3 else FORD_PCT
+    return 100
+
+
+def direction(world: World, a: Hex, b: Hex) -> int:
+    """L'indice (NEIGHBOR_DELTAS) du pas de a vers sa voisine b, -1 sinon."""
+    ia, ib = world._index(a), world._index(b)
+    if ia is None or ib is None:
+        return -1
+    c0, r0 = ia
+    q0 = c0 - (r0 - (r0 & 1)) // 2
+    for k, (dq, dr) in enumerate(NEIGHBOR_DELTAS):
+        nr = r0 + dr
+        if nr != ib[1]:
+            continue
+        nc = q0 + dq + (nr - (nr & 1)) // 2
+        if world.wrap_x:
+            nc %= world.width
+        if nc == ib[0]:
+            return k
+    return -1
+
+
+def step_cost(world: World, frm: Hex, to: Hex, water_ok: bool, costs: dict | None = None) -> int | None:
+    """Le cout d'un pas de frm a sa voisine to : celui de la case
+    (enter_cost_for), et le courant d'une riviere (river_pct)."""
+    cost = enter_cost_for(world, to, water_ok, costs)
+    if cost is None or not world._flow:
+        return cost
+    k = direction(world, frm, to)
+    if k < 0:
+        return cost
+    ia, ib = world._index(frm), world._index(to)
+    return cost * river_pct(world, ia[0], ia[1], ib[0], ib[1], k) // 100
+
+
 _SEASON_INDEX = {
     Season.PRINTEMPS: 0,
     Season.ETE: 1,
@@ -641,11 +785,18 @@ def make_filled_world(
 def _polar_ice(world: World, col: int, row: int) -> bool:
     if world.height <= 1:
         return False
+    if world._terrains[row][col] is Terrain.GLACE:
+        return True
     lat = abs((row / (world.height - 1)) * 2.0 - 1.0)
     return lat > 0.80 and world._terrains[row][col] is Terrain.SOMMET
 
 
 def landmass_grid(world: World) -> list[list[int]]:
+    """Le numero de continent de chaque case (0 : eau, calotte) ; la carte
+    ne change pas : calcule une fois par monde (partage : ne pas modifier)."""
+    cached = getattr(world, "_landmass", None)
+    if cached is not None:
+        return cached
     ids = [[0] * world.width for _ in range(world.height)]
     next_id = 1
     for row in range(world.height):
@@ -667,6 +818,7 @@ def landmass_grid(world: World) -> list[list[int]]:
                     ids[nr][nc] = next_id
                     stack.append((nc, nr))
             next_id += 1
+    world._landmass = ids
     return ids
 
 
@@ -806,7 +958,81 @@ def pick_spawn_hexes(
     return chosen[:count]
 
 
-def save_world(world: World, path: Path, labels: list | None = None) -> None:
+# Les departs des nouvelles planetes (0.20, sa demande) : chaque peuple, le
+# joueur compris, part au hasard (la graine de la partie) sur un continent
+# habitable ; un continent est tire selon ses terres qui nourrissent ; deux
+# peuples ne partent jamais a moins de SPAWN_SEP cases.
+SPAWN_SEP = 40
+SPAWN_CONTINENT_MIN = 1500
+SPAWN_STEP = 3
+
+
+def pick_spawn_continents(world: World, count: int, rng, prefs: list | None = None, min_forage: float | list = 0.0) -> list[Hex]:
+    """Un depart par peuple, au hasard sur les continents (rng : un
+    random.Random de la graine de la partie)."""
+    grid = landmass_grid(world)
+    lo, hi = int(world.height * 0.15), int(world.height * 0.85)
+    good: dict[int, list[Hex]] = {}
+    for row in range(lo, hi, SPAWN_STEP):
+        line = grid[row]
+        terr = world._terrains[row]
+        for col in range(row % SPAWN_STEP, world.width, SPAWN_STEP):
+            mid = line[col]
+            if mid <= 0 or terr[col] not in MOVE_COST or terr[col] in (Terrain.MONTAGNE, Terrain.MARAIS):
+                continue
+            good.setdefault(mid, []).append(offset_to_axial(col, row))
+    floor = SPAWN_CONTINENT_MIN // (SPAWN_STEP * SPAWN_STEP)
+    continents = sorted(k for k, v in good.items() if len(v) >= floor) or sorted(good)
+    if not continents:
+        return pick_spawn_hexes(world, count, prefs, min_forage)
+    chosen: list[Hex] = []
+    forage: dict[Hex, float] = {}
+
+    def fed(h: Hex, need: float) -> bool:
+        if need <= 0:
+            return True
+        if h not in forage:
+            forage[h] = spawn_forage(world, h)
+        return forage[h] >= need
+
+    for slot in range(count):
+        want = prefs[slot] if prefs and slot < len(prefs) else None
+        need = min_forage[slot] if isinstance(min_forage, list) else min_forage
+        weights = [len(good[k]) for k in continents]
+        order = []
+        pool = list(continents)
+        w = list(weights)
+        while pool:
+            pick = rng.choices(range(len(pool)), weights=w)[0]
+            order.append(pool.pop(pick))
+            w.pop(pick)
+        found = None
+        # Le continent tire d'abord ; s'il n'a rien qui convienne, le suivant.
+        for relax in ((want, need), (None, need), (None, 0.0)):
+            for k in order:
+                cells = list(good[k])
+                rng.shuffle(cells)
+                for h in cells:
+                    if relax[0] and world.terrain(h) not in relax[0]:
+                        continue
+                    if any(world.distance(h, o) < SPAWN_SEP for o in chosen):
+                        continue
+                    if fed(h, relax[1]):
+                        found = h
+                        break
+                if found is not None:
+                    break
+            if found is not None:
+                break
+        if found is None:
+            break
+        chosen.append(found)
+    if len(chosen) < count:
+        chosen += pick_spawn_hexes(world, count - len(chosen), None, 0.0)
+    return chosen[:count]
+
+
+def save_world(world: World, path: Path, labels: list | None = None, meta: dict | None = None) -> None:
     rows = []
     for row in range(world.height):
         chars = []
@@ -827,6 +1053,13 @@ def save_world(world: World, path: Path, labels: list | None = None) -> None:
         # Ressources du pays : octets compresses (zlib + base64).
         payload["resources"] = {k: _res.encode(v) for k, v in world.resources.items()}
         payload["richness"] = _res.encode(world._rich)
+    if world.rivers:
+        payload["rivers"] = _res.encode(world.rivers)
+        # Les nouvelles planetes portent la variation du cout de marche (sinon
+        # 3 s de calcul a chaque lancement) : les memes valeurs que cost_pct.
+        payload["cost_pct"] = _res.encode(bytes(v for row in cost_pct(world) for v in row))
+    if meta:
+        payload["planet"] = meta
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
@@ -836,6 +1069,17 @@ def load_world(path: Path) -> World:
     for line in data["rows"]:
         grid.append([CHAR_TO_TERRAIN[ch] for ch in line])
     world = World(grid, wrap_x=bool(data.get("wrap_x", False)))
+    if data.get("rivers"):
+        world.set_rivers(_res.decode(data["rivers"]))
+    if data.get("cost_pct"):
+        raw = _res.decode(data["cost_pct"])
+        w = world.width
+        if len(raw) == w * world.height:
+            world._cost_pct = [list(raw[r * w:(r + 1) * w]) for r in range(world.height)]
+    meta = data.get("planet")
+    if isinstance(meta, dict):
+        world.planet = str(meta.get("id", ""))
+        world.planet_meta = meta
     if isinstance(data.get("resources"), dict):
         layers = {k: _res.decode(v) for k, v in data["resources"].items()}
         rich = _res.decode(data["richness"]) if data.get("richness") else None
@@ -858,6 +1102,18 @@ def season_multiplier(terrain: Terrain, season: Season, herd: bool = False) -> f
         base = 0.35
     if season is Season.HIVER and terrain in (Terrain.COLLINE, Terrain.MONTAGNE):
         return 0.20
+    if terrain is Terrain.TOUNDRA:
+        # Un ete court et genereux (les rennes, les baies), un hiver de faim.
+        return (0.8, 1.45, 0.8, 0.15)[_SEASON_INDEX[season]]
+    if terrain is Terrain.JUNGLE:
+        # Les tropiques humides : peu de saisons.
+        return (1.0, 1.05, 1.0, 0.85)[_SEASON_INDEX[season]]
+    if terrain is Terrain.SAVANE:
+        # La saison seche (l'hiver des tropiques) amaigrit moins que la neige ;
+        # les troupeaux y trouvent leur herbe toute l'annee.
+        if herd:
+            return (1.3, 1.5, 1.4, 1.2)[_SEASON_INDEX[season]]
+        return (1.0, 1.15, 0.9, 0.6)[_SEASON_INDEX[season]]
     if herd and terrain is Terrain.STEPPE:
         if season is Season.PRINTEMPS:
             return 1.35

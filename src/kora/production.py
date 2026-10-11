@@ -29,7 +29,10 @@ N'importe pas pygame.
 from __future__ import annotations
 from src.kora import goods, places, tech, villages
 
-KINDS = ("collecte", "agriculture", "peche", "potiers", "sauniers", "tisserands", "pelletiers", "tailleurs")
+KINDS = (
+    "collecte", "agriculture", "peche", "potiers", "sauniers", "tisserands", "pelletiers", "tailleurs",
+    "bucherons", "teinturiers", "obsidiennes", "ambriers", "fondeurs",
+)
 KIND_NAMES = {
     "collecte": "Chasse et cueillette",
     "agriculture": "Agriculture",
@@ -39,6 +42,11 @@ KIND_NAMES = {
     "tisserands": "Tissage",
     "pelletiers": "Peaux et fourrures",
     "tailleurs": "Haches polies",
+    "bucherons": "Bois d'œuvre",
+    "teinturiers": "Teintures",
+    "obsidiennes": "Lames d'obsidienne",
+    "ambriers": "Parures d'ambre",
+    "fondeurs": "Objets de cuivre",
 }
 EFF_MAX = 1.30
 # Gain par mois sous pleine pression : +0,5 % pour un metier, +0,3 % pour

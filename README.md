@@ -4,7 +4,7 @@ Un jeu de grande stratégie en temps réel (avec pause), du tout début de l'hum
 Vous guidez un peuple de chasseurs-cueilleurs qui vient de maîtriser le feu : lire les saisons, trouver à manger,
 passer l'hiver, se diviser en clans, rencontrer les autres peuples, apprendre des savoirs, puis fonder des villages,
 cultiver, commercer, lever des troupes… et voir vos clans partir fonder leurs propres pays. Seul, ou **à plusieurs**
-(jusqu'à 4 joueurs sur la même planète).
+(jusqu'à 4 joueurs sur la même planète, choisie parmi cinq).
 
 > Version de test. Merci de jouer, et de dire ce qui cloche !
 
@@ -55,6 +55,20 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - Une nouvelle partie commence par **votre peuple** : son nom (ou *Au hasard*), sa couleur, et **2 bonus de départ**
   à choisir parmi 12 (chasseurs d'aurochs, enfants du froid, conteurs, guerriers…). Ils durent **5 ans**, puis
   s'éteignent (le panneau *Tribu* dit combien de temps il leur reste).
+- Et **la planète** : cinq planètes sont livrées avec le jeu (*Aurane*, *Velmire*, *Ondésie*, *Caldère*, *Sylvène*),
+  chacune avec ses continents, ses climats et ses richesses ; ou *Au hasard*. Votre peuple, comme tous les autres,
+  part **au hasard sur un continent**. En multijoueur, c'est l'hôte qui choisit. Les parties d'avant la version 0.20
+  gardent leur ancienne carte.
+- **Les planètes** sont grandes (1536 × 768 cases, quatre fois l'ancienne carte) : glace aux pôles, toundra, forêts,
+  steppes, savanes, jungles, marais, déserts, montagnes, et des **rivières** qui coulent jusqu'à la mer. Le long d'une
+  rivière, on marche plus vite **dans le sens du courant** (x0,7) et moins vite à **contre-courant** (x1,3) ; la
+  traverser ailleurs, c'est passer un gué. Les champs au bord de l'eau donnent plus (+25 %, davantage avec les
+  Rigoles d'irrigation). Survolez une case : on voit vers où coule sa rivière.
+- **Les ressources** : les êtres vivants (céréales, racines, fruits, miel, bois, aurochs, chevaux, chèvres, rennes,
+  poisson) vivent dans des aires ; les matières (silex, argile, sel, ocre, obsidienne, ambre, argent, cuivre, étain)
+  sont des **gisements**. Le cuivre ne se reconnaît qu'avec *Le cuivre martelé* ; l'étain attend l'âge du bronze. De
+  nouveaux métiers les travaillent au village : bûcherons, teinturiers, tailleurs d'obsidienne, polisseurs d'ambre,
+  batteurs de cuivre.
 - **Clic gauche** sur une de vos bandes (un rond à votre couleur) pour la choisir, puis **clic gauche sur la carte** pour
   qu'elle y marche. Une de vos bandes choisie, un **clic droit** sur une bande étrangère l'**attaque** (attention, les
   combats sont durs) ; un **clic gauche** sur un autre peuple ouvre sa diplomatie. La **diplomatie** vient avec les

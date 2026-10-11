@@ -17,19 +17,31 @@ def _map():
 
 
 def test_the_baked_map_carries_every_resource_in_sensible_amounts():
+    """Les etres vivants couvrent leur part des terres (COVER) ; les
+    matieres sont des gisements (rares, mais partout) ; le poisson vit sur
+    les rives."""
+    from src.kora.mapgen import DEPOSITS, LIVING
+
     world = _map()
     assert set(world.resources) == set(resources.NAMES)
     n = world.width * world.height
     land = [
         i
         for i in range(0, n, 7)
-        if world._terrains[i // world.width][i % world.width] not in (Terrain.EAU, Terrain.SOMMET)
+        if world._terrains[i // world.width][i % world.width] not in (Terrain.EAU, Terrain.SOMMET, Terrain.GLACE)
     ]
     for name in resources.NAMES:
         layer = world.resources[name]
         share = sum(1 for i in land if layer[i] >= resources.PRESENT_BYTE) / len(land)
-        target = resources.COVER[name]
-        assert target * 0.6 < share < target * 1.6, (name, share)
+        if name in DEPOSITS:
+            assert 0.0003 < share < 0.06, (name, share)
+        elif name == "poisson":
+            coast = [i for i in land if world._terrains[i // world.width][i % world.width] is Terrain.COTE]
+            assert sum(1 for i in coast if layer[i] >= resources.PRESENT_BYTE) / len(coast) > 0.3
+        else:
+            assert name in LIVING
+            target = resources.COVER[name]
+            assert target * 0.6 < share < target * 1.6, (name, share)
 
 
 def test_one_hex_can_hold_several_resources():

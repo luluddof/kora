@@ -132,6 +132,10 @@ _TERRAIN_FR = {
     _T.MONTAGNE: "montagne",
     _T.COTE: "côte",
     _T.DESERT: "désert",
+    _T.TOUNDRA: "toundra",
+    _T.MARAIS: "marais",
+    _T.JUNGLE: "jungle",
+    _T.SAVANE: "savane",
 }
 
 
@@ -219,15 +223,15 @@ TECHS: dict[str, Tech] = {
             "epieu", "Chasse à l'épieu", 1, 0,
             "Des pieux durcis au feu et des chasseurs qui rabattent ensemble le gros gibier.",
             prereqs=("outils",),
-            conds=(Cond("pop", 30), _weeks(6, _T.PLAINE, _T.STEPPE, label="plaine ou steppe")),
-            effects={"combat": 1.10, "food": {_T.PLAINE: 1.10, _T.STEPPE: 1.10}},
+            conds=(Cond("pop", 30), _weeks(6, _T.PLAINE, _T.STEPPE, _T.SAVANE, label="plaine, steppe ou savane")),
+            effects={"combat": 1.10, "food": {_T.PLAINE: 1.10, _T.STEPPE: 1.10, _T.SAVANE: 1.10}},
         ),
         Tech(
             "cueillette", "Cueillette", 1, 1,
             "Savoir quelles baies, racines et noix se mangent, et où les trouver selon la saison.",
             prereqs=("outils",),
-            conds=(_weeks(8, _T.FORET, _T.VALLEE, label="forêt ou vallée"),),
-            effects={"food": {_T.FORET: 1.12, _T.VALLEE: 1.06}},
+            conds=(_weeks(8, _T.FORET, _T.VALLEE, _T.JUNGLE, label="forêt, vallée ou jungle"),),
+            effects={"food": {_T.FORET: 1.12, _T.VALLEE: 1.06, _T.JUNGLE: 1.12}},
         ),
         Tech(
             "fumage", "Fumage et séchage", 1, 2,
@@ -240,8 +244,8 @@ TECHS: dict[str, Tech] = {
             "peche", "Pêche au harpon", 1, 3,
             "Harpons d'os et pièges à poissons au bord de l'eau.",
             prereqs=("outils",),
-            conds=(Cond("seen", label="rivage"), _weeks(4, _T.COTE, _T.VALLEE, label="côte ou vallée")),
-            effects={"water_food": 0.25, "food": {_T.COTE: 1.08}},
+            conds=(Cond("seen", label="rivage"), _weeks(4, _T.COTE, _T.VALLEE, _T.MARAIS, label="côte, vallée ou marais")),
+            effects={"water_food": 0.25, "food": {_T.COTE: 1.08, _T.MARAIS: 1.08}},
         ),
         Tech(
             "peaux", "Vêtements de peau", 1, 4,
@@ -276,16 +280,16 @@ TECHS: dict[str, Tech] = {
             "arc", "Arc et flèches", 2, 0,
             "Tuer de loin : le petit gibier des forêts, et l'ennemi avant qu'il n'approche.",
             prereqs=("epieu",),
-            conds=(Cond("pop", 80), _weeks(12, _T.FORET, label="forêt")),
-            effects={"combat": 1.15, "food": {_T.FORET: 1.06}},
+            conds=(Cond("pop", 80), _weeks(12, _T.FORET, _T.JUNGLE, label="forêt ou jungle")),
+            effects={"combat": 1.15, "food": {_T.FORET: 1.06, _T.JUNGLE: 1.06}},
         ),
         Tech(
             "troupeau", "Garde des troupeaux", 2, 1,
             "Suivre et garder un troupeau plutôt que le chasser : la steppe devient un garde-manger.",
             prereqs=("domestication",),
             conds=(
-                Cond("seen", label="steppe"),
-                _weeks(TROUPEAU_STEPPE_WEEKS, _T.STEPPE, label="steppe"),
+                Cond("seen", label="steppe ou savane"),
+                _weeks(TROUPEAU_STEPPE_WEEKS, _T.STEPPE, _T.SAVANE, label="steppe ou savane"),
                 Cond("pop", TROUPEAU_POP),
             ),
             effects={"herd": True},
@@ -310,10 +314,10 @@ TECHS: dict[str, Tech] = {
         ),
         Tech(
             "portage", "Raquettes et portage", 2, 4,
-            "Raquettes, traîneaux, sentiers battus : la forêt et les collines ralentissent moins.",
+            "Raquettes, traîneaux, sentiers battus : la forêt, les collines et la toundra ralentissent moins.",
             prereqs=("peaux",),
-            conds=(_weeks(14, _T.FORET, _T.COLLINE, label="forêt ou collines"),),
-            effects={"move": {_T.FORET: 15, _T.COLLINE: 12, _T.MONTAGNE: 45}},
+            conds=(_weeks(14, _T.FORET, _T.COLLINE, _T.TOUNDRA, label="forêt, collines ou toundra"),),
+            effects={"move": {_T.FORET: 15, _T.COLLINE: 12, _T.MONTAGNE: 45, _T.TOUNDRA: 9, _T.MARAIS: 21}},
         ),
         Tech(
             "reperes", "Pistes et repères", 2, 5,
@@ -380,7 +384,7 @@ TECHS: dict[str, Tech] = {
             "Les louveteaux d'autrefois sont devenus des chiens : ils rabattent le gibier et veillent la nuit.",
             prereqs=("domestication",),
             conds=(Cond("flag", 1, label="louveteaux"),),
-            effects={"food": {_T.FORET: 1.06, _T.PLAINE: 1.06, _T.STEPPE: 1.06}, "vision": 2},
+            effects={"food": {_T.FORET: 1.06, _T.PLAINE: 1.06, _T.STEPPE: 1.06, _T.SAVANE: 1.06, _T.TOUNDRA: 1.06}, "vision": 2},
         ),
         Tech(
             "campement", "Camp permanent", 3, 5,
@@ -489,7 +493,7 @@ TECHS: dict[str, Tech] = {
             prereqs=("chevres",),
             conds=(Cond("res", 30, ("aurochs",), "près des aurochs"), Cond("pop", 200)),
             effects={
-                "food": {_T.PLAINE: 1.12, _T.VALLEE: 1.08},
+                "food": {_T.PLAINE: 1.12, _T.VALLEE: 1.08, _T.SAVANE: 1.1},
                 "village_food": 1.15,
                 "winter_famine": 0.9,
                 "field_yield": 1.15,
@@ -682,16 +686,16 @@ TECHS: dict[str, Tech] = {
             "propulseur", "Propulseur", 2, 0,
             "Un bois à crochet qui prolonge le bras : la sagaie part plus loin et plus fort.",
             prereqs=("epieu",),
-            conds=(Cond("pop", 40), _weeks(10, _T.PLAINE, _T.STEPPE, label="plaine ou steppe")),
-            effects={"combat": 1.08, "food": {_T.PLAINE: 1.06, _T.STEPPE: 1.06}},
+            conds=(Cond("pop", 40), _weeks(10, _T.PLAINE, _T.STEPPE, _T.SAVANE, label="plaine, steppe ou savane")),
+            effects={"combat": 1.08, "food": {_T.PLAINE: 1.06, _T.STEPPE: 1.06, _T.SAVANE: 1.06}},
             slot=1, world=0.7, chance=0.6,
         ),
         Tech(
             "brulis", "Brûlis du sous-bois", 2, 1,
             "On met le feu aux broussailles : l'herbe tendre repousse et le gibier revient.",
             prereqs=("cueillette",),
-            conds=(_weeks(20, _T.FORET, label="forêt"),),
-            effects={"home_food": 1.05, "food": {_T.FORET: 1.05}},
+            conds=(_weeks(20, _T.FORET, _T.JUNGLE, label="forêt ou jungle"),),
+            effects={"home_food": 1.05, "food": {_T.FORET: 1.05, _T.JUNGLE: 1.05}},
             slot=1, world=0.6,
         ),
         Tech(
@@ -707,7 +711,7 @@ TECHS: dict[str, Tech] = {
             "Tous les clans ensemble rabattent les troupeaux vers un ravin ou un enclos : la viande de toute une saison.",
             prereqs=("arc", "clan"),
             conds=(Cond("pop", 120), Cond("bands", 3)),
-            effects={"food": {_T.PLAINE: 1.08, _T.STEPPE: 1.08, _T.VALLEE: 1.05}},
+            effects={"food": {_T.PLAINE: 1.08, _T.STEPPE: 1.08, _T.VALLEE: 1.05, _T.SAVANE: 1.08, _T.TOUNDRA: 1.08}},
             slot=1, chance=0.5,
         ),
         Tech(
@@ -715,7 +719,7 @@ TECHS: dict[str, Tech] = {
             "Le chamane voyage chez les esprits des bêtes : la chasse est permise, le clan protégé.",
             prereqs=("rites", "clan"),
             conds=(Cond("winters", 4),),
-            effects={"food": {_T.FORET: 1.05, _T.STEPPE: 1.05}, "loyalty": 3},
+            effects={"food": {_T.FORET: 1.05, _T.STEPPE: 1.05, _T.TOUNDRA: 1.05}, "loyalty": 3},
             slot=1, group="croyances",
         ),
         Tech(
@@ -748,7 +752,7 @@ TECHS: dict[str, Tech] = {
             "On ne mange plus le cheval : on le monte. La steppe rétrécit, et les cavaliers frappent loin.",
             prereqs=("troupeau", "chevres"),
             conds=(Cond("res", 20, ("chevaux",), "près des chevaux sauvages"), Cond("pop", 150)),
-            effects={"move": {_T.PLAINE: 8, _T.STEPPE: 7}, "combat": 1.1, "vision": 1},
+            effects={"move": {_T.PLAINE: 8, _T.STEPPE: 7, _T.SAVANE: 8}, "combat": 1.1, "vision": 1},
             world=0.4, chance=0.35,
         ),
         Tech(
@@ -852,17 +856,17 @@ START_BONUSES: dict[str, StartBonus] = {
         StartBonus(
             "bonus:aurochs", "Chasseurs d'aurochs",
             "On sait rabattre les grands troupeaux des plaines.",
-            {"food": {_T.PLAINE: 1.15, _T.STEPPE: 1.15}}, 0,
+            {"food": {_T.PLAINE: 1.15, _T.STEPPE: 1.15, _T.SAVANE: 1.15}}, 0,
         ),
         StartBonus(
             "bonus:bois", "Cueilleurs des bois",
             "Baies, noix, champignons : les bois nourrissent.",
-            {"food": {_T.FORET: 1.15, _T.VALLEE: 1.12}}, 1,
+            {"food": {_T.FORET: 1.15, _T.VALLEE: 1.12, _T.JUNGLE: 1.15}}, 1,
         ),
         StartBonus(
             "bonus:rivages", "Gens des rivages",
             "Coquillages, poissons des lagunes : on vit du rivage.",
-            {"food": {_T.COTE: 1.15}, "water_food": 0.2}, 3,
+            {"food": {_T.COTE: 1.15, _T.MARAIS: 1.12}, "water_food": 0.2}, 3,
         ),
         StartBonus(
             "bonus:froid", "Enfants du froid",

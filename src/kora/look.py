@@ -13,6 +13,11 @@ BIOME_COLORS = {
     Terrain.EAU: (40, 80, 140),
     Terrain.COTE: (210, 190, 130),
     Terrain.DESERT: (214, 176, 96),
+    Terrain.TOUNDRA: (152, 160, 138),
+    Terrain.GLACE: (236, 242, 248),
+    Terrain.MARAIS: (88, 122, 98),
+    Terrain.JUNGLE: (26, 84, 42),
+    Terrain.SAVANE: (204, 176, 98),
 }
 
 _SNOW = (235, 240, 245)
@@ -46,9 +51,16 @@ def season_color(terrain: Terrain, season: Season) -> tuple[int, int, int]:
     if season is Season.HIVER:
         if terrain is Terrain.EAU:
             return _mix(base, _ICE, 0.35)
-        if terrain is Terrain.SOMMET:
+        if terrain in (Terrain.SOMMET, Terrain.GLACE):
             return (245, 246, 250)
+        if terrain is Terrain.JUNGLE:
+            return _scale(base, 0.95, 1.0, 0.95)
+        if terrain is Terrain.SAVANE:
+            # La saison seche : l'herbe jaunit, pas de neige.
+            return _mix(base, (196, 150, 80), 0.3)
         snow = {
+            Terrain.TOUNDRA: 0.75,
+            Terrain.MARAIS: 0.35,
             Terrain.MONTAGNE: 0.55,
             Terrain.COLLINE: 0.45,
             Terrain.PLAINE: 0.42,
@@ -60,8 +72,12 @@ def season_color(terrain: Terrain, season: Season) -> tuple[int, int, int]:
         }.get(terrain, 0.40)
         return _mix(base, _SNOW, snow)
     if season is Season.PRINTEMPS:
-        if terrain in (Terrain.VALLEE, Terrain.FORET, Terrain.PLAINE):
+        if terrain in (Terrain.VALLEE, Terrain.FORET, Terrain.PLAINE, Terrain.MARAIS):
             return _mix(base, _SPRING_GREEN, 0.18)
+        if terrain is Terrain.TOUNDRA:
+            return _mix(base, (130, 150, 120), 0.25)
+        if terrain is Terrain.SAVANE:
+            return _mix(base, (150, 170, 80), 0.25)
         if terrain is Terrain.STEPPE:
             return _mix(base, _SPRING_GREEN, 0.08)
         if terrain is Terrain.EAU:
@@ -74,6 +90,10 @@ def season_color(terrain: Terrain, season: Season) -> tuple[int, int, int]:
             return _mix(base, (200, 190, 80), 0.18)
         if terrain is Terrain.DESERT:
             return _mix(base, _SUMMER_SAND, 0.22)
+        if terrain is Terrain.TOUNDRA:
+            return _mix(base, (120, 150, 90), 0.3)
+        if terrain is Terrain.SAVANE:
+            return _mix(base, (170, 175, 80), 0.18)
         if terrain is Terrain.FORET:
             return _scale(base, 0.92, 1.05, 0.85)
         if terrain is Terrain.EAU:
@@ -89,6 +109,10 @@ def season_color(terrain: Terrain, season: Season) -> tuple[int, int, int]:
         return _mix(base, (190, 150, 70), 0.22)
     if terrain is Terrain.COTE:
         return _mix(base, (180, 140, 80), 0.15)
+    if terrain is Terrain.TOUNDRA:
+        return _mix(base, (150, 100, 60), 0.3)
+    if terrain is Terrain.MARAIS:
+        return _mix(base, (130, 110, 60), 0.25)
     return base
 
 

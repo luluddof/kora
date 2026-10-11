@@ -47,6 +47,9 @@ _SYL_VALLEE = ("ar", "an", "e", "li", "ne", "ur", "di", "ta", "sen", "ra", "il",
 _SYL_COLLINES = ("dor", "ka", "bra", "ok", "hu", "mar", "tor", "ug", "ra", "ben", "gu", "rok")
 _SYL_DESERT = ("ha", "zir", "am", "sa", "ke", "dun", "ra", "ib", "el", "sha", "tu", "na")
 _SYL_NORD = ("sko", "ai", "ne", "ru", "va", "ki", "ol", "sa", "er", "tu", "hja", "rin")
+_SYL_MARAIS = ("bo", "lu", "ung", "we", "ra", "mo", "isk", "na", "fen", "o", "li", "dra")
+_SYL_JUNGLE = ("ko", "ya", "mba", "ti", "olu", "ka", "ze", "nu", "awa", "ri", "zi", "ma")
+_SYL_SAVANE = ("ka", "ru", "ndi", "se", "wa", "to", "ba", "ji", "nyo", "ke", "la", "mu")
 
 CULTURES: dict[str, Culture] = {
     c.id: c
@@ -106,8 +109,30 @@ CULTURES: dict[str, Culture] = {
             ("troupeau", "arc", "fumage", "peaux", "conte"),
             _SYL_DESERT,
         ),
+        # Les sols des nouvelles planetes (0.20).
         Culture(
-            "nord", "peuple du grand froid", frozenset({_T.FORET, _T.STEPPE, _T.COLLINE}), 18.0,
+            "marais", "peuple des marais", frozenset({_T.MARAIS, _T.VALLEE}), 26.0,
+            frozenset({_T.MARAIS, _T.VALLEE, _T.COTE}), None, 3, 35, True,
+            ("peche",),
+            ("filets", "pirogue", "fumage", "peche", "cueillette", "conte"),
+            _SYL_MARAIS,
+        ),
+        Culture(
+            "jungle", "peuple de la jungle", frozenset({_T.JUNGLE}), 28.0,
+            frozenset({_T.JUNGLE, _T.VALLEE}), None, 3, 40, True,
+            ("cueillette",),
+            ("arc", "cueillette", "brulis", "fumage", "chamanes", "conte"),
+            _SYL_JUNGLE,
+        ),
+        Culture(
+            "savane", "peuple de la savane", frozenset({_T.SAVANE}), 28.0,
+            None, frozenset({_T.SAVANE, _T.STEPPE, _T.PLAINE}), 4, 30, False,
+            ("epieu",),
+            ("propulseur", "arc", "troupeau", "rabattages", "fumage", "conte"),
+            _SYL_SAVANE,
+        ),
+        Culture(
+            "nord", "peuple du grand froid", frozenset({_T.FORET, _T.STEPPE, _T.COLLINE, _T.TOUNDRA}), 18.0,
             None, None, 3, 40, True,
             ("peaux",),
             ("fumage", "portage", "huttes", "arc", "conte"),
@@ -188,7 +213,7 @@ def culture_for_place(world, h) -> str:
     terrain = world.terrain(h)
     row = world.canonicalize(h).r if world.canonicalize(h) is not None else 0
     lat = abs(row / max(1, world.height - 1) * 2.0 - 1.0)
-    if lat > 0.62 and terrain in (_T.FORET, _T.STEPPE, _T.COLLINE, _T.PLAINE):
+    if terrain is _T.TOUNDRA or (lat > 0.62 and terrain in (_T.FORET, _T.STEPPE, _T.COLLINE, _T.PLAINE)):
         return "nord"
     return {
         _T.STEPPE: "steppe",
@@ -199,10 +224,16 @@ def culture_for_place(world, h) -> str:
         _T.COLLINE: "collines",
         _T.MONTAGNE: "collines",
         _T.DESERT: "desert",
+        _T.MARAIS: "marais",
+        _T.JUNGLE: "jungle",
+        _T.SAVANE: "savane",
     }.get(terrain, "vallee")
 
 
 MINOR_START = 6
+# Les nouvelles planetes (4 fois plus grandes, 6 continents) : plus de petits
+# peuples, sans trop en mettre.
+MINOR_START_PLANET = 14
 MINOR_POP = (18, 26)
 MINOR_SPACING = 40
 # Un petit peuple garde au plus 4 bandes (8 avec la Chefferie).
@@ -213,10 +244,12 @@ def pick_minor_spots(world, taken: list, count: int, rng, avoid=None) -> list:
     """Departs des petits peuples : loin de tous les autres (point le plus
     eloigne, tire parmi les meilleurs), sur une terre qui nourrit, hors des
     poles. avoid : cases a eviter (deja explorees par le joueur)."""
-    good = {_T.PLAINE, _T.VALLEE, _T.STEPPE, _T.FORET, _T.COLLINE, _T.COTE, _T.DESERT}
+    good = {_T.PLAINE, _T.VALLEE, _T.STEPPE, _T.FORET, _T.COLLINE, _T.COTE, _T.DESERT, _T.SAVANE, _T.JUNGLE, _T.MARAIS, _T.TOUNDRA}
     pool = []
-    step = 7
-    for row in range(int(world.height * 0.2), int(world.height * 0.8), 3):
+    # Le meme maillage de candidats quelle que soit la taille de la planete.
+    step = max(7, 7 * world.width // 768)
+    rstep = max(3, 3 * world.height // 384)
+    for row in range(int(world.height * 0.2), int(world.height * 0.8), rstep):
         for col in range(row % step, world.width, step):
             if world._terrains[row][col] not in good:
                 continue
@@ -226,20 +259,18 @@ def pick_minor_spots(world, taken: list, count: int, rng, avoid=None) -> list:
             pool.append(h)
     pool = [h for h in pool if spawn_forage(world, h) >= 16.0]
     chosen: list = []
-    others = list(taken)
+    # La distance de chaque candidat au plus proche des autres, tenue a jour
+    # a chaque depart pose (memes choix qu'en la recalculant).
+    near = [min((world.distance(h, o) for o in taken), default=10**6) for h in pool]
     for _ in range(count):
-        scored = []
-        for h in pool:
-            near = min((world.distance(h, o) for o in others), default=10**6)
-            if near >= MINOR_SPACING:
-                scored.append((near, h))
+        scored = [(d, h) for d, h in zip(near, pool) if d >= MINOR_SPACING]
         if not scored:
             break
         scored.sort(key=lambda it: (-it[0], it[1].q, it[1].r))
         top = scored[: max(1, len(scored) // 12)]
         pick = rng.choice(top)[1]
         chosen.append(pick)
-        others.append(pick)
+        near = [min(d, world.distance(h, pick)) for d, h in zip(near, pool)]
     return chosen
 
 

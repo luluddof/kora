@@ -188,7 +188,9 @@ class HostSession(_Base):
         return next((t for t in (2, 3, 4) if t not in taken), None)
 
     def lobby_json(self) -> dict:
-        return {"t": "lobby", "seats": [s.to_json() for _t, s in sorted(self.seats.items())], "resume": self.resume is not None}
+        # La planete choisie par l'hote (planets.py ; "hasard" : tiree au depart).
+        planet = getattr(self.resume.world, "planet", "") if self.resume is not None else self.setup.get("planet", "hasard")
+        return {"t": "lobby", "seats": [s.to_json() for _t, s in sorted(self.seats.items())], "resume": self.resume is not None, "planet": planet}
 
     def broadcast(self, obj: dict) -> None:
         for conn, tid in list(self.conns.items()):
@@ -516,6 +518,7 @@ class ClientSession(_Base):
         elif kind == "lobby":
             self.seats = {int(s["tid"]): Seat.from_json(s) for s in msg.get("seats", [])}
             self.resume = bool(msg.get("resume"))
+            self.planet = str(msg.get("planet", ""))
         elif kind == "refuse":
             self.refused = str(msg.get("why", "Refuse par l'hôte"))
             self.ended = self.refused

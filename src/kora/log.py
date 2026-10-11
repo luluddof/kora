@@ -82,5 +82,10 @@ def terrain_fr(terrain) -> str:
         Terrain.EAU: "Eau",
         Terrain.COTE: "Côte",
         Terrain.DESERT: "Désert",
+        Terrain.TOUNDRA: "Toundra",
+        Terrain.GLACE: "Glace",
+        Terrain.MARAIS: "Marais",
+        Terrain.JUNGLE: "Jungle",
+        Terrain.SAVANE: "Savane",
     }
     return names.get(terrain, terrain.value)

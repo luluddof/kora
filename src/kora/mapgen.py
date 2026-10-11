@@ -13,8 +13,14 @@ d'etirement aux poles) :
   4. climat : temperature (latitude, altitude), pluie portee par les
      vents dominants, avec ombre pluviometrique derriere les reliefs ;
   5. bassins versants : les depressions deviennent des lacs, l'eau
-     descend jusqu'a la mer, les rivieres creusent des vallees ;
-  6. biomes, cotes, banquises.
+     descend jusqu'a la mer ; les RIVIERES (0.20) : chaque case de riviere
+     garde son sens (la case en aval) et sa taille (ruisseau, riviere,
+     fleuve) ; elles creusent des vallees, s'etalent en marais ;
+  6. biomes (toundra, savane, jungle, marais, 0.20), cotes, calottes de
+     glace.
+Les planetes du jeu (1536 x 768, data/planetes/) se cuisent avec
+tools/cuire_planetes.py ; l'ancienne carte (768 x 384, data/kora_map.json)
+reste pour les anciennes parties.
 """
 
 from __future__ import annotations
@@ -24,7 +30,7 @@ import math
 
 import numpy as np
 
-from src.kora.resources import BAKED, COVER, PRESENT
+from src.kora.resources import BAKED, BAKED_V2, COVER, KINDS, PRESENT
 from src.kora.types import Terrain
 from src.kora.world import (
     CHAR_TO_TERRAIN,
@@ -36,9 +42,15 @@ from src.kora.world import (
 )
 from src.kora.atlas import build_atlas_labels
 
-PLANET_WIDTH = 768
-PLANET_HEIGHT = 384
-LAND_SHARE = 0.32
+# Les nouvelles planetes (0.20) : 4 fois l'ancienne carte (768 x 384).
+PLANET_WIDTH = 1536
+PLANET_HEIGHT = 768
+LAND_SHARE = 0.36
+# Les rivieres : la part des terres (debit le plus fort) qui porte un
+# ruisseau, une riviere, un fleuve.
+RIVER_SHARE = 0.034
+RIVER_MID_SHARE = 0.011
+RIVER_BIG_SHARE = 0.0035
 
 _GRADS = np.array(
     [
@@ -155,7 +167,7 @@ def _hex_neighbors(width: int, height: int):
 
 
 def _plates(rng, p, noise_a, noise_b):
-    n = int(rng.integers(18, 25))
+    n = int(rng.integers(22, 30))
     seeds = rng.normal(size=(n, 3))
     seeds /= np.linalg.norm(seeds, axis=1, keepdims=True)
     # Frontieres irregulieres : on deforme le point avant de chercher la graine.
@@ -178,7 +190,7 @@ def _plates(rng, p, noise_a, noise_b):
     # collision au milieu). Deux continents differents ne se touchent
     # jamais : il reste toujours une plaque oceanique entre eux.
     owner = np.full(n, -1)
-    wanted = int(rng.integers(4, 7))
+    wanted = int(rng.integers(5, 8))
 
     def free(plate: int, continent: int) -> bool:
         return owner[plate] < 0 and all(owner[t] in (-1, continent) for t in touching[plate])
@@ -403,10 +415,10 @@ def _drainage(elev, sea, rain, width, height):
         to = receiver[cell]
         if to >= 0:
             flow[to] += flow[cell]
-    return flow.reshape(height, width), lake
+    return flow.reshape(height, width), lake, receiver
 
 
-def _biomes(elev, sea, lat, rain, flow, lake, rough, uplift, noise, p):
+def _biomes(elev, sea, lat, rain, flow, lake, rough, uplift, noise, p, rivers=None):
     height, width = elev.shape
     alat = np.abs(lat) / (math.pi / 2.0)
     land = elev > sea
@@ -422,8 +434,33 @@ def _biomes(elev, sea, lat, rain, flow, lake, rough, uplift, noise, p):
     g[land & (wet < 0.62)] = "S"
     g[land & (wet < 0.33) & (temp > 0.52)] = "D"
     g[land & (wet > 1.25) & (temp > 0.2)] = "F"
-    g[land & (temp < 0.2) & (wet >= 0.8)] = "F"
-    g[land & (temp < 0.2) & (wet < 0.8)] = "S"
+    if rivers is None:
+        # L'ancienne carte (sans les sols de 0.20).
+        g[land & (temp < 0.2) & (wet >= 0.8)] = "F"
+        g[land & (temp < 0.2) & (wet < 0.8)] = "S"
+    else:
+        # 0.20 : la temperature des sols depend moins de l'altitude (les
+        # terres sont hautes : sinon la toundra couvre les plateaux) ; elle
+        # sert aussi aux ressources (climate["temp"]).
+        temp = 1.0 - alat ** 1.35 - 0.3 * np.clip(hgt - 0.45, 0.0, None) + 0.07 * fbm(noise, p, 4.0, 3)
+        g[land] = "P"
+        g[land & (wet < 0.62)] = "S"
+        g[land & (wet < 0.33) & (temp > 0.52)] = "D"
+        g[land & (wet > 1.25) & (temp > 0.2)] = "F"
+        # Les tropiques : la savane (saison seche), la jungle (pluies toute
+        # l'annee), avec un bord irregulier.
+        edge = 0.04 * fbm(noise, p * 1.3 + 2.0, 6.0, 3)
+        hot = land & (temp + edge > 0.76)
+        # La jungle : les plus humides des tropiques chauds (la ceinture des
+        # pluies) ; la savane : le reste, sauf le desert.
+        rainy = np.quantile(wet[hot], 0.62) if hot.any() else 1.5
+        g[hot & (wet >= 0.33)] = "A"
+        g[hot & (temp + edge > 0.84) & (wet >= max(1.3, rainy))] = "J"
+        # Le grand nord : la taiga (foret) la ou il pleut, la toundra
+        # au-dela, jusqu'aux calottes.
+        north = temp + edge < 0.3
+        g[land & north & (wet >= 0.8) & (temp + edge >= 0.2)] = "F"
+        g[land & north & ~((wet >= 0.8) & (temp + edge >= 0.2))] = "T"
     # Relief : les chaines suivent les collisions de plaques (soulevement),
     # avec des collines au pied ; sommets rares et morceles (des cols
     # restent franchissables en montagne).
@@ -431,28 +468,106 @@ def _biomes(elev, sea, lat, rain, flow, lake, rough, uplift, noise, p):
     g[land & ((uplift > 0.2) | ((elev > upland) & (rough > 0.55)))] = "C"
     g[land & (uplift > 0.3)] = "M"
     g[land & (uplift > 0.62) & (rough > 0.68)] = "X"
-    # Rivieres : les plus gros debits creusent des vallees ; en plaine, les
-    # grands fleuves s'elargissent (plaines alluviales).
     lowland = land & (hgt < 0.45)
-    river = lowland & (flow > np.quantile(flow[land], 0.94))
-    big = lowland & (flow > np.quantile(flow[land], 0.985)) & (hgt < 0.25)
-    wide = big.copy()
+    if rivers is None:
+        # Rivieres : les plus gros debits creusent des vallees ; en plaine,
+        # les grands fleuves s'elargissent (plaines alluviales).
+        river = lowland & (flow > np.quantile(flow[land], 0.94))
+        big = lowland & (flow > np.quantile(flow[land], 0.985)) & (hgt < 0.25)
+        wide = big.copy()
+        for nr, nc, ok in _hex_neighbors(width, height):
+            wide |= ok & big[nr, nc] & lowland
+        g[river | wide] = "V"
+        g[lake] = "E"
+        return g, temp
+    # Les rivieres de 0.20 (_rivers) : une riviere ou un fleuve creuse sa
+    # vallee dans les basses terres ; les fleuves s'elargissent en plaines
+    # alluviales ; un ruisseau garde le sol qu'il traverse.
+    size = rivers >> 3
+    # Les terres sont hautes : "basses" et "plates" se mesurent par rapport
+    # aux terres de la planete (quantiles), pas en absolu.
+    q_low = np.quantile(hgt[land], 0.55) if land.any() else 0.45
+    q_plain = np.quantile(hgt[land], 0.35) if land.any() else 0.25
+    q_flat = np.quantile(hgt[land], 0.09) if land.any() else 0.07
+    hard = np.isin(g, ("M", "X", "C", "J", "T"))
+    # Une riviere ou un fleuve creuse sa vallee (meme au desert : les oasis
+    # des grands fleuves) ; sa vallee borde ses deux rives dans les basses
+    # terres ; un fleuve s'etale sur deux rangs de chaque cote en plaine.
+    course = (size >= 2) & ~np.isin(g, ("M", "X"))
+    banks = np.zeros_like(land)
     for nr, nc, ok in _hex_neighbors(width, height):
-        wide |= ok & big[nr, nc] & lowland
-    g[river | wide] = "V"
+        banks |= ok & (size[nr, nc] >= 2)
+    banks &= land & (hgt < q_low) & ~np.isin(g, ("M", "X", "T"))
+    wide = (size >= 3) & (hgt < q_plain)
+    for _ in range(2):
+        grown = wide.copy()
+        for nr, nc, ok in _hex_neighbors(width, height):
+            grown |= ok & wide[nr, nc] & land & (hgt < q_plain) & ~hard
+        wide = grown
+    # Un ruisseau de plaine a aussi son fond de vallee.
+    brook = (size == 1) & (hgt < q_plain) & ~hard
+    g[(course | banks | wide | brook) & land & ~lake] = "V"
+    # Les MARAIS : les plats humides au bord de l'eau, et les deltas.
+    flat = land & (hgt < q_flat)
+    near_water = lake | (rivers > 0)
+    for _ in range(2):
+        grown = near_water.copy()
+        for nr, nc, ok in _hex_neighbors(width, height):
+            grown |= ok & near_water[nr, nc]
+        near_water = grown
+    blotch = fbm(noise, p * 1.7 + 5.0, 9.0, 3) > -0.05
+    marsh = flat & near_water & (wet > 0.9) & blotch & (temp > 0.2)
+    delta = flat & (size >= 3)
+    for nr, nc, ok in _hex_neighbors(width, height):
+        delta |= ok & (size[nr, nc] >= 3) & flat & blotch
+    g[(marsh | delta) & ~np.isin(g, ("M", "X", "C"))] = "Z"
     g[lake] = "E"
     return g, temp
 
 
-def _polar(grid, lat, noise, p):
+def _rivers(flow, lake, receiver, land, width, height, hgt=None):
+    """La couche des rivieres (octets, rangee par rangee) : pour une case de
+    riviere, (sens + 1) | (taille << 3) ; le sens est l'indice de la case en
+    aval dans world.NEIGHBOR_DELTAS, la taille 1 ruisseau, 2 riviere,
+    3 fleuve. Le debit grandit vers l'aval : les rivieres vont toujours
+    jusqu'a la mer ou un lac."""
+    out = np.zeros(height * width, dtype=np.uint8)
+    on_land = land & ~lake
+    ref = flow[on_land]
+    if not ref.size:
+        return out.reshape(height, width)
+    t1 = np.quantile(ref, 1.0 - RIVER_SHARE)
+    t2 = np.quantile(ref, 1.0 - RIVER_MID_SHARE)
+    t3 = np.quantile(ref, 1.0 - RIVER_BIG_SHARE)
+    nbs = _hex_neighbors(width, height)
+    nr_flat = [d[0].ravel() for d in nbs]
+    nc_flat = [d[1].ravel() for d in nbs]
+    ok_flat = [d[2].ravel() for d in nbs]
+    flow_f = flow.ravel()
+    river = (on_land & (flow > t1)).ravel()
+    for cell in np.nonzero(river)[0].tolist():
+        to = int(receiver[cell])
+        if to < 0:
+            continue
+        for k in range(6):
+            if ok_flat[k][cell] and int(nr_flat[k][cell]) * width + int(nc_flat[k][cell]) == to:
+                f = flow_f[cell]
+                size = 3 if f > t3 else 2 if f > t2 else 1
+                out[cell] = (k + 1) | (size << 3)
+                break
+    return out.reshape(height, width)
+
+
+def _polar(grid, lat, noise, p, ice: str = "X"):
     # Calottes : les terres gelent plus tot que la mer, bords dechiquetes.
+    # ice : "X" (l'ancienne carte : des sommets), "G" (0.20 : la glace).
     alat = np.abs(lat) / (math.pi / 2.0)
     wobble = fbm(noise, p, 3.0, 5)
-    land_edge = 0.8 + 0.12 * wobble
+    land_edge = (0.8 if ice == "X" else 0.85) + 0.12 * wobble
     sea_edge = 0.91 + 0.09 * wobble
-    grid[(alat > land_edge) & (grid != "E")] = "X"
-    grid[(alat > sea_edge) & (grid == "E")] = "X"
-    grid[alat > 0.985] = "X"
+    grid[(alat > land_edge) & (grid != "E")] = ice
+    grid[(alat > sea_edge) & (grid == "E")] = ice
+    grid[alat > 0.985] = ice
 
 
 def _coasts(grid, width, height):
@@ -461,36 +576,49 @@ def _coasts(grid, width, height):
     for nr, nc, ok in _hex_neighbors(width, height):
         touch |= ok & water[nr, nc]
     # Les embouchures restent des vallees (deltas fertiles).
-    coast = touch & ~water & ~np.isin(grid, ("M", "X", "V"))
+    coast = touch & ~water & ~np.isin(grid, ("M", "X", "V", "G", "Z"))
     grid[coast] = "O"
 
 
-def _generate(seed: int, width: int, height: int):
+def _generate(seed: int, width: int, height: int, v2: bool = True):
+    """v2 (0.20) : rivieres, glace, toundra, savane, jungle, marais ; sinon
+    l'ancienne carte (les tests du generateur d'origine)."""
     rng = np.random.default_rng(seed)
     p, lat = sphere_points(width, height)
     noises = [Noise3(rng) for _ in range(8)]
     plates = _plates(rng, p, noises[0], noises[1])
     elev, rough, uplift = _elevation(rng, p, lat, plates, noises[2:6])
-    sea = _sea_level(elev, lat, LAND_SHARE)
+    sea = _sea_level(elev, lat, LAND_SHARE if v2 else 0.32)
     rain = _moisture(elev, sea, lat, noises[6], p)
     # L'eau coule sur un relief legerement bruite : sur les plats, les
     # rivieres serpentent au lieu de filer en lignes droites paralleles.
-    flow, lake = _drainage(elev + 0.03 * fbm(noises[6], p, 14.0, 3), sea, rain, width, height)
-    grid, temp = _biomes(elev, sea, lat, rain, flow, lake, rough, uplift, noises[7], p)
-    _polar(grid, lat, noises[7], p * 1.7)
-    _coasts(grid, width, height)
+    flow, lake, receiver = _drainage(elev + 0.03 * fbm(noises[6], p, 14.0, 3), sea, rain, width, height)
     land = elev > sea
+    rivers = _rivers(flow, lake, receiver, land, width, height) if v2 else None
+    grid, temp = _biomes(elev, sea, lat, rain, flow, lake, rough, uplift, noises[7], p, rivers)
+    _polar(grid, lat, noises[7], p * 1.7, "G" if v2 else "X")
+    _coasts(grid, width, height)
+    if rivers is not None:
+        # Pas de riviere sur la glace, les sommets, l'eau.
+        rivers[np.isin(grid, ("G", "X", "E"))] = 0
     mid = np.quantile(rain[land], 0.5) if land.any() else 1.0
-    climate = {"temp": temp, "wet": rain / max(1e-6, mid), "flow": flow, "p": p, "lat": lat}
+    hgt = np.clip((elev - sea) / 0.9, 0.0, 1.0)
+    climate = {
+        "temp": temp, "wet": rain / max(1e-6, mid), "flow": flow, "p": p, "lat": lat,
+        "rivers": rivers, "hgt": hgt, "uplift": uplift, "rough": rough, "lake": lake,
+    }
     return grid, climate
 
 
-def generate_world(seed: int = 42, width: int = PLANET_WIDTH, height: int = PLANET_HEIGHT, resources: bool = False):
-    grid, climate = _generate(seed, width, height)
+def generate_world(seed: int = 42, width: int = PLANET_WIDTH, height: int = PLANET_HEIGHT, resources: bool = False, v2: bool = True):
+    grid, climate = _generate(seed, width, height, v2)
     terrains = [[CHAR_TO_TERRAIN[ch] for ch in row] for row in grid.tolist()]
     world = World(terrains, wrap_x=True)
+    if climate.get("rivers") is not None:
+        world.set_rivers(climate["rivers"].astype(np.uint8).tobytes())
     if resources:
-        world.set_resources(generate_layers(seed, grid, climate))
+        layers = generate_layers_v2(seed, grid, climate) if v2 else generate_layers(seed, grid, climate)
+        world.set_resources(layers)
     return world
 
 
@@ -512,6 +640,8 @@ def bake(seed: int = 42, path=None, width: int = PLANET_WIDTH, height: int = PLA
 def _is_polar_cap(world, col: int, row: int) -> bool:
     if world.height <= 1:
         return False
+    if world._terrains[row][col] is Terrain.GLACE:
+        return True
     lat = abs((row / (world.height - 1)) * 2.0 - 1.0)
     return lat > 0.80 and world._terrains[row][col] is Terrain.SOMMET
 
@@ -626,3 +756,185 @@ def generate_layers(seed: int, grid, climate) -> dict:
         v = np.clip(raw * (PRESENT / q), 0.0, 1.0)
         out[name] = (v * 255.0 + 0.5).astype(np.uint8).tobytes()
     return out
+
+
+# --- les ressources des nouvelles planetes (0.20) ------------------------------------
+#
+# Les ETRES VIVANTS vivent dans des AIRES : le climat et les sols disent ou
+# ils peuvent vivre, deux bruits (un large, un fin) decoupent des aires de
+# tailles variees, avec des trous ; chaque ressource couvre COVER des terres.
+# Les MATIERES sont des GISEMENTS : DEPOSITS[nom] = (nombre pour une planete
+# de 1536 x 768, rayon le plus grand) ; chaque gisement a un coeur riche qui
+# s'appauvrit vers ses bords (1 a 4 cases) ; ils se posent la ou la geologie
+# les veut (poids), jamais trop pres l'un de l'autre.
+
+DEPOSITS = {
+    "silex": (1200, 3),
+    "argile": (2200, 2),
+    "sel": (520, 2),
+    "ocre": (520, 2),
+    "obsidienne": (170, 2),
+    "ambre": (190, 2),
+    "cuivre": (420, 2),
+    "etain": (120, 1),
+    "argent": (650, 2),
+}
+# La part des cases d'eau ou de rive qui portent du poisson.
+FISH_COVER = 0.6
+LIVING = ("cereales", "racines", "fruits", "miel", "bois", "aurochs", "chevaux", "chevres", "rennes", "poisson")
+
+
+def _offsets(radius: int):
+    """Les cases d'un disque hexagonal en (dcol, drow) selon la parite de la
+    rangee du centre (rangees decalees : world.offset_to_axial)."""
+    out = {0: [], 1: []}
+    for parity in (0, 1):
+        for dq in range(-radius, radius + 1):
+            for dr in range(-radius, radius + 1):
+                d = (abs(dq) + abs(dq + dr) + abs(dr)) // 2
+                if d > radius:
+                    continue
+                row = parity + dr
+                dcol = dq + (row - (row & 1)) // 2 - (parity - (parity & 1)) // 2
+                out[parity].append((dcol, dr, d))
+    return out
+
+
+def generate_layers_v2(seed: int, grid, climate) -> dict:
+    """Couches 0..255 (octets, rangee par rangee) des 19 ressources."""
+    rng = np.random.default_rng(seed + 7919)
+    p = climate["p"]
+    temp = climate["temp"]
+    wet = climate["wet"]
+    rivers = climate["rivers"]
+    hgt = climate["hgt"]
+    uplift = climate["uplift"]
+    height, width = grid.shape
+    scale = (width * height) / (1536 * 768)
+    terr = {ch: (grid == ch).astype(np.float64) for ch in "PVSFCMXEODTGZJA"}
+    land = ~np.isin(grid, ("E", "G", "X"))
+    water = grid == "E"
+    shore = np.zeros_like(water)
+    for nr, nc, ok in _hex_neighbors(width, height):
+        shore |= ok & land[nr, nc]
+    inshore = (water & shore).astype(np.float64)
+    size = (rivers >> 3).astype(np.float64)
+    river = np.clip(size / 3.0, 0.0, 1.0)
+    riverside = np.zeros_like(land)
+    for nr, nc, ok in _hex_neighbors(width, height):
+        riverside |= ok & (rivers[nr, nc] > 0)
+    riverside = (riverside | (rivers > 0)) & land
+
+    def areas(big: float, fine: float, cover: float):
+        """Des aires de tailles variees : un bruit large, perce par un fin."""
+        a = fbm(Noise3(rng), p, big, 4)
+        b = fbm(Noise3(rng), p, fine, 3)
+        n = a + 0.55 * b
+        ref = n[land] if land.any() else n.ravel()
+        lo = np.quantile(ref, 1.0 - cover)
+        hi = np.quantile(ref, 0.99)
+        v = np.clip((n - lo) / max(1e-6, hi - lo), 0.0, 1.0)
+        return v * v * (3.0 - 2.0 * v)
+
+    def band(x, lo: float, hi: float, soft: float = 0.12):
+        return np.clip(np.minimum((x - lo) / soft + 1.0, (hi - x) / soft + 1.0), 0.0, 1.0)
+
+    def suit(weights: dict):
+        out = np.zeros((height, width))
+        for ch, w in weights.items():
+            out += w * terr[ch]
+        return out
+
+    living = {
+        "cereales": suit({"V": 1.0, "P": 0.8, "A": 0.55, "S": 0.35, "C": 0.25, "O": 0.25, "F": 0.1})
+        * band(temp, 0.45, 0.82) * band(wet, 0.4, 1.3, 0.3) * areas(2.5, 9.0, 0.5),
+        "racines": suit({"F": 1.0, "J": 0.8, "V": 0.8, "Z": 0.7, "P": 0.4, "O": 0.3})
+        * band(temp, 0.6, 1.3) * band(wet, 0.85, 5.0, 0.3) * areas(3.0, 10.0, 0.5),
+        "fruits": suit({"J": 1.0, "F": 0.7, "V": 0.5, "A": 0.4, "P": 0.3})
+        * band(temp, 0.55, 1.4) * band(wet, 0.7, 5.0, 0.3) * areas(3.5, 12.0, 0.45),
+        "miel": suit({"F": 0.9, "P": 0.7, "A": 0.6, "J": 0.5, "V": 0.6, "C": 0.4})
+        * band(temp, 0.45, 1.2) * areas(4.0, 14.0, 0.35),
+        "bois": suit({"F": 1.0, "J": 0.7, "V": 0.3, "Z": 0.2, "T": 0.1})
+        * band(temp, 0.25, 0.9) * areas(2.2, 7.0, 0.6),
+        "aurochs": suit({"P": 1.0, "V": 0.8, "F": 0.55, "A": 0.75, "S": 0.35})
+        * band(temp, 0.35, 0.95) * areas(2.2, 7.0, 0.55),
+        "chevaux": suit({"S": 1.0, "P": 0.55, "A": 0.35, "D": 0.2}) * band(temp, 0.25, 0.75) * areas(2.0, 6.0, 0.6),
+        "chevres": suit({"C": 1.0, "M": 0.9, "D": 0.2, "S": 0.2}) * band(temp, 0.2, 0.95) * areas(3.0, 9.0, 0.6),
+        "rennes": suit({"T": 1.0, "F": 0.6, "S": 0.5, "C": 0.5}) * band(temp, -1.0, 0.36) * areas(2.0, 6.0, 0.75),
+        "poisson": (terr["O"] + river * riverside + 0.8 * terr["Z"] + inshore) * (0.5 + 0.5 * areas(3.0, 10.0, 0.7)),
+    }
+    out = {}
+    for name in LIVING:
+        raw = np.clip(living[name], 0.0, None)
+        ref = raw[land]
+        cover = COVER.get(name, 0.08)
+        if name == "poisson":
+            # Le poisson ne vit que pres de l'eau (rives, rivieres, marais,
+            # eaux cotieres) : sa part se compte sur ces cases-la.
+            ref = raw[raw > 0]
+            cover = FISH_COVER
+        q = float(np.quantile(ref, 1.0 - cover)) if ref.size else 0.0
+        if q <= 1e-6:
+            q = float(ref.max()) * 0.5 if ref.size and ref.max() > 0 else 1.0
+        v = np.clip(raw * (PRESENT / q), 0.0, 1.0)
+        out[name] = (v * 255.0 + 0.5).astype(np.uint8).tobytes()
+
+    # --- les gisements ---
+    coastal = (terr["O"] > 0) | shore
+    weights = {
+        "silex": suit({"C": 1.0, "P": 0.5, "V": 0.35, "S": 0.35, "A": 0.3, "D": 0.3, "T": 0.2}),
+        "argile": riverside * 1.0 + 0.6 * terr["Z"] + 0.3 * terr["V"] + 0.15 * suit({"P": 1.0, "O": 1.0}),
+        "sel": (terr["O"] * band(wet, 0.0, 0.75, 0.2) + 0.9 * terr["D"] + 0.25 * terr["C"] + 0.2 * terr["S"]),
+        "ocre": suit({"C": 1.0, "D": 0.7, "A": 0.6, "S": 0.4, "M": 0.3}) * band(temp, 0.4, 1.4),
+        "obsidienne": (land & (uplift > 0.22)) * (0.4 + hgt) + 0.4 * (land & (hgt > 0.3) & (temp > 0.3)),
+        "ambre": coastal * land * band(temp, 0.28, 0.6) + 0.4 * terr["F"] * band(temp, 0.3, 0.55),
+        "cuivre": suit({"C": 1.0, "M": 0.8, "D": 0.4, "S": 0.15}),
+        "etain": suit({"C": 0.6, "M": 1.0}) * (hgt > 0.2),
+        "argent": suit({"M": 1.0, "C": 0.6}) * (0.5 + hgt),
+    }
+    discs = {r: _offsets(r) for r in range(0, 5)}
+    for name, (count, rmax) in DEPOSITS.items():
+        layer = np.zeros(height * width, dtype=np.float64)
+        w = np.asarray(weights[name], dtype=np.float64).ravel() * land.ravel()
+        total = w.sum()
+        n = max(4, int(round(count * scale)))
+        if total <= 0:
+            out[name] = layer.astype(np.uint8).tobytes()
+            continue
+        # Un tirage pondere, puis un ecart minimal (une grille grossiere).
+        picks = rng.choice(w.size, size=n * 3, replace=True, p=w / total)
+        cell = max(3, int(round(math.sqrt(land.sum() / max(1, n)) * 0.55)))
+        taken: set = set()
+        placed = 0
+        for idx in picks.tolist():
+            row, col = divmod(idx, width)
+            key = (row // cell, col // cell)
+            if key in taken:
+                continue
+            taken.add(key)
+            placed += 1
+            r = int(rng.choice(np.arange(rmax + 1), p=_radius_weights(rmax)))
+            rich = float(rng.uniform(0.5, 1.0))
+            for dcol, drow, d in discs[r][row & 1]:
+                rr = row + drow
+                if rr < 0 or rr >= height:
+                    continue
+                cc = (col + dcol) % width
+                if not land[rr, cc]:
+                    continue
+                v = rich * (1.0 - 0.55 * d / (r + 1))
+                i = rr * width + cc
+                if v > layer[i]:
+                    layer[i] = v
+            if placed >= n:
+                break
+        out[name] = (np.clip(layer, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8).tobytes()
+    assert set(out) == set(BAKED_V2), sorted(set(BAKED_V2) ^ set(out))
+    assert all(KINDS[k] == "matiere" for k in DEPOSITS)
+    return out
+
+
+def _radius_weights(rmax: int):
+    """Les petits gisements sont les plus nombreux."""
+    w = np.array([1.0 / (1 + r) ** 1.3 for r in range(rmax + 1)])
+    return w / w.sum()

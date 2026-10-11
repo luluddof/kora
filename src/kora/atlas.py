@@ -18,6 +18,14 @@ LAND_NAMES = (
     "Sora",
     "Yuna",
     "Belak",
+    "Ostra",
+    "Valdin",
+    "Maré",
+    "Eskel",
+    "Tirun",
+    "Kesh",
+    "Abira",
+    "Hollen",
 )
 SEA_NAMES = (
     "Grand Océan",
@@ -49,6 +57,8 @@ def _is_water(terrain: Terrain) -> bool:
 def _polar_ice(world: World, col: int, row: int) -> bool:
     if world.height <= 1:
         return False
+    if world._terrains[row][col] is Terrain.GLACE:
+        return True
     lat = abs((row / (world.height - 1)) * 2.0 - 1.0)
     return lat > 0.8 and world._terrains[row][col] is Terrain.SOMMET
 
@@ -162,10 +172,23 @@ def _ocean_basins(world: World, cells: list[tuple[int, int]], count: int) -> lis
     return anchors
 
 
-def build_atlas_labels(world: World) -> list[AtlasLabel]:
+def build_atlas_labels(world: World, shuffle=None) -> list[AtlasLabel]:
+    """shuffle : un random.Random pour melanger les noms (chaque planete a
+    les siens ; tools/cuire_planetes.py)."""
     baked = getattr(world, "atlas", None)
     if baked is not None:
         return list(baked)
+    global LAND_NAMES, SEA_NAMES, INLAND_NAMES
+    saved = (LAND_NAMES, SEA_NAMES, INLAND_NAMES)
+    if shuffle is not None:
+        LAND_NAMES, SEA_NAMES, INLAND_NAMES = (tuple(shuffle.sample(n, len(n))) for n in saved)
+    try:
+        return _build_labels(world)
+    finally:
+        LAND_NAMES, SEA_NAMES, INLAND_NAMES = saved
+
+
+def _build_labels(world: World) -> list[AtlasLabel]:
     area = max(1, world.width * world.height)
     min_land = max(20, area // 600)
     min_ice = max(16, area // 900)

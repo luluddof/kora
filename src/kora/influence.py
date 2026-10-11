@@ -61,6 +61,11 @@ PROJECTION = {
     Terrain.DESERT: 2.3,
     Terrain.MONTAGNE: 2.3,
     Terrain.SOMMET: 3.0,
+    Terrain.SAVANE: 1.2,
+    Terrain.TOUNDRA: 1.6,
+    Terrain.MARAIS: 2.0,
+    Terrain.JUNGLE: 2.0,
+    Terrain.GLACE: 3.0,
 }
 _PROJ_CACHE_MAX = 40000
 

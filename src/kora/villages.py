@@ -130,6 +130,11 @@ FERTILITY = {
     _T.FORET: 0.5,
     _T.COLLINE: 0.4,
     _T.DESERT: 0.15,
+    # 0.20 : la savane se cultive, la jungle seulement defrichee (comme la
+    # foret), le marais pas (il faudrait l'assecher), la toundra a peine.
+    _T.SAVANE: 0.55,
+    _T.JUNGLE: 0.45,
+    _T.TOUNDRA: 0.1,
 }
 
 
@@ -574,12 +579,34 @@ def growth_mult(state, band) -> float:
     return mult
 
 
+# Les troupeaux pres de leurs betes sauvages (0.20, C6) : chevres et
+# moutons pres des chevres sauvages, boeufs pres des aurochs : on y renouvelle
+# les betes, on y trouve leurs paturages.
+WILD_HERD = (("chevres", "chevres", 1.05), ("bovins", "aurochs", 1.05))
+# Les champs au bord d'une riviere (0.20, C3) : l'eau et le limon.
+RIVER_FIELDS = 1.25
+RIVER_IRRIGATION = 1.1
+
+
+def herd_mult(state, site) -> float:
+    if site is None:
+        return 1.0
+    knows = state.tribes[site.tribe_id].knowledge
+    found = goods.riches(state.world, site.hex)
+    mult = 1.0
+    for tid, res, m in WILD_HERD:
+        if tid in knows and found.get(res):
+            mult *= m
+    return mult
+
+
 def food_mult(state, band) -> float:
     site = site_of(state, band)
     mult = _bonus(state, band.tribe_id).village_food
     if has(site, "enclos"):
         mult *= 1.1
     if site is not None:
+        mult *= herd_mult(state, site)
         mult *= goods.forage_mult(site, band)
         mult *= production.of(state, band.tribe_id, "collecte")
         # Un village assiege ne sort plus de ses murs (siege.py).
@@ -809,12 +836,19 @@ def fertility(state, tribe_id: int, h) -> float:
     world = state.world
     terrain = world.terrain(h)
     base = FERTILITY.get(terrain, 0.0)
-    if terrain is _T.FORET and not _bonus(state, tribe_id).clearing:
+    if terrain in (_T.FORET, _T.JUNGLE) and not _bonus(state, tribe_id).clearing:
         return 0.0
     if base <= 0:
         return 0.0
     wild = max(world.resource(h, "cereales"), world.resource(h, "racines")) if world.resources else 0.3
-    return base * (0.6 + 0.8 * wild)
+    fert = base * (0.6 + 0.8 * wild)
+    idx = world._index(h)
+    if idx is not None and world.flow_at(*idx):
+        # Au bord de l'eau : le limon et l'eau des crues.
+        fert *= RIVER_FIELDS
+        if "irrigation" in state.tribes[tribe_id].knowledge:
+            fert *= RIVER_IRRIGATION
+    return fert
 
 
 def land_profile(world, h) -> tuple:

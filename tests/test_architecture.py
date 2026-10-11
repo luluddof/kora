@@ -299,3 +299,21 @@ def test_the_exe_bundles_every_game_module():
     for name in ("Kora.spec", "Kora-unfichier.spec"):
         spec = (root / name).read_text(encoding="utf-8")
         assert "hiddenimports=KORA_MODULES" in spec and '"src", "kora", "*.py"' in spec, name
+
+
+def test_the_exe_bundles_the_planets_and_the_data():
+    """Les planetes (data/planetes : 0.20), l'ancienne carte, les polices,
+    les icones et la musique sont dans les deux exe ; chaque planete du
+    catalogue a son fichier et sa vignette."""
+    import json
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    for name in ("Kora.spec", "Kora-unfichier.spec"):
+        spec = (root / name).read_text(encoding="utf-8")
+        for data in ("data/kora_map.json", "data/planetes", "data/fonts", "data/icons", "data/music"):
+            assert f"'{data}'" in spec, (name, data)
+    index = json.loads((root / "data" / "planetes" / "index.json").read_text(encoding="utf-8"))
+    assert len(index) >= 3
+    for row in index:
+        assert (root / "data" / "planetes" / f"{row['id']}.json").exists()
+        assert (root / "data" / "planetes" / f"{row['id']}.png").exists()

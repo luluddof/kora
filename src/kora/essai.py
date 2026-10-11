@@ -106,6 +106,8 @@ def host_run(port: int, years: int) -> dict:
     digests[st.step] = session.sync_digest(st)
     out = {
         "role": "hote",
+        # La planete jouee (l'exe doit trouver data/planetes).
+        "planet": f"{st.world.planet} {st.world.width} x {st.world.height}",
         "tick": st.step,
         "digests": digests,
         "resyncs": host.resyncs,
@@ -151,13 +153,15 @@ def client_run(port: int, years: int) -> dict:
             digests[n] = session.sync_digest(client.state)
         time.sleep(0.005)
     digests[client.state.step] = session.sync_digest(client.state)
-    return {"role": "ami", "tick": client.state.step, "digests": digests, "resyncs": client.resyncs}
+    world = client.state.world
+    return {"role": "ami", "planet": f"{world.planet} {world.width} x {world.height}", "tick": client.state.step, "digests": digests, "resyncs": client.resyncs}
 
 
 def compare(host: dict, friend: dict) -> tuple[bool, str]:
     common = sorted(set(host["digests"]) & set(friend["digests"]), key=int)
     bad = [n for n in common if host["digests"][n] != friend["digests"][n]]
     lines = [
+        f"planète : hôte {host.get('planet', '?')}, ami {friend.get('planet', '?')}",
         f"hôte : semaine {host['tick']} en {host['seconds']} s, {host['bands']} bandes et {host['villages']} villages aux deux joueurs",
         f"ami  : semaine {friend['tick']}",
         f"situations nées : {host.get('situations', 0)} ; actions des joueurs encore visibles : {host.get('acts', 0)}",

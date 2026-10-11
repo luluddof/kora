@@ -187,7 +187,7 @@ def test_lobby_screen_hosts_and_launches(monkeypatch):
     class Worlds:
         shown = _world()
 
-        def fresh(self):
+        def fresh(self, pid=None):
             return _world()
 
     out = app._multiplayer(r, clock, Worlds(), ("host", dict(HOST)))
@@ -212,7 +212,7 @@ def test_joining_a_closed_address_comes_back_with_a_message(monkeypatch):
     class Worlds:
         shown = _world()
 
-        def fresh(self):
+        def fresh(self, pid=None):
             return _world()
 
     clock = Script(None, {})

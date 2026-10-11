@@ -16,6 +16,13 @@ Elles comptent :
 Generation (numpy) : a la cuisson de la carte seulement (mapgen.bake),
 avec un hasard separe de celui du relief. En jeu : octets en Python pur
 (world.set_resources / world.resource).
+
+Les nouvelles planetes (0.20, mapgen.generate_layers_v2) : les ETRES
+VIVANTS (KIND "plante", "gibier", "eau") vivent dans des AIRES de tailles
+variees ; les MATIERES (KIND "matiere") sont des GISEMENTS de 1 a 4 cases.
+Huit ressources de plus (fruits, miel, bois, ocre, obsidienne, ambre,
+cuivre, etain) ; le cuivre et l'etain ne se voient qu'avec le savoir qui
+les fait reconnaitre (hidden_for).
 """
 
 from __future__ import annotations
@@ -35,16 +42,32 @@ RESOURCES = (
     ("silex", "silex", "matiere"),
     ("argile", "argile", "matiere"),
     ("sel", "sel", "matiere"),
-    # L'argent-metal (derive_silver : tire du relief, sans recuire la carte).
+    # L'argent-metal (derive_silver : tire du relief, sans recuire
+    # l'ancienne carte ; cuit en gisements sur les nouvelles planetes).
     ("argent", "argent (métal)", "matiere"),
+    # Les nouvelles planetes (0.20).
+    ("fruits", "fruits et noix", "plante"),
+    ("miel", "miel sauvage", "plante"),
+    ("bois", "bois d'œuvre", "plante"),
+    ("ocre", "ocre", "matiere"),
+    ("obsidienne", "obsidienne", "matiere"),
+    ("ambre", "ambre", "matiere"),
+    ("cuivre", "cuivre natif", "matiere"),
+    ("etain", "étain", "matiere"),
 )
 NAMES = tuple(r[0] for r in RESOURCES)
-# Les couches de la carte cuite (l'argent se tire du relief au chargement).
-BAKED = tuple(n for n in NAMES if n != "argent")
+# Les couches de l'ancienne carte cuite (l'argent s'y tire du relief au
+# chargement).
+BAKED = ("cereales", "racines", "aurochs", "chevaux", "chevres", "rennes", "poisson", "silex", "argile", "sel")
+# Les couches des nouvelles planetes.
+BAKED_V2 = NAMES
+# Ce qui ne se voit pas sans un savoir : ressource -> savoir qui la revele
+# ("" : cachee pour l'instant ; l'etain sert au bronze, a l'age suivant).
+REVEALED_BY = {"cuivre": "cuivre", "etain": ""}
 LABELS = {r[0]: r[1] for r in RESOURCES}
 KINDS = {r[0]: r[2] for r in RESOURCES}
 GAME = ("aurochs", "chevaux", "chevres", "rennes")
-PLANTS = ("cereales", "racines")
+PLANTS = ("cereales", "racines", "fruits", "miel")
 # Une ressource "est la" (savoirs, fiche de case) a partir de 0,4.
 PRESENT = 0.4
 PRESENT_BYTE = int(PRESENT * 255)
@@ -65,7 +88,24 @@ COLORS = {
     "argile": (200, 110, 80),
     "sel": (250, 250, 250),
     "argent": (196, 204, 222),
+    "fruits": (220, 90, 120),
+    "miel": (245, 170, 30),
+    "bois": (120, 80, 40),
+    "ocre": (205, 95, 40),
+    "obsidienne": (40, 30, 50),
+    "ambre": (255, 190, 60),
+    "cuivre": (190, 110, 60),
+    "etain": (170, 180, 175),
 }
+
+
+def hidden_for(tribe) -> frozenset:
+    """Les ressources que ce peuple ne reconnait pas encore (carte, fiches,
+    villages) ; tout est visible sans peuple (tests, outils)."""
+    if tribe is None:
+        return frozenset()
+    known = tribe.knowledge
+    return frozenset(n for n, by in REVEALED_BY.items() if not by or by not in known)
 
 
 def level_word(value: float) -> str:
@@ -165,4 +205,9 @@ COVER = {
     "sel": 0.03,
     # Pas cuit : derive_silver (filons des collines), environ 5 % des terres.
     "argent": 0.05,
+    # Les aires des nouvelles planetes (les gisements, eux, se comptent :
+    # mapgen.DEPOSITS).
+    "fruits": 0.07,
+    "miel": 0.05,
+    "bois": 0.14,
 }

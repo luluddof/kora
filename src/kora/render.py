@@ -50,6 +50,7 @@ from src.kora.types import Hex, Season
 from src.kora.vision import enemy_band_visible, is_explored, is_visible, vision_of
 from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.theme import C
+from src.kora import resources
 from src.kora.resources import COLORS, LABELS, NAMES
 from src.kora.villages import palisade_state
 from src.kora.layout import panel_box
@@ -316,6 +317,7 @@ class Renderer:
         planet.realm_on = self.map_mode == "suzerains"
         planet.turn_pick = self.shown_turning(state) if self.map_mode == "tournants" else None
         planet.res_on = self.map_mode == "ressources"
+        planet.res_hidden = resources.hidden_for(state.tribes.get(getattr(state, "viewer", None))) if getattr(state, "tribes", None) else frozenset()
         planet.trade_on = self.map_mode == "commerce"
         if planet.zones_on:
             planet.sync_zones(state)
@@ -473,7 +475,7 @@ class Renderer:
         if state.last_error:
             extra_y += 18
         ui = ui or {}
-        self.draw_map_modes()
+        self.draw_map_modes(state)
         self.draw_toasts(toasts or [], extra_y)
         self.draw_inspect(hover_info, pin_info)
         self.draw_band_card(state, selected_id)
@@ -835,7 +837,7 @@ class Renderer:
             else:
                 pygame.draw.circle(self.screen, (206, 180, 90), (x, y), 2)
 
-    def draw_map_modes(self) -> None:
+    def draw_map_modes(self, state=None) -> None:
         """Le bouton des modes de carte (en bas a gauche) et, ouverte, sa
         liste ; puis la legende du mode choisi (en haut a droite)."""
         w, h = self.screen.get_size()
@@ -860,9 +862,15 @@ class Renderer:
             self._draw_turning_legend(layout, w)
         if self.map_mode == "ressources":
             x0, y, bw = layout["legend"]
-            bh = 14 + 18 * ((len(NAMES) + 1) // 2)
+            # Ce que la planete porte, et que le joueur reconnait.
+            if state is not None:
+                hidden = resources.hidden_for(state.tribes.get(state.viewer))
+                names = [n for n in NAMES if n in state.world.resources and n not in hidden]
+            else:
+                names = list(NAMES)
+            bh = 14 + 18 * ((len(names) + 1) // 2)
             theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
-            for i, name in enumerate(NAMES):
+            for i, name in enumerate(names):
                 cx = x0 + 12 + (i % 2) * (bw // 2)
                 cy = y + 8 + (i // 2) * 18
                 pygame.draw.polygon(self.screen, COLORS[name], theme.chamfer((cx, cy + 3, 11, 11), 2))

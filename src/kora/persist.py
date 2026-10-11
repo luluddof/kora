@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from src.kora import __version__
-from src.kora import battle, chiefs, diplo, draws, events, memory, records, sites, situations, tech, turning, villages
+from src.kora import battle, chiefs, diplo, draws, events, memory, planets, records, sites, situations, tech, turning, villages
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LOG_CAP, LogEntry, LogKind
 from src.kora.gamestate import GameState, Pov
@@ -337,6 +337,8 @@ def game_to_json(state: GameState, view: dict | None = None) -> dict:
         "version": SAVE_VERSION,
         "game_version": __version__,
         "map": {
+            # La planete (planets.py ; "kora" : l'ancienne carte).
+            "id": getattr(state.world, "planet", "") or planets.LEGACY,
             "width": state.world.width,
             "height": state.world.height,
             "wrap_x": state.world.wrap_x,
@@ -407,10 +409,23 @@ def load_game(path: Path, world: World) -> tuple[GameState, dict] | None:
     return game_from_json(data, world)
 
 
-def game_from_json(data, world: World) -> tuple[GameState, dict] | None:
+def map_id(data) -> str:
+    """La planete d'une sauvegarde ("kora" pour une sauvegarde d'avant 0.20)."""
+    info = (data.get("map") or {}) if isinstance(data, dict) else {}
+    return str(info.get("id") or planets.LEGACY)
+
+
+def game_from_json(data, world: World | None) -> tuple[GameState, dict] | None:
+    """world : la planete proposee ; si la sauvegarde est sur une autre, on
+    charge la sienne (planets.load)."""
     if not isinstance(data, dict) or data.get("version") != SAVE_VERSION:
         return None
     info = data.get("map") or {}
+    wanted = map_id(data)
+    if world is None or (getattr(world, "planet", "") or planets.LEGACY) != wanted or int(info.get("width", -1)) != world.width:
+        world = planets.load(wanted) or world
+        if world is None:
+            return None
     if (
         int(info.get("width", -1)) != world.width
         or int(info.get("height", -1)) != world.height

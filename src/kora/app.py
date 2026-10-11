@@ -24,6 +24,7 @@ from src.kora import (
     render_battle,
     render_menu,
     music,
+    planets,
     render_tech,
     render_treasury,
     render_wars,
@@ -73,6 +74,8 @@ from src.kora.layout import (
     hud_hit,
     map_mode_hit,
     menu_hit,
+    focus_zoom_for,
+    max_zoom_for,
     min_zoom_for,
     pan,
     side_hit,
@@ -125,7 +128,7 @@ def _look_band(state, selected):
 
 
 def _tribe_start_view(state, selected):
-    return (*_look_band(state, selected), FOCUS_ZOOM)
+    return (*_look_band(state, selected), focus_zoom_for(state.world))
 
 
 def _band_at_pixel(state, x, y, zoom, globe_yaw, globe_pitch, sw, sh):
@@ -221,23 +224,38 @@ def _view(camera_x, camera_y, zoom, selected, globe_yaw=0.0, globe_pitch=0.0):
 
 
 class _Worlds:
-    """La carte : lue une fois au lancement (le menu la montre). Une partie
-    la modifie (epuisement, influence) : la suivante en relit une propre."""
+    """Les planetes (planets.py) : celle du menu, lue au lancement. Une
+    partie modifie la sienne (epuisement, influence) : la suivante en relit
+    une propre. fresh(pid) : une planete donnee (une partie neuve, une
+    sauvegarde ; None : celle par defaut)."""
 
     def __init__(self) -> None:
         self.shown = _default_world()
         self._fresh = self.shown
+        self._previews: dict = {}
 
-    def fresh(self):
-        world = self._fresh if self._fresh is not None else _default_world()
-        self._fresh = None
-        return world
+    def fresh(self, pid: str | None = None):
+        if pid is None or pid == getattr(self._fresh, "planet", None):
+            world = self._fresh if self._fresh is not None else _default_world(pid)
+            self._fresh = None
+            return world
+        return _default_world(pid)
+
+    def preview(self, pid: str):
+        """La planete montree au menu (sans la toucher ; gardee en memoire)."""
+        if pid in (None, planets.RANDOM):
+            return self.shown
+        if pid == getattr(self.shown, "planet", None):
+            return self.shown
+        if pid not in self._previews:
+            self._previews[pid] = _default_world(pid)
+        return self._previews[pid]
 
 
 def _start_view(state, selected, sw: int, sh: int):
     yaw, pitch, zoom = _tribe_start_view(state, selected)
     zmin = min_zoom_for(state.world, sw, sh)
-    zoom = min(MAX_ZOOM, max(zmin, zoom))
+    zoom = min(max_zoom_for(state.world), max(zmin, zoom))
     return state, selected, 0.0, 0.0, zoom, yaw, pitch
 
 
@@ -267,7 +285,9 @@ def _new_boot(worlds, setup: dict | None, sw: int, sh: int):
     # Chaque partie tire son monde (les savoirs tires, draws.py).
     setup = dict(setup or {})
     setup.setdefault("seed", _fresh_seed())
-    state = new_game(worlds.fresh(), setup=setup)
+    # La planete choisie au menu, ou une au hasard (planets.py).
+    pid = planets.choose(setup.get("planet"), random.Random(setup["seed"]))
+    state = new_game(worlds.fresh(pid), setup=setup)
     return _start_view(state, _first_player_band(state), sw, sh)
 
 
@@ -389,7 +409,7 @@ def _remember(setup: dict) -> None:
     """Le nom, la couleur, les bonus et la derniere adresse : proposes la
     prochaine fois (reglages.json, a cote des sauvegardes)."""
     prefs = load_prefs()
-    for key in ("name", "color", "bonuses", "address"):
+    for key in ("name", "color", "bonuses", "address", "planet"):
         if setup.get(key):
             prefs[key] = list(setup[key]) if key in ("color", "bonuses") else setup[key]
     save_prefs(prefs)
@@ -407,6 +427,8 @@ def _prefilled(setup: dict) -> dict:
         setup["bonuses"] = bonuses
     if isinstance(prefs.get("address"), str):
         setup["address"] = prefs["address"][: render_menu.ADDRESS_MAX]
+    if prefs.get("planet") in planets.ids() + [planets.RANDOM, planets.LEGACY]:
+        setup["planet"] = prefs["planet"]
     return setup
 
 
@@ -526,6 +548,9 @@ def title_screen(renderer, clock, worlds, message: str = "", director=None):
                         hint = render_menu.setup_missing(setup)
                     else:
                         hint = render_menu.setup_click(setup, hit, rng)
+                        if hit in ("planet_prev", "planet_next"):
+                            # Le globe du menu montre la planete choisie.
+                            scene.world = worlds.preview(setup.get("planet"))
                 continue
             if page == "mp":
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -537,6 +562,7 @@ def title_screen(renderer, clock, worlds, message: str = "", director=None):
                         page = "title"
                     elif hit in ("heberger", "rejoindre"):
                         setup = _prefilled(render_menu.new_setup(rng))
+                        scene.world = worlds.preview(setup.get("planet"))
                         setup["mode"] = "host" if hit == "heberger" else "join"
                         if setup["mode"] == "join" and not setup.get("address"):
                             setup["typing"] = "address"
@@ -590,6 +616,7 @@ def title_screen(renderer, clock, worlds, message: str = "", director=None):
                     continue
                 if hit == "nouvelle":
                     setup = _prefilled(render_menu.new_setup(rng))
+                    scene.world = worlds.preview(setup.get("planet"))
                     hint = ""
                 elif hit == "multijoueur":
                     page = "mp"
@@ -716,7 +743,8 @@ def _multiplayer(renderer, clock, worlds, choice):
                         hint = why
                     else:
                         _loading(renderer, "La partie se prépare...")
-                        world = mp.resume.world if mp.resume is not None else worlds.fresh()
+                        pid = planets.choose(mp.setup.get("planet"), random.SystemRandom())
+                        world = mp.resume.world if mp.resume is not None else worlds.fresh(pid)
                         state = mp.start(world)
                         return ("play", mp, state)
                 elif isinstance(hit, str) and hit.startswith("seat:") and mp.role == "client":
@@ -1635,7 +1663,7 @@ class Play:
                 self.ui["people_scroll"] = max(0, int(self.ui.get("people_scroll", 0)) - (1 if event.y > 0 else -1))
                 return None
             zmin = min_zoom_for(self.state.world, self.sw, self.sh)
-            self.zoom = min(MAX_ZOOM, max(zmin, self.zoom * (1.1 if event.y > 0 else 0.9)))
+            self.zoom = min(max_zoom_for(self.state.world), max(zmin, self.zoom * (1.1 if event.y > 0 else 0.9)))
         elif event.type == pygame.MOUSEBUTTONDOWN:
             return self._on_click(event)
         elif event.type == pygame.MOUSEBUTTONUP:

@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 
 from src.kora import numbers, tech, tree_graph
-from src.kora.globe import hex_to_globe_screen
+from src.kora.globe import FOCUS_ZOOM, hex_to_globe_screen
 from src.kora.log import FILTER_ALL, LogKind
 from src.kora.types import Hex
 from src.kora.vision import enemy_band_visible
@@ -712,6 +712,21 @@ def world_pixel_size(world, zoom: float) -> tuple[float, float]:
 
 def min_zoom_for(world, screen_w: int, screen_h: int) -> float:
     return 0.11
+
+
+def zoom_scale(world) -> float:
+    """Une planete plus large (0.20 : 1536 cases) a des cases plus petites
+    a l'ecran pour une meme distance : le zoom de pres va plus loin, pour les
+    memes cases a l'ecran (globe.dist_from_zoom : la distance suit zoom^1,45)."""
+    return (world.width / 768) ** 0.69 if world.width > 768 else 1.0
+
+
+def max_zoom_for(world) -> float:
+    return MAX_ZOOM * zoom_scale(world)
+
+
+def focus_zoom_for(world) -> float:
+    return FOCUS_ZOOM * zoom_scale(world)
 
 
 def terrain_draw_mode(zoom: float) -> str:

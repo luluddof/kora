@@ -149,7 +149,8 @@ def test_spawns_start_where_the_band_can_eat():
 
 def test_ai_tribes_start_on_their_own_biome_with_their_know_how():
     st = new_game()
-    assert st.world.terrain(st.bands[2].position) is Terrain.STEPPE
+    # 0.20 : le peuple des steppes part en steppe ou en savane (ses herbes).
+    assert st.world.terrain(st.bands[2].position) in (Terrain.STEPPE, Terrain.SAVANE)
     assert st.world.terrain(st.bands[3].position) is Terrain.FORET
     assert st.world.terrain(st.bands[4].position) is Terrain.COTE
     assert st.tribes[2].troupeau

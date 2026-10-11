@@ -95,7 +95,7 @@ def _new_id(state) -> int:
 
 
 def _land(state, h) -> bool:
-    return state.world.terrain(h) not in (Terrain.EAU, Terrain.SOMMET)
+    return state.world.terrain(h) not in (Terrain.EAU, Terrain.SOMMET, Terrain.GLACE)
 
 
 # --- campements ----------------------------------------------------------------

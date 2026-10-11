@@ -17,7 +17,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-IDENT = re.compile(r"^[a-z0-9_:+\-./%{}\[\]#]*$")
+# Un identifiant, ou une seule majuscule (les codes des sols de la carte :
+# "A" est la savane, pas un « À »).
+IDENT = re.compile(r"^([a-z0-9_:+\-./%{}\[\]#]*|[A-Z])$")
 
 from src.kora.francais import WORD, convert  # noqa: E402
 

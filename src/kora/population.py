@@ -289,8 +289,15 @@ def lines(band) -> list[str]:
 # que la troupe existe ; dissoute, ils retournent a leurs autres travaux).
 
 # Les metiers et le sexe de ceux qui les font ("" : les deux).
-CRAFT_SEX = {"potiers": "femmes", "tisserands": "femmes", "tailleurs": "hommes", "pecheurs": "hommes", "sauniers": "", "pelletiers": "", "calculateurs": "", "mineurs": "hommes"}
-CRAFT_WORKERS = {"potiers": "potières", "tisserands": "tisserandes", "tailleurs": "tailleurs de silex", "pecheurs": "pêcheurs", "sauniers": "sauniers", "pelletiers": "pelletiers", "calculateurs": "calculateurs", "mineurs": "mineurs"}
+CRAFT_SEX = {
+    "potiers": "femmes", "tisserands": "femmes", "tailleurs": "hommes", "pecheurs": "hommes", "sauniers": "", "pelletiers": "", "calculateurs": "", "mineurs": "hommes",
+    "bucherons": "hommes", "teinturiers": "femmes", "obsidiennes": "hommes", "ambriers": "", "fondeurs": "hommes",
+}
+CRAFT_WORKERS = {
+    "potiers": "potières", "tisserands": "tisserandes", "tailleurs": "tailleurs de silex", "pecheurs": "pêcheurs", "sauniers": "sauniers", "pelletiers": "pelletiers",
+    "calculateurs": "calculateurs", "mineurs": "mineurs",
+    "bucherons": "bûcherons", "teinturiers": "teinturières", "obsidiennes": "tailleurs d'obsidienne", "ambriers": "polisseurs d'ambre", "fondeurs": "batteurs de cuivre",
+}
 SEX_WORD = {"hommes": "des hommes", "femmes": "des femmes", "": "hommes et femmes"}
 
 

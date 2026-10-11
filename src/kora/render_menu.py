@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import __version__, net, session, tech, theme
+from src.kora import __version__, net, planets, session, tech, theme
 from src.kora.render_tech import (
     GOLD,
     GOLD_DEEP,
@@ -374,7 +374,15 @@ def setup_layout(width: int, height: int) -> dict:
     back = (start[0] - 16 - 160, start[1] + 4, 160, 34)
     # Rejoindre une partie : l'adresse de l'hote, en bas a gauche.
     address = (bx + 30, start[1] + 6, min(330, back[0] - bx - 60), 32)
-    return {"box": (bx, by, bw, bh), "name": name, "random": randomize, "colors": colors, "cards": cards, "start": start, "back": back, "address": address}
+    # La planete (0.20) : < vignette, nom, continents > ; en bas a gauche.
+    planet = (bx + 30, start[1] - 6, min(430, back[0] - bx - 60), 52)
+    px, py, pw, ph = planet
+    planet_prev = (px, py + 11, 30, 30)
+    planet_next = (px + pw - 30, py + 11, 30, 30)
+    return {
+        "box": (bx, by, bw, bh), "name": name, "random": randomize, "colors": colors, "cards": cards, "start": start, "back": back, "address": address,
+        "planet": planet, "planet_prev": planet_prev, "planet_next": planet_next,
+    }
 
 
 def setup_hit(lay: dict, mx: int, my: int, mode: str = "solo"):
@@ -383,6 +391,10 @@ def setup_hit(lay: dict, mx: int, my: int, mode: str = "solo"):
             return key
     if mode == "join" and _hover(lay["address"], mx, my):
         return "address"
+    if mode != "join":
+        for key in ("planet_prev", "planet_next"):
+            if _hover(lay[key], mx, my):
+                return key
     for i, rect in enumerate(lay["colors"]):
         if _hover(rect, mx, my):
             return f"color:{i}"
@@ -463,8 +475,10 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
         if chosen:
             pygame.draw.circle(screen, GOLD, (x + cw - 14, y + 14), 8)
             pygame.draw.lines(screen, (40, 30, 14), False, [(x + cw - 18, y + 14), (x + cw - 15, y + 17), (x + cw - 10, y + 11)], 2)
+    if mode != "join":
+        _draw_planet_pick(r, lay, setup.get("planet", planets.RANDOM), mx, my)
     # En bas : resume (ou l'adresse de l'hote), avertissement, boutons.
-    sx, sy = bx + 30, lay["start"][1] + 4
+    sx, sy = lay["planet"][0] + lay["planet"][2] + 16, lay["start"][1] + 4
     if mode == "join":
         ax, ay, aw, ah = lay["address"]
         on = setup.get("typing") == "address"
@@ -495,18 +509,75 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
     _button(screen, head_font, lay["start"], START_LABEL.get(mode, "Commencer la partie"), ready, ready and _hover(lay["start"], mx, my))
 
 
+def _planet_thumb(r, pid: str):
+    cache = r.__dict__.setdefault("_planet_thumbs", {})
+    if pid not in cache:
+        path = planets.thumbnail_path(pid)
+        try:
+            cache[pid] = pygame.image.load(str(path)).convert() if path else None
+        except (pygame.error, OSError):
+            cache[pid] = None
+    return cache[pid]
+
+
+def planet_lines(pid: str) -> tuple[str, str]:
+    """Le nom d'une planete et ce qu'on en sait (continents, sols)."""
+    if pid == planets.RANDOM:
+        return "Une planète au hasard", f"parmi les {len(planets.ids())} planètes du jeu : la surprise"
+    row = planets.info(pid) or {}
+    parts = []
+    if row.get("continents"):
+        parts.append(f"{row['continents']} continents")
+    if row.get("traits"):
+        parts.append(str(row["traits"]))
+    return str(row.get("name", pid)), "  ·  ".join(parts)
+
+
+def _draw_planet_pick(r, lay, pid: str, mx: int, my: int) -> None:
+    screen = r.screen
+    px, py, pw, ph = lay["planet"]
+    theme.text(screen, "PLANÈTE", "etiquette", C.ocre_jaune, (px, py - 18))
+    screen.blit(_gradient_card(pw, ph, (40, 31, 24), (26, 20, 16), 8), (px, py))
+    pygame.draw.rect(screen, GOLD_DEEP, lay["planet"], 1, border_radius=8)
+    for key, arrow in (("planet_prev", "<"), ("planet_next", ">")):
+        _button(screen, r.small, lay[key], arrow, True, _hover(lay[key], mx, my))
+    tx, ty, tw, th = px + 38, py + 4, 88, 44
+    thumb = _planet_thumb(r, pid) if pid != planets.RANDOM else None
+    if thumb is not None:
+        screen.blit(pygame.transform.smoothscale(thumb, (tw, th)), (tx, ty))
+    else:
+        pygame.draw.rect(screen, (24, 34, 54), (tx, ty, tw, th), border_radius=4)
+        mark = r.small.render("?", True, GOLD)
+        screen.blit(mark, (tx + (tw - mark.get_width()) // 2, ty + (th - mark.get_height()) // 2))
+    pygame.draw.rect(screen, (95, 72, 51), (tx, ty, tw, th), 1, border_radius=4)
+    name, more = planet_lines(pid)
+    room = pw - (tx + tw + 12 - px) - 40
+    screen.blit(r.small.render(_fit(r.small, name, room), True, INK), (tx + tw + 12, py + 7))
+    screen.blit(r.tiny.render(_fit(r.tiny, more, room), True, SOFT), (tx + tw + 12, py + 29))
+
+
 def random_name(rng, taken=()) -> str:
     return make_name(rng, CULTURES["joueur"], taken)
 
 
 def new_setup(rng) -> dict:
-    return {"name": "Kora", "color": PALETTE[0], "bonuses": [], "typing": False}
+    return {"name": "Kora", "color": PALETTE[0], "bonuses": [], "typing": False, "planet": planets.RANDOM}
+
+
+def planet_choices() -> list[str]:
+    """Le choix du menu : au hasard, puis chaque planete livree."""
+    return [planets.RANDOM] + planets.ids()
 
 
 def setup_click(setup: dict, hit: str, rng) -> str:
     """Un clic dans l'ecran de creation ; rend un message (vide si rien a dire)."""
     setup["typing"] = True if hit == "name" else ("address" if hit == "address" else False)
-    if hit == "random":
+    if hit in ("planet_prev", "planet_next"):
+        choices = planet_choices()
+        here = setup.get("planet", planets.RANDOM)
+        i = choices.index(here) if here in choices else 0
+        setup["planet"] = choices[(i + (1 if hit == "planet_next" else -1)) % len(choices)]
+    elif hit == "random":
         setup["name"] = random_name(rng)
     elif hit.startswith("color:"):
         setup["color"] = PALETTE[int(hit.split(":")[1])]
@@ -564,7 +635,7 @@ def setup_missing(setup: dict) -> str:
 
 def setup_for_game(setup: dict) -> dict:
     """Ce que sim.new_game(setup=...) recoit."""
-    return {"name": setup["name"].strip(), "color": tuple(setup["color"]), "bonuses": list(setup["bonuses"])}
+    return {"name": setup["name"].strip(), "color": tuple(setup["color"]), "bonuses": list(setup["bonuses"]), "planet": setup.get("planet", planets.RANDOM)}
 
 
 def setup_ready(setup: dict) -> bool:
@@ -730,7 +801,8 @@ def draw_lobby(r, mp, t: float, chat_text, hint: str = "", status: str = "") -> 
     bx, by, bw, bh = lay["box"]
     host = mp.role == "host"
     resume = bool(getattr(mp, "resume", None))
-    title = "Le salon" + ("  ·  reprise de la partie" if resume else "")
+    pid = getattr(mp, "planet", "") if not host else (getattr(mp.resume.world, "planet", "") if mp.resume is not None else mp.setup.get("planet", planets.RANDOM))
+    title = "Le salon" + ("  ·  reprise de la partie" if resume else "") + (f"  ·  {planet_lines(pid)[0]}" if pid else "")
     screen.blit(title_font.render(title, True, GOLD), (bx + 30, by + 22))
     if host:
         main, others = _addresses(mp)

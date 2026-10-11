@@ -159,7 +159,15 @@ def test_setup_clicks_pick_at_most_two_and_toggle():
     render_menu.setup_click(setup, "random", rng)
     assert setup["name"] and setup["name"] != "Kora" or setup["name"]
     game = render_menu.setup_for_game(setup)
-    assert game == {"name": setup["name"].strip(), "color": render_menu.PALETTE[6], "bonuses": ["bonus:conteurs"]}
+    assert game == {"name": setup["name"].strip(), "color": render_menu.PALETTE[6], "bonuses": ["bonus:conteurs"], "planet": "hasard"}
+    # La planete (0.20) : au hasard, puis chaque planete livree, en boucle.
+    from src.kora import planets
+
+    render_menu.setup_click(setup, "planet_next", rng)
+    assert setup["planet"] == planets.ids()[0]
+    render_menu.setup_click(setup, "planet_prev", rng)
+    render_menu.setup_click(setup, "planet_prev", rng)
+    assert setup["planet"] == planets.ids()[-1]
 
 
 def test_typing_the_name():

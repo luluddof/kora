@@ -198,7 +198,7 @@ def profile(band) -> dict:
 def attack_mult(band, terrain) -> float:
     p = profile(band)
     mult = p["attack"]
-    if terrain is Terrain.FORET:
+    if terrain in (Terrain.FORET, Terrain.JUNGLE):
         mult *= p["forest"]
     return mult
 

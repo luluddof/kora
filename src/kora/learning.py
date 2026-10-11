@@ -294,7 +294,7 @@ def update_practice(state, count: bool = True) -> None:
                 for h in world.hexes_in_radius(band.position, SEE_RADIUS):
                     if not tribe.shore_seen and is_inshore(world, h):
                         tribe.shore_seen = True
-                    if not tribe.steppe_seen and world.terrain(h) is Terrain.STEPPE:
+                    if not tribe.steppe_seen and world.terrain(h) in (Terrain.STEPPE, Terrain.SAVANE):
                         tribe.steppe_seen = True
                     if tribe.shore_seen and tribe.steppe_seen:
                         break
@@ -336,7 +336,7 @@ def update_practice(state, count: bool = True) -> None:
         # Compteurs historiques de la pirogue et du troupeau (bornes).
         if Terrain.COTE in seen and tribe.coast_weeks < PIROGUE_COAST_WEEKS:
             tribe.coast_weeks += 1
-        if Terrain.STEPPE in seen and tribe.steppe_weeks < TROUPEAU_STEPPE_WEEKS:
+        if (Terrain.STEPPE in seen or Terrain.SAVANE in seen) and tribe.steppe_weeks < TROUPEAU_STEPPE_WEEKS:
             tribe.steppe_weeks += 1
 
 
@@ -349,8 +349,17 @@ _GOOD_RESOURCE = {
     "haches": ("silex",),
     "etoffes": ("chevres",),
     "cuirs": ("aurochs", "chevaux", "chevres", "rennes"),
+    "poutres": ("bois",),
+    "teintures": ("ocre",),
+    "lames": ("obsidienne",),
+    "parures_ambre": ("ambre",),
+    "objets_cuivre": ("cuivre",),
 }
-_GOOD_NAMES = {"sel": "du sel", "poteries": "des poteries", "haches": "des haches polies", "etoffes": "des étoffes", "cuirs": "des cuirs"}
+_GOOD_NAMES = {
+    "sel": "du sel", "poteries": "des poteries", "haches": "des haches polies", "etoffes": "des étoffes", "cuirs": "des cuirs",
+    "poutres": "du bois d'œuvre", "teintures": "des teintures", "lames": "des lames d'obsidienne", "parures_ambre": "des parures d'ambre",
+    "objets_cuivre": "des objets de cuivre",
+}
 
 
 def trade_goods_for(terrains) -> list[str]:
