@@ -54,7 +54,6 @@ from src.kora.resources import COLORS, LABELS, NAMES
 from src.kora.villages import palisade_state
 from src.kora.layout import panel_box
 from src.kora.layout import (  # noqa: F401
-    ARMY_TAB,
     BAND_BUTTONS,
     BAND_CARD_W,
     BAND_HINT,
@@ -1154,7 +1153,7 @@ class Renderer:
             # Premiere ouverture : la vue se pose sur la recherche en cours.
             ui["tech_cam"] = render_tech.focus_cam(state, w, h)
         layout = side_layout(
-            w, h, panel=panel if (panel != "armee" or army) else None, era=ui.get("era", 0), army=army, commerce=commerce,
+            w, h, panel=panel, era=ui.get("era", 0), army=army, commerce=commerce,
             tech_cam=ui.get("tech_cam"), tech_tab=ui.get("tech_tab", "arbre"), treasury=treasury, country=country,
             wars=at_war,
         )
@@ -1167,8 +1166,6 @@ class Renderer:
             render_panels.draw_tribe(self, state, layout, ui)
         elif panel == "peuples":
             render_panels.draw_peoples(self, state, layout, ui)
-        if panel == "armee" and army:
-            render_panels.draw_army(self, state, layout, ui)
         if panel == "journal":
             draw_journal(self, state, layout, log_filter, log_newest)
         player = state.tribes.get(state.viewer)
@@ -1184,8 +1181,8 @@ class Renderer:
         label = render_panels.tribe_tab_label(state)
         self._draw_tab(tabs["tribu"], label, panel == "tribu", render_panels.tribe_alert(state), "tribu" if label == "Tribu" else "village")
         self._draw_tab(tabs["peuples"], "Peuples", panel == "peuples", False, "peuples")
-        if "armee" in tabs:
-            self._draw_tab(tabs["armee"], "Armée", panel == "armee", False, "armee")
+        if "guerres" in tabs:
+            self._draw_tab(tabs["guerres"], "Guerre", bool(ui.get("wars_open")), render_panels.wars_alert(state), "combat")
         if "commerce" in tabs:
             self._draw_tab(tabs["commerce"], "Commerce", bool(ui.get("trade_open")), render_panels.commerce_alert(state), "commerce")
         if "tresor" in tabs:
@@ -1194,8 +1191,6 @@ class Renderer:
             tribe_ = state.tribes.get(state.viewer)
             waiting = tribe_ is not None and laws.known(state, state.viewer, "base") and not tribe_.base
             self._draw_tab(tabs["pays"], "Pays", bool(ui.get("country_open")), waiting, "balance")
-        if "guerres" in tabs:
-            self._draw_tab(tabs["guerres"], "Guerres", bool(ui.get("wars_open")), render_panels.wars_alert(state), "combat")
         self._draw_tab(tabs["journal"], "Journal", panel == "journal", False, "journal")
 
     _TECH_COLORS = {

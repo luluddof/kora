@@ -182,15 +182,20 @@ def status(state, tribe_id: int, tech_id: str) -> str:
     tech = TECHS[tech_id]
     if tech_id in tribe.knowledge:
         return "connu"
-    # Un savoir commence se finit : les conditions (terrains, bandes...)
-    # ne comptent que pour le commencer.
-    if tribe.learning == tech_id:
-        return "en_cours"
-    if tribe.progress.get(tech_id, 0.0) > 0:
-        return "disponible"
+    # Les PREREQUIS d'abord, toujours : des points deja la (un peuple
+    # absorbe, un evenement, un arbre d'une autre version) ne les
+    # remplacent pas ; ils sont gardes pour plus tard (kept_points).
+    blocked = bool(missing_prereqs(tribe, tech))
+    if not blocked:
+        # Un savoir commence se finit : les conditions (terrains, bandes...)
+        # ne comptent que pour le commencer.
+        if tribe.learning == tech_id:
+            return "en_cours"
+        if tribe.progress.get(tech_id, 0.0) > 0:
+            return "disponible"
     if draws.absent(state, tribe_id, tech_id):
         return "absent"
-    if missing_prereqs(tribe, tech):
+    if blocked:
         return "verrouille"
     if tech.turning:
         # Un grand tournant s'adopte quand il est arrive chez soi.
@@ -198,6 +203,11 @@ def status(state, tribe_id: int, tech_id: str) -> str:
     if not conditions_met(state, tribe, tech):
         return "attente"
     return "disponible"
+
+
+def kept_points(state, tribe_id: int, tech_id: str) -> int:
+    """Les points deja acquis sur un savoir (gardes meme s'il est verrouille)."""
+    return int(state.tribes[tribe_id].progress.get(tech_id, 0.0))
 
 
 def available(state, tribe_id: int) -> list[str]:
@@ -377,6 +387,14 @@ def _update_learning(state) -> None:
         if tid in tribe.knowledge or tid not in TECHS:
             tribe.learning = None
             continue
+        missing = missing_prereqs(tribe, TECHS[tid])
+        if missing:
+            # Sans ses prerequis, on ne l'etudie pas : il s'arrete, ses
+            # points restent acquis.
+            tribe.learning = None
+            if tribe.is_player:
+                note(state, LogKind.DECOUVERTE, f"{TECHS[tid].name} s'arrête : il faut d'abord connaître " + ", ".join(m.name for m in missing) + " (ses points sont gardés).", to=tribe.id)
+            continue
         tribe.progress[tid] = tribe.progress.get(tid, 0.0) + learn_rate(state, tribe.id, tid)
         if tribe.progress[tid] >= TECHS[tid].cost:
             grant(tribe, tid)
@@ -422,6 +440,9 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
         out.append(("Il faut connaître :", "note"))
         for pid in tech.prereqs:
             out.append((f"  {TECHS[pid].name}", "ok" if pid in tribe.knowledge else "manque"))
+        kept = int(tribe.progress.get(tech_id, 0.0))
+        if kept and st == "verrouille":
+            out.append((f"  Déjà {kept} pts sur {tech.cost} : gardés, mais rien n'avance avant ses prérequis", "info"))
     teachers = _neighbors_know(state, tribe_id, tech_id)
     if tech.conds:
         out.append(("Pour qu'il naisse chez vous :" if tech.turning else "Il faut avoir vécu :", "note"))

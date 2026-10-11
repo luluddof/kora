@@ -336,3 +336,28 @@ def test_missing_lines_name_the_missing_resource():
     lines = learning.detail_lines(st, 3, "semis")
     i = next(i for i, (t, k) in enumerate(lines) if "céréales" in t)
     assert "carte des Ressources" in lines[i + 1][0]
+
+
+def test_points_never_unlock_a_tech_without_its_prerequisites():
+    """Des points sur un savoir (un peuple absorbe, un evenement) ne
+    remplacent pas ses prerequis : verrouille, on ne peut pas le choisir,
+    et un apprentissage en cours sans eux s'arrete ; les points restent."""
+    from test_approach import _state
+
+    st = _state()
+    tribe = st.tribes[3]
+    tid = next(t for t, x in tech.TECHS.items() if x.prereqs and t not in tribe.knowledge and not x.turning and not x.drawn)
+    for p in tech.TECHS[tid].prereqs:
+        tribe.knowledge.discard(p)
+    tech.invalidate()
+    tribe.progress[tid] = tech.TECHS[tid].cost * 0.5
+    assert learning.status(st, 3, tid) == "verrouille"
+    assert not learning.choose(st, 3, tid)
+    assert tid not in learning.available(st, 3)
+    tribe.learning = tid  # une vieille partie
+    assert learning.status(st, 3, tid) == "verrouille"
+    before = tribe.progress[tid]
+    learning.update_learning(st)
+    assert tribe.learning != tid and tribe.progress[tid] == before, X
+    assert learning.kept_points(st, 3, tid) == int(before)
+    assert any("gardés" in text for text, _k in learning.detail_lines(st, 3, tid))

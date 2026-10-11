@@ -608,6 +608,19 @@ lente, bandes dessinees petites a taille fixe.
     relation au plus bas n'empeche plus l'IA de proposer la paix apres un
     an ; une IA lasse propose au joueur une paix blanche ("Ils sont las de
     la guerre").
+2026-10-17
+  - "Impossible de rechercher un savoir sans tous ses prerequis, meme avec
+    des points dessus." FAIT (0.19.0 ; spec 2026-10-17-prerequis-musique-
+    armee-guerres.txt) : les prerequis passent avant tout ; un
+    apprentissage sans eux s'arrete ; les points sont gardes.
+  - "La musique seulement pour les vraies guerres, pas les conflits
+    tribaux." FAIT : seulement une guerre declaree.
+  - "La levee d'armee et les guerres dans le meme grand menu." FAIT : un
+    onglet Guerre, l'ecran "L'armee et les guerres" (A : l'armee, W : les
+    guerres).
+  - "Rework de la carte et des ressources : l'agrandir et l'ameliorer
+    (nouvelle carte)." ETAT DES LIEUX FAIT (spec, section 4) ; PROPOSITION
+    en attente de ses choix.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -767,6 +780,12 @@ lente, bandes dessinees petites a taille fixe.
   0.17.0 : REGLE NOUVELLE : une decision IA qui coute des vivres ou des
   bras regarde d'abord villages.food_outlook (la marge a la recolte) ; un
   metier IA ne prend jamais les bras des champs (goods._keeps_hands).
+  0.19.0 : REGLES NOUVELLES : un savoir sans tous ses prerequis est
+  verrouille, quoi qu'il arrive (des points ne le debloquent pas :
+  learning.status) ; la musique de guerre ne joue que pour une guerre
+  declaree ; l'armee (lever, troupes) vit dans l'ecran des guerres
+  (render_wars._draw_army, ui["war_pick"] = render_wars.ARMY), plus de
+  panneau lateral Armee.
   0.18.0 : REGLES NOUVELLES : la diplomatie (guerre declaree, paix) vient
   de Messagers et serments, avec les villages (diplo.diplomatic) ; une
   reponse a une treve passe par diplo._truce_mood (la lassitude :

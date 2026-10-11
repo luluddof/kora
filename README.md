@@ -72,12 +72,13 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   ressources, commerce.
 - Une de vos bandes choisie, **survolez une bande étrangère** : le **rapport de force** de l'attaque (vos combattants
   et les leurs, renforts, abri, moral, trajet, vivres d'une troupe), et ce qui l'empêche.
-- L'écran des **guerres** (touche **W**, onglet *Guerres*) : vos guerres pays par pays, l'avantage, les buts, les deux
-  camps, les troupes en campagne, les sièges, les derniers combats ; exiger la soumission, proposer une trêve.
+- L'écran de **l'armée et des guerres** (onglet *Guerre* ; touche **A** : l'armée, **W** : les guerres) : lever des
+  troupes dans chaque village, voir et dissoudre vos troupes ; vos guerres pays par pays, l'avantage, les buts, les
+  deux camps, les troupes en campagne, les sièges, les derniers combats ; exiger la soumission, proposer une trêve.
 - Chaque partie a **sa sauvegarde** : *Continuer* reprend la plus récente, *Charger une partie* les montre toutes
   (jouer, supprimer) ; dans la partie, *Échap* puis *Sauvegarder une copie*.
-- La **musique de guerre** (*Casus bellis*) part de son début quand vous entrez en guerre, boucle sans couture et
-  s'éteint à la paix ; son volume se
+- La **musique de guerre** (*Casus bellis*) part de son début quand vous entrez dans une **guerre déclarée** (pas
+  pour un accrochage entre bandes), boucle sans couture et s'éteint à la paix ; son volume se
   règle dans *Réglages* (menu de démarrage et *Échap*).
 - **Espace** : pause. **1 à 5** : vitesse du temps.
 - Survolez une case pour voir ce qu'elle produit et ce qu'y coûte la marche (chaque case varie un peu, doucement
@@ -127,6 +128,8 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   l'arbre. Le **premier peuple** du monde à en terminer la recherche en est le **berceau** : du prestige et un bonus
   pour toujours. La sédentarité
   permet de fonder un village. La **carte des tournants** (**I**) montre où ils sont nés et où ils arrivent.
+  Un savoir ne s'étudie **jamais sans tous ses prérequis**, même si des points y sont déjà acquis (un peuple absorbé,
+  un événement) : ces points sont gardés pour plus tard.
 - D'autres savoirs sont **tirés au sort**, une fois par partie : certains ne viennent pas à tous les peuples (le
   vôtre compris), d'autres ne naissent pas dans tous les mondes, et dans certains groupes un seul naît (les croyances,
   les tombes des morts, le calendrier) : les autres disparaissent alors de l'arbre. L'arbre dit leur chance et ce
@@ -172,7 +175,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **B** | Votre tribu (ou vos villages) |
 | **P** | Les autres peuples, la diplomatie |
 | **J** | Le journal |
-| **A** | L'armée (dès le premier village) |
+| **A** | L'armée : lever, voir, dissoudre vos troupes (dès le premier village ; l'écran de l'armée et des guerres) |
 | **M** | L'écran du commerce (dès le premier village) |
 | **G** | Le trésor et le budget (avec Valeurs d'échange) |
 | **N** | Le pays et ses lois (avec Valeurs d'échange ou Nombres additifs) |
@@ -182,7 +185,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **Tab** | Bande suivante |
 | **C** | Poser un campement · **K** : y déposer des vivres |
 | **H** | Honorer un clan (il reste fidèle) · une troupe de suzerain : appeler l'ost |
-| **W** | L'écran des guerres (avec la diplomatie) |
+| **W** | Vos guerres (le même écran, onglet *Guerre*) |
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
 | **Z** / **U** / **I** / **R** / **X** | Modes de carte : influence / suzerains / tournants / ressources / commerce |

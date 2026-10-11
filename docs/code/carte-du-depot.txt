@@ -288,8 +288,9 @@ src/kora/wars.py (pas de pygame) : l'ecran des guerres en donnees : Front
   (key = grand suzerain ennemi, enemies, since, declared_by, my_side,
   their_side, my_goals, their_goals, scores, armies, sieges, fights ; score,
   target), fronts(state, me), others(state, me), score_text.
-src/kora/render_wars.py : l'ecran (screens "guerres", touche W, onglet
-  Guerres : layout.WARS_TAB, render_panels.wars_ready / wars_alert) ;
+src/kora/render_wars.py : l'ecran de l'armee et des guerres (screens
+  "guerres", touches A et W, onglet Guerre : layout.WARS_TAB,
+  render_panels.army_ready / wars_ready / wars_alert) ;
   wars_hit ; app.wars_click (wpick, wsee, wsite, whex, wact:soumission /
   treve / fiche).
 orders.attack_preview (la fiche avant l'attaque ; app._attack_preview la
@@ -328,6 +329,14 @@ src/kora/music.py (presentation) : Director (update(state | None, dt),
   (pygame.mixer.music ; heard_volume) ; tools/boucle_musique.py ecrit le
   morceau entier + fondu enchaine et les etiquettes LOOPSTART / LOOPLENGTH
   (mutagen, outil de preparation).
+
+0.19 : learning.status (les prerequis d'abord, meme avec des points ou en
+  cours), learning.kept_points, update_learning (s'arrete sans prerequis) ;
+  music.wants_war_music = une guerre declaree. L'ARMEE ET LES GUERRES :
+  render_wars (ARMY, _army_card, _draw_army, _troops, _where ; boutons
+  avillage / asize / araise / asee / adissolve, wlevy) ; app.open_war_room
+  (A, W), wars_click -> army_click ; layout.WARS_TAB ("Guerre") a la place
+  d'ARMY_TAB (supprime), render_panels.draw_army supprime.
 
 src/kora/draws.py  (pas de pygame)
   Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :
@@ -674,9 +683,8 @@ src/kora/render_panels.py
   probable), cartes d'evenements et fenetre de choix.
 
 src/kora/render_panels.py (suite)
-  Panneau Armee (draw_army, army_ready : onglet visible des le premier
-  village) : lever une compagnie par village (type, taille), suivre et
-  dissoudre ses troupes.
+  army_ready (l'onglet Guerre des le premier village) ; le panneau Armee
+  est devenu le volet de l'armee de l'ecran des guerres (render_wars, 0.19).
 
 src/kora/render_village.py
   Meme style que render_tech : fenetre "Fonder un village" (le lieu, ce

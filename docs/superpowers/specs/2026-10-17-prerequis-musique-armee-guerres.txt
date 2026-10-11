@@ -1,0 +1,101 @@
+Kora - Les prerequis toujours, la musique des vraies guerres, l'armee et les guerres en un ecran
+==================================================================================================
+Date : 2026-10-17. Statut : FAIT (version 0.19.0). La carte (4e demande) :
+proposition a part (section 4), en attente de ses choix.
+
+Ses mots : "il faudrait qu'il soit impossible de rechercher des techs meme
+si on a des points de recherche dessus si on n'a pas toutes les techs
+prerequises" ; "la musique se lance que pour les vraies guerres, pas les
+conflits tribaux" ; "la levee d'armee et les guerres que l'on a en cours
+pourraient etre dans le meme grand menu" ; "il est temps de rework la
+carte et les ressources : l'agrandir, l'ameliorer (donc nouvelle carte)".
+
+
+1. LES PREREQUIS, TOUJOURS
+--------------------------
+  LE DEFAUT : learning.status rendait "disponible" a tout savoir qui avait
+  deja des points, AVANT de regarder ses prerequis (un savoir commence se
+  finit : la regle visait les conditions, pas les prerequis). Or trois
+  choses donnent des points sans les prerequis : absorber un peuple (la
+  moitie de chacun de ses savoirs, diplo.absorb), deux effets d'evenements
+  (tech_progress, tech_progress_id), un arbre qui change d'une version a
+  l'autre. Dans SA vieille partie (an 36) : les Mole etudiaient Chevres
+  sans Domestication ni Sedentarite, les Maelira Valeurs d'echange sans
+  Le don et l'echange.
+  CORRIGE :
+  - status : les PREREQUIS d'abord ; sans eux "verrouille", meme avec des
+    points ou en cours (seul un tirage "absent" passe avant) ; choose le
+    refuse, available ne le liste pas, l'IA ne le choisit pas ;
+  - un apprentissage en cours sans ses prerequis S'ARRETE (update_learning)
+    ; le joueur est prevenu ("... s'arrete : il faut d'abord connaitre ...
+    (ses points sont gardes)") ;
+  - les POINTS restent acquis (learning.kept_points) : la case de l'arbre
+    dit "Il faut : ... · N pts gardes", la fiche "Deja N pts sur M : gardes,
+    mais rien n'avance avant ses prerequis".
+  Les conditions (terrains, semaines vecues...) restent ce qu'elles etaient
+  : un savoir commence se finit meme si elles tombent (sa demande du
+  2026-09-25).
+
+
+2. LA MUSIQUE DES VRAIES GUERRES
+--------------------------------
+  Avant : la musique jouait aussi pendant une bataille de ses bandes
+  contre n'importe qui (des bandes qui s'accrochent, avant la diplomatie,
+  ou contre un peuple qui ne l'a pas). Maintenant : seulement une GUERRE
+  DECLAREE qui implique le joueur (diplo.wars_of) ; la guerre declaree
+  demande Messagers et serments des deux cotes (0.18).
+
+
+3. L'ARMEE ET LES GUERRES EN UN SEUL GRAND ECRAN
+-----------------------------------------------
+  Avant : la levee dans un petit panneau lateral (onglet Armee, touche A),
+  les guerres dans un grand ecran (onglet Guerres, touche W).
+  Maintenant : un seul onglet "Guerre" (a la place de l'ancien onglet
+  Armee ; il vient avec le premier village, ou la diplomatie) et un seul
+  grand ecran, "L'armee et les guerres" (render_wars.py) :
+  - a gauche : la carte VOTRE ARMEE (troupes, compagnies, guerriers), puis
+    VOS GUERRES, puis les guerres AILLEURS ;
+  - VOTRE ARMEE a droite : LEVER DANS VOS VILLAGES, une carte par village
+    sur deux colonnes (habitants, troupes/limite, la milice, Poignee /
+    Troupe / Masse avec leur nombre, Lever ; pourquoi on ne peut pas lever,
+    toujours ecrit) ; VOS TROUPES (chef, guerriers, ou elles sont, leurs
+    compagnies, Voir, Dissoudre) ;
+  - une guerre a droite : comme avant, et "Lever des troupes [A]" a cote
+    de EN CAMPAGNE mene au volet de l'armee ;
+  - A ouvre l'armee, W les guerres (la premiere, sinon l'armee) ; la meme
+    touche ferme ; A depuis une guerre passe a l'armee.
+  En passant : les deux lignes d'aide de la liste vide ("Pour declarer une
+  guerre...") etaient coupees ; elles vont a la ligne. Sans la diplomatie,
+  la liste dit d'ou viennent les guerres declarees.
+
+
+4. LA CARTE : ETAT DES LIEUX (pour la proposition)
+--------------------------------------------------
+  Mesure de data/kora_map.json (768 x 384 cases, 295 000) :
+  - eau 64 % ; les calottes polaires sont des SOMMETS (12,6 %) ; terres
+    habitables environ 21 % : foret 8, steppe 4,6, plaine 2,9, colline
+    2,8, cote 2,6, montagne 1,2, VALLEE 0,8 (les rivieres), desert 0,5 ;
+  - 4 continents de 12 000 a 21 000 cases, puis des iles ; tous les
+    peuples partent du plus grand (pick_spawn_hexes : "home" = la plus
+    grande masse) ;
+  - pas de riviere visible (elles creusent des vallees, rares) ; pas de
+    toundra, de marais, de jungle, de savane ;
+  - les ressources : 10 couches continues, en tres grandes taches lisses
+    (le sel en plaques de centaines de cases) ;
+  - une sauvegarde porte la taille de sa carte et refuse une autre carte :
+    une nouvelle carte demande un registre de cartes (l'ancienne gardee
+    pour les anciennes parties, et pour le multijoueur).
+  La proposition detaillee et les choix a faire : dans sa reponse.
+
+
+5. VERIFICATIONS
+----------------
+  Tests : test_tech (des points ne remplacent jamais les prerequis ; un
+  apprentissage sans eux s'arrete, ses points restent), test_saves_music
+  (une bataille entre bandes n'est pas une guerre pour la musique),
+  test_map_clicks (A et W, le meme ecran, la meme touche ferme, "Lever
+  des troupes"), test_camps_caches (l'onglet Guerre a la place de
+  l'onglet Armee ; le volet de l'armee se dessine et se clique),
+  test_ui_hover / test_ui_pure (l'ecran de l'armee sans changer la partie).
+  Captures dans SA partie (an 26) : le volet de l'armee a 1280 x 720 et
+  1600 x 900 ; une guerre dans sa vieille partie (an 36).

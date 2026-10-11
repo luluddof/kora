@@ -25,7 +25,6 @@ from src.kora import (
     tech,
     theme,
     turning,
-    units,
     villages as _v,
     villages,
 )
@@ -984,9 +983,6 @@ def draw_event_modal(r, state, ui) -> None:
 # village (type, taille) et l'on suit toutes ses troupes.
 
 
-LEVY_SHORT = {"poignee": "Poignee", "troupe": "Troupe", "masse": "Masse"}
-
-
 def commerce_ready(state) -> bool:
     """L'onglet Commerce vient avec le premier village."""
     return bool(sites.of_tribe(state, state.viewer, "village"))
@@ -1034,96 +1030,6 @@ def army_ready(state) -> bool:
     if sites.of_tribe(state, state.viewer, "village"):
         return True
     return any(b.tribe_id == state.viewer and b.kind == "armee" for b in state.bands.values())
-
-
-def draw_army(r, state, layout, ui) -> None:
-    title_font, head_font = _fonts(r)
-    items = layout["items"]
-    bx, by, bw, bh = layout["box"]
-    tribe = state.tribes.get(state.viewer)
-    if tribe is None:
-        return
-    _box(r, (bx, by, bw, bh))
-    pygame.draw.rect(r.screen, color_of(tribe), (bx, by + 10, 5, 44), border_radius=2)
-    _text(r, title_font, "Armée", TEXT, bx + 18, by + 10)
-    troops = sorted((b for b in state.bands.values() if b.tribe_id == state.viewer and b.kind == "armee"), key=lambda b: b.id)
-    homes = sites.of_tribe(state, state.viewer, "village")
-    men = sum(b.population for b in troops)
-    comps = sum(len(units.normalize(b)) for b in troops)
-    _text(r, r.tiny, f"{comps} compagnie{'s' if comps > 1 else ''} sous les armes  ·  {men} guerriers  ·  {len(homes)} village{'s' if len(homes) > 1 else ''}", NOTE, bx + 18, by + 40)
-    tips = []
-    y = by + 64
-    _text(r, r.tiny, "LEVER DANS VOS VILLAGES", GOLD, bx + 18, y)
-    pygame.draw.line(r.screen, (60, 56, 44), (bx + 14, y + 16), (bx + bw - 14, y + 16))
-    y += 24
-    sizes = ui.setdefault("army_size", {})
-    block_h = 84
-    max_blocks = max(1, (bh - 250) // block_h)
-    for site in homes[:max_blocks]:
-        home = places.band_of(state, site)
-        if home is None:
-            continue
-        _box(r, (bx + 12, y, bw - 24, block_h - 6), fill=(32, 24, 19), edge=(60, 56, 44), radius=6)
-        name_rect = (bx + 20, y + 5, 150, 20)
-        items[f"avillage:{site.id}"] = name_rect
-        _button(r, name_rect, places.name(site))
-        info = f"{home.population} habitants  ·  troupes {villages.companies_of(state, site)}/{villages.army_cap(state, site)}"
-        _text(r, r.tiny, info, SOFT, bx + 180, y + 8)
-        # La milice : chacun dans sa categorie (on ne choisit pas).
-        milice = "Milice : " + (villages.militia_text(state, home) or "personne à lever")
-        _text(r, r.tiny, r._fit(r.tiny, milice, bw - 44), TEXT, bx + 20, y + 33)
-        key = sizes.get(site.id, "troupe")
-        sx = bx + 20
-        for k, _share, _label in villages.LEVIES:
-            n = villages.levy_size(home, villages.LEVY_SHARE[k], state)
-            rect = (sx, y + 54, 90, 20)
-            items[f"asize:{site.id}:{k}"] = rect
-            _button(r, rect, f"{LEVY_SHORT[k]} {n}", active=k == key)
-            sx += 96
-        share = villages.LEVY_SHARE.get(key, villages.LEVY_SHARE["troupe"])
-        why = villages.army_block(state, home.id, share) or ("" if chiefs.obeys(state, home) else "Ce clan n'obéit plus")
-        raise_rect = (sx + 6, y + 52, 120, 24)
-        items[f"araise:{site.id}"] = raise_rect
-        _button(r, raise_rect, "Lever [L]", on=not why)
-        if why:
-            _text(r, r.tiny, r._fit(r.tiny, why, bx + bw - 24 - (raise_rect[0] + 128)), WARN, raise_rect[0] + 128, y + 57)
-        y += block_h
-    if len(homes) > max_blocks:
-        _text(r, r.tiny, f"... et {len(homes) - max_blocks} autres villages (écran du village)", NOTE, bx + 20, y)
-        y += 18
-    y += 6
-    _text(r, r.tiny, "VOS TROUPES", GOLD, bx + 18, y)
-    pygame.draw.line(r.screen, (60, 56, 44), (bx + 14, y + 16), (bx + bw - 14, y + 16))
-    y += 24
-    if not troops:
-        _text(r, r.tiny, "Aucune troupe. Levez une compagnie dans un village.", NOTE, bx + 20, y)
-    bottom = by + bh - 28
-    for army in troops:
-        if y + 42 > bottom:
-            _text(r, r.tiny, f"... et {len(troops) - troops.index(army)} autres", NOTE, bx + 20, y)
-            break
-        lead = army.leader.name if army.leader else "?"
-        home = villages.home_of(state, army)
-        where = places.name(home) if home is not None else "sans village"
-        d = state.world.distance(home.hex, army.position) if home is not None else 0
-        status = "rentre" if army.homebound else ("au village" if home is not None and d <= villages.ARMY_HOME else f"à {d} cases de {where}")
-        _text(r, r.small, r._fit(r.small, f"{lead} · {army.population} guerriers · {status}", bw - 200), TEXT, bx + 20, y)
-        comp = " · ".join(f"{m} {units.UNITS[t].short if t in units.UNITS else t}" for t, m, _h in units.normalize(army))
-        _text(r, r.tiny, r._fit(r.tiny, comp, bw - 200), SOFT, bx + 20, y + 20)
-        see = (bx + bw - 12 - 164, y + 4, 70, 20)
-        items[f"asee:{army.id}"] = see
-        _button(r, see, "Voir")
-        dis = (bx + bw - 12 - 88, y + 4, 88, 20)
-        items[f"adissolve:{army.id}"] = dis
-        on = not villages.dissolve_block(state, army.id)
-        _button(r, dis, "Dissoudre", on=on)
-        if _hover(dis):
-            tips.append(([("Chaque compagnie rentre à pied à son village", SOFT)], dis[0] - 120, dis[1] + 24))
-        y += 44
-    tip = "Dissoute, une compagnie rentre à pied à son village. Les savoirs apportent de nouveaux types d'unités."
-    _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
-    for tip in tips:
-        _tooltip(r, *tip)
 
 
 def _draw_crown(surf: pygame.Surface, cx: int, cy: int) -> None:

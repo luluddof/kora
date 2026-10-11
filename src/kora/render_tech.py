@@ -322,6 +322,9 @@ def _status_line(state, tribe, tid: str, st: str) -> tuple[str, tuple]:
     if st == "verrouille":
         missing = tech.missing_prereqs(tribe, t)
         text = ("Il faut : " + ", ".join(m.name for m in missing[:2])) if missing else "Verrouillé"
+        kept = learning.kept_points(state, state.viewer, tid)
+        if kept:
+            text += f" · {kept} pts gardés"
         if t.turning and turning.presence(tribe, tid) > 0:
             text += f" · chez vous {turning.presence(tribe, tid):.0f} %"
         return text, STYLE["verrouille"]["text"]

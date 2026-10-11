@@ -572,11 +572,8 @@ SIDE_TABS = (
 )
 
 
-# L'onglet Armee n'apparait qu'avec le premier village (render_panels.draw_army),
-# l'onglet Commerce aussi (il ouvre l'ecran du commerce, render_trade.py).
-ARMY_TAB = ("armee", "Armée")
-
-
+# L'onglet Commerce vient avec le premier village (il ouvre l'ecran du
+# commerce, render_trade.py).
 COMMERCE_TAB = ("commerce", "Commerce")
 
 
@@ -588,18 +585,19 @@ TREASURY_TAB = ("tresor", "Trésor")
 COUNTRY_TAB = ("pays", "Pays")
 
 
-# Les guerres (render_wars.py) : avec la diplomatie, ou une guerre.
-WARS_TAB = ("guerres", "Guerres")
+# L'ARMEE ET LES GUERRES, un seul grand ecran (render_wars.py) : l'onglet
+# vient avec le premier village (lever des troupes), ou la diplomatie, ou
+# une guerre ; il prend la place de l'ancien onglet Armee.
+WARS_TAB = ("guerres", "Guerre")
 
 
 def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False, country: bool = False, wars: bool = False) -> tuple:
     return (
         SIDE_TABS
-        + ((ARMY_TAB,) if army else ())
+        + ((WARS_TAB,) if army or wars else ())
         + ((COMMERCE_TAB,) if commerce else ())
         + ((TREASURY_TAB,) if treasury else ())
         + ((COUNTRY_TAB,) if country else ())
-        + ((WARS_TAB,) if wars else ())
     )
 
 
@@ -635,8 +633,8 @@ def side_layout(width: int, height: int, panel: str | None = None, era: int = 0,
             for key in ("zoom_in", "zoom_out", "center"):
                 items["t" + key] = tech_panel[key]
             priority = ("tzoom_in", "tzoom_out", "tcenter", "ttab:arbre", "ttab:nombres")
-    elif panel in ("tribu", "peuples", "armee"):
-        box = panel_box(width, height, "tribu" if panel == "armee" else panel, rail)
+    elif panel in ("tribu", "peuples"):
+        box = panel_box(width, height, panel, rail)
     elif panel == "journal":
         box_w = 340
         box_h = min(560, max(300, height - HUD_HEIGHT - 28))

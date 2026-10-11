@@ -65,7 +65,7 @@ def test_drawing_every_screen_leaves_the_game_untouched():
     for mode in ("zones", "relief", "ressources", "commerce"):
         r.map_mode = mode
         r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, None, ui=ui)
-    for panel in ("savoirs", "tribu", "peuples", "journal", "armee"):
+    for panel in ("savoirs", "tribu", "peuples", "journal"):
         for pick in (None, 2, 3):
             ui["people_pick"] = pick
             r.draw(st, cx, cy, zoom, sel, False, yaw, pitch, panel, ui=ui)

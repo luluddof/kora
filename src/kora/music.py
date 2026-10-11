@@ -1,7 +1,8 @@
 """LA MUSIQUE : la musique de guerre (Casus bellis).
 
-Elle ne joue QUE quand le joueur est en guerre : une guerre declaree qui
-l'implique (diplo.wars_of), ou une bataille ou se battent ses gens. Elle
+Elle ne joue QUE pour une VRAIE guerre : une guerre declaree qui implique
+le joueur (diplo.wars_of) ; pas pour les accrochages entre bandes (avant
+la diplomatie, ou avec un peuple qui ne l'a pas). Elle
 part du DEBUT du morceau (sa propre montee) quand la guerre commence et
 s'eteint en douceur (FADE_OUT) quand elle finit ; ensuite elle boucle sur
 le coeur du morceau, sans couture (data/music/casus_bellis.ogg :
@@ -18,7 +19,7 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import battle, diplo
+from src.kora import diplo
 from src.kora.theme import data_dir
 
 WAR_TRACK = "casus_bellis.ogg"
@@ -32,18 +33,8 @@ CHECK = 0.5
 
 
 def wants_war_music(state) -> bool:
-    """Le joueur (state.viewer) est-il en guerre ?"""
-    me = state.viewer
-    if diplo.wars_of(state, me):
-        return True
-    for bt in battle.battles(state):
-        if bt.outcome:
-            continue
-        for bid in bt.attackers + bt.defenders:
-            band = state.bands.get(bid)
-            if band is not None and band.tribe_id == me:
-                return True
-    return False
+    """Le joueur (state.viewer) est-il dans une guerre declaree ?"""
+    return bool(diplo.wars_of(state, state.viewer))
 
 
 class Director:

@@ -126,6 +126,20 @@ def test_the_settings_change_the_volume_and_remember_it(monkeypatch, tmp_path):
     assert not s.open
 
 
+def test_a_clash_between_bands_is_not_a_war_for_the_music():
+    """La musique est celle des VRAIES guerres (declarees) ; une bataille
+    contre un peuple sans diplomatie (des bandes qui s'accrochent) non."""
+    from src.kora import battle, tech
+
+    st = _three()
+    st.tribes[2].knowledge.discard("messagers")
+    tech.invalidate()
+    mine = next(b for b in st.bands.values() if b.tribe_id == 1)
+    theirs = next(b for b in st.bands.values() if b.tribe_id == 2)
+    battle.start(st, mine, theirs, theirs.position)
+    assert battle.battles(st) and not music.wants_war_music(st)
+
+
 def test_the_war_music_starts_at_its_beginning_and_loops_on_its_heart():
     """Le fichier commence au debut du morceau (sa montee) ; ses etiquettes
     LOOPSTART / LOOPLENGTH (que suit SDL_mixer) font reprendre la boucle

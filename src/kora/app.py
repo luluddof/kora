@@ -26,12 +26,14 @@ from src.kora import (
     music,
     render_tech,
     render_treasury,
+    render_wars,
     screens,
     session,
     sites,
     situations,
     tech,
     villages,
+    wars,
 )
 from src.kora.globe import (
     FOCUS_ZOOM,
@@ -96,7 +98,6 @@ PANEL_KEYS = {
     pygame.K_b: "tribu",
     pygame.K_p: "peuples",
     pygame.K_j: "journal",
-    pygame.K_a: "armee",
 }
 ACTION_KEYS = {
     pygame.K_s: "split",
@@ -942,16 +943,37 @@ class Play:
             self.ui["law_confirm"] = None
             self.issue(commands.make(self.me(), "law", law_id, option))
 
+    def open_war_room(self, pick) -> None:
+        """L'ecran de l'armee et des guerres : A (pick = l'armee) ou W (pick
+        None : la premiere guerre, sinon l'armee). La meme touche le ferme."""
+        if pick is None:
+            fronts = [f.key for f in wars.fronts(self.state, self.state.viewer)]
+            pick = self.ui.get("war_pick") if self.ui.get("war_pick") in fronts else (fronts[0] if fronts else render_wars.ARMY)
+        if self.ui.get("wars_open") and (self.ui.get("war_pick") == pick or (pick != render_wars.ARMY and self.ui.get("war_pick") != render_wars.ARMY)):
+            screens.close_all(self.ui)
+            return
+        self.ui["war_pick"] = pick
+        self.open_screen("guerres")
+
     def wars_click(self, choice) -> None:
-        """Clic dans l'ecran des guerres : choisir une guerre, voir une
-        troupe, un village ou un combat ; exiger la soumission, proposer la
-        treve (commands.py, "diplo") ; leur fiche (Peuples)."""
+        """Clic dans l'ecran de l'armee et des guerres : l'armee (lever,
+        voir, dissoudre : army_click) ; choisir une guerre, voir une troupe,
+        un village ou un combat ; exiger la soumission, proposer la treve
+        (commands.py, "diplo") ; leur fiche (Peuples)."""
         if choice == "wclose":
             screens.close_all(self.ui)
             return
+        if choice == "wlevy":
+            self.ui["war_pick"] = render_wars.ARMY
+            return
+        if choice.startswith(("asize:", "araise:", "avillage:", "asee:", "adissolve:")):
+            if choice.startswith("asee:"):
+                screens.close_all(self.ui)
+            self.army_click(choice)
+            return
         kind, _sep, rest = choice.partition(":")
         if kind == "wpick":
-            self.ui["war_pick"] = int(rest)
+            self.ui["war_pick"] = rest if rest == render_wars.ARMY else int(rest)
         elif kind == "wsee":
             band = self.state.bands.get(int(rest))
             if band is not None:
@@ -1705,9 +1727,6 @@ class Play:
             self.band_action(ACTION_KEYS[event.key])
         elif event.key in PANEL_KEYS:
             key = PANEL_KEYS[event.key]
-            if key == "armee" and not army_ready(self.state):
-                self.toast("L'armée vient avec le premier village.")
-                return None
             self.side_panel = None if self.side_panel == key else key
             screens.close_all(self.ui)
         elif event.key == pygame.K_m:
@@ -1722,11 +1741,16 @@ class Play:
             self.open_screen("tresor", toggle=True)
         elif event.key == pygame.K_z:
             self.renderer.map_mode = "relief" if self.renderer.map_mode == "zones" else "zones"
+        elif event.key == pygame.K_a:
+            if not army_ready(self.state) and not wars_ready(self.state):
+                self.toast("L'armée vient avec le premier village.")
+                return None
+            self.open_war_room(render_wars.ARMY)
         elif event.key == pygame.K_w:
-            if not wars_ready(self.state):
+            if not wars_ready(self.state) and not army_ready(self.state):
                 self.toast("Les guerres se déclarent avec Messagers et serments (la diplomatie vient avec les villages).")
                 return None
-            self.open_screen("guerres", toggle=True)
+            self.open_war_room(None)
         elif event.key == pygame.K_n:
             if not laws.available(self.state, self.state.viewer):
                 self.toast("Les lois viennent avec Valeurs d'échange ou Nombres additifs.")

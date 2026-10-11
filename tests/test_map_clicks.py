@@ -85,3 +85,30 @@ def test_a_right_click_attacks_a_left_click_talks():
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=3))
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(x, y), button=3))
     assert st.bands[1].order.kind.name == "MARCH_TO_BAND" and st.bands[1].order.target_band_id == hit.id
+
+
+def test_army_and_wars_share_one_screen():
+    """A : l'armee, W : les guerres, dans le meme grand ecran ; la meme
+    touche le ferme ; "Lever des troupes" d'une guerre mene a l'armee."""
+    from src.kora import render_wars, screens
+
+    st = _state()
+    diplo.make_contact(st, 1, 2, quiet=True)
+    play = _play(st)
+    play.open_war_room(render_wars.ARMY)
+    assert play.ui.get("wars_open") and play.ui["war_pick"] == render_wars.ARMY
+    play.open_war_room(render_wars.ARMY)
+    assert not play.ui.get("wars_open"), "la touche A ferme l'écran ouvert sur l'armée"
+    play.open_war_room(None)
+    assert play.ui.get("wars_open") and play.ui["war_pick"] == render_wars.ARMY, "sans guerre, W montre l'armée"
+    screens.close_all(play.ui)
+    diplo.declare_war(st, 1, 2)
+    play.open_war_room(None)
+    assert play.ui["war_pick"] == 2
+    play.open_war_room(render_wars.ARMY)
+    assert play.ui.get("wars_open") and play.ui["war_pick"] == render_wars.ARMY, "la touche A passe des guerres à l'armée"
+    play.wars_click("wpick:2")
+    play.wars_click("wlevy")
+    assert play.ui["war_pick"] == render_wars.ARMY
+    play.open_war_room(None)
+    assert play.ui["war_pick"] == 2, "W revient à la guerre"

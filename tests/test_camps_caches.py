@@ -98,23 +98,24 @@ def test_the_army_tab_comes_with_the_first_village():
     st.world = make_filled_world(60, 30, Terrain.VALLEE, wrap_x=True)
     st.world.fill_season(st.clock.season())
     assert not army_ready(st)
-    assert "armee" not in side_layout(1280, 720)["tabs"]
+    assert "guerres" not in side_layout(1280, 720)["tabs"]
     sites.make_camp(st, 1)
     assert villages.found(st, 1) is not None
     assert army_ready(st)
+    # L'onglet Guerre (l'armee et les guerres) vient avec le premier village,
+    # a la place de l'ancien onglet Armee.
     tabs = side_layout(1280, 720, army=True)["tabs"]
-    assert list(tabs)[-1] == "armee"
-    x, y, w, h = tabs["armee"]
+    assert list(tabs)[-1] == "guerres"
+    x, y, w, h = tabs["guerres"]
     assert y + h <= 720
 
 
-def test_the_army_panel_and_square_villages_draw():
+def test_the_army_pane_of_the_war_screen_and_square_villages_draw():
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     import pygame
 
-    from src.kora import render_panels
+    from src.kora import render_wars
     from src.kora.render import Renderer
-    from src.kora.layout import side_layout
 
     pygame.init()
     try:
@@ -128,10 +129,12 @@ def test_the_army_panel_and_square_villages_draw():
         sites.make_camp(st, 1)
         site = villages.found(st, 1)
         army = villages.raise_army(st, 1)
-        lay = side_layout(1280, 720, panel="armee", army=True)
-        ui = {}
-        render_panels.draw_army(r, st, lay, ui)
-        assert f"araise:{site.id}" in lay["items"] and f"asee:{army.id}" in lay["items"]
+        ui = {"war_pick": render_wars.ARMY}
+        render_wars.draw_wars(r, st, ui)
+        buttons = r.wars_hits["buttons"]
+        assert f"araise:{site.id}" in buttons and f"asee:{army.id}" in buttons and f"asize:{site.id}:masse" in buttons
+        x, y, w, h = buttons[f"wpick:{render_wars.ARMY}"]
+        assert render_wars.wars_hit(r.wars_hits, x + 5, y + 5) == f"wpick:{render_wars.ARMY}"
         r.draw_village_icon(site, 300, 300, (200, 60, 60), 7)
         assert screen.get_at((300, 300))[:3] == (200, 60, 60)
     finally:
