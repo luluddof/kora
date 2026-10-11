@@ -62,8 +62,9 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - **Les planètes** sont grandes (1536 × 768 cases, quatre fois l'ancienne carte) : glace aux pôles, toundra, forêts,
   steppes, savanes, jungles, marais, déserts, montagnes, et des **rivières** qui coulent jusqu'à la mer. Le long d'une
   rivière, on marche plus vite **dans le sens du courant** (x0,7) et moins vite à **contre-courant** (x1,3) ; la
-  traverser ailleurs, c'est passer un gué. Les champs au bord de l'eau donnent plus (+25 %, davantage avec les
-  Rigoles d'irrigation). Survolez une case : on voit vers où coule sa rivière.
+  traverser ailleurs, c'est passer un gué. L'**influence** suit le même courant : elle descend le cours plus loin
+  qu'elle ne le remonte, et une rivière à traverser (un fleuve surtout) fait **frontière**. Les champs au bord de l'eau
+  donnent plus (+25 %, davantage avec les Rigoles d'irrigation). Survolez une case : on voit vers où coule sa rivière.
 - **Les ressources** : les êtres vivants (céréales, racines, fruits, miel, bois, aurochs, chevaux, chèvres, rennes,
   poisson) vivent dans des aires ; les matières (silex, argile, sel, ocre, obsidienne, ambre, argent, cuivre, étain)
   sont des **gisements**. Le cuivre ne se reconnaît qu'avec *Le cuivre martelé* ; l'étain attend l'âge du bronze. De

@@ -22,7 +22,8 @@ import heapq
 import math
 
 from src.kora import tech
-from src.kora.types import Terrain
+from src.kora.types import Hex, Terrain
+from src.kora.world import NEIGHBOR_DELTAS, river_pct
 from src.kora.places import influence_radius
 
 ZONE_MIN = 0.12
@@ -74,7 +75,10 @@ def projection(world, center, radius: int) -> tuple[list, list]:
     """Les cases que touche l'influence d'un lieu, et ce qu'il en coute
     pour y arriver (somme des PROJECTION des cases traversees, le centre
     compte 0) : le chemin le moins cher, dans le disque du rayon, sans
-    depasser `radius`. Le sol ne change pas : garde en cache."""
+    depasser `radius`. LES RIVIERES (0.20.1, sa demande) : comme la marche
+    (world.river_pct), l'influence descend le cours plus loin (x0,7), le
+    remonte moins (x1,3), et une riviere a traverser fait frontiere (gue
+    x1,25, fleuve x1,6). Le sol ne change pas : garde en cache."""
     origin = world.canonicalize(center)
     if origin is None:
         return [], []
@@ -90,14 +94,20 @@ def projection(world, center, radius: int) -> tuple[list, list]:
     best = {origin: 0.0}
     heap = [(0.0, 0, origin)]
     n = 0
+    rivers = bool(world._flow)
     while heap:
         cost, _k, h = heapq.heappop(heap)
         if cost > best.get(h, 1e9):
             continue
-        for nb in world.neighbors(h):
-            if nb not in inside:
+        for k, (dq, dr) in enumerate(NEIGHBOR_DELTAS):
+            nb = world.canonicalize(Hex(h.q + dq, h.r + dr))
+            if nb is None or nb not in inside:
                 continue
-            c = cost + PROJECTION.get(world.terrain(nb), 1.0)
+            step = PROJECTION.get(world.terrain(nb), 1.0)
+            if rivers:
+                (c0, r0), (c1, r1) = world._index(h), world._index(nb)
+                step = step * river_pct(world, c0, r0, c1, r1, k) / 100.0
+            c = cost + step
             if c <= radius + 1e-9 and c < best.get(nb, 1e9):
                 best[nb] = c
                 n += 1

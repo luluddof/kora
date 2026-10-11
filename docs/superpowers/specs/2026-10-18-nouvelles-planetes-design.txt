@@ -212,3 +212,24 @@ Ses mots (reponse a la proposition C1-C8 du 2026-10-17) :
     choix de la planete) ; 697 tests verts ; empreinte re-enregistree ;
     multijoueur identique (Python et exe : "planete : hote aurane
     1536 x 768, ami aurane 1536 x 768").
+
+
+9. 0.20.1 : LE COURANT PORTE L'INFLUENCE
+----------------------------------------
+  Sa question : "les rivieres influent-elles sur l'influence selon l'amont
+  et l'aval ?" Non jusqu'ici (influence.PROJECTION, un cout par sol). Sa
+  reponse : "ok, fais-le".
+  - influence.projection : chaque pas passe par world.river_pct, comme la
+    marche : le long du cours, x0,7 vers l'aval (x0,85 de biais), x1,3 vers
+    l'amont (x1,15) ; entrer dans une riviere hors de son cours, x1,25, un
+    fleuve x1,6 : une riviere a traverser fait frontiere. L'ancienne carte
+    (sans rivieres) ne change pas.
+  - Le survol d'une case de riviere le dit ("marche et influence x0,7 ...,
+    une frontiere").
+  - Mesure (Aurane, 20 ans, meme graine, avant / apres) : cases sous
+    influence 4 818 -> 5 038 ; motifs "terres disputees" 27 -> 27 ; calcul
+    111 -> 119 s. L'effet est modeste : une zone de quelques cases s'etire
+    d'une ou deux cases le long d'un fleuve, et s'arrete a sa rive.
+  - Test : test_planets (aval plus loin qu'amont, le fleuve fait frontiere).
+  - Pour les prochaines cuissons (sa demande) : garder plusieurs types de
+    rivieres de largeurs differentes (ruisseau, riviere, fleuve...).

@@ -633,6 +633,12 @@ lente, bandes dessinees petites a taille fixe.
     (aires du vivant, gisements des matieres ; cuivre et etain caches) ;
     champs des rives, troupeaux pres des betes sauvages, cinq metiers ;
     l'ancienne carte garde les anciennes parties.
+  - "Les rivieres influent-elles sur l'influence selon l'amont et l'aval ?"
+    NON ; "ok, fais-le, et garde pour les prochaines cartes qu'il y a
+    plusieurs types de rivieres de largeurs differentes." FAIT (0.20.1) :
+    l'influence descend le cours (x0,7), le remonte mal (x1,3), une
+    riviere a traverser fait frontiere (x1,25, fleuve x1,6) ; les types
+    (ruisseau, riviere, fleuve) sont notes pour toute recuisson.
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
@@ -792,6 +798,9 @@ lente, bandes dessinees petites a taille fixe.
   0.17.0 : REGLE NOUVELLE : une decision IA qui coute des vivres ou des
   bras regarde d'abord villages.food_outlook (la marge a la recolte) ; un
   metier IA ne prend jamais les bras des champs (goods._keeps_hands).
+  0.20.1 : REGLE NOUVELLE : la propagation de l'influence
+  (influence.projection) suit le courant comme la marche (world.river_pct) ;
+  une recuisson des planetes garde plusieurs types de rivieres (largeurs).
   0.20.0 : REGLES NOUVELLES : une planete se CUIT (tools/cuire_planetes.py,
   numpy) et se livre (data/planetes, les deux specs) ; le jeu ne genere
   rien ; une partie note sa planete (world.planet, "map" -> "id") ; un pas

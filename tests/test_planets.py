@@ -162,3 +162,32 @@ def test_rivers_feed_the_fields_and_new_crafts_have_effects():
     assert ("Teintures", 3.0) in goods.stability_parts(st, tid)
     assert goods.winter_prestige(st, tid) >= 1
     assert NEIGHBOR_DELTAS and Hex(0, 0)
+
+
+def test_influence_follows_the_current_and_stops_at_the_river():
+    """L'influence descend la riviere plus loin qu'elle ne la remonte, et
+    une riviere a traverser fait frontiere (0.20.1)."""
+    from src.kora.influence import projection
+
+    world = _river_world()
+    center = offset_to_axial(9, 5)
+    hexes, costs = projection(world, center, 6)
+    cost = dict(zip(hexes, costs))
+    down, up = offset_to_axial(13, 5), offset_to_axial(5, 5)
+    assert cost[down] < cost[up], "en aval, l'influence porte plus loin"
+    # Sans riviere, la meme plaine : aval et amont pareils.
+    flat = World([[Terrain.PLAINE for _ in range(20)] for _ in range(11)])
+    h2, c2 = projection(flat, center, 6)
+    plain = dict(zip(h2, c2))
+    assert plain[down] == plain[up]
+    # De l'autre cote de la riviere (traversee a gue) : plus cher qu'en plaine.
+    across = offset_to_axial(9, 7)
+    near = offset_to_axial(9, 3)
+    side = World([[Terrain.PLAINE for _ in range(20)] for _ in range(11)])
+    layer = bytearray(20 * 11)
+    for col in range(2, 18):
+        layer[6 * 20 + col] = 1 | (3 << 3)  # un fleuve vers l'est, rangee 6
+    side.set_rivers(bytes(layer))
+    h3, c3 = projection(side, offset_to_axial(9, 4), 6)
+    over = dict(zip(h3, c3))
+    assert over.get(across, 99) > plain[near], "le fleuve fait frontiere"

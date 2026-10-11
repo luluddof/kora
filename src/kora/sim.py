@@ -351,13 +351,13 @@ def river_line(world, h: Hex) -> str:
     if river is not None:
         k, size = river
         return (
-            f"{RIVER_SIZE_FR[size]} : coule vers {DIRECTION_FR[k]} (à le suivre : marche x0,7 ; "
-            f"à contre-courant x1,3 ; le traverser : x{(FORD_BIG_PCT if size >= 3 else FORD_PCT) / 100:.2f})".replace(".", ",")
+            f"{RIVER_SIZE_FR[size]} : coule vers {DIRECTION_FR[k]} (à le suivre : marche et influence x0,7 ; "
+            f"à contre-courant x1,3 ; le traverser : x{(FORD_BIG_PCT if size >= 3 else FORD_PCT) / 100:.2f}, une frontière)".replace(".", ",")
         )
     idx = world._index(h)
     if idx is not None and world.flow_at(*idx):
         k = world.flow_at(*idx) - 1
-        return f"Au bord d'une rivière qui coule vers {DIRECTION_FR[k]} (le long de l'eau : x0,7 en aval, x1,3 en amont)".replace(".", ",")
+        return f"Au bord d'une rivière qui coule vers {DIRECTION_FR[k]} (le long de l'eau, marche et influence : x0,7 en aval, x1,3 en amont)".replace(".", ",")
     return ""
 
 

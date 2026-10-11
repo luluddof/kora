@@ -356,6 +356,8 @@ persist : "map" -> "id", map_id, game_from_json charge la planete de la
 layout : zoom_scale, max_zoom_for, focus_zoom_for. globe_draw : river_size,
   RIVER_COLOR / RIVER_TINT, _draw_rivers, _centers_of / _corners_of (plus de
   maillage precalcule), res_hidden. sim : river_line (le survol).
+0.20.1 : influence.projection : chaque pas par world.river_pct (le courant
+  porte l'influence, une riviere a traverser fait frontiere).
 
 0.19 : learning.status (les prerequis d'abord, meme avec des points ou en
   cours), learning.kept_points, update_learning (s'arrete sans prerequis) ;
