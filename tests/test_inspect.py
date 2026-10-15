@@ -1,3 +1,6 @@
+"""La fiche d'une case (sim.hex_inspect) selon le brouillard : rien
+d'inexplore, le sol hors de vue, la nourriture et les bandes en vue."""
+
 from src.kora.clock import Clock
 from src.kora.sim import hex_inspect, inspect_lines
 from src.kora.gamestate import GameState

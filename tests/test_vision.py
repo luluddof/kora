@@ -1,3 +1,5 @@
+"""Le brouillard (vision.py) : une bande ennemie hors de vue ne se voit pas."""
+
 from src.kora.clock import Clock
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe

@@ -1,6 +1,6 @@
 Kora - Un arbre coherent, des chiffres vrais, la guerre declaree
 ================================================================
-Date : 2026-10-10. Statut : FAIT (version 0.12.0) ; l'argent : PROPOSE
+Date : 2026-10-09. Statut : FAIT (version 0.12.0) ; l'argent : PROPOSE
 (section 6, rien de code, a sa demande).
 
 Ses mots (raccourcis) :

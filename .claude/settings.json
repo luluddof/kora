@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python tools/notes.py status --court 2>/dev/null || echo \"KORA : tools/notes.py status n'a pas pu tourner ; lire CLAUDE.md et lancer python tools/notes.py check\"",
+            "timeout": 30,
+            "statusMessage": "Kora : l'etat des notes"
+          }
+        ]
+      }
+    ]
+  }
+}

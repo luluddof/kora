@@ -1,3 +1,14 @@
+"""LE JOURNAL du joueur : des lignes datees (annee, semaine), d'un genre
+(LogKind : combat, survie, saison, decouverte, politique - "Peuples" a
+l'ecran), avec la case ou elles se passent (un clic y emmene la camera).
+
+GameLog garde les LOG_CAP dernieres lignes ; filtered les trie pour les
+filtres de l'onglet Journal. season_fr / terrain_fr : les noms francais des
+saisons et des sols dans les textes. Un message du jeu passe par
+gamestate.note (jamais GameLog.add directement : un joueur, un journal).
+N'importe pas pygame.
+"""
+
 from dataclasses import dataclass, field
 from enum import Enum
 from src.kora.types import Season, Terrain

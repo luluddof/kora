@@ -1,8 +1,8 @@
 Kora - L'ecran des guerres, le rapport de force, les vivres, les sauvegardes, la musique
 =====================================================================================
-Date : 2026-10-14. Statut : FAIT (version 0.16.0).
+Date : 2026-10-09. Statut : FAIT (version 0.16.0).
 
-Ses mots (raccourcis), sur les propositions G1-G9 (spec 2026-10-13) :
+Ses mots (raccourcis), sur les propositions G1-G9 (spec 2026-10-09-arbre-tire-terrain-echanges, section 4) :
   G2 (plusieurs sauvegardes) : oui. G4 (un ecran des guerres) : oui.
   G6 (les troupes IA et leurs vivres) : oui. G9 (le rapport de force avant
   l'attaque) : oui. G1, G3, G8 : plus tard. G5 : il dira comment.

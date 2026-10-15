@@ -1,3 +1,16 @@
+"""LES COULEURS DE LA CARTE (presentation, sans pygame) : un sol selon sa
+saison (season_color : neige, feuilles, herbes seches), et LA COULEUR DES
+PAYS.
+
+country_color : la couleur d'un peuple sur la carte - un tributaire prend
+une nuance claire de son grand suzerain (VASSAL_OWN, VASSAL_LIGHT), un
+confedere celle du fondateur (CONFED_OWN), un peuple libre la sienne ; on
+passe TOUJOURS par elle (jamais peoples.color_of). realm_of / members_of /
+great_realms : la carte des Suzerains ; seen_color : un lieu du brouillard
+tel qu'on l'a vu ; turning_color : la carte des grands tournants. Les liens
+entre peuples sont gardes en cache (_ties_key).
+"""
+
 from src.kora import chiefdom, confed, diplo, turning
 from src.kora.peoples import color_of
 from src.kora.types import Season, Terrain

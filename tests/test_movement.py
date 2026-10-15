@@ -1,3 +1,6 @@
+"""La marche des bandes : quatre cases de plaine par semaine, ordres invalides
+ou sans bande ignores sans planter."""
+
 from src.kora.clock import Clock
 from src.kora.sim import apply_movement
 from src.kora.bands import set_goto, set_march_to_band

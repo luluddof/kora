@@ -2,7 +2,7 @@ Kora - La profondeur des deux âges : propositions détaillées (à choisir)
 =======================================================================
 Date : 2026-10-02. Statut : PROPOSITIONS, rien n'est codé. Elles remplacent
 et réunissent 2026-09-25-profondeur-deux-ages-propositions.txt,
-2026-09-26-profondeur-deuxieme-reflexion.txt (F1-F6) et la section 4 de
+2026-09-25-profondeur-deuxieme-reflexion.txt (F1-F6) et la section 4 de
 2026-10-02-profondeur-epoques-situations.txt (T1-T4, N1-N4), en tenant
 compte de ce qui existe depuis (situations, savoir-faire, influence
 projetée, grand monument).

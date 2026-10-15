@@ -1,3 +1,13 @@
+"""L'HORLOGE de la partie : l'annee, la semaine (1 a 52), la pause et la
+vitesse (1 a 5 : 2, 4, 6, 8 ou 10 semaines par seconde, ticks_per_second).
+
+La saison CALENDAIRE est une tranche de 13 semaines (Clock.season) ; la
+saison LOCALE d'une case, qui avance sur la carte, est dans world.py
+(World.hex_season). L'hiver commence a la semaine 40 (weeks_until_winter).
+Une semaine de jeu = un tick (sim.tick) ; en bataille d'un joueur, un pas
+dure un jour (state.step : voir gamestate.py). N'importe pas pygame.
+"""
+
 from src.kora.types import Season
 
 

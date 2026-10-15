@@ -1,3 +1,6 @@
+"""Les couleurs des saisons (look.py) : l'hiver blanchit, l'ete jaunit la
+steppe, l'automne rougit la foret, l'eau reste bleue."""
+
 from src.kora.look import BIOME_COLORS, season_color
 from src.kora.types import Season, Terrain
 

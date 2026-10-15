@@ -1,3 +1,12 @@
+"""L'ATLAS : les noms au dezoom (continents, banquises, bassins des grands
+oceans, mers fermees) et leur place sur la carte.
+
+build_atlas_labels nomme les composantes de terre et d'eau (LAND_NAMES,
+SEA_NAMES, ICE_NAMES, INLAND_NAMES) ; les noms sont cuits avec la planete
+(World.atlas, lu par world.py) et calcules a la volee sinon (tests).
+N'importe pas pygame.
+"""
+
 from __future__ import annotations
 
 import math

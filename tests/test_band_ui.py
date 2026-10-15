@@ -1,3 +1,6 @@
+"""La fiche d'une bande et la selection : boutons dans la fiche, lignes de la
+fiche, bandes empilees, Tab, nouvelles cliquables."""
+
 from src.kora.app import _next_player_band, _refresh_selection
 from src.kora.globe import FOCUS_ZOOM, look_at_hex, view_params
 from src.kora.layout import BAND_BUTTONS, band_card_hit, band_card_layout, band_screen_positions, wrap_text

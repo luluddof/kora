@@ -1,9 +1,9 @@
 Kora - Des guerres qui bougent : buts de guerre, alliances qui s'usent, motifs
 ==========================================================================
-Date : 2026-10-12. Statut : FAIT (version 0.14.0).
+Date : 2026-10-09. Statut : FAIT (version 0.14.0).
 
 Ses mots (raccourcis) :
-  1. "Les quatre" : les propositions P1-P4 de la spec 2026-10-11 (section 7)
+  1. "Les quatre" : les propositions P1-P4 de la spec 2026-10-09-ost-siege-milice-grain (section 7)
      - P1 des alliances qui s'usent sans ennemi commun ;
      - P2 les chefs conquerants qui trahissent un voisin faible ;
      - P3 des causes de guerre (la terre, le silex, une succession) ;

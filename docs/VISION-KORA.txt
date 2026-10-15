@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-10-09.
+Derniere mise a jour : 2026-10-16.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -165,23 +165,23 @@ lente, bandes dessinees petites a taille fixe.
   - Mettre le tout sur GitHub pour passer en mode cloud ("plus tard, pas
     tout de suite" : le depot d'abord, le passage au cloud plus tard).
 
-2026-09-25 (nuit)
+2026-09-25 (fin d'apres-midi)
   - "Pour eviter les problemes dus au trop grand nombre de tribus : les
     tribus independantes d'une culture PARTAGENT le maximum de clans avec
     la tribu d'origine, meme pour le joueur : au plus 12 tribus/villes
     (avec les savoirs) pour toute cette culture."
-    FAIT (spec 2026-09-26-plafond-commun-civilisation.txt) : sim.civ_band_cap
+    FAIT (spec 2026-09-25-plafond-commun-civilisation.txt) : sim.civ_band_cap
     / civ_band_count ; verifie dans sa partie (an 51) : chaque culture se
     remplit jusqu'a 12 (8 sans Chefferie) puis ne cree plus rien.
   - Profondeur : "reflechis PLUS, a des fonctionnalites interessantes ou a
     etendre celles deja en place."
-    FAIT (propositions, a choisir) : 2026-09-26-profondeur-deuxieme-reflexion.txt
+    FAIT (propositions, a choisir) : 2026-09-25-profondeur-deuxieme-reflexion.txt
     (etendre chaque systeme ; six grandes fonctionnalites : Voix du peuple et
     Coutumes, Cycle de l'annee, Betail, Guerre avec des buts, Civilisation
     vivante, Memoire du peuple).
-  - GitHub : compte luluddof. FAIT : github.com/luluddof/kora (prive).
+  - GitHub : compte luluddof. FAIT : github.com/luluddof/kora (prive, puis public le soir meme).
 
-2026-09-26
+2026-09-25 (soir ; 0.1.0, 0.1.1)
   - "Fais en sorte qu'on puisse depuis GitHub installer facilement le exe,
     comme ca je le fais tester a des potes."
     FAIT : depot rendu PUBLIC (son choix), historique signe luluddof avec son
@@ -201,7 +201,7 @@ lente, bandes dessinees petites a taille fixe.
     (signer l'exe : SignPath Foundation gratuit pour l'open source, ou un
     certificat payant) attend SON choix.
 
-2026-09-27
+2026-09-27 (0.2.0, 0.2.1)
   - "J'aimerais ajouter un mode MULTIJOUEUR au jeu, mais aussi un MENU DE
     DEMARRAGE, et la possibilite, quand on cree la tribu, de lui donner des
     BONUS DE DEPART (qui durent 5 ans), que l'on choisit parmi un pool."
@@ -217,7 +217,7 @@ lente, bandes dessinees petites a taille fixe.
     identique sur deux "machines". En route : la sauvegarde oubliait la
     pression de cueillette (recharger changeait la suite) : corrige.
 
-2026-10-02 ("un plus gros effort")
+2026-10-02 (0.3.0 ; "un plus gros effort")
   - "Une REFONTE GRAPHIQUE des interfaces et de l'UI, avec une CHARTE
     GRAPHIQUE que tu definiras : faire plus JEU VIDEO, donner une IDENTITE
     PROPRE au jeu plutot qu'une interface qui fait franchement IA."
@@ -391,6 +391,7 @@ lente, bandes dessinees petites a taille fixe.
     systems.py, commands.py, tech.py, events_data.py, screens.py, app.py
     pour son clic, render.py pour son onglet...), et plus aucun des
     calculs des autres (sim, villages, battle, chiefdom, persist).
+2026-10-03 (0.7.2, 0.8.0, 0.9.0, 0.9.1)
   - "650 imports caches dans des fonctions : detaille." Puis : "je te
     laisse tout faire." FAIT (0.7.2, sans changer le jeu : empreinte et SA
     partie jouee deux ans identiques) : 734 imports caches -> 1 (commente) ;
@@ -467,7 +468,7 @@ lente, bandes dessinees petites a taille fixe.
     tributaires rejoignent leur suzerain mais ne declarent pas eux-memes
     de guerre, a l'inverse des confederes" FAIT (le pays : chiefdom.country).
 
-2026-10-09
+2026-10-09 (0.10.0, 0.10.1, 0.10.2, 0.10.3, 0.11.0)
   - "Le rework du systeme de recherche, inspire de Terra Invicta et d'EU5 :
     comme dans EU5 un systeme d'institutions (pas le nom, mais leur
     fonctionnement) : de grosses recherches qui debloquent tout un pan ;
@@ -500,11 +501,11 @@ lente, bandes dessinees petites a taille fixe.
     = attaquer (clic gauche = diplomatie) ; decouvert a la fin de la
     recherche, le premier = le berceau (prestige +20, bonus pour toujours) ;
     bouton "Carte" en bas a gauche.
-2026-10-10
+2026-10-09 (0.12.0)
   - "Reorganise les techs de maniere coherente : chien de chasse et garde
     des troupeaux sous la domestication ; plus coherent, mais le style
     espace a la Victoria 3 est bien." FAIT (0.12.0 ; spec
-    2026-10-10-arbre-coherent-guerre-declaree.txt) : la domestication,
+    2026-10-09-arbre-coherent-guerre-declaree.txt) : la domestication,
     tournant de l'age tribal ; haches, enceintes, tissage, lait, fromage,
     cheval mieux places.
   - "Les nombres doivent etre des variables (le 8 = le chiffre actuel,
@@ -518,10 +519,10 @@ lente, bandes dessinees petites a taille fixe.
   - "La molette pour voir tous les pays connus (ecran Peuples)." FAIT.
   - "Reflechis a l'argent en plus des echanges, sans rien implementer."
     PROPOSE (spec, section 6) : rancon, mercenaires, acheter la paix,
-    grain achete... Il a choisi la piste D (le 2026-10-11, ci-dessous).
-2026-10-11
+    grain achete... Il a choisi la piste D (0.13.0, ci-dessous).
+2026-10-09 (0.13.0)
   - "3 oui" (le grain achete en disette chez un partenaire, plus cher que
-    le marche). FAIT (0.13.0 ; spec 2026-10-11-ost-siege-milice-grain.txt) :
+    le marche). FAIT (0.13.0 ; spec 2026-10-09-ost-siege-milice-grain.txt) :
     clic sur le grenier en disette (ecran du village), un vendeur a portee
     (partenaire, allie, pays), un prix qui monte avec ce qu'on lui prend et
     en hiver ; l'IA achete en vraie faim.
@@ -541,11 +542,11 @@ lente, bandes dessinees petites a taille fixe.
     meme part de chaque categorie ; les partis restent dans la leur.
     CONSTAT (spec, section 7) : dans SA partie, le monde IA se fige en
     alliances (plus un combat apres l'an 41) ; propositions P1-P4.
-2026-10-12
+2026-10-09 (0.14.0)
   - "Les quatre (P1-P4), plus des guerres pour rendre tributaire une
     ville ; on n'est tributaire que d'un seul, donc la guerre peut viser la
     ville et/ou tout le pays : son suzerain et tous ses vassaux." FAIT
-    (0.14.0 ; spec 2026-10-12-guerres-qui-bougent.txt) : le BUT de guerre
+    (0.14.0 ; spec 2026-10-09-guerres-qui-bougent.txt) : le BUT de guerre
     "soumettre" (prendre le village, ou exiger la soumission selon
     l'avantage), "Guerre a tout leur pays" ; alliances qui s'usent ;
     conquerants qui trahissent ; motifs (terre, ressource, succession) ;
@@ -553,9 +554,9 @@ lente, bandes dessinees petites a taille fixe.
     declaree ne s'efface plus au premier combat.
   - "Le hasard des savoirs change-t-il d'une partie a l'autre ?" VERIFIE :
     oui (graine tiree a chaque partie neuve ; test).
-2026-10-13
+2026-10-09 (0.15.0, 0.15.1)
   - "Les techs incompatibles ne doivent pas etre visibles si une autre a
-    ete choisie." FAIT (0.15.0 ; spec 2026-10-13-arbre-tire-terrain-
+    ete choisie." FAIT (0.15.0 ; spec 2026-10-09-arbre-tire-terrain-
     echanges.txt) : hors de l'arbre, avec ce qui en depend.
   - "Chaque case d'un type de sol a une petite variation de son cout."
     FAIT : -10 % a +12 %, doux d'une case a l'autre ; au survol.
@@ -565,9 +566,11 @@ lente, bandes dessinees petites a taille fixe.
     G1 debut guide, G2 sauvegardes, G3 son, G4 ecran des guerres, G5
     sentiers, G6 troupes IA et vivres, G7 faim des villages IA, G8 suite
     de l'arbre, G9 rapport de force avant l'attaque.
-2026-10-14
+  - La page itch.io (luluddof.itch.io/kora) : chaque version y part aussi,
+    par butler (0.15.1).
+2026-10-09 (0.16.0)
   - G2, G4, G6, G9 : oui ("de la qualite, que ca s'integre bien"). FAIT
-    (0.16.0 ; spec 2026-10-14-guerres-sauvegardes-musique.txt) : une
+    (0.16.0 ; spec 2026-10-09-guerres-sauvegardes-musique.txt) : une
     sauvegarde par partie (Charger, Supprimer, copie) ; l'ecran des
     guerres (W) ; les troupes IA rentrent avant la faim, le joueur est
     prevenu ; la fiche du rapport de force au survol d'un etranger.
@@ -578,18 +581,18 @@ lente, bandes dessinees petites a taille fixe.
     faite par tools/boucle_musique.py (raccord mesure plus doux que le
     morceau), elle monte et descend avec la guerre ; Reglages (volume,
     couper, ecouter).
-2026-10-15
+2026-10-10 (0.17.0)
   - G7 (explique, puis "oui, fais-le") : les villages IA gerent leur
-    grenier. FAIT (0.17.0 ; spec 2026-10-15-intendant-des-villages.txt) :
+    grenier. FAIT (0.17.0 ; spec 2026-10-10-intendant-des-villages.txt) :
     les champs d'abord (les metiers ne prennent plus leurs bras), les gens
     de metier rendus quand la disette est en vue, pas de chantier ni de
     levee sans marge, le grain achete d'avance et moins cher (le joueur
     aussi, sur la tuile du grenier). Famine IA : 11,5 % -> 7,2 % des
     semaines ; partie neuve +22 % de population.
-2026-10-16
+2026-10-10 (0.18.0)
   - "Pourquoi je ne peux pas rechercher Premieres semailles alors que
     j'ai les conditions affichees ?" BOGUE D'AFFICHAGE CORRIGE (0.18.0 ;
-    spec 2026-10-16-diplomatie-paix-blanche.txt) : la 3e condition (pres de
+    spec 2026-10-10-diplomatie-paix-blanche.txt) : la 3e condition (pres de
     cereales ou de racines, 0/20 dans SA partie) etait coupee en bas d'une
     colonne trop courte ; les regles n'avaient pas change. Ce qui MANQUE
     passe d'abord, ce qui deborde est annonce, le survol le dit, et ou
@@ -608,9 +611,9 @@ lente, bandes dessinees petites a taille fixe.
     relation au plus bas n'empeche plus l'IA de proposer la paix apres un
     an ; une IA lasse propose au joueur une paix blanche ("Ils sont las de
     la guerre").
-2026-10-17
+2026-10-11 (0.19.0)
   - "Impossible de rechercher un savoir sans tous ses prerequis, meme avec
-    des points dessus." FAIT (0.19.0 ; spec 2026-10-17-prerequis-musique-
+    des points dessus." FAIT (0.19.0 ; spec 2026-10-11-prerequis-musique-
     armee-guerres.txt) : les prerequis passent avant tout ; un
     apprentissage sans eux s'arrete ; les points sont gardes.
   - "La musique seulement pour les vraies guerres, pas les conflits
@@ -621,11 +624,11 @@ lente, bandes dessinees petites a taille fixe.
   - "Rework de la carte et des ressources : l'agrandir et l'ameliorer
     (nouvelle carte)." ETAT DES LIEUX FAIT (spec, section 4) ; proposition
     C1-C8.
-2026-10-18
+2026-10-11 (0.20.0, 0.20.1, 0.20.2)
   - C1 "1536 x 768", C2 "pourquoi pas", C3 "oui, et un bonus/malus selon le
     sens du courant", C4-C7 oui, C8 "ouiiii, parfait pour le multi ; notre
     civilisation apparait comme les autres au hasard sur un continent".
-    FAIT (0.20.0 ; spec 2026-10-18-nouvelles-planetes-design.txt) : cinq
+    FAIT (0.20.0 ; spec 2026-10-11-nouvelles-planetes-design.txt) : cinq
     planetes cuites (1536 x 768, 5 a 6 continents, controlees), choisies au
     menu ou au hasard (l'hote en multijoueur) ; tous les peuples au hasard
     sur un continent ; rivieres (sens, taille) et courant (x0,7 / x1,3,
@@ -639,15 +642,49 @@ lente, bandes dessinees petites a taille fixe.
     l'influence descend le cours (x0,7), le remonte mal (x1,3), une
     riviere a traverser fait frontiere (x1,25, fleuve x1,6) ; les types
     (ruisseau, riviere, fleuve) sont notes pour toute recuisson.
+  - La fiche de survol d'une case debordait : FAIT (0.20.2) : la ligne de
+    la riviere en peu de mots, la fiche ne depasse plus 360 pixels.
+2026-10-16
+  - "En lisant bien les docs qui t'aident a comprendre le projet,
+    dissemines un peu partout, je voudrais que tu poses un regard objectif
+    sur ce projet." FAIT (reponse ecrite) : un socle technique solide
+    (determinisme prouve, multijoueur, etages, 698 tests) et des idees
+    originales ; mais un fun jamais verifie par d'autres (13 telechargements
+    en 34 versions, aucune issue), des ajouts plus rapides que la
+    consolidation, le diagnostic d'aout toujours vrai (le jeu s'explique
+    dans le README, pas en jeu), des notes qui mentent (dates inventees :
+    les entrees du 10 au 18 octobre avaient ete faites du 9 au 11 ; la carte
+    du depot en 0.10 ; le README sur les sauvegardes), une dette qui
+    grossit (villages, app, diplo), pas de fin ni d'age suivant.
+  - Ses reponses, point par point :
+    1. "Je continuerais [d'ajouter], car c'est ce que j'aime faire." NOTE.
+    2. "Pourquoi pas un rapide tutoriel avec un bouton Tuto." EN COURS.
+    3. "Corriger les notes que l'IA regarde, puis faire en sorte qu'elle
+       continue de les corriger et de les maintenir a l'avenir." EN COURS :
+       tools/notes.py (status, check, write) et tests/test_notes.py ; les
+       dates corrigees d'apres git (onze specs renommees) ; les regles du
+       code regroupees par theme dans docs/code/ajouter-un-systeme.txt ;
+       les pistes ouvertes en une seule liste (section 5) ; le crochet de
+       debut de session (.claude/settings.json).
+    4. "Je ne veux pas de fin pour l'instant." NOTE (section 5 : refuse).
+    5. "Oui pour le decoupage, tant qu'il est intelligent et permet de
+       modifier, d'ameliorer et d'ajouter facilement et efficacement des
+       fonctionnalites." EN COURS.
+    6. "Je prefere garder Python, mais si tu peux transformer le projet
+       pour qu'avec Python et ce qui est deja fait on ait un moteur cree
+       pour le jeu, pour qu'il tourne bien, je ne dis pas non." EN COURS.
+
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
 ----------------------------------------------------
-  R1  Relire ce document, puis la derniere spec, AVANT de coder.
+  R1  Relire ce document, puis la derniere spec (celle que donne
+      `python tools/notes.py status`), AVANT de coder.
   R2  Prendre chaque phrase de la demande et en faire un point a livrer ;
       a la fin, repondre point par point avec la preuve (essai, capture).
-  R3  Toujours regarder SA partie : copier %APPDATA%\Kora\saves\kora.json
-      dans le scratchpad (JAMAIS toucher l'original), la charger, et
-      verifier que le probleme qu'il decrit est regle DANS SA PARTIE.
+  R3  Toujours regarder SA partie : copier %APPDATA%\Kora\saves\ (ses
+      parties : partie-<date>.json) dans le scratchpad (JAMAIS toucher
+      l'original), la charger, et verifier que le probleme qu'il decrit est
+      regle DANS SA PARTIE.
   R4  Donner au systeme demande sa pleine dimension (interface, IA,
       evenements, carte, equilibrage, sauvegarde), pas un calcul cache.
       Si c'est "commerce", on doit VOIR et JOUER le commerce.
@@ -655,199 +692,84 @@ lente, bandes dessinees petites a taille fixe.
       teste avec un APPDATA isole. Si Kora.exe tourne, ne pas ecraser
       dist/Kora : construire a part et DIRE clairement au joueur que son
       exe n'est pas encore le nouveau et comment l'avoir.
-  R6  Essais longs (IA seule 30 ans, scratchpad probe_civ.py) pour voir
-      ce que le systeme devient en partie ; chercher les impasses (un
-      plafond, une attente sans fin, un savoir hors d'atteinte).
+  R6  Essais longs (IA seule 30 ans, sondes ecrites dans le scratchpad de
+      la session) pour voir ce que le systeme devient en partie ; chercher
+      les impasses (un plafond, une attente sans fin, un savoir hors
+      d'atteinte).
   R7  Un choix de reglage ambigu (augmenter/reduire) : verifier le sens
       avec lui (il a deja ete mal compris : "monde grand" = PEU de vue).
   R8  Mettre a jour : ce document (section 3 et 5), la spec du chantier,
-      docs/code/carte-du-depot.txt, la memoire.
+      docs/code/ajouter-un-systeme.txt (une regle de code nouvelle va dans
+      sa section 4, a son theme), docs/code/carte-du-depot.txt, le README
+      quand le joueur voit un changement, les docstrings des modules
+      touches, la memoire ; puis `python tools/notes.py write` et `check`.
   R9  Tests (pytest), test_balance (4 graines), empreinte re-enregistree
       quand le jeu change volontairement.
+  R10 LES DATES SE LISENT : la date du jour est celle de la machine
+      (`python tools/notes.py status` la donne), celle du passe est dans
+      git. JAMAIS une date inventee, jamais "un jour de plus par chantier"
+      (du 25 septembre au 11 octobre, des sessions avaient date leurs
+      chantiers jusqu'au 18 octobre). Une spec porte le jour ou elle est
+      ecrite ; une entree de la section 3, le jour de la demande, avec en
+      titre les versions qu'elle a donnees.
+  R11 LES NOTES DISENT VRAI : `python tools/notes.py check` (et
+      tests/test_notes.py) verifie les dates, la version, les fichiers et
+      les noms du code cites par les notes vivantes, les parties tirees du
+      code. Au debut de chaque session, le crochet SessionStart
+      (.claude/settings.json) affiche `notes.py status --court` : s'il
+      signale un probleme, le corriger AVANT le reste.
 
 
-5. CHANTIER EN COURS / A FAIRE
-------------------------------
-(mis a jour a la fin de chaque chantier)
-  Fait le 2026-09-25 apres-midi : emancipation sans impasse, proto-pays
-  lisibles, commerce en routes (voir section 3).
-  Fait le 2026-09-27 : menu de demarrage, bonus de depart, multijoueur
-  (0.2.0). REGLE NOUVELLE : tout changement de la partie par l'interface
-  passe par commands.py (un ordre) ; l'interface lit state.viewer, jamais
-  PLAYER_TRIBE_ID ; un message du jeu va a note(..., to=peuple). Avant de
-  publier : tools/essai_reseau.py (deux processus identiques).
-  Fait le 2026-10-02 : charte graphique et refonte de l'interface,
-  situations (0.3.0). REGLES NOUVELLES : tout dessin passe par theme.py
-  (couleurs C, theme.font(role), theme.panel/button/medallion ; jamais de
-  couleur ou de police en dur) ; tout texte affiche est en francais
-  ACCENTUE (tools/accents.py --dry pour verifier) ; une situation nouvelle
-  = une classe Spec dans situations.py (contexte, etapes, actions, goal,
-  fail, fin), son hasard par _rand (jamais story_rng), ses effets par
-  Tribe.situation_effects ; les actions passent par commands.py.
-  Fait le 2026-10-02 (suite, 0.4.0) : projection d'influence, savoir-faire,
-  surproduction et effondrement du commerce, risques prevenus, grand
-  monument en etapes, nouvelles en bas a droite. REGLES NOUVELLES : tout
-  prestige GAGNE passe par sim.gain_prestige (bonus prestige_gain) ; une
-  crise nouvelle dit son risque (Spec.risk) quand on peut la voir venir ;
-  une fiche au survol d'un bouton passe avoid=rect (theme.tooltip).
-  Fait le 2026-10-02 (suite, 0.5.0) : chefferie, population en classes,
-  batailles en jours, conquete et tributaires. REGLES NOUVELLES : changer la
-  population d'une classe passe par population.py (grow, take_men, kill,
-  kill_fighters, wound, lose_wounded, mix) ; le multijoueur se cale sur
-  state.step (un pas = un jour en bataille d'un joueur, sinon une semaine),
-  state.tick_count reste le compteur des SEMAINES ; un essai qui veut N
-  annees boucle sur tick_count, pas sur le nombre de pas.
-  Fait le 2026-10-02 (0.6.0) : un village par peuple, villages freres,
-  chaines de tributaires, qui fait quoi (metiers selon le sexe), fuite des
-  demoralises, repli de l'IA, loups des troupes. A FAIRE plus tard (sa
-  demande) : de nouveaux savoirs pour ces ages (l'arbre s'epuise vers
-  l'an 50) ; les renforts pendant les jours de bataille.
-  Fait le 2026-10-02 (0.7.0) : les nombres et l'argent (bases,
-  operations, calculateurs ; tresor, budget, mines, peages ; onglet « Les
-  nombres », ecran du Tresor). REGLES NOUVELLES : un effet qui n'est pas un
-  savoir (base, operation) passe par Tribe.math_effects comme les
-  situations par situation_effects ; tout sicle qui entre ou sort passe par
-  money.earn / money.book (le compte du mois et l'histoire du tresor) ;
-  une ressource ajoutee apres la cuisson de la carte se TIRE du relief au
-  chargement (resources.derive_silver, hasard fixe) sans recuire la carte ;
-  un tresor d'IA doit avoir ou aller (reserve, presents) : verifier par un
-  essai long qu'il ne gonfle pas. A FAIRE (sa demande) : la numeration de
-  position a un age suivant.
-  Fait le 2026-10-03 (0.7.1) : architecture (fiches, tableau des systemes,
-  grands ecrans, tests de contrat). REGLE NOUVELLE : avant tout ajout, lire
-  docs/code/ajouter-un-systeme.txt ; un systeme se branche par systems.py
-  (jamais en ajoutant ses appels dans sim, villages, battle...), ses donnees
-  sont des champs TYPES de types.py, un grand ecran passe par screens.py ;
-  tests/test_architecture.py doit rester vert. Dette suivante (proposee) :
-  site.data en fiche typee, app.play decoupe, imports en cercle.
-  SignPath : il n'en veut pas (2026-10-03).
-  Fait le 2026-10-03 (0.7.2) : etages et imports (734 caches -> 1), fiche
-  typee du village (places.VillageData), classe Play, evenements en tables.
-  REGLES NOUVELLES : un module n'importe que son etage ou plus bas, en tete
-  (tools/dependances.LAYERS ; un module nouveau y prend sa place) ; un etat
-  de village nouveau = un champ type de VillageData ; une touche ou un clic
-  = une methode de app.Play ; une condition ou un effet d'evenement = une
-  fonction dans une table (moteur) ou dans le vocabulaire de son systeme.
-  Fait le 2026-10-03 (0.8.0) : approches des chefs, grandes chefferies
-  (palier 6), noms des savoirs. REGLES NOUVELLES : une decision de l'IA
-  envers un autre peuple passe par l'approche de son chef
-  (approach.factor ; une reponse : approach.accept) ; un savoir nouveau du
-  neolithique va au palier 6 tant qu'il y a des cases libres (une case par
-  colonne et par palier) ; un age suivant seulement si l'histoire l'exige.
-  EN ATTENTE (sa demande) : les frontieres naturelles (propositions S1-S4).
-  Fait le 2026-10-03 (0.9.0) : la vague de corrections (curseurs du
-  budget, lois et ecran du Pays, confederation, couleurs des pays et carte
-  des suzerains, clic -> diplomatie, memoire du brouillard, terrain
-  deforme S3). REGLES NOUVELLES : une couleur de peuple sur la carte passe
-  par look.country_color (jamais color_of) ; le brouillard montre la
-  memoire du joueur (memory.py), jamais l'etat vivant ; une loi nouvelle =
-  une Law dans laws._build ; un reglage d'argent = un curseur (money
-  .SLIDER_KEYS), pas un interrupteur ; le terrain se dessine et se clique
-  par globe.warp (les deux ensemble). Toujours en attente : S1, S2, S4.
-  0.9.1 : REGLE NOUVELLE : une decision d'attaquer passe par
-  diplo.may_start (un tributaire ne declare pas de guerre) ; une guerre ou
-  une paix s'etend au PAYS (chiefdom.country / followers) ; la vue d'un
-  joueur se partage par systems.SIGHT.
-  Fait le 2026-10-09 (0.10.0) : la recherche refaite (grands tournants,
-  tirages). REGLES NOUVELLES : un savoir qui ouvre tout un pan est un grand
-  tournant (kind="tournant", sur sa rangee 1,5 / 3,5 ; ses conds sont celles
-  de sa naissance) ; un savoir tire n'est le prerequis d'aucun savoir sur
-  (test) ; tout tirage passe par draws.py et la graine de la partie (jamais
-  state.rng) ; une case de l'arbre peut porter plusieurs savoirs (slot).
-  0.11.0 : REGLES NOUVELLES : attaquer = clic droit sur un etranger (une de
-  vos bandes choisie) ; clic gauche sur un etranger = sa diplomatie ; un
-  tournant n'est decouvert qu'adopte, et ne se repand que depuis ceux qui
-  l'ont adopte ; les modes de carte passent par le bouton "Carte".
-  0.12.0 : REGLES NOUVELLES : entre peuples qui ont la diplomatie, toute
-  attaque passe par une guerre declaree (diplo.declare_war ; l'IA :
-  ai_war.go_to_war) ; un texte d'effet montre les chiffres du peuple
-  (tech.lines_for) ; l'arbre est verifie au chargement (un savoir de pan
-  donne son tournant). EN ATTENTE (sa demande) : l'argent en plus des
-  echanges (propositions A-H).
-  0.13.0 : REGLES NOUVELLES : une levee ne choisit pas le genre de ses
-  guerriers (villages.militia / levy_plan : la meme part de chaque
-  categorie) ; une troupe peut porter des compagnies d'un autre peuple (l'ost
-  : ost.py), qui rentrent chez elles et y redeviennent de leur peuple
-  (villages._go_home) ; ce qui change la defense ou les vivres d'un village
-  passe par systems.VILLAGE_DEFENSE / VILLAGE_FOOD ; ce qui se passe chaque
-  semaine apres les marches, par systems.WEEKLY ; un achat en argent passe
-  par money.book / earn avec sa cle (KEY_NAMES). Piste D de l'argent faite ;
-  restent A (rancon), B (mercenaires), C (acheter la paix), E-H.
-  0.14.0 : REGLES NOUVELLES : une guerre a un BUT (diplo.goals) et un
-  AVANTAGE (diplo.add_score) ; soumettre passe par diplo.submit (on ne
-  sert qu'un suzerain ; l'ancien fait la treve) ; un pacte de paix =
-  diplo.PEACE_PACTS (pas le commerce) ; un motif de guerre = diplo.set_casus
-  avec sa raison (casus.py en fait naitre) ; une alliance doit avoir une
-  raison (ennemi commun, meme guerre) ou elle s'use. Un module nouveau
-  appele seulement par systems.py est embarque dans l'exe par KORA_MODULES
-  (les deux specs) : TOUJOURS essayer l'exe (essai reseau) avant de publier.
-  0.15.0 : REGLES NOUVELLES : un cout de marche passe par
-  world.enter_cost_for (ou path.astar), qui applique la variation de la
-  case (world.cost_pct) - jamais MOVE_COST seul ; une grille tiree des
-  coordonnees se calcule en nombres de Python (pas numpy : le multijoueur)
-  et une fois par taille de carte ; l'arbre ne montre pas draws.hidden
-  (layout.set_tree_hidden ; les tests repartent de l'arbre complet :
-  conftest).
-  0.16.0 : REGLES NOUVELLES : un rapport de force montre au joueur est
-  celui de l'IA (ai_war.odds_at) ; une troupe IA garde de quoi rentrer
-  (ai_war.short_of_food) ; une partie solo a SA sauvegarde (Play.save_path,
-  persist.new_save_path), jamais ecrasee par une autre ; la musique et les
-  sons sont de l'interface (music.py, etage presentation), jamais dans la
-  simulation ; un fichier de data nouveau (data/music) est ajoute aux
-  "datas" des deux specs ; un reglage du joueur va dans reglages.json.
-  0.17.0 : REGLE NOUVELLE : une decision IA qui coute des vivres ou des
-  bras regarde d'abord villages.food_outlook (la marge a la recolte) ; un
-  metier IA ne prend jamais les bras des champs (goods._keeps_hands).
-  0.20.1 : REGLE NOUVELLE : la propagation de l'influence
-  (influence.projection) suit le courant comme la marche (world.river_pct) ;
-  une recuisson des planetes garde plusieurs types de rivieres (largeurs).
-  0.20.0 : REGLES NOUVELLES : une planete se CUIT (tools/cuire_planetes.py,
-  numpy) et se livre (data/planetes, les deux specs) ; le jeu ne genere
-  rien ; une partie note sa planete (world.planet, "map" -> "id") ; un pas
-  de marche se compte par world.step_cost (le courant : de la case de
-  depart a celle d'arrivee), jamais par enter_cost_for seul ; un sol
-  nouveau = une valeur dans CHAQUE table par sol (test_planets les liste) ;
-  une ressource nouvelle : sa couche (LIVING ou DEPOSITS), sa couleur, sa
-  visibilite (REVEALED_BY) ; un tableau numpy pleine planete se justifie
-  (1,18 million de cases) : calculer pour l'ecran, pas pour la planete.
-  0.19.0 : REGLES NOUVELLES : un savoir sans tous ses prerequis est
-  verrouille, quoi qu'il arrive (des points ne le debloquent pas :
-  learning.status) ; la musique de guerre ne joue que pour une guerre
-  declaree ; l'armee (lever, troupes) vit dans l'ecran des guerres
-  (render_wars._draw_army, ui["war_pick"] = render_wars.ARMY), plus de
-  panneau lateral Armee.
-  0.18.0 : REGLES NOUVELLES : la diplomatie (guerre declaree, paix) vient
-  de Messagers et serments, avec les villages (diplo.diplomatic) ; une
-  reponse a une treve passe par diplo._truce_mood (la lassitude :
-  diplo.weariness, et le cours de la guerre) ; apres un an de guerre
-  (diplo._long_war), la relation ne filtre plus les offres de paix ; une fiche qui coupe ses lignes l'annonce, et
-  ce qui manque passe d'abord (render_tech.missing_first) ; une musique
-  qui boucle porte ses points de boucle (LOOPSTART / LOOPLENGTH) et se
-  joue en flux (pygame.mixer.music).
-  A FAIRE plus tard (pistes) : des tournants pour les ages suivants
-  (l'ecriture, le metal...), d'autres groupes exclusifs, des tirages dans
-  les evenements ; le siege des ages suivants (beliers, echelles, tours :
-  avec le bronze et les villes).
-  MIS DE COTE (sa demande) : le 1A, voix et coutumes ; ne pas le coder
-  sans qu'il le redemande.
-  En attente de SON choix : la suite de la profondeur des ages, toutes
-  les pistes reunies et detaillees dans
-  2026-10-02-profondeur-propositions-detaillees.txt (elle remplace les
-  propositions du 2026-09-25 et du 2026-09-26). Fait : la chefferie (1B).
-  Mis de cote : les voix et coutumes (1A). Restent : betail et guerre avec
-  des buts (2), memoire (3), age tribal vivant (4), civilisation vivante
-  (5), et le systeme de LOIS qu'il annonce (commence en 0.9.0 : deux lois,
-  "aucune autre pour l'instant").
-  Autres pistes qui suivent la vision (a proposer, rien n'est decide) :
-  - Commerce : caravanes attaquables par un tiers en guerre, evenements de
-    route (marchand, porteurs perdus), biens de prestige (parures, ambre),
-    echange de vivres en famine, "marche" regional qui fixe les prix.
-  - Proto-pays : frontieres de zone d'influence dessinees par peuple fixe,
-    relations entre peuples d'une meme civilisation (entraide, rivalite).
-  - Plus tard (demande explicite) : domination d'une cite puis d'un pays
-    sur d'autres villages ; ages suivants.
-  - Multijoueur (pistes) : un serveur au milieu (mode cloud, a sa demande)
-    pour se passer du reseau prive ; plus de 4 joueurs (d'autres pays de
-    depart) ; un joueur absent confie a l'IA ; bonus de depart propres a
-    chaque pays ; "nouvelle partie" depuis le salon avec d'autres reglages
-    (taille de monde, petits peuples).
+5. OU EN EST LE JEU, ET CE QUI ATTEND
+-------------------------------------
+(Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
+chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
+
+Version du jeu : 0.20.2
+
+Chantier en cours (2026-10-16) : ses reponses au regard objectif (section
+3) : les notes justes et tenues, le decoupage des gros modules, le moteur
+fait pour le jeu, le tutoriel.
+
+LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
+
+  En attente de SON choix (propose, rien de code) :
+  - S1, S2, S4   frontieres naturelles (S3 fait en 0.9.0) ; "au pire on
+                 verra plus tard" (2026-10-03-frontieres-naturelles-
+                 propositions.txt).
+  - 2A, 2B, 3A, 3B, 4A, 4B, 5   la profondeur des ages
+                 (2026-10-02-profondeur-propositions-detaillees.txt) : 1B
+                 fait (0.5.0) ; 2C en bonne partie (0.13.0 a 0.18.0 : buts,
+                 siege, lassitude, paix blanche ; restent la vengeance, les
+                 captifs, la tactique avant la bataille).
+  - LOIS         le systeme de lois qu'il annonce (deux lois depuis 0.9.0,
+                 "aucune autre pour l'instant").
+  - A, B, C, E-H l'argent hors des echanges (D fait en 0.13.0) :
+                 2026-10-09-arbre-coherent-guerre-declaree.txt, section 6.
+  - G3, G8       le son, la suite de l'arbre : "plus tard". G5 les
+                 sentiers : "il dira comment"
+                 (2026-10-09-arbre-tire-terrain-echanges.txt, section 4).
+  Plus tard (sa demande) :
+  - la numeration de position, a un age suivant (l'onglet la montre grisee) ;
+  - des savoirs pour ces ages (l'arbre s'epuise vers l'an 50 : G8) ;
+  - les renforts pendant les jours de bataille ("pas si grave") ;
+  - la domination d'une cite puis d'un pays sur d'autres villages ; les
+    ages suivants (seulement si l'histoire l'exige), leurs tournants
+    (l'ecriture, le metal), d'autres groupes exclusifs, des tirages dans les
+    evenements ; le siege des ages suivants (beliers, echelles, tours) ;
+  - le "mode cloud" ; en multijoueur : un serveur au milieu, plus de 4
+    joueurs, un joueur absent confie a l'IA, des bonus de depart propres a
+    chaque pays, "nouvelle partie" depuis le salon.
+  Mis de cote (ne pas le coder sans qu'il le redemande) :
+  - 1A les voix du peuple et les coutumes
+    (2026-10-02-voix-et-coutumes-detail.txt).
+  Refuse (ne pas le reproposer sans raison neuve) :
+  - signer l'exe (SignPath) ; la mini-carte de l'arbre ; l'eclairage de la
+    chaine d'un savoir ; "dresser une pierre" ; une FIN de partie ("je ne
+    veux pas de fin pour l'instant", 2026-10-16).
+  A proposer un jour (rien n'est decide) :
+  - commerce : caravanes attaquables par un tiers en guerre, evenements de
+    route (marchand, porteurs perdus), biens de prestige, echange de vivres
+    en famine, "marche" regional qui fixe les prix ;
+  - proto-pays : frontieres de zone dessinees par peuple fixe, relations
+    entre peuples d'une meme civilisation (entraide, rivalite).

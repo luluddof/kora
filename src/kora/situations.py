@@ -15,7 +15,7 @@ la part de hasard (_rand : son propre hasard, tire de la semaine et de la
 situation, le meme sur chaque machine, qui ne touche pas a celui du recit)
 dit seulement quand. Elle a un lieu
 (centre, rayon ; ou tout un peuple ; ou la moitie du monde), des etapes aux
-effets chiffres (les memes leviers que les savoirs, tech.SITUATION_EFFECTS),
+effets chiffres (les memes leviers que les savoirs, tech.situation_effect),
 des actions (commands.py : "situation"), une duree.
 
 Tout est dans state.situations (sauvegarde : persist) ; les effets actifs

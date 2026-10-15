@@ -1,3 +1,6 @@
+"""La generation des planetes (mapgen.py, LENT) : continents varies, chaines de
+montagnes, poles, rivieres, lacs, archipels, noms de l'atlas."""
+
 import functools
 import math
 

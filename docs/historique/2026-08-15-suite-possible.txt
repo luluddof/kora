@@ -1,3 +1,10 @@
+HISTORIQUE (gardee pour memoire, DEPASSEE) : l'etude d'aout 2026, ecrite
+pour le premier prototype. Ce qu'elle dit du code n'est plus vrai (le jeu
+a depuis des villages, des savoirs, la diplomatie, le multijoueur...) ;
+son diagnostic reste interessant : "le trou est la lecture et les
+leviers, pas le manque de systemes caches". La carte du code a jour :
+docs/code/carte-du-depot.txt.
+
 SUITE POSSIBLE — KORA
 (ecart spec / code, et ce qu'on peut ajouter)
 

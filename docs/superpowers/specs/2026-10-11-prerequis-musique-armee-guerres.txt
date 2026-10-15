@@ -1,6 +1,6 @@
 Kora - Les prerequis toujours, la musique des vraies guerres, l'armee et les guerres en un ecran
 ==================================================================================================
-Date : 2026-10-17. Statut : FAIT (version 0.19.0). La carte (4e demande) :
+Date : 2026-10-11. Statut : FAIT (version 0.19.0). La carte (4e demande) :
 proposition a part (section 4), en attente de ses choix.
 
 Ses mots : "il faudrait qu'il soit impossible de rechercher des techs meme

@@ -78,7 +78,7 @@ Regles :
     tailles dans une meme carte.
 
 
-4. LES FORMES (theme.panel, theme.frame, theme.button...)
+4. LES FORMES (theme.panel, theme.button, theme.medallion...)
 ---------------------------------------------------------
   - PIERRE TAILLEE : les coins des fenetres sont coupes en biseau (pas
     arrondis), avec un fil d'ocre interieur et une encoche aux angles.

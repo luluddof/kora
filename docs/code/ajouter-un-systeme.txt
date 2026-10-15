@@ -1,15 +1,18 @@
 AJOUTER UN SYSTEME A KORA (et garder le jeu coherent)
 =====================================================
-Date : 2026-10-03 (mis a jour : etages, imports, fiche du village, Play ;
-0.9.0 : les lois, la confederation, la memoire du brouillard).
-A lire avant d'ajouter une fonctionnalite. Les regles ci-dessous sont
-VERIFIEES par tests/test_architecture.py : un oubli fait casser un test qui
-dit quoi faire.
+Mis a jour : 2026-10-16 (les regles de tous les chantiers reunies par
+theme : section 4 ; avant, elles s'empilaient dans la VISION).
+
+A lire avant d'ajouter ou de changer une fonctionnalite. Beaucoup de ces
+regles sont VERIFIEES : tests/test_architecture.py (le code) et
+tests/test_notes.py (les notes) ; un oubli fait casser un test qui dit quoi
+faire. Les parties entre "<<< auto" et "<<< fin auto >>>" se tirent du code
+(python tools/notes.py write) : ne pas les ecrire a la main.
 
 Un "systeme", c'est une mecanique de jeu entiere : la chefferie, le
-commerce, l'argent, les nombres, les situations, bientot les lois... Il vit
-dans SON module ; il se branche sur le reste du jeu par quelques points
-d'entree connus, jamais en allant modifier le coeur des autres modules.
+commerce, l'argent, les nombres, les situations, les lois... Il vit dans
+SON module ; il se branche sur le reste du jeu par quelques points d'entree
+connus, jamais en allant modifier le coeur des autres modules.
 
 
 1. LES ETAGES (tools/dependances.py : LAYERS)
@@ -17,30 +20,43 @@ d'entree connus, jamais en allant modifier le coeur des autres modules.
 Un module n'importe que son etage ou plus bas, EN TETE du fichier. Du plus
 bas au plus haut :
 
-  0  briques          types, francais, net, systems
-  1  temps, fiches    clock, log, resources, records
-  2  la planete       world
-  3  ce qui s'y pose  path, atlas, mapgen, gamestate (l'etat de la partie,
-                      les joueurs, le journal), peoples, places (les lieux,
-                      la fiche du village, les lectures simples d'un village)
-  4  savoirs, gens    tech (l'arbre et ses effets), units, vision, population
-  5  LES SYSTEMES     learning (comment on apprend), bands (les outils des
-                      bandes), chiefs, sites, influence, production, diplo,
-                      goods, money, approach, numbers, laws, chiefdom,
-                      confed, memory, draws, turning, villages, battle,
-                      siege, ost, grain, casus, situations, events,
-                      events_data
-  6  l'IA             ai_war, orders, puis ai
-  7  la semaine       sim
-  8  les ordres       commands
-  9  au-dessus        persist, session, essai
-  -  l'interface      layout (mises en page pures), theme, look, globe,
-                      globe_draw, render_*, render, screens, app
+<<< auto : etages >>>
+  0  les briques
+       types, francais, net, systems
+  1  le temps, les fiches
+       clock, log, resources, records
+  2  la planete
+       world
+  3  ce qui s'y pose
+       path, atlas, mapgen, planets, gamestate, peoples, places
+  4  les savoirs, les gens
+       tech, units, vision, population
+  5  LES SYSTEMES
+       learning, bands, chiefs, sites, influence, production, diplo, goods,
+       money, approach, numbers, laws, chiefdom, confed, memory, draws,
+       turning, villages, battle, siege, ost, grain, casus, situations,
+       events, events_data
+  6  l'IA des bandes, les ordres
+       ai_war, orders, wars
+  7  l'IA
+       ai
+  8  la semaine du monde
+       sim
+  9  les ordres des joueurs
+       commands
+  10  la sauvegarde, le reseau, les essais
+       persist, session, essai
+  -  l'interface (pygame)
+       app, globe, globe_draw, layout, look, music, render, render_battle,
+       render_country, render_menu, render_numbers, render_panels,
+       render_situations, render_tech, render_trade, render_treasury,
+       render_village, render_wars, screens, theme, tree_graph
+<<< fin auto >>>
 
   - Les systemes (etage 5) s'appellent entre eux : ils s'importent alors
-    EN ENTIER ("from src.kora import goods", puis goods.xxx), jamais par nom
-    ("from src.kora.goods import xxx") quand ils sont en cercle (le module
-    vise serait encore en chargement).
+    EN ENTIER ("from src.kora import goods", puis goods.output), jamais par
+    nom ("from src.kora.goods import output") quand ils sont en cercle (le
+    module vise serait encore en chargement).
   - Un etage bas qui doit faire reagir un etage plus haut (une bande qui se
     scinde -> les chefs ; un clan emancipe -> l'IA) passe par systems.py.
   - Un import dans une fonction : seulement s'il ne peut pas etre en tete,
@@ -49,18 +65,21 @@ bas au plus haut :
   - La simulation (tout sauf l'interface) n'importe jamais pygame et ne lit
     jamais state.viewer. L'interface ne change la partie QUE par un ordre
     de commands.py.
+  - Un module nouveau prend sa place dans LAYERS (sinon test_architecture
+    casse) et commence par sa DOCSTRING : ce qu'il fait, ses chiffres, ce
+    qui l'appelle (la carte du depot la recopie ; test_notes la verifie).
   Voir ou en est le code : python tools/dependances.py (resume, cercles,
   caches, "qui MODULE").
 
 
-2. LA RECETTE (exemple : un systeme de LOIS)
---------------------------------------------
+2. LA RECETTE (un systeme entier)
+---------------------------------
   (Les lois existent depuis 0.9.0 : laws.py. UNE LOI NOUVELLE : une Law de
   plus dans laws._build (ses options, ce qu'il faut savoir : known), son
   effet lu la ou il agit (laws.get(tribe, "id")), son IA ; l'ecran du pays
-  la montre d'office. La recette ci-dessous reste celle d'un systeme
-  entier.)
-  a) Le module : src/kora/lois.py, a l'etage 5 (l'ajouter a LAYERS). En
+  la montre d'office. La recette ci-dessous est celle d'un systeme entier :
+  "<nom>" est le nom de son module.)
+  a) Le module : src/kora/<nom>.py, a l'etage 5 (l'ajouter a LAYERS). En
      tete, sa docstring (ce que fait le systeme, ses chiffres) et ses
      constantes ; "N'importe pas pygame."
 
@@ -77,14 +96,14 @@ bas au plus haut :
      special : field(metadata={"decode": f}). VillageData ne sauve que ce
      qui differe du defaut (COMPACT).
 
-  c) Son mois : une ligne dans systems.MONTHLY, a sa place dans l'ordre
-     ("lois.monthly") ; sa semaine (apres les marches) : systems.WEEKLY.
-     Ce qu'il fait a la stabilite, au moral, aux fuyards, aux reserves, a la
-     production, a la defense et aux vivres d'un village : une ligne dans
-     systems.STABILITY, ARMY_MORALE, FLEE, STOCK_WEEKS, BUILD_SPEED,
-     CRAFT_OUTPUT, VILLAGE_DEFENSE, VILLAGE_FOOD. Ses reactions aux bandes
-     (BAND_SPLIT, BAND_MERGE, MERGE_ALLOWED), aux clans emancipes
-     (EMANCIPATED), ce qu'il dit d'un savoir (TECH_LINES). La fonction
+  c) Son mois : une ligne dans systems.MONTHLY, a sa place dans l'ordre ;
+     sa semaine (apres les marches) : systems.WEEKLY. Ce qu'il fait a la
+     stabilite, au moral, aux fuyards, aux reserves, a la production, a la
+     defense et aux vivres d'un village : une ligne dans systems.STABILITY,
+     ARMY_MORALE, FLEE, STOCK_WEEKS, BUILD_SPEED, CRAFT_OUTPUT,
+     VILLAGE_DEFENSE, VILLAGE_FOOD. Ses reactions aux bandes (BAND_SPLIT,
+     BAND_MERGE, MERGE_ALLOWED), aux clans emancipes (EMANCIPATED), ce qu'il
+     dit d'un savoir (TECH_LINES), la vue partagee (SIGHT). La fonction
      attendue par chaque tableau est decrite en tete de systems.py ; un
      tableau nouveau y est verifie d'office (test_every_system_hook_exists).
 
@@ -124,37 +143,19 @@ bas au plus haut :
        - un panneau ou un onglet : sa mise en page PURE dans layout.py (ou
          render_<x>.py : <x>_layout, <x>_hit, testables sans fenetre) et
          son dessin dans render_<x>.py ;
-       - un mode de carte : layout.MAP_MODES (et sa touche) ; la couleur
-         d'un peuple sur la carte : look.country_color (jamais color_of :
-         un tributaire a la nuance de son suzerain) ; ce qu'on montre dans
-         le brouillard : la memoire du joueur (memory.py), jamais l'etat
-         vivant ;
-       - un GRAND ECRAN (comme le commerce, le tresor, le pays) : une ligne dans
-         screens.SCREENS et sa methode de clic dans app.Play (screen_clicks) ;
-         ouvrir, fermer, Echap, la souris : deja faits ;
+       - un mode de carte : layout.MAP_MODES (et sa touche) ;
+       - un GRAND ECRAN (comme le commerce, le tresor, le pays) : une ligne
+         dans screens.SCREENS et sa methode de clic dans app.Play
+         (screen_clicks) ; ouvrir, fermer, Echap, la souris : deja faits ;
        - une touche : Play._on_key ; un clic sur la carte : Play._on_click ;
-       - tout dessin passe par theme.py (couleurs C, theme.font(role),
-         boutons, fiches theme.tooltip avec avoid=le bouton) ;
-       - tout texte affiche en francais ACCENTUE (tools/accents.py) ;
-       - une icone : theme.ICON_FILES puis tools/recuperer_assets.py.
+       - le reste : section 4.10.
 
-  j) Les regles du jeu a respecter partout :
-       - attaquer : diplo.may_start (un tributaire ne declare pas de
-         guerre) en plus d'at_peace ; une guerre ou une paix s'etend au
-         pays (chiefdom.country, followers) ;
-       - le hasard : state.rng (simulation), _rand de situations.py (tirage
-         tire de la semaine et de cles), story_rng pour les evenements
-         seulement ; jamais le module random directement ;
-       - un message au joueur : gamestate.note(state, kind, texte, to=peuple),
-         seulement si gamestate.is_human ;
-       - le prestige gagne : bands.gain_prestige ; un sicle : money.earn /
-         money.book ; la population d'une classe : population.py ;
-       - le temps : state.tick_count compte les SEMAINES, state.step les
-         pas (un jour en bataille d'un joueur) ; le mois = tick_count % 4.
+  j) Les regles du jeu a respecter partout : section 4.
 
   k) Les verifications (dans cet ordre) :
-       - ses tests (tests/test_lois.py) et la suite : python -m pytest -q
-         (tests/test_architecture.py verifie les regles ci-dessus) ;
+       - ses tests (tests/test_<nom>.py) et la suite : python -m pytest -q
+         (test_architecture verifie les regles du code, test_notes les
+         notes) ;
        - la souris : ajouter l'ecran a tests/test_ui_hover.py ; un scenario
          de clics dans tests/test_app_clicks.py (la vraie boucle, sans
          fenetre) ;
@@ -165,7 +166,8 @@ bas au plus haut :
          change volontairement : record ;
        - le multijoueur : tools/essai_reseau.py 6 (et --exe) ;
        - les notes : la spec du chantier, docs/VISION-KORA.txt (3 et 5),
-         docs/code/carte-du-depot.txt.
+         cette recette (une regle nouvelle : section 4), la carte du depot,
+         puis python tools/notes.py write et check.
 
   l) Un REFACTORING (le jeu ne doit pas changer) : tools/empreinte.py
      check, et la partie du joueur relue puis jouee (20 semaines a 2 ans)
@@ -173,20 +175,217 @@ bas au plus haut :
      compares).
 
 
-3. CE QUI RESTE A AMELIORER (dette connue)
+3. LE CHEMIN D'UNE SEMAINE (sim._week)
+-------------------------------------
+La semaine se lit dans sim._week ; l'ordre est celui du calcul (le jeu est
+deterministe : le changer re-enregistre l'empreinte). Un systeme ne s'y
+ajoute pas a la main : il prend sa place dans systems.MONTHLY ou WEEKLY.
+La carte du depot (section 4) donne cet ordre en detail.
+
+
+4. LES REGLES DU JEU ET DU CODE, PAR THEME
+-----------------------------------------
+(Nees des chantiers ; la version qui les a posees entre parentheses.)
+
+4.1 Le temps, le hasard, le determinisme
+  - Le temps : state.tick_count compte les SEMAINES ; state.step compte
+    les pas (un pas = un jour quand une bataille touche un joueur, sinon
+    une semaine) ; le mois = tick_count % 4. Le multijoueur se cale sur
+    state.step ; un essai qui veut N annees boucle sur tick_count (0.5.0).
+  - Le hasard : state.rng (la simulation) ; situations._rand pour les
+    situations (tire de la semaine et de cles, jamais story_rng : 0.3.0) ;
+    story_rng pour les evenements et les noms seulement ; draws.py et la
+    graine de la partie pour les savoirs tires (jamais state.rng : 0.10.0) ;
+    battle._seed pour une bataille. Jamais le module random directement.
+  - Une optimisation ne change rien : tools/empreinte.py check prouve le
+    contraire ; re-enregistrer (record) seulement quand le jeu change
+    VOLONTAIREMENT.
+  - Une grille tiree des coordonnees se calcule en nombres de Python (pas
+    numpy : le multijoueur) et une fois par taille de carte (0.15.0).
+
+4.2 Les ordres, les joueurs, le multijoueur
+  - Tout changement de la partie par l'interface passe par commands.py (un
+    ordre) ; l'interface lit state.viewer, jamais PLAYER_TRIBE_ID ; un
+    message du jeu va a gamestate.note(state, kind, texte, to=peuple),
+    seulement si gamestate.is_human (0.2.0).
+  - Avant de publier : tools/essai_reseau.py (deux processus identiques),
+    AUSSI avec l'exe : un module appele seulement par systems.py n'est
+    embarque que par KORA_MODULES (Kora.spec et Kora-unfichier.spec ;
+    0.14.0).
+  - La vue d'un joueur se partage avec son pays par systems.SIGHT (0.9.1).
+
+4.3 Les donnees, la sauvegarde, l'exe
+  - Un champ nouveau = un champ TYPE de types.py (Tribe, Band) ou de
+    places.VillageData (un etat de village) : la sauvegarde s'en deduit
+    (0.7.1, 0.7.2).
+  - Une partie solo a SA sauvegarde (Play.save_path, persist.new_save_path),
+    jamais ecrasee par une autre (0.16.0).
+  - Un fichier de donnees nouveau (data/...) va dans les "datas" des deux
+    specs de l'exe ; un reglage du joueur va dans reglages.json (0.16.0).
+  - Une ressource ajoutee a l'ancienne carte se TIRE du relief au
+    chargement (resources.derive_silver, hasard fixe) sans recuire la carte
+    (0.7.0).
+
+4.4 Les savoirs
+  - Chaque savoir dit ce qu'il fait ; un savoir ou un batiment commence se
+    finit ; un peuple ne doit JAMAIS se retrouver sans savoir possible
+    parce qu'il s'est fixe (P2).
+  - Un savoir qui ouvre tout un pan est un grand tournant
+    (kind="tournant", sur sa rangee 1,5 / 3,5 ; ses conds sont celles de sa
+    naissance) ; il n'est decouvert qu'adopte (sa recherche finie) et ne se
+    repand que depuis ceux qui l'ont adopte ; l'arbre est verifie au
+    chargement (un savoir de pan donne son tournant) (0.10.0 a 0.12.0).
+  - Un savoir tire n'est le prerequis d'aucun savoir sur (test) ; tout
+    tirage passe par draws.py ; une case de l'arbre peut porter plusieurs
+    savoirs (slot) ; l'arbre ne montre pas draws.hidden
+    (layout.set_tree_hidden ; les tests repartent de l'arbre complet :
+    conftest) (0.10.0, 0.15.0).
+  - Un savoir sans tous ses prerequis est verrouille, quoi qu'il arrive :
+    des points ne le debloquent pas (learning.status ; 0.19.0).
+  - Un savoir nouveau du neolithique va au palier 6 tant qu'il y a des
+    cases libres (une case par colonne et par palier) ; un age suivant
+    seulement si l'histoire l'exige (0.8.0).
+  - Un texte d'effet montre les chiffres du peuple (tech.lines_for ;
+    0.12.0).
+
+4.5 Les gens, les villages, les troupes
+  - La population d'une classe change par population.py (grow, take_men,
+    kill, kill_fighters, wound, lose_wounded, mix ; 0.5.0).
+  - En cet age, un peuple = un village (0.6.0) ; un peuple sedentaire ne
+    refait jamais de bande nomade par une troupe (0.5.2).
+  - Une levee ne choisit pas le genre de ses guerriers (villages.militia /
+    levy_plan : la meme part de chaque categorie ; 0.13.0).
+  - Une troupe peut porter des compagnies d'un autre peuple (l'ost :
+    ost.py), qui rentrent chez elles et y redeviennent de leur peuple
+    (villages._go_home ; 0.13.0).
+  - Ce qui change la defense ou les vivres d'un village passe par
+    systems.VILLAGE_DEFENSE / VILLAGE_FOOD ; ce qui se passe chaque semaine
+    apres les marches, par systems.WEEKLY (0.13.0).
+  - Une troupe IA garde de quoi rentrer (ai_war.short_of_food ; 0.16.0).
+  - Une decision IA qui coute des vivres ou des bras regarde d'abord
+    villages.food_outlook (la marge a la recolte) ; un metier IA ne prend
+    jamais les bras des champs (goods._keeps_hands ; 0.17.0).
+
+4.6 La diplomatie et la guerre
+  - Une decision de l'IA envers un autre peuple passe par l'approche de
+    son chef (approach.factor ; une reponse : approach.accept ; 0.8.0).
+  - Attaquer : diplo.may_start (un tributaire ne declare pas de guerre) en
+    plus d'at_peace ; une guerre ou une paix s'etend au PAYS
+    (chiefdom.country / followers ; 0.9.1).
+  - Entre peuples qui ont la diplomatie (Messagers et serments, avec un
+    village : diplo.diplomatic ; 0.18.0), toute attaque passe par une
+    guerre declaree (diplo.declare_war ; l'IA : ai_war.go_to_war ; 0.12.0).
+  - Une guerre a un BUT (Diplomacy.goals) et un AVANTAGE (diplo.add_score) ;
+    soumettre passe par diplo.submit (on ne sert qu'un suzerain ; l'ancien
+    fait la treve) ; un pacte de paix = diplo.PEACE_PACTS (pas le
+    commerce) ; un motif de guerre = diplo.set_casus avec sa raison (casus.py
+    en fait naitre) ; une alliance doit avoir une raison (ennemi commun,
+    meme guerre) ou elle s'use (0.14.0).
+  - Une reponse a une treve passe par diplo._truce_mood (la lassitude :
+    diplo.weariness, et le cours de la guerre) ; apres un an de guerre
+    (diplo._long_war), la relation ne filtre plus les offres de paix
+    (0.18.0).
+  - Un rapport de force montre au joueur est celui de l'IA (ai_war.odds_at ;
+    0.16.0).
+  - Attaquer = clic droit sur un etranger (une de vos bandes choisie) ; clic
+    gauche sur un etranger = sa diplomatie (0.11.0).
+  - Une loi nouvelle = une Law dans laws._build (0.9.0).
+
+4.7 L'argent, le prestige, les effets
+  - Tout prestige GAGNE passe par bands.gain_prestige (bonus prestige_gain ;
+    0.4.0).
+  - Tout sicle qui entre ou sort passe par money.earn / money.book, avec sa
+    cle (money.KEY_NAMES) ; un tresor d'IA doit avoir ou aller (reserve,
+    presents) : verifier par un essai long qu'il ne gonfle pas (0.7.0) ; un
+    reglage d'argent = un curseur (money.SLIDER_KEYS), pas un interrupteur
+    (0.9.0).
+  - Un effet qui n'est pas un savoir (une base, une operation, une
+    situation, un berceau) passe par un champ d'effets de Tribe
+    (math_effects, situation_effects...) lu par systems.EFFECT_FIELDS
+    (0.3.0, 0.7.0).
+
+4.8 Les situations
+  - Une situation nouvelle = une classe Spec dans situations.py (contexte,
+    etapes, actions, goal, fail, fin), son hasard par situations._rand, ses
+    effets par Tribe.situation_effects ; ses actions passent par
+    commands.py (0.3.0).
+  - Une crise qu'on peut voir venir dit son risque (Spec.risk ; pas les
+    conjonctures ; 0.4.0).
+
+4.9 La carte, les planetes, l'influence
+  - Une planete se CUIT (tools/cuire_planetes.py, numpy) et se livre
+    (data/planetes, les deux specs de l'exe) ; le jeu ne genere rien ; une
+    partie note sa planete ("map" -> "id" ; 0.20.0).
+  - Un pas de marche se compte par world.step_cost (le courant : de la case
+    de depart a celle d'arrivee), jamais par world.enter_cost_for seul ; un
+    cout de marche applique la variation de la case (world.cost_pct) -
+    jamais MOVE_COST seul (0.15.0, 0.20.0).
+  - Un sol nouveau = une valeur dans CHAQUE table par sol (test_planets les
+    liste) ; une ressource nouvelle : sa couche (mapgen.LIVING ou
+    mapgen.DEPOSITS), sa couleur, sa visibilite (resources.REVEALED_BY)
+    (0.20.0).
+  - Un tableau numpy pleine planete se justifie (1,18 million de cases) :
+    calculer pour l'ecran, pas pour la planete (0.20.0).
+  - La propagation de l'influence (influence.projection) suit le courant
+    comme la marche (world.river_pct) ; une recuisson des planetes garde
+    plusieurs types de rivieres (ruisseau, riviere, fleuve) (0.20.1).
+
+4.10 L'interface, le dessin, les textes, le son
+  - Tout dessin passe par theme.py (couleurs C, theme.font(role),
+    theme.panel / button / medallion) : jamais de couleur ni de police en
+    dur (0.3.0).
+  - Tout texte affiche est en francais ACCENTUE (tools/accents.py --dry pour
+    verifier ; sans --dry il ECRIT) (0.3.0).
+  - Une fiche au survol d'un bouton passe avoid=rect (theme.tooltip ;
+    0.4.0) ; une fiche qui coupe ses lignes l'annonce, et ce qui manque passe
+    d'abord (render_tech.missing_first ; 0.18.0).
+  - Une couleur de peuple sur la carte passe par look.country_color (jamais
+    color_of : un tributaire a la nuance de son suzerain) ; le brouillard
+    montre la memoire du joueur (memory.py), jamais l'etat vivant ; le
+    terrain se dessine et se clique par globe.warp (les deux ensemble)
+    (0.9.0).
+  - Les modes de carte passent par le bouton "Carte" (0.11.0).
+  - L'armee (lever, troupes) vit dans l'ecran des guerres
+    (render_wars._draw_army) ; plus de panneau lateral Armee (0.19.0).
+  - La musique et les sons sont de l'interface (music.py), jamais dans la
+    simulation ; une musique qui boucle porte ses points de boucle
+    (LOOPSTART / LOOPLENGTH) et se joue en flux (pygame.mixer.music) ; la
+    musique de guerre ne joue que pour une guerre declaree (0.16.0 a
+    0.19.0).
+  - Combats : jamais de pause ni de saut de camera (P5) ; ce qui
+    "interrompt" le joueur passe par les nouvelles et le journal cliquable.
+
+4.11 Les notes
+  - Une date se LIT (la machine, git), jamais ne s'invente ; une regle
+    nouvelle va ICI, a son theme ; une note vivante ne cite que des
+    fichiers et des noms qui existent (tools/notes.py check, test_notes ;
+    2026-10-16).
+
+
+5. CE QUI RESTE A AMELIORER (dette connue)
 ------------------------------------------
-  Fait le 2026-10-03 : la fiche typee du village (places.VillageData) ;
-  app.play -> la classe app.Play (run, _on_event, _on_key, _on_click,
-  _frame, une methode par clic) ; 734 imports caches -> 1 ; les etages ;
-  events.check / apply en tables ; render.py allege (layout.py : 800
-  lignes de mises en page pures).
-  Reste :
-  - Les plus gros modules : villages.py (1900 lignes), situations.py
-    (1800), app.py (1700), events.py (1550), render_village.py (1400),
-    battle.py (1300). Les decouper quand un chantier y touche : villages
-    en champs / batiments / troupes, situations une classe par fichier.
-  - Les 12 systemes de l'etage 5 forment encore un cercle (ils
-    s'importent en entier, sans danger) : on le reduira en passant par
-    systems.py les reactions d'un systeme a un autre, au fil des chantiers.
+Les plus gros modules (a decouper quand un chantier y touche, et
+seulement si le decoupage rend le systeme plus simple a changer) :
+
+<<< auto : gros-modules >>>
+  villages.py            ~2100 lignes
+  app.py                 ~2100 lignes
+  diplo.py               ~1900 lignes
+  situations.py          ~1800 lignes
+  events.py              ~1600 lignes
+  render.py              ~1500 lignes
+  tech.py                ~1400 lignes
+  render_village.py      ~1400 lignes
+  battle.py              ~1300 lignes
+  events_data.py         ~1300 lignes
+  goods.py               ~1200 lignes
+  world.py               ~1200 lignes
+  sim.py                 ~1100 lignes
+  render_panels.py       ~1000 lignes
+<<< fin auto >>>
+
+  - Les systemes de l'etage 5 forment encore un cercle (ils s'importent en
+    entier, sans danger) : on le reduira en passant par systems.py les
+    reactions d'un systeme a un autre, au fil des chantiers.
   - Les "noms prives" importes d'un autre module (_gradient_card, _rand,
     _frame...) : a rendre publics quand on y touche.

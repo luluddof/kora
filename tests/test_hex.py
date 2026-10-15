@@ -1,3 +1,6 @@
+"""Les coordonnees des cases (world.py) : aller-retour offset / axial,
+distances."""
+
 from src.kora.types import Hex
 from src.kora.world import (
     axial_to_offset,

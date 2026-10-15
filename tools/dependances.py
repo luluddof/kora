@@ -55,6 +55,23 @@ LAYERS = (
 )
 PRESENTATION_LAYER = len(LAYERS)
 
+# Le nom de chaque etage (les notes : tools/notes.py les ecrit dans
+# docs/code/ajouter-un-systeme.txt et la carte du depot).
+LAYER_NAMES = (
+    "les briques",
+    "le temps, les fiches",
+    "la planete",
+    "ce qui s'y pose",
+    "les savoirs, les gens",
+    "LES SYSTEMES",
+    "l'IA des bandes, les ordres",
+    "l'IA",
+    "la semaine du monde",
+    "les ordres des joueurs",
+    "la sauvegarde, le reseau, les essais",
+)
+assert len(LAYER_NAMES) == len(LAYERS)
+
 
 def layer_of() -> dict:
     out = {m: i for i, ms in enumerate(LAYERS) for m in ms}

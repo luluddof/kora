@@ -1,3 +1,30 @@
+"""LA SEMAINE DU MONDE : une partie neuve (new_game), un pas (tick), la
+semaine (_week), et ce que le joueur lit d'une case ou d'une bande.
+
+tick : un pas = une SEMAINE, ou un JOUR quand une bataille touche un
+joueur (battle.slow ; sept jours font la semaine) ; state.step compte les
+pas (le multijoueur s'y cale), state.tick_count les semaines. Si un pas
+leve une exception, la partie revient a l'etat d'avant (snapshot /
+_restore), se met en pause et garde l'erreur (state.last_error) : ne pas
+avaler l'exception ailleurs.
+
+L'ORDRE D'UNE SEMAINE (_week ; le changer change le jeu : empreinte) :
+l'horloge, la saison qui avance par rangees, les marches, les ralliements,
+systems.WEEKLY (ost, sieges, grain, vivres des troupes), le vecu des
+savoirs, les combats (battle), l'epuisement, la collecte et la faim, les
+morts, les lieux (sites.update : villages, chantiers, troupes) ; puis
+chaque mois (tick_count % 4) la population et systems.MONTHLY ;
+l'influence, les evenements, le prestige, l'apprentissage, la vue et sa
+memoire, et enfin l'IA (ai.decide_ai : ses ordres pour la semaine
+suivante). Les ordres du joueur s'appliquent tout de suite, meme en pause.
+
+L'economie des bandes : FAMINE_RATE, GROWTH_RATE ; collect_food,
+update_exhaustion, update_population, update_prestige. La lecture :
+hex_inspect / inspect_lines (une case selon le brouillard), band_summary /
+band_lines (la fiche d'une bande), walk_line, river_line. N'importe pas
+pygame.
+"""
+
 from __future__ import annotations
 
 import copy

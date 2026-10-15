@@ -1,3 +1,6 @@
+"""La sauvegarde (persist.py) : aller-retour (horloge, bandes, brouillard,
+combats), mauvaise carte refusee, sauvegarde illisible mise de cote."""
+
 from src.kora.persist import load_game, save_game
 from src.kora.sim import new_game
 from src.kora.gamestate import GameState

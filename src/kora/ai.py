@@ -1,3 +1,28 @@
+"""L'IA DES PEUPLES : ce que chaque bande, village et troupe d'un peuple
+de l'IA decide (decide_ai, appele a la fin de chaque semaine par sim).
+
+Chaque bande decide une semaine sur quatre, en decale selon son id
+((tick_count + id) % 4 : un test d'IA choisit son tick et son id en
+consequence). Pendant les decisions, rien ne bouge : grille de voisinage et
+forces calculees une fois (state.band_grid, state.force_memo) et relations
+gelees (diplo.frozen_relations). Les bandes du joueur lui obeissent, sauf un
+clan indocile qui vit sa vie (sans raider).
+
+Une bande nomade : fonder un village la ou c'est fertile (et pres des
+rivieres), partir chercher une terre (un clan emancipe : find_new_land,
+_settler, _go_settle ; VILLAGE_SPACING), camper si elle est bien nourrie,
+vider les caches, se regrouper, se scinder (AI_SPLIT_POP), chercher la
+meilleure collecte (_pick_hex), raider (ai_war.py : jamais un combat perdu
+d'avance). Un village (_village_ai) : batir au printemps sur le surplus
+(AI_BUILD_ORDER), jamais sans marge de vivres (AI_FOOD_MARGIN :
+villages.food_outlook), lever une troupe si une menace ou une proie est la
+(AI_THREAT), appeler l'ost. Une troupe (_army_ai) : defendre, raider en
+guerre, assieger (_besiege), rentrer avant la faim (ai_war.short_of_food).
+L'IA ne triche pas sur les stocks ni la nourriture ; elle voit toutes les
+positions (pas de brouillard). Ses choix envers les autres peuples suivent
+l'approche de son chef (approach.factor). N'importe pas pygame.
+"""
+
 from src.kora.ai_war import (
     AI_RAID_EDGE,
     advance_plans,

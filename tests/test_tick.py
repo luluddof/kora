@@ -1,3 +1,6 @@
+"""Le pas du monde (sim.tick) : une partie neuve, quatre semaines sans planter,
+la copie de l'etat (snapshot) rapide, pas de rafale a la vitesse 5."""
+
 import time
 
 from src.kora.globe import FOCUS_ZOOM, hex_to_globe_screen, look_at_hex, view_params

@@ -1,6 +1,6 @@
 Kora - Profondeur des deux ages : deuxieme reflexion (plus loin)
 ===============================================================
-Date : 2026-09-26. Statut : PROPOSITIONS a choisir, rien n'est code.
+Date : 2026-09-25. Statut : PROPOSITIONS a choisir, rien n'est code.
 Demande : "je t'invite a reflechir plus, a des fonctionnalites
 interessantes ou a etendre des fonctionnalites deja en place".
 Premiere reflexion : 2026-09-25-profondeur-deux-ages-propositions.txt (ses

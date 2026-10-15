@@ -1,3 +1,6 @@
+"""La sphere (globe.py) : voisins de part et d'autre de la ligne de changement
+de date, poles, face cachee, clic au centre, zoom, coins des cases."""
+
 import math
 
 from src.kora.globe import (

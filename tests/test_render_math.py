@@ -1,3 +1,6 @@
+"""La projection a l'ecran sans fenetre : pixel et case aller-retour, colonnes
+qui tournent, chaque zoom reste sur la sphere."""
+
 from src.kora.layout import hex_to_pixel, pixel_to_hex, terrain_draw_mode, wrap_camera
 from src.kora.types import Terrain
 from src.kora.world import axial_to_offset, make_filled_world, offset_to_axial

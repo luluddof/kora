@@ -1,9 +1,9 @@
 Kora - L'ost, le siege, la milice, le grain des disettes
 =======================================================
-Date : 2026-10-11. Statut : FAIT (version 0.13.0).
+Date : 2026-10-09. Statut : FAIT (version 0.13.0).
 
 Ses mots (raccourcis) :
-  1. "3 oui" : la piste D de l'argent (spec 2026-10-10, section 6) : le
+  1. "3 oui" : la piste D de l'argent (spec 2026-10-09-arbre-coherent-guerre-declaree, section 6) : le
      grain achete en disette chez un partenaire, plus cher que le marche.
   2. "Les armees des vassaux et du suzerain peuvent, sous ordre de ce
      dernier, se reunir pour former une plus grosse armee, pour eviter les

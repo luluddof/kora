@@ -1,3 +1,7 @@
+"""L'IA des bandes (ai.py) : elle va vers une meilleure case, garde son chemin,
+varie ses buts, campe bien nourrie, se scinde, ne raide pas sans avantage
+net."""
+
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
 from src.kora.gamestate import AI_STEPPE_ID, GameState

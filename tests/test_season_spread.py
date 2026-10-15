@@ -1,3 +1,6 @@
+"""La saison locale qui avance sur la carte (world.py) : pas d'un coup, jusqu'a
+chaque case, l'ete part du milieu."""
+
 from src.kora.sim import new_game, tick
 from src.kora.types import Season, Terrain
 from src.kora.world import make_filled_world, offset_to_axial

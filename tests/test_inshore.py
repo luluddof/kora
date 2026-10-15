@@ -1,3 +1,6 @@
+"""Les eaux du rivage : seules les cases d'eau qui touchent la terre se
+marchent (avec le cabotage), pas la haute mer."""
+
 from src.kora.path import astar, travel_weeks
 from src.kora.types import Terrain
 from src.kora.world import (

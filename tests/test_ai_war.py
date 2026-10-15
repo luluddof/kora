@@ -1,3 +1,7 @@
+"""Quand l'IA attaque, et avec qui (ai_war.py) : pas de raid perdu d'avance,
+fusion ou appel d'une soeur, raid annule si la cible recoit de l'aide, plans
+sauves."""
+
 from src.kora.ai import decide_ai
 from src.kora.ai_war import advance_plans, plan_raid, recheck_hunts, start_plan
 from src.kora.clock import Clock

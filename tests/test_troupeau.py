@@ -1,3 +1,6 @@
+"""Le troupeau de la steppe : ses conditions, l'IA, les semaines de steppe, la
+steppe qui nourrit plus et se repose avec le troupeau."""
+
 from src.kora.clock import Clock
 from src.kora import learning, tech
 from src.kora.sim import collect_food, update_exhaustion

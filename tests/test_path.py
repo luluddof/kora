@@ -1,3 +1,6 @@
+"""Les chemins (path.py) : A* en ligne droite, trois semaines pour douze
+plaines, l'eau bloque, plafonds de cout et de noeuds."""
+
 from src.kora.path import astar, travel_weeks
 from src.kora.types import Terrain
 from src.kora.world import hex_distance, make_filled_world, offset_to_axial

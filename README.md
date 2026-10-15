@@ -241,11 +241,13 @@ toute seule.
 
 ## Où est ma partie ? Un problème ?
 
-- La partie est sauvegardée dans **`%APPDATA%\Kora\saves\kora.json`**
-  (collez `%APPDATA%\Kora` dans la barre d'adresse de l'explorateur de fichiers) ; la partie à plusieurs de l'hôte
-  dans `kora-multi.json`, à côté. Une nouvelle partie met l'ancienne de côté (`kora-ancienne-…json`), sans l'effacer.
+- Vos parties sont dans le dossier **`%APPDATA%\Kora\saves`** (collez `%APPDATA%\Kora` dans la barre d'adresse de
+  l'explorateur de fichiers) : **une sauvegarde par partie** (`partie-<date>.json` ; la toute première s'appelle
+  `kora.json`), la partie à plusieurs de l'hôte dans `kora-multi.json`, vos réglages dans `reglages.json`. Une partie
+  supprimée depuis le menu va dans le sous-dossier `corbeille` (on peut l'y reprendre) ; une sauvegarde que le jeu ne
+  sait plus lire est mise de côté (`kora-ancienne-…json`), jamais effacée.
 - Si le jeu se ferme tout seul, il écrit ce qui s'est passé dans **`%APPDATA%\Kora\kora_erreur.txt`** :
-  envoyez-moi ce fichier (et votre `kora.json` si possible). La version du jeu est écrite en bas du menu (**Échap**).
+  envoyez-moi ce fichier (et la sauvegarde de la partie si possible). La version du jeu est écrite en bas du menu (**Échap**).
 
 ---
 

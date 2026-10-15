@@ -1,6 +1,6 @@
 Kora - Un plafond de bandes commun a chaque civilisation
 =======================================================
-Date : 2026-09-26. Statut : en place.
+Date : 2026-09-25. Statut : en place.
 Demande : "pour eviter les problemes dus au trop grand nombre de tribus, les
 tribus independantes d'une culture partagent le maximum de clans avec la
 tribu d'origine, meme joueur, pour qu'il y ait au plus, avec les savoirs,

@@ -1,3 +1,6 @@
+"""La planete (world.py) : bornes, eau infranchissable, rayon de collecte,
+aller-retour de la carte, departs, continents, variation du cout de marche."""
+
 from pathlib import Path
 
 from src.kora.types import Hex, Terrain

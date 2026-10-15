@@ -1,3 +1,17 @@
+"""LES CHEMINS : A* sur la grille (astar) et la duree d'un trajet en
+semaines (travel_weeks).
+
+Une bande a MOVE_POINTS_PER_WEEK points de marche par semaine (40 : 4 cases
+de plaine, le monde doit paraitre grand). Chaque pas coute
+world.step_cost : le sol (world.MOVE_COST), sa variation douce
+(world.cost_pct) et le courant des rivieres (x0,7 dans le sens, x1,3 a
+contre-courant, gue x1,25). L'heuristique reste admissible (le courant le
+plus favorable). astar a un plafond de noeuds : un ordre vers l'autre bout
+du monde peut echouer (None), c'est voulu. Les memes voisins dans le meme
+ordre que World.neighbors : les memes chemins sur chaque machine.
+N'importe pas pygame.
+"""
+
 import heapq
 
 from src.kora.types import Hex

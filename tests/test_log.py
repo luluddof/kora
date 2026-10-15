@@ -1,3 +1,6 @@
+"""Le journal (log.py) : les dernieres lignes et leurs filtres, ce que le
+joueur lit (pas l'IA), la sauvegarde du journal."""
+
 from src.kora.log import FILTER_ALL, GameLog, LogKind
 from src.kora.globe import land_draw_stride
 from src.kora.clock import Clock

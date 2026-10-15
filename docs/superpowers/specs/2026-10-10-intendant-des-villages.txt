@@ -1,6 +1,6 @@
 Kora - L'intendant des villages (G7)
 ====================================
-Date : 2026-10-15. Statut : FAIT (version 0.17.0).
+Date : 2026-10-10. Statut : FAIT (version 0.17.0).
 
 Ses mots : "G7, explique mieux" puis "oui, fais-le" : que les villages IA
 gerent leur grenier au lieu de vivre au bord de la famine.

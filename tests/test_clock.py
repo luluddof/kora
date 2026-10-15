@@ -1,3 +1,6 @@
+"""L'horloge (clock.py) : les saisons, le passage de l'annee, la vitesse et la
+pause."""
+
 from src.kora.clock import Clock
 from src.kora.types import Season
 

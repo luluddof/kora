@@ -1,3 +1,6 @@
+"""Le repli du vaincu : il perd des vivres et rentre A PIED vers son groupe ou
+un lieu sur, ordres bloques, pas d'attaque en chaine, pas de pause."""
+
 from src.kora.ai import decide_ai
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game

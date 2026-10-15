@@ -1,8 +1,9 @@
 Kora - Les nouvelles planetes (carte agrandie et amelioree) : conception
 =======================================================================
-Date : 2026-10-18. Statut : FAIT (version 0.20.0).
+Date : 2026-10-11. Statut : FAIT (version 0.20.0).
 
-Ses mots (reponse a la proposition C1-C8 du 2026-10-17) :
+Ses mots (reponse a la proposition C1-C8 du 2026-10-11, spec
+  2026-10-11-prerequis-musique-armee-guerres, section 4) :
   C1 "taille de 1536 x 768" ; C2 "pourquoi pas" ; C3 "oui, et donne un
   bonus/malus de proximite selon le sens du courant : a contre-sens malus,
   dans le sens du courant bonus" ; C4 oui ; C5 oui ; C6 oui ; C7 oui ;

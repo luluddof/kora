@@ -1,3 +1,17 @@
+"""LA SPHERE A L'ECRAN : la planete (un cylindre de cases pour la
+simulation) projetee sur un globe qu'on tourne et qu'on zoome.
+
+Les cases (col, row) -> longitude / latitude -> xyz -> l'ecran
+(hex_to_globe_screen, view_params, project_xyz) ; un clic -> la case
+(pixel_to_hex_globe, lonlat_to_colrow : la case hexagonale la plus proche,
+apres warp). warp : LE TERRAIN DEFORME (un bruit doux a deux echelles,
+WARP_SCALES, periodique autour du monde, borne a WARP_MAX case) ; le MEME
+pour le dessin (globe_draw) et pour le clic, toujours les deux ensemble.
+La camera : yaw / pitch (clamp_pitch, PITCH_LIMIT), le zoom (dist_from_zoom,
+FOCUS_ZOOM), look_at_hex. Le monde de la simulation reste un cylindre :
+les deux se parlent ici, pas dans sim. N'importe pas pygame.
+"""
+
 from __future__ import annotations
 
 import math

@@ -1,3 +1,7 @@
+"""L'economie des bandes : la famine prend une part, les reserves passent
+l'hiver, la croissance, le prestige d'hiver, les renforts, le repli, les
+departs."""
+
 from src.kora.clock import Clock
 from src.kora.sim import FAMINE_RATE, apply_movement, collect_food, famine_loss, new_game, fight_out, update_population, update_prestige
 from src.kora.bands import STOCK_MAX_FACTOR

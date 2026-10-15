@@ -1,3 +1,15 @@
+"""LE BROUILLARD DE GUERRE d'un joueur (l'IA n'en a pas : elle voit tout).
+
+PlayerVision : les cases explorees et visibles, et la MEMOIRE du brouillard
+(sites, zones : memory.py). La vue part des bandes et des villages du
+joueur (VISION_RADIUS = 8 cases, plus les savoirs et les tours de guet :
+TOWER_SIGHT) et elle est PARTAGEE avec son pays (sharers : suzerain,
+tributaires, confederes, par systems.SIGHT). vision_of donne la vue d'un
+peuple joueur ; enemy_band_visible decide si une bande etrangere se
+dessine (sinon : fuite d'information) ; note_seen ecrit au journal de ceux
+qui voient la case. N'importe pas pygame.
+"""
+
 from dataclasses import dataclass, field
 
 from src.kora.gamestate import GameState, PLAYER_TRIBE_ID, humans, note, pov_of

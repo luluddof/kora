@@ -1,3 +1,6 @@
+"""Les raids : le plus fort fait fuir l'autre, une marque de combat visible
+(pas sous le brouillard), jamais de pause, les marques s'effacent."""
+
 from src.kora.clock import Clock
 from src.kora.sim import apply_movement, consume_ticks, fight_at, fight_lines, fight_out
 from src.kora.battle import COMBAT_MARK_MAX, COMBAT_MARK_WEEKS, band_force, prune_fight_marks

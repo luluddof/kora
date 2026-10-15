@@ -1,3 +1,6 @@
+"""Le cabotage (la pirogue) : ses conditions (peche, population, semaines sur
+la cote), le choix du joueur, l'IA, la marche sur l'eau du rivage."""
+
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
 from src.kora import learning, tech

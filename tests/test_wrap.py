@@ -1,3 +1,6 @@
+"""Le monde qui tourne d'est en ouest (wrap_x) : le bord est touche le bord
+ouest, pas les poles ; A* et les rayons traversent la ligne."""
+
 from src.kora.path import astar
 from src.kora.types import Terrain
 from src.kora.world import (

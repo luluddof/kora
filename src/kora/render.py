@@ -1,3 +1,22 @@
+"""LE DESSIN DE LA PARTIE (pygame) : Renderer, la planete et tout ce qui
+se pose dessus, la barre du haut, les onglets lateraux, les fiches.
+
+Renderer.draw dessine une image : la sphere (globe_draw.Planet, peinte dans
+un calque repeint seulement quand la vue, le brouillard ou les saisons
+changent), les modes de carte (relief, influence, suzerains, tournants,
+ressources, commerce : draw_map_modes, le bouton "Carte" : draw_map_menu),
+les lieux (draw_sites : campements, caches, villages en carres, champs ;
+le brouillard montre la MEMOIRE du joueur), les bandes et leurs jetons, les
+routes (draw_trade_routes), les combats (draw_fight_marks), le chemin
+(draw_path), la barre du haut (draw_hud), les onglets et leurs panneaux
+(draw_side), les nouvelles (draw_toasts), la fiche d'une case
+(draw_inspect), le rapport de force avant l'attaque (draw_attack_preview).
+Les mises en page sont PURES dans layout.py (testables sans fenetre) ; les
+grands ecrans dans render_*.py (screens.py les ouvre et les dessine).
+Tout dessin passe par theme.py (la charte) ; la couleur d'un peuple par
+look.country_color ; ce qui se voit d'un joueur par state.viewer.
+"""
+
 from __future__ import annotations
 
 import math

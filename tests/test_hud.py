@@ -1,3 +1,6 @@
+"""La barre du haut et les panneaux (layout.py) : vitesses, onglets, l'arbre en
+toile, journal et filtres, menu Echap, une fiche ne cache jamais son bouton."""
+
 import os
 
 from src.kora.layout import HUD_HEIGHT, FILTER_BY_HIT, fight_panel_layout, hud_hit, hud_layout, menu_hit, menu_layout, side_hit, side_layout

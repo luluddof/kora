@@ -8,8 +8,8 @@ a la recherche en cours.
   - une banniere par age, avec son chiffre romain et le nom des colonnes ;
   - des cartes de savoir dont le detail suit le zoom : medaillon et nom ;
     puis l'etat (cout, semaines, ce qui manque) ; puis le premier effet ;
-  - des liens a angles droits qui passent dans les couloirs entre les
-    cartes (layout.tree_links), jamais au travers : dores quand le chemin
+  - des liens en courbes douces qui passent dans les couloirs entre les
+    cartes (tree_graph.geometry), jamais au travers : dores quand le chemin
     est connu, verts quand il mene a un savoir disponible ;
   - en tete, la recherche en cours ; en bas, la fiche du savoir choisi ;
   - au survol d'une carte, une bulle avec ses premiers effets ;

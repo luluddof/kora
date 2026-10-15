@@ -1,6 +1,6 @@
 Kora - L'arbre selon le sort, un terrain moins hexagonal, les ressources par l'echange
 ====================================================================================
-Date : 2026-10-13. Statut : FAIT (version 0.15.0) ; section 4 : PROPOSE.
+Date : 2026-10-09. Statut : FAIT (version 0.15.0) ; section 4 : PROPOSE.
 
 Ses mots (raccourcis) :
   1. "Les techs incompatibles avec d'autres ne doivent pas etre visibles si

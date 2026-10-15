@@ -1,3 +1,5 @@
+"""La croissance des bandes : une bande nourrie grandit, une bande affamee non."""
+
 from src.kora.clock import Clock
 from src.kora.sim import update_population
 from src.kora.gamestate import GameState

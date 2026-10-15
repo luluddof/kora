@@ -1,3 +1,18 @@
+"""LES TYPES DU JEU : les briques que tout le reste partage.
+
+Terrain (les sols), Season, Hex (axial, tuple nomme : hachage rapide),
+Order / OrderKind (l'ordre d'une bande), Person (un chef, un ancien) ; les
+FICHES Band (une bande, une troupe : kind "armee", un village : Band.village)
+et Tribe (un peuple : savoirs, prestige, chef, culture, budget, lois,
+effets...) ; FightMark (un combat sur la carte) ; les donnees de la
+diplomatie : Diplomacy (contacts, relations, pactes, routes, guerres, buts),
+Mod (une raison de relation), Pact, TradeRoute.
+
+UN CHAMP NOUVEAU de Band ou de Tribe, avec son TYPE et sa valeur par defaut
+(celle des vieilles parties), se sauve, se relit et se copie tout seul
+(records.py) : c'est tout. N'importe pas pygame.
+"""
+
 import copy as _copy
 from dataclasses import dataclass, field
 from enum import Enum

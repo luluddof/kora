@@ -1,3 +1,6 @@
+"""Scinder, reunir, rejoindre (bands.py) : partage des gens et des vivres,
+plafond de bandes, ids jamais reutilises, sauvegarde."""
+
 from src.kora.clock import Clock
 from src.kora.persist import load_game, save_game
 from src.kora.sim import new_game, resolve_joins, tick

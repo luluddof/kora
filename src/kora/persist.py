@@ -1,3 +1,25 @@
+"""LA SAUVEGARDE : une partie en JSON, et le dossier des sauvegardes.
+
+Ou : le dossier Kora/saves de %APPDATA% dans l'exe, saves/ a la racine du depot sinon
+(default_save_path). Chaque partie solo a SA sauvegarde (new_save_path :
+partie-<date>.json, jamais un fichier existant ; la plus ancienne s'appelle
+kora.json) ; "Continuer" reprend la plus recente qui se lit (latest_save),
+"Charger une partie" les montre toutes (list_saves, peek_save) ;
+supprimer = la corbeille (trash_save, CORBEILLE_KEEP). La partie a
+plusieurs de l'hote : kora-multi.json ; les reglages du joueur :
+reglages.json (load_prefs / save_prefs). Une sauvegarde illisible n'est
+jamais ecrasee (set_aside_save : kora-ancienne-<date>.json).
+
+game_to_json / game_from_json : l'etat entier ; Tribe, Band, Site et la
+fiche du village passent par records.py (d'apres leurs types) ; une partie
+note sa planete ("map" -> "id" : map_id ; une ancienne partie est sur
+"kora", l'ancienne carte) et la version du jeu ("game_version"). Un champ
+absent d'une vieille partie prend sa valeur par defaut ; les migrations des
+systemes (diplo.migrate, turning.migrate...) s'appliquent au chargement.
+dumps_game / loads_game : la meme chose en texte (le multijoueur l'envoie).
+N'importe pas pygame.
+"""
+
 from __future__ import annotations
 
 import json

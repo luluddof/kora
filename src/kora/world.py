@@ -1,3 +1,27 @@
+"""LA PLANETE en jeu : la grille des cases, ses sols, ses rivieres, ses
+ressources, et ce qui change dessus (epuisement, influence, saison locale).
+
+Coordonnees (PIEGE FREQUENT) : Hex(q, r) AXIAL dans tout l'API public ;
+(col, row) OFFSET "odd-r" pour le stockage et les fichiers ; la sphere
+(globe.py) seulement a l'ecran. offset_to_axial / axial_to_offset
+convertissent. wrap_x : le monde tourne d'est en ouest (pas aux poles) ;
+toujours passer par World.canonicalize / neighbors / distance (jamais
+additionner des colonnes a la main). hexes_in_radius / hexes_and_distances
+rendent des listes PARTAGEES (cache) : ne jamais les modifier.
+
+La marche : MOVE_COST par sol (plaine 10), sa variation douce par case
+(cost_pct, -10 % a +12 %), le courant (river_pct : RIVER_PCT dans le sens du
+cours, FORD_PCT / FORD_BIG_PCT pour traverser) : step_cost (un pas),
+enter_cost_for (entrer dans une case). La nourriture : food_production
+(sol, saison locale, epuisement, ressources ; season_multiplier). La saison
+LOCALE avance par rangees (seed_season, spread_season ; World._season_frontier
+est une liste de RANGEES). Les departs : pick_spawn_continents (planetes ;
+la graine de la partie), pick_spawn_hexes (l'ancienne carte). Lire une
+planete : load_world (data/planetes, par planets.py ; data/kora_map.json
+pour l'ancienne carte) ; la generer : mapgen.py, jamais en jeu.
+N'importe pas pygame.
+"""
+
 import json
 from pathlib import Path
 

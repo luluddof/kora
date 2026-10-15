@@ -1,3 +1,20 @@
+"""L'APPLICATION : la fenetre, le menu de demarrage, le salon du
+multijoueur, puis la partie a l'ecran (la classe Play).
+
+run : le menu (title_screen : Continuer, Nouvelle partie, Charger,
+Multijoueur, Reglages) -> _multiplayer (le salon) -> Play -> le menu. Play
+garde l'etat de l'ecran (camera, selection, panneaux, fenetres, nouvelles)
+et a une methode par chose a faire : Play.issue (TOUT ordre au jeu passe
+par la : commands.py), Play.band_action, open_village, village_click,
+trade_click, treasury_click, wars_click, side_click... ; Play.run la boucle
+(60 images par seconde), _on_event, _on_key (le clavier), _on_click (la
+souris), _frame (le temps ou l'hote, les nouvelles, le survol, le dessin).
+Sauvegarde automatique toutes les 8 semaines (Play.save_path : la partie a
+SA sauvegarde ; en reseau, l'hote seul). En reseau : mp.pump (le temps de
+l'hote), les ordres, la partie recopiee si elle s'ecarte. gc.freeze apres
+chargement (_settle_memory) : plus de saccade du ramasse-miettes.
+"""
+
 from __future__ import annotations
 
 import random

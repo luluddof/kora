@@ -1,3 +1,6 @@
+"""L'atlas (atlas.py) : un continent qui fait le tour du monde n'a qu'un nom,
+les oceans sont nommes en francais."""
+
 from src.kora.atlas import build_atlas_labels
 from src.kora.types import Terrain
 from src.kora.world import World

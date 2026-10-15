@@ -1,6 +1,6 @@
 Kora - La diplomatie avec les villages, la paix blanche, la fiche des savoirs, la musique
 =========================================================================================
-Date : 2026-10-16. Statut : FAIT (version 0.18.0).
+Date : 2026-10-10. Statut : FAIT (version 0.18.0).
 
 Ses mots : "faut des recherches de diplomatie et avant ca y a pas de guerre
 tant que les deux pays n'ont pas cette recherche, c'est des conflits

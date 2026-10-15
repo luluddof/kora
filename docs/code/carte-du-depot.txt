@@ -1,1461 +1,1408 @@
-CARTE DU DEPOT — KORA
+CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-Date    : 2026-10-09 (0.10.0 : la recherche refaite, grands tournants et
-          tirages ; avant : 0.9 pays, lois, confederation, brouillard)
-Statut  : a jour avec le proto actuel (tribus vivantes : peuples,
-          zone d'influence, campements, chefs, diplomatie, evenements,
-          ressources du pays, villages du neolithique ; fondation,
-          batiments, troupes et batailles simulees ; menu de demarrage,
-          bonus de depart, MULTIJOUEUR en lockstep)
+A jour pour la version : 0.20.2
+Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
+sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
-Ce fichier dit OU vit le code, QUI appelle QUI, et OU aller
-quand on veut changer quelque chose.
+Ce fichier dit OU vit le code, QUI appelle QUI, et OU aller quand on veut
+changer quelque chose. Les parties entre "<<< auto" et "<<< fin auto >>>"
+recopient les docstrings des modules, des outils et des tests, et la liste
+des specs : python tools/notes.py write les refait ; pour les changer, on
+change la DOCSTRING. Le reste est ecrit a la main et VERIFIE
+(python tools/notes.py check, tests/test_notes.py) : chaque fichier, chaque
+"module.nom" et chaque "Classe.champ" cite doit exister.
 
-Le design de jeu (nourriture, raids, prestige, etc.) est ailleurs :
-  docs/superpowers/specs/2026-08-14-tribal-grand-strategy-proto-design.txt
-  docs/superpowers/specs/2026-08-15-saisons-sauvegarde-atlas.txt
-  docs/superpowers/specs/2026-09-23-economie-bandes-design.txt
-    (famine, stock, scinder / reunir, raids, brouillard, perf)
-  docs/superpowers/specs/2026-09-23-perf-ia-carte-design.txt
-  docs/superpowers/specs/2026-09-23-savoirs-design.txt
-    (arbre des savoirs, tribal + neolithique : regles, effets, arbre)
-  docs/superpowers/specs/2026-09-24-tribus-vivantes-neolithique-design.txt
-    (peuples, zone d'influence, campements, chefs, diplomatie,
-     evenements, ressources, villages : regles et chiffres)
-    (optimisation prouvee, IA prudente et solidaire, planete 768 x 384)
-  docs/superpowers/specs/2026-09-24-villages-armees-batailles-design.txt
-    (fonder = un tournant, serments, ecran du village, batiments,
-     premieres troupes, batailles en passes d'armes, aneantissement)
-  docs/superpowers/specs/2026-09-25-unites-fusion-emancipation-design.txt
-    (troupes = piles de compagnies typees, fusion des clans et anciens,
-     emancipation apres le premier village, campements leves, caches
-     prises par l'IA, monde plus grand, menu Armee)
-  docs/superpowers/specs/2026-09-27-menu-bonus-multijoueur.txt
-    (menu de demarrage, creation du peuple, bonus de depart ; plusieurs
-     peuples joueurs, canal des ordres, reseau lockstep, verifications)
-
-Ce qui n'est pas encore dans le proto, et ce qui pourrait venir :
-  docs/code/suite-possible.txt
-
-AJOUTER UNE FONCTIONNALITE : lire d'abord docs/code/ajouter-un-systeme.txt
-(la recette, les regles, la dette connue) ; tests/test_architecture.py les
-verifie.
+Ce que veut le joueur : docs/VISION-KORA.txt. Comment chaque chantier a ete
+fait : les specs (section 11). Ajouter ou changer une fonctionnalite :
+docs/code/ajouter-un-systeme.txt (la recette, et TOUTES les regles du code
+par theme).
 
 
 1. LIRE LE DEPOT EN 30 SECONDES
 -------------------------------
+  main.py              point d'entree : app.run ; une erreur est ecrite dans
+                       %APPDATA%\Kora\kora_erreur.txt (avec la version)
+  src/kora/            tout le jeu (section 4)
+  tests/               les tests, sans fenetre (section 9)
+  tools/               les outils (section 8)
+  data/planetes/       les planetes cuites (<id>.json, <id>.png, index.json)
+  data/kora_map.json   l'ancienne carte (768 x 384 ; les parties d'avant 0.20)
+  data/fonts/, data/icons/, data/music/   polices, icones, musique (licences :
+                       README, Credits)
+  docs/                la vision, la charte, ce dossier code/, les specs
+  Kora.spec, Kora-unfichier.spec   l'exe (dossier ; un seul fichier)
+  .github/workflows/release.yml   une etiquette vX.Y.Z -> tests, exe, Releases,
+                       itch.io
+  empreinte.json       l'empreinte du jeu (tools/empreinte.py)
+  .claude/settings.json   le crochet de debut de session (notes.py status)
+
+  Le Python du projet : .venv/Scripts/python.exe (pygame-ce ; le Python du
+  systeme a un autre pygame). Les tests : .venv/Scripts/python.exe -m pytest -q
+
+
+2. LES DEUX MONDES : LA SIMULATION ET L'INTERFACE
+-------------------------------------------------
+  La SIMULATION (tout sauf l'interface) n'importe jamais pygame, ne lit
+  jamais state.viewer, et tourne en Python pur (le multijoueur exige les
+  memes nombres sur chaque machine). L'INTERFACE (app, render, render_*,
+  theme, look, globe, globe_draw, layout, screens, tree_graph, music) lit la
+  partie et ne la change QUE par un ordre (commands.py, via Play.issue).
+  numpy : seulement globe_draw.py (le rendu) et mapgen.py (la cuisson des
+  planetes, hors du jeu).
+  Les ETAGES (qui peut importer qui) : docs/code/ajouter-un-systeme.txt,
+  section 1 ; tests/test_architecture.py les verifie.
+
+
+3. UNE IMAGE, UN PAS, UNE SEMAINE
+---------------------------------
+  Une IMAGE (Play._frame, ~60 par seconde) : en solo, sim.consume_ticks
+  fait 0 ou 1 pas selon la vitesse ; en reseau, l'hote annonce les pas
+  (session.py) et chacun les calcule ; puis les nouvelles (le journal du
+  joueur), le survol, le dessin (Renderer.draw). Sauvegarde automatique
+  toutes les 8 semaines.
+  Un PAS (sim.tick) : une semaine, ou un jour quand une bataille touche un
+  joueur (battle.slow). Une exception : l'etat d'avant revient
+  (sim.snapshot), pause, state.last_error.
+  Une SEMAINE (sim._week), dans cet ordre (le changer change le jeu) :
+     1. clock (Clock.advance_week) ; une saison nouvelle se note
+     2. sim.apply_season_spread   la saison locale avance par rangees
+     3. sim.apply_movement        les marches (path, world.step_cost)
+     4. sim.resolve_joins         les ralliements
+     5. systems.WEEKLY            ost, sieges, grain, vivres des troupes
+     6. learning.update_practice  le vecu (sols, hivers, rivages, steppe)
+     7. battle : prune_fight_marks, resolve_raids, advance (les jours des
+        batailles sans joueur)
+     8. sim.update_exhaustion, sim.collect_food (collecte, faim),
+        sim.remove_dead_bands
+     9. sites.update              campements, caches, villages (semailles,
+                                  recoltes, chantiers, troupes)
+    10. chaque mois (tick_count % 4 == 0) : sim.update_population,
+        population.monthly
+    11. sim.update_influence ; chaque mois : systems.MONTHLY (dans l'ordre
+        du tableau : diplomatie, commerce, production, chefferie, nombres,
+        argent, chefs, approches, tournants, tirages, IA diplomatique,
+        motifs de guerre, confederations, evenements, situations)
+    12. events.weekly, sim.update_prestige, learning.update_learning
+    13. vision.recompute_vision, memory.update, les ennemis apercus
+    14. ai.decide_ai              les ordres de l'IA pour la semaine suivante
+  Les ordres du joueur s'appliquent tout de suite (commands.apply), meme
+  en pause ; ils ne passent pas par l'IA.
+
+
+4. LES MODULES (tire des docstrings, par etage)
+-----------------------------------------------
+<<< auto : modules >>>
+ETAGE 0  les briques
+
+  types.py
+    LES TYPES DU JEU : les briques que tout le reste partage.
+    classes : Terrain, Season, OrderKind, Hex, Order, Band, Person, Tribe,
+      FightMark, Mod, Pact, TradeRoute, Diplomacy
+    fonctions : stay_order, copy_person, person_to_json, person_from_json
+
+  francais.py
+    Le francais avec ses accents (charte graphique, section 3).
+    fonctions : case_like, convert, needs
+    constantes : MOTS, PHRASES, A_AVANT, A_APRES, A_VERBE, APRES, NOT_INF,
+      WORD
+
+  net.py
+    Le reseau du multijoueur : des connexions TCP qui s'echangent des
+    messages JSON, un par ligne.
+    classes : Conn, Listener
+    fonctions : pack, unpack, connect, parse_address, local_addresses
+    constantes : PORT, BIND, MAX_LINE
+
+  systems.py
+    LE TABLEAU DES SYSTEMES : qui intervient, quand, et sur quoi.
+    fonctions : fn, run, parts, total, apply_mult
+    constantes : MONTHLY, STABILITY, ARMY_MORALE, FLEE, WEEKLY,
+      VILLAGE_DEFENSE, VILLAGE_FOOD, STOCK_WEEKS, BUILD_SPEED, CRAFT_OUTPUT,
+      EFFECT_FIELDS, EFFECT_SPECS, TECH_LINES, EVENT_VOCABULARY, BAND_SPLIT,
+      BAND_MERGE, MERGE_ALLOWED, SIGHT, EMANCIPATED
+
 
-Kora est un proto Python. Une semaine de jeu = un tick.
-La simulation ne connait pas pygame. L'affichage ne calcule
-ni la nourriture ni les raids.
-
-  main.py                 point d'entree (appelle app.run ; une erreur
-                          est ecrite dans %APPDATA%\Kora\kora_erreur.txt)
-  src/kora/               tout le jeu
-  tests/                  tests sans fenetre (pytest)
-  data/kora_map.json      carte cuite (768 x 384, wrap est-ouest)
-                          + noms de l'atlas precalcules
-  data/fonts/             polices Alegreya / Alegreya Sans (OFL, OFL.txt)
-  data/icons/             92 icones game-icons.net (CC BY 3.0, CREDITS.txt)
-  docs/charte-graphique.txt  la charte « Feu et ocre » (a lire avant tout
-                          dessin) ; docs/charte/planche.png sa planche
-  tools/empreinte.py      preuve qu'un refactoring ne change pas le jeu
-  tools/dependances.py    qui importe qui : les ETAGES (LAYERS), les imports
-                          caches, les cercles ; "qui MODULE" (test_architecture
-                          s'en sert)
-  tools/arbre_savoirs.py  ecrit l'arbre des savoirs dans sa spec
-  tools/essai_reseau.py   multijoueur : deux PROCESSUS (hote, ami), la vraie
-                          carte, des robots qui donnent des ordres ; les
-                          empreintes doivent etre identiques (avant de publier)
-  tools/essai_graines.py  une sauvegarde (COPIE) continuee dans deux
-                          processus aux graines de hachage differentes
-  tools/accents.py        accentue les textes AFFICHES des sources (pas les
-                          docstrings ni les noms) ; --dry --montrer : revoir
-  tools/recuperer_assets.py  telecharge polices et icones dans data/
-  tools/planche_charte.py dessine docs/charte/planche.png
-  Kora.spec               empaquetage PyInstaller
-  dist/Kora/Kora.exe      livrable Windows
-  saves/kora.json         sauvegarde unique en dev
-                          (exe : %APPDATA%\Kora\saves\kora.json)
-
-Regle dure :
-  tout module de src/kora qui n'est pas de la PRESENTATION (app, render,
-  render_*, theme, look, globe, globe_draw, screens, layout) n'importe
-  JAMAIS pygame ni un module de presentation (tests/test_architecture.py
-  le verifie fichier par fichier).
-  Les ETAGES (tools/dependances.LAYERS, docs/code/ajouter-un-systeme.txt) :
-  un module n'importe que son etage ou plus bas, en tete du fichier ; un
-  seul import cache dans tout le jeu (events -> events_data, commente).
-  numpy : seulement dans globe_draw.py (rendu), mapgen.py et
-  resources.generate_layers (cuisson de la carte, hors jeu).
-  La simulation reste en python pur (petits calculs par bande).
-
-Si tu ajoutes un import pygame dans sim, les tests et l'architecture
-cassent.
-
-
-2. COUCHES (COMME CLAUSEWITZ : MOTEUR / DONNEES / INTERFACE)
-------------------------------------------------------------
-
-Paradox separe moteur, scripts, interface.
-Ici c'est plus petit, mais le meme decoupage :
-
-  Types + monde     types.py, world.py, mapgen.py, clock.py
-                    "la carte et le calendrier existent"
-
-  Simulation        path.py, sim.py, tech.py, vision.py, ai.py,
-                    ai_war.py, peoples.py, influence.py, sites.py,
-                    chiefs.py, diplo.py, events.py (+ events_data.py),
-                    resources.py, villages.py, orders.py, battle.py, units.py,
-                    goods.py, situations.py, production.py, population.py,
-                    chiefdom.py, numbers.py, money.py, laws.py, confed.py,
-                    memory.py, draws.py, turning.py, siege.py, ost.py,
-                    grain.py, casus.py, wars.py
-                    "une semaine avance (ou un jour, en bataille)"
-
-  Persistance       persist.py, data/kora_map.json
-                    "on charge / on ecrit un JSON"
-
-  Presentation      look.py, atlas.py, globe.py, globe_draw.py,
-                    theme.py (la charte), render.py, render_panels.py,
-                    render_tech.py, render_village.py, render_trade.py,
-                    render_menu.py, render_situations.py, render_numbers.py,
-                    render_treasury.py, render_country.py, app.py
-                    "on dessine et on recoit la souris"
-
-Dependances autorisees : les ETAGES (du plus bas au plus haut ; un module
-n'importe que son etage ou plus bas) :
-
-  0 types, francais, net, systems        1 clock, log, resources, records
-  2 world                                 3 path, atlas, mapgen, gamestate,
-                                            peoples, places
-  4 tech, units, vision, population      5 les systemes : learning, bands, approach,
-                                            chiefs, sites, influence,
-                                            production, diplo, goods, money,
-                                            numbers, chiefdom, villages,
-                                            battle, situations, events,
-                                            events_data
-  6 ai_war, orders, ai                    7 sim (la semaine)
-  8 commands                              9 persist, session, essai
-  interface : layout, theme, look, globe, globe_draw, render_*, render,
-  screens, app ; pygame seulement la.
-
-La generation de la carte vit dans mapgen.py (generate_world) ; world.py ne
-la connait pas.
-
-
-3. FICHIERS : QUI POSSEDE QUOI
-------------------------------
-
-src/kora/types.py
-  Terrain, Season, Hex, Band, Tribe, Order, Person (et ses codecs),
-  FightMark ; les donnees de la diplomatie (Diplomacy, Mod, Pact,
-  TradeRoute). Un champ ajoute a Band ou Tribe, avec son type : il se
-  sauve, se relit et se copie tout seul (records.py).
-
-src/kora/gamestate.py  (pas de pygame)
-  GameState (l'etat de la partie), Pov ; les peuples joueurs : humans,
-  is_human, pov_of, log_of, seen_of, human_dead, note, note_all ;
-  PLAYER_TRIBE_ID et les ids de depart. (sim.py les reexporte.)
-
-src/kora/places.py  (pas de pygame)
-  Les lieux : Site, VillageData (l'etat d'un village : bande, serment,
-  champs, sol, semences, batiments, chantier, monument, recoltes, saison,
-  collecte, equipes de metier, alertes ; sauve compact), _village_data
-  (vieilles parties : palissade) ; les lectures : site_of, band_of, name,
-  rank_name, oath_of, built, has, monument_stages, works, watch_spots,
-  influence_radius. (sites.py et villages.py les reexportent.)
-
-src/kora/bands.py  (pas de pygame)
-  Les outils des bandes partages par tous : grille et bandes proches,
-  new_band_id, stock_max (+ systems.STOCK_WEEKS), gain_prestige,
-  bonus_of, costs_of, set_goto, set_march_to_band, combien de bandes
-  (max_bands_of, civ_band_cap...), split_band, merge_bands (les chefs y
-  reagissent par systems.BAND_SPLIT / BAND_MERGE / MERGE_ALLOWED),
-  fighters, CLAN_SHARE.
-
-src/kora/approach.py  (pas de pygame)
-  L'APPROCHE des chefs de l'IA envers les autres peuples : APPROACHES
-  (conquerant, protecteur, marchand, paisible, mefiant, affame ; soumis /
-  retif pour un tributaire), TRAIT_WEIGHTS (la personnalite), scores (la
-  situation : voisins forts ou faibles, vivres, routes, raids subis,
-  tributaires, prestige), choose (hysteresis, nouveau chef), monthly
-  (systems.MONTHLY, apres chiefs), PROFILES / factor (ce que l'IA fait :
-  raids, levees, tributs, protection, dons, fetes, seuils d'alliance et de
-  commerce : ai.py, diplo.ai_monthly, chiefdom), ACCEPT / accept (la
-  reponse aux propositions : diplo.evaluate), BEHAVIOR / reasons (l'ecran
-  Peuples). Tribe.approach / approach_since / approach_chief.
-
-src/kora/confed.py  (pas de pygame)
-  La CONFEDERATION : un pacte "confederation" entre deux peuples ; le
-  groupe = ceux qu'ils relient (members, groups, same, leader : le
-  fondateur, sa couleur ; name). Une seule diplomatie exterieure : les
-  pactes SHARED (treve, alliance) s'etendent a tout le groupe
-  (diplo.add_pact -> outside_pairs ; break_pact, on_fight les font tomber
-  pour tous ; raid contre un membre : mod "raid_confedere") ; aide a la
-  guerre (battle.helpers_of, ai_war.force_at). block / reasons
-  (diplo.evaluate "confederer"), war_pairs (la guerre de pays a pays),
-  sight_partners, form, leave, on_vassal (chiefdom.make_vassal
-  : un tributaire en sort), shared_note, monthly (systems.MONTHLY : l'IA
-  sans amis s'en va), ai_wants (diplo.ai_monthly, _propose_to_player ->
-  carte "offre_confederation"), lines (ecran Peuples).
-
-diplo.py, la GUERRE DECLAREE (0.12) : diplomatic / needs_declaration /
-  declared_war (pacte "guerre"), at_peace (paix par defaut entre peuples
-  qui ont la diplomatie), war_allies / war_pairs / declare_war / end_war /
-  wars_of / _fade_wars, action "guerre" (_war_verdict) ; ai_war.fair_game
-  et go_to_war (l'IA declare au depart du raid) ; ai.py : levees et portee
-  en guerre ; battle._will_fight ; commands._march.
-tech.py, les CHIFFRES VRAIS : effect_lines(tech, base, known),
-  bonuses_without, has_effect, lines_for, start_bonus_lines_for.
-
-src/kora/turning.py  (pas de pygame)
-  Les GRANDS TOURNANTS (tech.Tech kind="tournant", tech.turnings / pan_of
-  / descendants) : presence (Tribe.tournants), sources (d'ou il vient :
-  ses conditions, les peuples en contact), monthly_gain, monthly
-  (systems.MONTHLY : presence, naissances state.research["births"],
-  journal, carte "tournant_voyageurs"), birthplace / born / born_text,
-  adopted_by, own_conditions, lines (fiche), on_adopted (fin de la
-  recherche : decouvert ; le premier = berceau, CRADLE, Tribe.cradles,
-  effect_ids / effect_specs "berceau:"), cradle_text, migrate et
-  _migrate_cradles (vieilles parties ; persist, new_game), EVENT_EFFECTS
-  "tournant". Statut dans
-  learning.status ("attente" tant qu'il n'est pas arrive) ; l'IA l'adopte
-  d'abord (learning.auto_choose).
-
-src/kora/siege.py  (pas de pygame)
-  LE SIEGE (0.13) : Torches et brandons (bonus siege_fire : defense_parts
-  "Torches contre les pieux", les murs - villages.wall_parts - ne comptent
-  qu'a tech.SIEGE_FIRE) ; L'art du siege (bonus siege) : besiegers (troupes
-  en guerre, immobiles, a SIEGE_RANGE case), weekly (systems.WEEKLY :
-  VillageData.siege en semaines, besieger), erosion (tech.SIEGE_ERODE par
-  semaine jusqu'a SIEGE_FLOOR : systems.VILLAGE_DEFENSE), food_mult
-  (tech.SIEGE_FOOD : systems.VILLAGE_FOOD), at_war, can_besiege, lines
-  (fiche du village). L'IA : ai._besiege, ai._sieged_defense, ai._could_take.
-
-src/kora/ost.py  (pas de pygame)
-  L'OST (0.13) : le suzerain appelle les troupes de ses tributaires
-  (chiefdom.descendants, a OST_RANGE cases) : candidates, call_block, call
-  (Band.ost : la troupe a rejoindre ; bouton [H] "Ost" de la fiche d'une
-  troupe, orders.labels / hints / perform "honor"), weekly (systems.WEEKLY :
-  marche, join par bands._absorb, _release quand le lien se rompt :
-  villages.send_companies_home), foreign, coming, lines (fiche). Dissoute,
-  chaque compagnie rentre a son village et redevient de son peuple
-  (villages._go_home). L'IA : ai_war._helper / plan_raid ("ost"),
-  start_plan, advance_plans (on attend l'ost) ; ai._ost_villages,
-  _call_ost (les villages tributaires levent a l'appel), _army_ai attend
-  l'ost. Un ordre de marche du joueur tributaire l'en retient (commands).
-
-src/kora/grain.py  (pas de pygame)
-  LE GRAIN DES DISETTES (0.13, piste D de l'argent) : in_dearth
-  (DEARTH_WEEKS), sellers (partenaire, allie, pays ; tresor ; pas en
-  guerre ; relation >= SELL_RELATION), spare (au-dela de KEEP_WEEKS), quote
-  (le meilleur vendeur a portee : MARKUP + SCARCITY x la part prise +
-  WINTER), buy (ordre "grain" ; money.book / earn cle "grain" ; diplo mod
-  "grain"), ai_weekly (systems.WEEKLY : l'IA achete en vraie faim,
-  AI_DEARTH_WEEKS), tip_lines (la tuile GRENIER de l'ecran du village :
-  clic = acheter, render_village / app.village_click "vgrain").
-
-src/kora/casus.py  (pas de pygame)
-  LES CAUSES DE GUERRE (0.14) : _land_claims (state.overlap >= LAND_CELLS),
-  _resource_claims (CLAIM_RES a RES_RADIUS d'un village qui n'en a pas ;
-  _deposits_near memorise), _successions (Tribe.flags["chef_pid"] ; les
-  mariages), _claim -> diplo.set_casus ; LES GUERRES DE SOUMISSION de l'IA :
-  _ai_wars (conquerant : trahit son allie faible, P2 ; les autres avec un
-  motif), _ai_submissions (exiger la soumission quand l'avantage est la).
-  systems.MONTHLY apres diplo.ai_monthly.
-diplo.py, 0.14 : PEACE_PACTS / peace_pact (le commerce n'en est pas : P4),
-  set_casus / casus_of / motive_against (Diplomacy.casus_why), buts et
-  avantage (Diplomacy.goals / scores : declare_war(goal), add_score,
-  score, goal_of, goals_of, submit, goal_done, _submit_verdict ; actions
-  "guerre_pays" et "soumission", carte "exige_soumission"), l'usure des
-  alliances (ALLIANCE_WEAR, alliance_bound, alliance_left,
-  _wear_alliances ; l'IA : AI_ALLY_FRIENDS). chiefdom.village_taken compte
-  le village pris (VILLAGE_SCORE) ; conquer "soumettre" passe par
-  diplo.submit ; ai_choice suit le but.
-
-0.15 : world.cost_pct (la variation douce du cout de marche, COST_VAR_* ;
-  _octave, _lattice, _COST_GRIDS), appliquee par enter_cost_for et
-  path.astar ; sim.walk_line (le survol d'une case). draws.hidden (les
-  savoirs ecartes d'un groupe exclusif et leurs suites) -> layout
-  .set_tree_hidden / tech_world (_TREES), tree_graph.build(hidden).
-  learning._GOOD_RESOURCE / trade_goods_for : les biens qui valent une
-  ressource (conditions "res").
-
-0.16 :
-src/kora/wars.py (pas de pygame) : l'ecran des guerres en donnees : Front
-  (key = grand suzerain ennemi, enemies, since, declared_by, my_side,
-  their_side, my_goals, their_goals, scores, armies, sieges, fights ; score,
-  target), fronts(state, me), others(state, me), score_text.
-src/kora/render_wars.py : l'ecran de l'armee et des guerres (screens
-  "guerres", touches A et W, onglet Guerre : layout.WARS_TAB,
-  render_panels.army_ready / wars_ready / wars_alert) ;
-  wars_hit ; app.wars_click (wpick, wsee, wsite, whex, wact:soumission /
-  treve / fiche).
-orders.attack_preview (la fiche avant l'attaque ; app._attack_preview la
-  garde en cache, render.draw_attack_preview la dessine en dernier) ;
-  ai_war.helpers_at, odds_at (le rapport de force de l'IA, aussi
-  sim._raid_lines), short_of_food, SUPPLY_MARGIN ; bands.weeks_between,
-  food_weeks, WALK_COST ; villages.weeks_home, warn_supply
-  (systems.WEEKLY).
-persist : saves_dir, new_save_path, list_saves, latest_save, trash_save
-  (CORBEILLE), "game_version" dans la sauvegarde ; render_menu :
-  load_layout / load_hit / draw_load (Charger une partie), saved_when,
-  draw_title_backdrop, settings_layout / settings_hit / settings_value /
-  draw_settings ; app.Settings (la fenetre des reglages, commune aux deux
-  menus), title_screen (page "load"), play(..., save_path, director).
-src/kora/music.py (presentation) : Director (update(state | None, dt),
-  set_volume, listening, prefs, stop, heard_volume), wants_war_music ;
-  data/music/casus_bellis.ogg (le morceau et ses points de boucle), fait
-  par tools/boucle_musique.py.
-
-0.17 (l'intendant) : goods.ai_crafts / _keeps_hands (les champs d'abord ;
-  la disette en vue rend les gens de metier), ai._village_ai (AI_FOOD_MARGIN :
-  ni chantier ni levee sans marge), grain.shortfall / PLANNED_MARKUP /
-  PLAN_MARGIN / PLAN_EVERY (le grain d'avance, l'IA et le joueur : tuile
-  GRENIER "Disette en vue").
-
-0.18 : la diplomatie vient de Messagers et serments (tech "messagers",
-  effet "diplomacy" ; diplo.migrate pour les vieilles parties, appele par
-  persist et sim.new_game) ; LA LASSITUDE : diplo.weariness / WEARY_SEASON /
-  WEARY_STEP / WEARY_CAP, _truce_mood (lassitude, LEAD_PER / LEAD_CAP : qui
-  mene la guerre) dans evaluate("treve") ; _long_war (un an : la relation
-  ne filtre plus, ai_monthly et _propose_to_player) -> carte "offre_paix_blanche"
-  (events_data, data {mois}) ; render_wars : "lassitude +N pour une treve".
-  La fiche des savoirs : render_tech.missing_first (ce qui manque d'abord),
-  _more (ce qui deborde est annonce), learning.missing_lines (le survol).
-  La musique part du debut : music.Director joue en flux
-  (pygame.mixer.music ; heard_volume) ; tools/boucle_musique.py ecrit le
-  morceau entier + fondu enchaine et les etiquettes LOOPSTART / LOOPLENGTH
-  (mutagen, outil de preparation).
-
-0.20 (LES NOUVELLES PLANETES ; spec 2026-10-18-nouvelles-planetes-design.txt) :
-src/kora/planets.py (etage 3, pas de pygame) : catalogue (data/planetes/
-  index.json), ids, info, name_of, thumbnail_path, default_id, choose (RANDOM),
-  load (une planete fraiche ; LEGACY = "kora", l'ancienne carte).
-tools/cuire_planetes.py : PLANETS (id, nom, graine), check (le controle),
-  thumbnail, bake ; data/planetes/<id>.json (terrain, rivieres, ressources,
-  cost_pct, atlas, "planet") et <id>.png.
-mapgen : PLANET_WIDTH 1536, _rivers (couche sens | taille << 3), _biomes v2
-  (toundra, savane, jungle, marais, vallees des rivieres), _polar("G"),
-  generate_layers_v2 (LIVING en aires, DEPOSITS en gisements, FISH_COVER),
-  generate_world(..., v2=True).
-world : Terrain TOUNDRA, GLACE, MARAIS, JUNGLE, SAVANE ; rivers, set_rivers,
-  river, river_at, flow_at (le cours), river_pct, direction, step_cost,
-  RIVER_PCT / FORD_PCT / FORD_BIG_PCT, DIRECTION_FR, RIVER_SIZE_FR ;
-  pick_spawn_continents (SPAWN_SEP) ; landmass_grid en cache ; save/load :
-  "rivers", "cost_pct", "planet". path.astar et travel_weeks : le courant.
-resources : 19 ressources, BAKED (ancienne carte), BAKED_V2, REVEALED_BY,
-  hidden_for. goods : bucherons, teinturiers, obsidiennes, ambriers,
-  fondeurs ; FAR_RES. villages : RIVER_FIELDS, RIVER_IRRIGATION, WILD_HERD,
-  herd_mult. peoples : cultures marais, jungle, savane ; MINOR_START_PLANET.
-persist : "map" -> "id", map_id, game_from_json charge la planete de la
-  sauvegarde. session : le salon dit la planete. app : _Worlds.fresh(pid),
-  preview ; render_menu : planet_choices, _draw_planet_pick, planet_lines.
-layout : zoom_scale, max_zoom_for, focus_zoom_for. globe_draw : river_size,
-  RIVER_COLOR / RIVER_TINT, _draw_rivers, _centers_of / _corners_of (plus de
-  maillage precalcule), res_hidden. sim : river_line (le survol).
-0.20.1 : influence.projection : chaque pas par world.river_pct (le courant
-  porte l'influence, une riviere a traverser fait frontiere).
-
-0.19 : learning.status (les prerequis d'abord, meme avec des points ou en
-  cours), learning.kept_points, update_learning (s'arrete sans prerequis) ;
-  music.wants_war_music = une guerre declaree. L'ARMEE ET LES GUERRES :
-  render_wars (ARMY, _army_card, _draw_army, _troops, _where ; boutons
-  avillage / asize / araise / asee / adissolve, wlevy) ; app.open_war_room
-  (A, W), wars_click -> army_click ; layout.WARS_TAB ("Guerre") a la place
-  d'ARMY_TAB (supprime), render_panels.draw_army supprime.
-
-src/kora/draws.py  (pas de pygame)
-  Les TIRAGES des savoirs (Tech.chance, world, group ; tech.GROUPS) :
-  set_seed / seed_of / seed_from (state.research["seed"] ; app._fresh_seed
-  et session pour une partie neuve), world_draw (le monde ; groupes
-  exclusifs), in_world, comes_to (par peuple), why_absent / absent /
-  short_why (et ce qui en depend : learning.status "absent"), revealed
-  (Tribe.revealed), chance_text, lines (fiche), monthly (systems.MONTHLY :
-  le journal annonce le sort). Hasard propre (sha512 de la graine et des
-  noms), jamais state.rng.
-
-src/kora/laws.py  (pas de pygame)
-  Les LOIS du pays : all_laws (construites a la demande : money et numbers
-  s'importent en cercle), law, known / available, get (Tribe.laws ; la
-  base : Tribe.base ; vieille partie : budget["commerce"]), block, enact
-  (ordre "law" ; la base passe par numbers.choose), option_name. Deux lois :
-  "paiement" (vivres / argent : money.pays_in_money) et "base".
-
-src/kora/memory.py  (pas de pygame)
-  La MEMOIRE DU BROUILLARD : vision.PlayerVision.sites (id -> [q, r,
-  genre, peuple, palissade, suzerain]), .zones ((col, ligne) -> [peuple,
-  influence]), .mem_gen. update (sim._week apres la vue, new_game, persist
-  au chargement : ce que chaque joueur voit), seed (vieille partie : ce
-  qu'il a explore), site_at. Lu par render.draw_sites / draw_polity_labels,
-  globe_draw.sync_zones, sim.hex_inspect, app._country_at. Sauve par
-  persist (_memory_to_json, cle "memory", et dans chaque pov).
-
-src/kora/learning.py  (pas de pygame)
-  Comment un peuple apprend : cond_progress, status, available, choose,
-  auto_choose, learn_rate, weeks_left, update_practice (le vecu),
-  update_learning (la semaine), detail_lines (la fiche d'un savoir).
-
-src/kora/layout.py
-  Les mises en page PURES de l'interface (sans dessin) : barre du haut,
-  menu, cartes de bande, nouvelles, onglets et panneaux lateraux
-  (side_layout / side_hit), toile de l'arbre (tech_world, cam_on, zoom_at,
-  pan, tech_panel_layout), onglet des nombres, projection hex / pixel.
-  render.py les reexporte.
-
-src/kora/clock.py
-  Annee, semaine 1-52, pause, vitesse 1 a 5.
-  Saison calendaire = tranches de 13 semaines.
-  ticks_per_second : 2, 4, 6, 8, 10.
-  La saison LOCALE d'un hex n'est pas ici : world.hex_season.
-
-src/kora/world.py
-  Grille odd-r, wrap_x, terrains, couts de marche, nourriture,
-  epuisement, influence, propagation de saison case par case.
-  Coordonnees : Hex(q, r) axial en public.
-  Stockage interne : (col, row) offset.
-  Toujours passer par canonicalize / neighbors / distance :
-  ne pas additionner col a la main si wrap_x.
-  pick_spawn_hexes(prefs, min_forage) : un depart par tribu, biome
-  voulu + nourriture minimale (spawn_forage), relache si besoin.
-
-src/kora/mapgen.py
-  Generation (numpy) 768 x 384 : plaques, relief, climat, bassins
-  versants, biomes. ~15 s. Le jeu charge data/kora_map.json.
-  Recuire la carte (et l'atlas) :
-    .venv/Scripts/python.exe -m src.kora.mapgen 42
-  Jamais depuis la boucle de jeu.
-
-src/kora/path.py
-  A* + travel_weeks.
-  MOVE_POINTS_PER_WEEK = 40.
-  Cout d'entree dans world.MOVE_COST (plaine 10 => 4 hex/semaine).
-
-src/kora/sim.py
-  LA SEMAINE DU MONDE : new_game, tick, _week (dans l'ordre : saisons,
-  marche, raids, collecte, puis systems.MONTHLY chaque mois), snapshot /
-  _restore, consume_ticks.
-  Economie : FAMINE_RATE, GROWTH_RATE en tete ; collect_food,
-  update_exhaustion, update_population, update_prestige.
-  Les outils des bandes : bands.py ; les combats (resolve_raids,
-  band_quality, band_force, side_force, defense_force, _retreat,
-  after_battle) : battle.py ; local_winter_weeks : world.py.
-  Lecture : band_summary / band_lines (fiche).
-  IDs : PLAYER_TRIBE_ID=1, AI_STEPPE=2, AI_FOREST=3, AI_COAST=4.
-  Snapshot interne si un tick explose : pause + last_error,
-  etat d'avant le tick restaure.
-  hex_inspect : fiche d'une case selon brouillard.
-  GameLog + seen_enemy_tribes : evenements joueur.
-
-src/kora/tech.py
-  L'ARBRE : TECHS (ERAS = les ages d'un seul arbre vertical, colonne =
-  branche, noms de colonnes par age), Bonuses (somme des effets d'une
-  tribu, gardee pendant le tick : begin_tick / invalidate / end_tick ;
-  sources : savoirs, bonus de depart, systems.EFFECT_FIELDS), spec_effect,
-  effect_lines (+ systems.TECH_LINES), grant. Pirogue et troupeau posent
-  tribe.cabotage / tribe.troupeau. Ce qui fait avancer un savoir :
-  learning.py.
-
-src/kora/peoples.py
-  Cultures (depart, gout de l'IA, audace, savoirs, syllabes des noms),
-  couleurs, noms, petits peuples (pick_minor_spots, MINOR_*),
-  MAX_LIVING_TRIBES (48). Identifiants 1-4 : culture d'origine (LEGACY_*).
-  Civilisation : civ_of (lignee d'origine), civ_name, civ_villages,
-  kin_color (nuance de la couleur de la civilisation).
-
-src/kora/influence.py
-  Zone d'influence : note_presence (chaque semaine), update (chaque
-  mois : usure x0,94, disques de presence, ancrages des lieux),
-  overlaps (cases partagees), lecture : in_zone, in_core, is_home,
-  foreign_zone, zone_lines. ZONE_MIN 0,12 / CORE_MIN 0,4.
-
-src/kora/sites.py
-  Lieux : Site (cache, campement, village). make_camp, deposit,
-  withdraw, update (visites, pourriture, caches trouvees ; un campement
-  sans bande est leve : _strike_camp, sa reserve devient une cache si la
-  place le permet ; appelle villages.update), *_block (raisons).
-
-src/kora/villages.py
-  Village = bande installee (Band.village) + Site "village" : champs
-  (choose_fields), sow / harvest aux saisons locales (bras : hands_mult),
-  semences, sol, historique des recoltes, pillage, eat_seed, lines.
-  Fondation : found_block, found_preview (fenetre), propose_name,
-  found(oath=, name_=), premier village = age des villages.
-  Serments (OATHS), batiments (BUILDINGS : un chantier a la fois, places
-  selon les habitants ; site.data "buildings" / "build" ; la palissade
-  est le batiment "palissade", anciennes saves migrees par _migrate).
-  Effets lus ailleurs : store_weeks, rot_mult, growth_mult, food_mult,
-  yield_mult, defense_parts, loyalty_parts, winter_prestige,
-  influence_radius, watch_spots.
-  Troupes (Band.kind == "armee", Band.units, Band.homebound) : raise_army
-  (LEVIES, type d'unite ; rejoint la troupe du village si elle est la),
-  companies_of / army_cap (compagnies par village), detach, dissolve
-  (chaque compagnie rentre a pied a son village, _arrive), disband (au
-  village), reequip, desertions, troupe sans village = clan ;
-  army_quality / army_morale (Maison des guerriers, au prorata).
-  nearest_village (attachement des clans proches).
-  land_profile (terrains et ressources des terres, pour les savoirs),
-  croissance qui suit les vivres a venir (food_outlook, granary_growth,
-  note_forage : collecte moyenne par saison), rank_name (hameau,
-  village, gros village).
-  LA MILICE (0.13) : militia (chaque homme dans sa categorie selon sa vie :
-  chasseurs -> tir, pisteurs, melee ; champs et metiers -> melee, tir,
-  garde ; HUNTER_SHOT, HUNTER_SCOUT, WORKER_SHOT, FARMER_GUARD,
-  WARRIORS_GUARD ; ceux deja partis comptent : _away), levy_size(band,
-  share, state) (jamais plus de LEVY_MAX des hommes sous les armes),
-  levy_plan / _split_by (la meme part de chaque categorie : une compagnie
-  par categorie), militia_text, plan_text ; companies_of compte les TROUPES
-  du village (army_cap) ; _home_army (une levee rejoint la troupe au
-  village) ; wall_parts / defense_parts(band, by) ; send_companies_home,
-  _go_home.
-
-src/kora/goods.py
-  Metiers (CRAFTS : potiers, sauniers, tisserands, pelletiers, tailleurs,
-  pecheurs ; une ressource des terres + un savoir ; Craft.special :
-  "calcul" pour les calculateurs, des points et pas de bien, "argent" pour
-  les mineurs, des sicles au tresor), equipes par village
-  (site.data "teams" ; add_block, set_teams, _fit_teams), production
-  (output, Ateliers x1,25, update chaque semaine), reserve du PEUPLE
-  (Tribe.goods) et consommation, effets quand le peuple est pourvu
-  (rot_mult, store_weeks, winter_famine, stability_parts, yield_mult,
-  army_mult, build_mult, forage_mult). Marche : price / price_word.
-  Routes commerciales (diplo.TradeRoute dans Diplomacy.routes) :
-  open_block / open_route / set_level / close_route, convoys, preview,
-  _flow, _run_pair (troc, solde en vivres), monthly (routes sans accord
-  tombees, IA, comptes Tribe.trade "month"/"hist", _reveal de la carte),
-  summary / route_text. IA : ai_crafts, ai_routes.
-
-Arbre des savoirs (toile)
-  render.py : tech_world (la toile a l'echelle 1), clamp_cam / cam_on /
-  zoom_at / pan / to_screen (camera ui["tech_cam"]), tech_panel_layout
-  (vue, noeuds visibles, mini-carte, boutons) ; render_tech.py : draw
-  (dessin selon le zoom), focus_cam, _minimap ; app.py : molette, glisser
-  (tech_drag, tech_press), fleches, + et -.
-
-Mode de carte Commerce ([X]) : render.draw_trade_routes, draw_trade_marks,
-  _draw_reach, _draw_trade_legend ; globe_draw Planet.trade_on (terrain
-  efface).
-
-src/kora/render_trade.py
-  L'ecran Commerce : trade_layout / trade_hit (purs), draw_trade (marche,
-  graphe, routes, ouvrir une route, chez le partenaire, proposer).
-
-src/kora/units.py
-  Types d'unites (UNITS : role, age, savoir, attaque, tenue, tir,
-  poursuite, moral, foret, exposition), best / available / outdated par
-  role, piles : normalize (suit Band.population), remove (pertes sur les
-  exposes), add (une compagnie par levee), profile, lines.
-
-src/kora/battle.py
-  La bataille : _side (combattants, valeur, abri du defenseur, moral de
-  depart et ses raisons), simulate (passes d'armes, deroute ou retraite,
-  hasard propre au combat), pursuit_rate (terrain, poursuivant,
-  encerclement), fight (applique : morts, repli, poursuite, aneanti,
-  pillage, butin ; rend Result et le rapport), odds (fiche de bande).
-  ROUNDS, KILL, ROUT, SHOCK, PRESSURE, *_MORALE, COVER, ESCAPE,
-  WIPE_MIN, ARMY_BROKEN, VILLAGE_SHARE en tete.
-
-src/kora/chiefs.py
-  Chefs de bande (Person), traits (TRAITS, trait_lines), chef de la
-  tribu (Tribe.chief_band), attachement (loyalty_parts / monthly),
-  obeys / helps, honor, set_heir, move_chief, secede, successions.
-  Anciens (Band.notables : chefs des clans reunis ; add_notable,
-  on_merge, on_split, leader_dies, promote). Apres le premier village
-  (Tribe.settled_at) : independance des clans nomades (Band.autonomy,
-  AUTONOMY_*, autonomy_rate, _grow_autonomy, emancipate) ; a 100, secede
-  (independence=True) fonde un peuple de la meme civilisation (Tribe.civ ;
-  culture "souche" pour le joueur) ; le monde plein, il attend.
-
-src/kora/diplo.py
-  Contacts, relations (Mod + raisons du moment), pactes (treve,
-  alliance, tribut), evaluate / perform (propositions et raisons),
-  invite (debaucher un clan), diffusion des savoirs (teachers,
-  diffusion_bonus), IA diplomatique (ai_monthly, propositions au
-  joueur par evenement), on_fight (raid, trahison).
-
-src/kora/events.py, events_data.py
-  Moteur d'evenements (conditions, effets, issues, suites, cartes du
-  joueur, echeances) et les evenements en donnees. check / apply lisent
-  des tables : _TRIBE_CONDITIONS, _BAND_CONDITIONS, _TRIBE_EFFECTS,
-  _BAND_EFFECTS (fonctions (state, inst, tribe, band, *args)) et le
-  vocabulaire des systemes (vocabulary : systems.EVENT_VOCABULARY).
-  hook(state, nom, ...) : crochets de la simulation.
-
-src/kora/resources.py
-  Ressources du pays : NAMES, LABELS, COVER, derive_silver, encode /
-  decode, richness (la cuisson des couches : mapgen.generate_layers). En jeu : world.resource,
-  world.resources_near, world.resource_lines, world._rich.
-
-src/kora/orders.py
-  Ordres du joueur a une bande : band_actions (raison si impossible),
-  labels, perform. Un clan indocile n'obeit plus. Troupes : _army_actions
-  (Rentrer, Rappeler). "village" ouvre la fondation ou l'ecran du village
-  (app) ; "leave" = quitter, depuis l'ecran du village.
-
-src/kora/log.py
-  Journal 120 lignes (LOG_CAP), filtres (dont Peuples = POLITIQUE),
-  libelles FR terrain/saison.
-  Pas de pygame.
-
-src/kora/vision.py
-  Brouillard JOUEUR seulement. Rayon 8 (tech.BASE_VISION).
-  explored / visible, et la memoire (sites, zones, mem_gen : memory.py).
-  La vue est PARTAGEE (sharers : systems.SIGHT) avec le suzerain, les
-  tributaires, les confederes.
-  L'IA n'appelle pas ce module.
-
-src/kora/ai.py
-  decide_ai. Ignore les bandes du joueur qui obeissent (mene ses clans
-  indociles, sans raid). Grille de voisinage (sim.bands_near) et forces
-  memorisees le temps des decisions. Campements, villages (fonder avec
-  le serment de sa culture, batir au printemps sur le surplus, lever une
-  troupe si menace ou proie, colons), troupes (_army_ai : defendre,
-  raider, rentrer), retour des clans qui se detachent.
-  Ne triche pas sur les stats : elle lit les vrais stocks
-  et food_production. Elle voit toutes les positions.
-  Chaque bande decide 1 semaine sur 4, decalee selon son id.
-  Scinde (AI_SPLIT_POP), campe si bien nourrie (AI_CONTENT),
-  n'arrete pas sa marche pres d'une bande plus forte.
-
-src/kora/ai_war.py
-  Quand l'IA attaque, et avec qui. Forces comptees sur le lieu du
-  combat (force_at / wins, marge AI_RAID_EDGE). Trop faible seule :
-  fusion avec une soeur proche ou appel d'une soeur (plan_raid,
-  start_plan, advance_plans). recheck_hunts annule un raid devenu
-  perdant. Band.intent_prey / intent_until : plan en cours.
-
-src/kora/records.py  (pas de pygame)
-  Les FICHES : to_json / from_json / copy d'un dataclass d'apres le TYPE de
-  ses champs (types.py : Tribe, Band ; places.Site, places.VillageData ;
-  un dataclass dans un autre : fiche imbriquee ; COMPACT : seulement ce
-  qui differe du defaut). Codecs de Hex, Order, Person (register) ;
-  metadata d'un champ : "round", "decode", "save", "copy" ; json_copy. persist.py et sim.snapshot
-  s'en servent : un champ nouveau ne s'ecrit qu'une fois, dans types.py.
-
-src/kora/systems.py  (pas de pygame)
-  LE TABLEAU DES SYSTEMES : MONTHLY (le mois du monde, dans l'ordre),
-  WEEKLY (la semaine, apres les marches : ost, siege, grain),
-  STABILITY, ARMY_MORALE, FLEE, BUILD_SPEED, CRAFT_OUTPUT, VILLAGE_DEFENSE,
-  VILLAGE_FOOD (ce que chaque systeme ajoute a ces calculs), EFFECT_FIELDS / EFFECT_SPECS (effets comme des savoirs,
-  lus par tech.bonuses et tech.spec_effect), EVENT_VOCABULARY (modules qui
-  ajoutent conditions et effets aux evenements : events.vocabulary).
-  fn("module.fonction"), run, parts, total, apply_mult.
-
-src/kora/screens.py
-  Les GRANDS ECRANS (village, commerce, tresor, pays) : SCREENS (cle de ui,
-  mise en page du renderer, dessin, visee) ; open / toggle / close_all /
-  opened / under_mouse / hit / draw. Un seul ouvert a la fois ; app.play y
-  route les clics (screen_clicks), render.py y dessine.
-
-src/kora/persist.py
-  saves/kora.json. Version = 1 (champs nouveaux : defaut au chargement).
-  Tribus, bandes, lieux : records.py.
-  Le rapport de bataille (FightMark.report) est un dict JSON tel quel.
-  Refuse de charger si largeur / hauteur / wrap_x different.
-  Chemin : %APPDATA%\Kora\saves si frozen, sinon racine du depot.
-
-src/kora/look.py
-  Couleurs biome x saison. La COULEUR DES PAYS : country_color (un
-  tributaire : nuance claire de son grand suzerain, VASSAL_OWN /
-  VASSAL_LIGHT ; un confedere : nuance du fondateur ; libre : la sienne),
-  realm_of, members_of, great_realms (la carte des suzerains), seen_color
-  (un lieu du brouillard, tel qu'on l'a vu) ; cache sur les liens
-  (_ties_key). L'inspect (texte) est dans sim/render.
-
-src/kora/atlas.py
-  Noms au dezoom : continents (sans les calottes), banquises,
-  bassins du grand ocean, mers fermees. Precalcules dans le JSON
-  de la carte (world.atlas) ; calcules a la volee sinon (tests).
-
-src/kora/globe.py
-  Projection sphere. Clic -> hex (lonlat_to_colrow : case
-  hexagonale la plus proche, apres warp), hex -> pixel ecran.
-  warp : le TERRAIN DEFORME (bruit doux a deux echelles, WARP_SCALES,
-  periodique autour du monde, borne a WARP_MAX case) ; le meme pour le
-  dessin et le clic.
-  wrap sim = cylindre hex ; vue = sphere. Les deux se parlent
-  ici, pas dans sim.
-
-src/kora/globe_draw.py
-  Planet : dessin numpy d'un monde. Loin : lancer de rayons par
-  pixel (meme regle de case que le clic, globe.warp). Pres (hexagone >=
-  POLY_HEX_PX a l'ecran) : polygones calcules en bloc, bords en trois et
-  points deplaces (_warped). sync_zones : couleurs des pays (look),
-  realm_on (la carte des suzerains), memoire du brouillard (memory.py).
-  Brouillard (grille 0/1/2), saisons par rangee, maillage.
-
-src/kora/render.py
-  Dessin pygame : sphere, HUD, menu Echap, bandes (couronne du chef,
-  anneau des clans indociles, villages en maisons), lieux (campements,
-  caches, champs), modes de carte (Relief / Influence / Suzerains / Ressources / Commerce),
-  onglets Savoirs / Tribu / Peuples / Journal, toasts, inspect, fiche
-  de bande (10 boutons, raison au survol).
-  draw_savoirs : arbre, fiche du savoir choisi, bouton Apprendre
-  (tech_panel_layout donne les cases, testable sans fenetre).
-  La planete est peinte dans un calque, repeint seulement si la
-  vue, le brouillard ou les saisons changent (image rapide en
-  mouvement, nette a l'arret). Voir globe_draw.py.
-  band_screen_positions : position ecran des bandes (empilees
-  decalees), partagee avec le clic dans app.py.
-
-src/kora/render_tech.py
-  Ecran des savoirs (a la Victoria 3) : cadre dore, bannieres d'age
-  (chiffre romain), cartes a medaillon dessine par branche (_glyph),
-  liens en courbes, recherche en cours, fiche en deux colonnes, bulle
-  au survol. Mise en page : render.tech_panel_layout (testable).
-
-src/kora/render_panels.py
-  Panneaux Tribu (chef, clans, attachement et ses raisons) et Peuples
-  (liste, fiche, jauge de relation, raisons, actions avec reponse
-  probable), cartes d'evenements et fenetre de choix.
-
-src/kora/render_panels.py (suite)
-  army_ready (l'onglet Guerre des le premier village) ; le panneau Armee
-  est devenu le volet de l'armee de l'ecran des guerres (render_wars, 0.19).
-
-src/kora/render_village.py
-  Meme style que render_tech : fenetre "Fonder un village" (le lieu, ce
-  qui change, 4 serments, bandeau du premier village), ecran du village
-  (tuiles, petite carte des champs, graphe des recoltes, cartes de
-  batiments, "le village aujourd'hui", levee de troupes), rapport de
-  bataille (deux camps, graphe du moral par passe). *_layout et *_hit
-  sont purs (tests sans fenetre).
-
-src/kora/render_menu.py
-  Avant la partie : menu de demarrage (planete qui tourne, calque et
-  brouillard A PART de celui de la partie), creation du peuple (nom,
-  couleur, 2 bonus parmi tech.START_BONUSES ; mode "host"/"join" : l'adresse
-  de l'hote), menu du multijoueur, SALON (4 places, prets, discussion) ;
-  en partie : draw_mp_overlay (bandeau des joueurs, discussion).
-
-src/kora/theme.py
-  LA CHARTE EN CODE (docs/charte-graphique.txt) : couleurs (classe C : nuit,
-  cuir, pierre, os, ocre, braise, savoir...), theme.font(role) (ROLES :
-  titre, h1..h3, texte, petit, mini, recit, chiffre, etiquette...),
-  icon / medallion (SVG de data/icons, teintes), panel (peau, pierre,
-  carte, creux, bandeau, infobulle, toast : pierre taillee a grain),
-  button (principal / second / discret), bar, chip, tooltip, veil, glow,
-  pulse, dotted, title, wrap, fit. data_dir() trouve data/ dans l'exe.
-  theme.reset() entre deux tests (conftest). Jamais de couleur ni de
-  police en dur dans un render*.py : tout passe par ici.
-
-src/kora/francais.py  (pas de pygame)
-  convert(texte) : accentue un texte ecrit sans accents (dictionnaire MOTS,
-  PHRASES, regles du « a » / « à », exceptions APRES). Sert a
-  tools/accents.py et a persist (les vieux journaux s'accentuent au
-  chargement).
-
-src/kora/situations.py  (pas de pygame)
-  Crises et conjonctures (spec 2026-10-02-profondeur-epoques-situations).
-  Situation (uid, sid, lieu centre/rayon, etape, jauge, participants avec
-  score et actions faites, issue), Action, Spec (candidates = le
-  contexte, chance, month, act, end, start, goal, fail) ; les 12 dans
-  SPECS ; EXTRA_EFFECTS (actions, prix, sequelles). monthly (appele par
-  sim.tick apres events.monthly) : naissances, mois, IA (_ai), fins
-  (_finish), effets (_sync_effects -> Tribe.situation_effects, lus par
-  tech.bonuses comme des savoirs : tech.situation_effect). act /
-  action_block (ordre "situation" de commands.py). Hasard : _rand (tire de
-  la semaine et de cles, jamais story_rng). to_json / from_json (persist),
-  copy_all (sim.snapshot).
-
-src/kora/population.py  (pas de pygame)
-  Qui sont les gens d'une bande : Band.demo (parts enfants / hommes /
-  femmes / anciens ; vide = STRUCTURE) et Band.wounded. counts, fit_men,
-  men_force (sans arrondi : les forces), workers, labor_pop (les bras, en
-  population equivalente), levable (LEVY_MAX des hommes valides) ; grow,
-  add, take_men, kill (poids : FAMINE_WEIGHTS), kill_fighters, wound,
-  lose_wounded, mix, split_wounded ; monthly (structure, guerison).
-  Qui fait quoi : occupations (chasse, cueillette, champs, metiers,
-  soldats ; CRAFT_SEX : le sexe de chaque metier), free_for_craft (lu par
-  goods.add_block), occupation_lines.
-
-src/kora/chiefdom.py  (pas de pygame)
-  La chefferie : Tribe.levy_rate / granary / families / feast_until.
-  take_from_harvest (appele par villages.harvest), granary_pay (troupes,
-  monument), feast, set_rate, set_charge, charge_power / _effect
-  (war_chief_bonus, trade_mult, craft_mult), stability_parts, army_morale ;
-  LE PAYS : lords_of, top_lord, descendants, followers (que la diplomatie
-  engage : confederes et tributaires), country (le grand suzerain, sa
-  confederation, tous les tributaires : guerre et renforts), sight_partners
-  (systems.SIGHT : la vue partagee).
-  tributaires : pacte diplo "vassal" (payer = le tributaire), overlord_of,
-  vassals_of, make_vassal, village_taken (battle._end) -> carte
-  "conquete" (joueur) ou ai_choice, conquer (soumettre / piller), unrest,
-  _pay_vassal, _revolt, village_secedes, overthrow (revolte ratee d'un
-  peuple a un seul village) ; kin_villages / kin_of (Villages freres) ;
-  split_extra_villages (un village par peuple : les autres deviennent des
-  freres tributaires) ; monthly (familles, grenier, tribut, IA).
-
-src/kora/numbers.py  (pas de pygame)
-  Les nombres : BASES (10, 12, 20, 60 et leurs effets), OPS (+ - x / et
-  fractions : cout en points, effet, recit). Tribe.base / base_changed /
-  base_reform_until / operations / math_progress / math_effects. choose /
-  choose_block (le premier choix ; puis une reforme : REFORM_PRESTIGE,
-  REFORM_WEEKS sans l'avantage, REFORM_EVERY), ai_base (selon le pays),
-  points (equipes de calculateurs x savoirs x gages), monthly (l'addition
-  au Comptage, l'IA choisit, les points trouvent l'operation suivante,
-  rappel au joueur), _sync -> Tribe.math_effects (lus par tech.bonuses :
-  tech.math_effect), page (ce que montre l'onglet), lines.
-
-src/kora/money.py  (pas de pygame)
-  L'argent : Tribe.money (sicles), budget en CURSEURS (impot 0..TAX_MAX
-  points ; solde, gages, dons, chantiers 0..PAY_MAX du tarif, eff : moitie
-  au-dela de 100 % ; vieilles parties : budget() lit "tax" et les
-  interrupteurs ; etat_* : payee / impayee), COSTS, chantier_cost,
-  build_speed (systems.BUILD_SPEED -> villages._advance_works,
-  VillageData.build_extra), money_month (le compte du
-  mois : book / earn), money_hist (24 mois). has_money, set_budget
-  (ordre "budget"), tax_income, solde_cost, gage_cost, don_cost, reserve,
-  stability_parts (impot, presents ; lu par villages.stability_parts),
-  wage_mult (lu par goods.output, numbers.points), solde_morale (lu par
-  chiefdom.army_morale), flee_mult (battle._flee) ; commerce en argent :
-  pays_in_money / pay_route (goods._run_pair) ; peages : toll_owner,
-  collect_tolls (apres les routes, goods.monthly) ; monthly (impot,
-  tribut des tributaires, solde, gages, presents, histoire ; IA : _ai).
-  Les filons d'argent : resources.derive_silver (tire du relief au
-  chargement, world.set_resources) ; les mineurs vont a goods.FAR_RES cases.
-
-src/kora/render_tech.py (la recherche)
-  L'arbre : cartes larges des grands tournants (_turning_card : etat,
-  presence, berceau), pastilles des savoirs tires (_chance_pill), etat
-  "absent" ; la fiche (learning.detail_lines : sections "Il faut le sort",
-  "Il faut qu'il soit arrive chez vous", lignes "info"). layout.tech_world :
-  rangees des tournants (TREE_TURN_ROW, Tech.span), sous-rangees (slot),
-  heights, links (tree_graph.py : le graphe en couches, points de passage,
-  ordre qui croise le moins, positions, courbes) ; render_tech._links (couleurs selon l'etat).
-
-src/kora/tree_graph.py (presentation, pur)
-  Le placement de l'arbre des savoirs comme un graphe (Sugiyama) : build
-  (couches, points de passage, _min_crossings, _positions), crossings,
-  geometry (rectangles, rangees, sections, liens : _routes / _curve).
-  (Pas d'eclairage de la chaine au survol : il n'en veut pas, 0.10.3.)
-  Calcule une fois (layout.tech_world le garde). La carte des tournants : render.shown_turning /
-  _draw_turning_legend (turning_hits, turning_pick ; app : touche I, clic
-  de legende), globe_draw.turn_pick, look.turning_color.
-
-src/kora/render_numbers.py
-  Onglet « Les nombres » de l'ecran des savoirs : page_layout / items
-  (purs ; render.tech_panel_layout(tab="nombres") les met dans
-  side_layout : "nlaws" (la base est une loi : il ouvre l'ecran du pays),
-  "ttab:arbre", "ttab:nombres"), draw (la base en resume, les calculateurs,
-  les operations).
-
-src/kora/render_treasury.py
-  L'ecran du Tresor : treasury_layout / treasury_hit (purs ; les curseurs :
-  "mslide:<cle>", "mminus:<cle>", "mplus:<cle>" ; "mclose"), slider_span /
-  slider_value / slider_step (purs), draw_treasury (tuiles, compte du mois,
-  budget en curseurs, peages, l'argent ailleurs, graphe). app.py :
-  ui["treasury_open"], treasury_click, set_slider, slider_drag (glisser :
-  _on_event), ordre "budget", touche G, onglet "tresor".
-
-src/kora/render_country.py
-  L'ecran du PAYS, onglet Lois : country_layout / country_hit (purs ;
-  "law:<loi>:<option>", "ltab:<onglet>", "lclose"), draw_country (le pays :
-  suzerain, tributaires, confederation ; une rangee par loi, ses options
-  en cartes). app.py : ui["country_open"], ui["law_confirm"] (une reforme
-  des nombres : deux clics), country_click (ordre "law"), touche N,
-  onglet "pays" (layout.COUNTRY_TAB, avec la premiere loi possible).
-
-src/kora/production.py  (pas de pygame)
-  Le savoir-faire des villages : Tribe.efficiency (genre -> 1,0..EFF_MAX ;
-  collecte, agriculture, peche, et chaque metier), monte chaque mois
-  (monthly, appele par sim.tick apres goods.monthly) quand il faut produire
-  plus (food_pressure, craft_pressure, demand) ; of / craft_kind / adjust ;
-  lu par goods.output, villages.yield_mult, villages.food_mult. Les mois de
-  surproduction par bien (Tribe.glut, glutted) : GLUT_RISK -> le risque,
-  GLUT_CRISIS -> situations.Surproduction. lines() pour l'ecran.
-
-src/kora/render_battle.py
-  La bataille en cours du joueur : draw (la dalle : camps, morts, blesses,
-  moral, general, fortune, Se replier / Voir ; renderer.battle_hits),
-  hit, draw_on_map (epees qui battent).
-
-src/kora/render_situations.py
-  draw_banner (dalles sous la barre du haut, jauge en anneau ; uid ->
-  rect dans renderer.situation_hits), draw_window (la fenetre ;
-  window_layout / window_hit purs, renderer.situation_window), draw_on_map
-  (cercle de points et medaillon au lieu). app.py : ui["situation_open"],
-  open_situation (pause en solo) / close_situation / situation_click.
-
-src/kora/commands.py  (pas de pygame)
-  Le canal des ordres : [peuple, genre, args...] -> apply() (verifie que
-  le joueur commande ce qui est a lui). Tout ce que l'interface change a
-  la partie passe par la (app.issue). Un nouveau bouton qui modifie la
-  partie = un nouveau genre d'ordre ICI, sinon le multijoueur diverge.
-
-src/kora/net.py  (pas de pygame)
-  Connexions TCP : un message JSON par ligne, un fil de lecture et un
-  d'ecriture par connexion ; pack/unpack (zlib) ; Listener, connect,
-  parse_address, local_addresses. Port 45170 (KORA_PORT).
-
-src/kora/session.py  (pas de pygame)
-  HostSession / ClientSession : salon (Seat, places 1-4, prets, reprise
-  par nom), lancement (la partie en texte, relue par tous), lockstep
-  ("cmds" puis "tick", LAG, CATCH_UP), sync_digest et recopie ("start"),
-  "lost", pause/vitesse, discussion, depart/retour, run_step (le meme
-  code chez l'hote et chez l'ami).
-
-src/kora/app.py
-  run() : menu de demarrage (title_screen) -> _multiplayer (salon) ->
-  play(renderer, clock, boot, mp) -> menu. play cree une partie a l'ecran,
-  la classe Play : son etat dans self (camera, selection, panneaux,
-  fenetres, nouvelles), une methode par chose a faire (issue, toast,
-  band_action, open_village, village_click, trade_click, treasury_click,
-  side_click...) ; run() la boucle 60 fps, _on_event un evenement,
-  _on_key le clavier, _on_click la souris, _frame une image (le temps ou
-  l'hote, les nouvelles, le survol, le dessin). Autosave 8 semaines (en
-  reseau : l'hote seul, kora-multi.json), ordres par issue() (commands.py).
-  En reseau : mp.pump (le temps de l'hote), resultats des ordres, notes,
-  partie recopiee, Entree = discussion ; les cartes ne mettent pas en
-  pause.
-  T savoirs, B tribu, P peuples, J journal, Z zones, R ressources,
-  E evenement, S scinder, F reunir (troupe : rentrer), C camper,
-  K deposer, H honorer, V fonder / gerer le village, L lever une troupe
-  (troupe : dissoudre), S (troupe : detacher), A panneau Armee, Tab bande
-  suivante (saute les villages), Maj+clic allie = rejoindre. Un clic sur
-  un de vos villages ouvre son ecran (plus de fiche de bande).
-  Raider un peuple en paix, abandonner un village : deux clics.
-  Ouvrir un evenement ou la fenetre de fondation met en pause (reprise
-  a la fermeture) ; l'ecran du village, non.
-  gc.freeze() apres chargement (_settle_memory) : plus de saccade du
-  ramasse-miettes sur les ~3 millions d'objets du monde.
-
-
-4. UNE FRAME, UN TICK
----------------------
-
-Frame (app.play, ~60 fois par seconde) :
-  1. evenements pygame (ordres -> issue(), pause, zoom, orbite, menu)
-  2. solo : si pas pause / pas menu / joueur vivant,
-       consume_ticks  (peut appeler tick 0 ou 1 fois par frame)
-     reseau : mp.pump(dt) (l'hote annonce les semaines ; l'ami les
-       applique, au plus CATCH_UP par image)
-  3. renderer.draw (+ draw_mp_overlay en reseau)
-  4. flip
-
-Un tick = une semaine. Ordre DANS tick() — ne pas le reordonner
-sans mettre a jour les tests et cette doc :
-
-  1. clock.advance_week
-  2. apply_season_spread     (saison locale, par rangees)
-  3. apply_movement          (consomme 60 points de marche)
-  4. resolve_joins           (allie rejoint = fusion)
-  5. tech.update_practice    (vecu : terrains, hiver, rivage vu)
-  6. prune_fight_marks
-  7. resolve_raids           (meme hex, tribus differentes ; battle.py)
-  8. update_exhaustion       (pression de la semaine precedente)
-  9. collect_food            (collecte rayon 2, conso, famine)
- 10. remove_dead_bands
- 11. sites.update            (lieux ; villages : semailles, recolte,
-                             chantiers, troupes, tours de guet)
- 12. toutes les 4 semaines : update_population
- 13. update_influence        (presence ; zone mise a jour chaque mois)
- 14. chaque mois : diplo.monthly, goods.monthly (echanges),
-     chiefs.monthly, diplo.ai_monthly, events.monthly
- 15. events.weekly           (suites, echeances, drapeaux)
- 16. update_prestige         (+ hivers traverses)
- 17. tech.update_learning    (avancement, l'IA choisit)
- 18. recompute_vision + ennemis apercus
- 19. decide_ai               (ordres pour la semaine SUIVANTE)
-
-Les ordres joueur (set_goto / set_march_to_band) s'appliquent
-tout de suite, meme en pause. Ils ne passent pas par decide_ai.
+ETAGE 1  le temps, les fiches
+
+  clock.py
+    L'HORLOGE de la partie : l'annee, la semaine (1 a 52), la pause et la
+    vitesse (1 a 5 : 2, 4, 6, 8 ou 10 semaines par seconde, ticks_per_second).
+    classes : Clock
+
+  log.py
+    LE JOURNAL du joueur : des lignes datees (annee, semaine), d'un genre
+    (LogKind : combat, survie, saison, decouverte, politique - "Peuples" a
+    l'ecran), avec la case ou elles se passent (un clic y emmene la camera).
+    classes : LogKind, LogEntry, GameLog
+    fonctions : season_fr, terrain_fr
+    constantes : LOG_CAP, FILTER_ALL, FILTERS
+
+  resources.py
+    Ressources du pays : des couches continues sur toute la planete.
+    fonctions : hidden_for, level_word, derive_silver, encode, decode,
+      richness
+    constantes : RESOURCES, NAMES, BAKED, BAKED_V2, REVEALED_BY, LABELS,
+      KINDS, GAME, PLANTS, PRESENT, PRESENT_BYTE, RICH_GAME, RICH_PLANT,
+      RICH_FISH, COLORS, SILVER_CELL, SILVER_VEINS, COVER
+
+  records.py
+    Les FICHES : sauver, relire et copier un dataclass d'apres ses champs.
+    fonctions : json_copy, register, plan, to_json, from_json, copy
+
+
+ETAGE 2  la planete
+
+  world.py
+    LA PLANETE en jeu : la grille des cases, ses sols, ses rivieres, ses
+    ressources, et ce qui change dessus (epuisement, influence, saison locale).
+    classes : AtlasLabel, World
+    fonctions : offset_to_axial, axial_to_offset, hex_distance, hex_neighbors,
+      is_passable, enter_cost, hex_distance_wrapped, is_inshore, cost_pct,
+      enter_cost_for, river_pct, direction, step_cost, make_filled_world,
+      landmass_grid, same_landmass, spawn_forage, pick_spawn_hexes,
+      pick_spawn_continents, save_world, load_world, season_multiplier,
+      food_production, local_winter_weeks
+    constantes : INSHORE_MOVE_COST, RIVER_PCT, DIRECTION_FR, RIVER_SIZE_FR,
+      FORD_PCT, FORD_BIG_PCT, COST_VAR_MIN, COST_VAR_MAX, COST_VAR_CELLS,
+      COST_VAR_WEIGHTS, MOVE_COST, BIOME_INDEX, NEIGHBOR_DELTAS, WIDTH,
+      HEIGHT, CHAR_TO_TERRAIN, TERRAIN_TO_CHAR, RADIUS_CACHE_MAX,
+      RADIUS_CACHE_SIZE, BIG_RADIUS_CACHE_SIZE, SEASONS_BY_CODE, SPAWN_SEP,
+      SPAWN_CONTINENT_MIN, SPAWN_STEP
+
+
+ETAGE 3  ce qui s'y pose
+
+  path.py
+    LES CHEMINS : A* sur la grille (astar) et la duree d'un trajet en
+    semaines (travel_weeks).
+    fonctions : astar, travel_weeks
+    constantes : MOVE_POINTS_PER_WEEK
+
+  atlas.py
+    L'ATLAS : les noms au dezoom (continents, banquises, bassins des grands
+    oceans, mers fermees) et leur place sur la carte.
+    fonctions : build_atlas_labels
+    constantes : LAND_NAMES, SEA_NAMES, ICE_NAMES, INLAND_NAMES
+
+  mapgen.py
+    Generation de la planete Kora (numpy).
+    classes : Noise3
+    fonctions : fbm, ridged, sphere_points, generate_world, bake,
+      continent_sizes, generate_layers, generate_layers_v2
+    constantes : PLANET_WIDTH, PLANET_HEIGHT, LAND_SHARE, RIVER_SHARE,
+      RIVER_MID_SHARE, RIVER_BIG_SHARE, DEPOSITS, FISH_COVER, LIVING
+
+  planets.py
+    LES PLANETES (0.20) : celles qui sont livrees avec le jeu.
+    fonctions : catalog, ids, info, name_of, thumbnail_path, default_id,
+      choose, load
+    constantes : LEGACY, LEGACY_NAME, RANDOM
+
+  gamestate.py
+    L'ETAT DE LA PARTIE (GameState) et ses joueurs.
+    classes : GameState, Pov
+    fonctions : humans, is_human, pov_of, log_of, seen_of, human_dead, note,
+      note_all
+    constantes : PLAYER_TRIBE_ID, AI_STEPPE_ID, AI_FOREST_ID, AI_COAST_ID
+
+  peoples.py
+    Peuples : cultures, noms, couleurs.
+    classes : Culture
+    fonctions : culture_of, color_of, label_of, free_color, make_name,
+      culture_for_place, pick_minor_spots, civ_of, kin_color, civ_name,
+      civ_villages, children_alive, living_tribe_ids
+    constantes : MAX_LIVING_TRIBES, CULTURES, LEGACY_CULTURE, LEGACY_COLOR,
+      PALETTE, GREY, MINOR_START, MINOR_START_PLANET, MINOR_POP,
+      MINOR_SPACING, MINOR_BAND_CUT
+
+  places.py
+    LES LIEUX et ce qu'on y lit.
+    classes : VillageData, Site
+    fonctions : site_of, band_of, name, rank_name, oath_of, built, has,
+      monument_stages, works, watch_spots, influence_radius
+    constantes : RANKS
+
+
+ETAGE 4  les savoirs, les gens
+
+  tech.py
+    Savoirs : l'arbre, les conditions, l'apprentissage, les effets.
+    classes : Cond, Tech, StartBonus, Bonuses
+    fonctions : era_of, branches_of, pan_of, descendants, turnings,
+      spec_effect, start_bonus_ids, start_bonus_lines, start_bonus_lines_for,
+      set_start_bonuses, update_start_bonuses, bonuses_of, begin_tick,
+      invalidate, end_tick, bonuses, bonuses_without, has_effect, lines_for,
+      move_costs, effect_lines, missing_prereqs, grant, start_knowledge,
+      summary
+    constantes : BASE_STOCK_WEEKS, BASE_MAX_BANDS, BASE_VISION,
+      BASE_REINFORCE, BASE_WINTER_PRESTIGE, BASE_FAMINE_PRESTIGE,
+      BASE_MOVE_COST, BASE_CHIEF_REACH, BASE_INFLUENCE_RADIUS,
+      BASE_PROTECT_RATIO, SIEGE_FIRE, SIEGE_FOOD, SIEGE_ERODE, SIEGE_FLOOR,
+      LEARN_POP, TIER_COST, TIER_NAMES, TURNING_TIERS, BRANCHES, NEO_BRANCHES,
+      ERAS, GROUPS, START_KNOWLEDGE, PIROGUE_POP, PIROGUE_COAST_WEEKS,
+      TROUPEAU_POP, TROUPEAU_STEPPE_WEEKS, SEE_RADIUS, TECHS,
+      START_BONUS_YEARS, START_BONUS_WEEKS, START_BONUS_PICKS, START_BONUSES,
+      NO_BONUS
+
+  units.py
+    Unites : une troupe est une pile de compagnies.
+    classes : UnitType
+    fonctions : known, best, available, outdated, ages_of, normalize, remove,
+      add, profile, attack_mult, lines
+    constantes : ROLES, ROLE_LABEL, UNITS, VOLLEY, VOLLEY_LATER, REEQUIP_COST,
+      LINES_MAX
+
+  vision.py
+    LE BROUILLARD DE GUERRE d'un joueur (l'IA n'en a pas : elle voit tout).
+    classes : PlayerVision
+    fonctions : vision_of, sharers, recompute_vision, is_visible, is_explored,
+      enemy_band_visible, note_seen
+    constantes : VISION_RADIUS, TOWER_SIGHT
+
+  population.py
+    Qui sont les gens d'une bande : enfants, hommes, femmes, anciens, blesses.
+    fonctions : shares, counts, fit_men, men_force, women_force, fit_women,
+      workers, labor_pop, levable, grow, add, take_men, kill, kill_fighters,
+      wound, lose_wounded, mix, split_wounded, monthly, lines
+    constantes : CLASSES, NAMES, STRUCTURE, ARMY, LEVY_MAX, ACTIVE_NORM,
+      DRIFT, HEAL, WOUND_DEATH, FAMINE_WEIGHTS, CRAFT_SEX, CRAFT_WORKERS,
+      SEX_WORD
+
+
+ETAGE 5  LES SYSTEMES
+
+  learning.py
+    COMMENT UN PEUPLE APPREND : les conditions d'un savoir, son etat, le rythme.
+    fonctions : missing_lines, cond_progress, conditions_met, status,
+      kept_points, available, base_rate, diffusion_bonus, learn_rate,
+      weeks_left, choose, auto_choose, update_practice, trade_goods_for,
+      count_winter, update_learning, detail_lines
+
+  bands.py
+    LES BANDES ET LEURS PEUPLES : les outils que tous les systemes partagent.
+    fonctions : build_band_grid, bands_near, new_band_id, is_shielded,
+      gain_prestige, bonus_of, costs_of, weeks_between, food_weeks,
+      campaign_weeks, stock_max, forage_hexes, set_goto, set_march_to_band,
+      tribe_band_count, can_split, civ_band_cap, civ_band_count, max_bands_of,
+      settler_people, split_band, welded_left, merge_mates, merge_bands,
+      merge_text, is_army, fighters
+    constantes : FORAGE_RADIUS, STOCK_MAX_FACTOR, SPLIT_MIN_POP,
+      MAX_BANDS_PER_TRIBE, GRID, WALK_COST, CAMPAIGN_EAT, WELD_WEEKS,
+      WELD_MIN, MERGE_NEAR, MERGE_CALL, CLAN_SHARE
+
+  chiefs.py
+    Chefs, clans et emprise.
+    classes : Trait
+    fonctions : trait_lines, new_person, age, describe, chief_band, chief_of,
+      is_chief_band, obeys, helps, mood, band_food, band_combat, band_famine,
+      learn_mult, gifts_mult, winter_prestige, loyalty_parts, loyalty_target,
+      monthly, gains_autonomy, autonomy_parts, autonomy_rate, autonomy_months,
+      emancipate, can_honor, honor, can_move_chief, move_chief, can_promote,
+      promote, set_heir, secede, leader_dies, candidates, crown, ensure,
+      add_notable, on_split, on_merge, on_band_lost, after_absorb,
+      marriage_note, battle_death, band_lines_extra
+    constantes : OBEY, LEAVE, VISIT_RANGE, VISIT_GAIN, HONOR_COST, HONOR_GAIN,
+      HONOR_EVERY, DRIFT, AUTONOMY_MONTH, AUTONOMY_FAR, AUTONOMY_REACH,
+      AUTONOMY_NEAR, AUTONOMY_WARN, AUTONOMY_VILLAGE_PULL, AUTONOMY_INDOCILE,
+      HONOR_AUTONOMY, NEAR_VILLAGE, MAX_NOTABLES, AMBITIOUS_NOTABLE,
+      BATTLE_DEATH, START_LOYALTY, TRAITS
+
+  sites.py
+    Lieux fixes d'un peuple : caches de vivres, campements (puis villages).
+    fonctions : copy_site, of_tribe, capacity, own_site_at, camp_at,
+      site_on_hex, camp_block, make_camp, abandon, deposit_block, deposit,
+      withdraw_block, withdraw, update, sheltered, oldest_camp_years,
+      village_count, oldest_village_years, site_lines, to_json, from_json
+    constantes : CAMP_STORE, CACHE_ROT, CAMP_ROT, KEEP_WEEKS, CAMP_FORGOTTEN,
+      CAMP_SPACING, FOREIGN_SPACING, FIND_CHANCE, AT
+
+  influence.py
+    Zone d'influence : la ou chaque peuple vit, chasse et se souvient.
+    fonctions : note_presence, projection, radius_of, update, overlaps,
+      dominant, in_zone, in_core, is_home, foreign_zone, zone_size,
+      zone_lines, projection_word
+    constantes : ZONE_MIN, CORE_MIN, MONTH_DECAY, GAIN, MAX_WEIGHT, CAMP_GAIN,
+      VILLAGE_GAIN, VILLAGE_RADIUS, PROJECTION, FORGET
+
+  production.py
+    Le SAVOIR-FAIRE des villages : l'efficacite de la production.
+    fonctions : efficiency, of, craft_kind, craft_mult, adjust, demand,
+      food_pressure, craft_pressure, glutted, active_kinds, monthly, lines,
+      tribe_glut
+    constantes : KINDS, KIND_NAMES, EFF_MAX, EFF_STEP, FOOD_STEP,
+      FOOD_TIGHT_WEEKS, EFF_MIN, GLUT_FULL, GLUT_RATIO, GLUT_EFF, GLUT_RISK,
+      GLUT_CRISIS
+
+  diplo.py
+    Diplomatie : contacts, relations, pactes, propositions, diffusion.
+    classes : frozen_relations, Verdict
+    fonctions : pair, copy_diplo, in_contact, contacts_of, contact_count,
+      friend_count, ally_count, make_contact, update_contacts, add_mod,
+      has_pact, allied, peace_pact, migrate, diplomatic, needs_declaration,
+      declared_war, at_peace, base_relation, reasons, relation, level_of,
+      level, status_line, on_fight, betray, hostile_intent, at_war, may_start,
+      set_casus, motive_against, casus_of, add_score, score, weariness,
+      goal_of, goals_of, submit, goal_done, alliance_bound, alliance_left,
+      add_pact, break_pact, monthly, teachers, diffusion_bonus, power, gap,
+      pop_of, evaluate, war_allies, war_pairs, declare_war, end_war, wars_of,
+      gift_carrier, gift_sizes, present_sizes, present_value, gift_value,
+      perform, invitable, invite_chance, invite, on_cooldown, absorb, forget,
+      ai_monthly, to_json, from_json
+    constantes : CONTACT_RANGE, NEIGHBOR_RANGE, TRUCE_WEEKS, TRIBUTE_WEEKS,
+      TRIBUTE_EVERY, GIFT_RANGE, GIFT_SIZES, PRESENT_SIZES, PRESENT_NO_MONEY,
+      AI_PRESENT, INVITE_COST, BETRAYAL_PRESTIGE, DIFFUSE_NEIGHBOR,
+      DIFFUSE_ALLY, DIFFUSE_CAP, OFFER_COOLDOWN, MOD_TEXT, PEACE_PACTS, WAR,
+      WAR_FADE_WEEKS, DECLARE_RELATION, DECLARE_PRESTIGE, WAR_WEEKS,
+      WIN_SCORE, VILLAGE_SCORE, SIEGE_SCORE, SCORE_CAP, SUBMIT_BASE,
+      WEARY_SEASON, WEARY_STEP, WEARY_CAP, LEAD_PER, LEAD_CAP, ALLIANCE_WEAR,
+      ALLIANCE_WARN, ACTIONS, ACTION_LABELS, HUMAN_OFFERS, INVITE_RANGE,
+      AI_WAR_WEEKS, AI_ALLY_FRIENDS, PROPOSE_EVERY
+
+  goods.py
+    Metiers des villages, marche du peuple, routes commerciales.
+    classes : Craft
+    fonctions : value, riches, deposits, wild_source, absent_text, de,
+      res_label, teams, teams_of, total_teams, team_cap, max_teams, workers,
+      craft_status, add_block, set_teams, output, stock, supplied, villagers,
+      need, made, update, rot_mult, store_weeks, winter_famine,
+      stability_parts, yield_mult, army_mult, build_mult, winter_prestige,
+      forage_mult, has_village, reserve, spare, wants, offers, price,
+      price_word, all_routes, routes_of, partners, find_route, trade_distance,
+      trade_ends, trade_range, trade_load, trading_places, convoys,
+      convoys_used, open_block, open_route, level_block, set_level,
+      close_route, route_price, preview, monthly, history, last_month,
+      summary, route_text, ai_crafts, ai_routes, lines, tech_lines
+    constantes : TEAM, TEAM_POP, MAX_TEAMS, OUTPUT, WORKSHOP, NEED, CAP,
+      RESERVE_WEEKS, SELL_KEEP_WEEKS, BUY_UP_TO, TRADE_RANGE, LOAD, MAX_LEVEL,
+      CONVOYS_BASE, CONVOYS_PLACE, CONVOYS_ROUTES, PLACE_PRICE, PRICE_HIGH,
+      PRICE_LOW, PRICE_NONE, IDLE_CLOSE, HISTORY, FORAGE_LOSS, FISH_NETS,
+      PAY_KEEP_WEEKS, REVEAL_WIDTH, CRAFTS, CRAFT_ORDER, GOODS, GOOD_NAMES,
+      GOOD_CRAFT, GOOD_COLORS, GOOD_SOME, FAR_RES, AI_ORDER, EVENT_CONDITIONS,
+      EVENT_EFFECTS, EVENT_TEXTS
+
+  money.py
+    L'ARGENT d'un peuple : son tresor et son budget.
+    fonctions : has_money, budget, eff, tax_stab, set_budget, villagers,
+      soldiers, specialists, tax_income, tax_at, solde_cost, gage_cost,
+      don_cost, chantiers, chantier_cost, stability_parts, wage_mult,
+      craft_output, solde_morale, flee_mult, build_speed, book, earn,
+      pays_in_money, pay_route, toll_owner, collect_tolls, monthly, reserve,
+      last_month
+    constantes : VPS, TAX_MAX, TAX_STAB, OLD_TAX, SILVER_TAX, PAY_MAX,
+      PAY_STEP, CHANTIER, CHANTIER_SPEED, SOLDE, GAGE, TOLL, TOLL_FLAT,
+      SILVER_OUT, VASSAL_SHARE, DON_SHARE, DON_MIN, DON_FAVOUR, DON_STABILITY,
+      HISTORY, DEFAULT, PAY_KEYS, SLIDER_KEYS, PAY_NAMES, COSTS, KEY_NAMES,
+      EVENT_CONDITIONS, EVENT_EFFECTS, EVENT_TEXTS
+
+  approach.py
+    L'APPROCHE d'un dirigeant : comment le chef d'un peuple de l'IA voit ses
+    voisins, selon SA PERSONNALITE (ses traits) et la SITUATION de son pays.
+    fonctions : of, factor, accept, name, scores, choose, reasons, monthly
+    constantes : APPROACHES, ORDER, BEHAVIOR, FREE, PEACE, PROFILES, ACCEPT,
+      TRAIT_WEIGHTS, NEIGHBOR_GAP, STRONG_NEIGHBOR, WEAK_NEIGHBOR,
+      HUNGRY_WEEKS, HYSTERESIS, MIN_WEEKS, RETIF_UNREST, TELL_GAP
+
+  numbers.py
+    Les NOMBRES d'une civilisation : sa base de numeration, ses operations.
+    fonctions : effect_ids, effect_specs, knows, next_op, choose_block,
+      choose, ai_base, points, monthly, lines, teams, page
+    constantes : BASES, BASE_ORDER, OPS, OP_IDS, OP_BY_ID, TEAM_POINTS,
+      REFORM_PRESTIGE, REFORM_WEEKS, REFORM_EVERY, EVENT_EFFECTS, EVENT_TEXTS
+
+  laws.py
+    Les LOIS d'un pays (l'ecran Pays, onglet Lois).
+    classes : Option, Law
+    fonctions : all_laws, law, known, available, get, block, enact,
+      option_name
+
+  chiefdom.py
+    La CHEFFERIE (age des villages) : le grenier du chef, les familles, les
+    tributaires.
+    fonctions : kin_villages, kin_of, split_extra_villages, has_chiefdom,
+      families, holder, charge_power, war_chief_bonus, trade_mult, craft_mult,
+      craft_output, set_charge, favour_word, set_rate, take_from_harvest,
+      granary_pay, feast_cost, feast_block, feast, stability_parts,
+      army_morale, overlord_of, top_lord, lords_of, descendants, followers,
+      country, sight_partners, vassals_of, vassal_cap, protect_ratio, feasted,
+      make_vassal, village_taken, ai_choice, conquer, protection_power,
+      unrest, monthly, overthrow, village_secedes, lines
+    constantes : RATES, DEFAULT_RATE, RATE_STABILITY, GRANARY_ROT,
+      FEAST_WEEKS, FEAST_STABILITY, FEAST_TERM, FEAST_PRESTIGE, RELIEF_WEEKS,
+      RELIEF_GIVE, VASSAL_SHARE, REVOLT_UNREST, TRAITS, CHARGES, CHARGE_TRAIT,
+      CHARGE_TEXT, VASSAL_BASE, PROTECT_RATIO, FEAST_NEIGHBORS, FEAST_RANGE,
+      FEAST_SPELL
+
+  confed.py
+    La confederation : plusieurs peuples qui forment un seul pays.
+    fonctions : members, groups, same, leader, name, outside_pairs, war_pairs,
+      sight_partners, block, reasons, form, leave, on_vassal, shared_note,
+      monthly, ai_wants, lines
+    constantes : KIND, SHARED, MAX_MEMBERS, REL_MIN, GAP_MAX, AI_ALLIED_WEEKS,
+      AI_REL, AI_CHANCE
+
+  memory.py
+    LA MEMOIRE DU BROUILLARD : ce qu'un joueur a vu la derniere fois.
+    fonctions : update, seed, site_at
+    constantes : KINDS
+
+  draws.py
+    LES TIRAGES DES SAVOIRS (a la Terra Invicta) : certains savoirs peuvent ne
+    pas venir.
+    fonctions : seed_of, set_seed, seed_from, world_draw, hidden, in_world,
+      comes_to, why_absent, short_why, revealed, absent, chance_text, lines,
+      monthly
+
+  turning.py
+    LES GRANDS TOURNANTS (a la maniere des institutions d'Europa Universalis V).
+    fonctions : presence, births, born, birthplace, own_conditions, sources,
+      monthly_gain, monthly, cradle_text, on_adopted, effect_ids,
+      effect_specs, born_text, adopted_by, lines, migrate
+    constantes : BIRTH, SPREAD_CONTACT, SPREAD_NEIGHBOR, SPREAD_TRADE,
+      SPREAD_ALLY, SPREAD_COUNTRY, SPREAD_KIN, ADOPTED, SPREAD_CAP,
+      BIRTH_PRESTIGE, CRADLE, VISIT_RANGE, EVENT_EFFECTS, EVENT_TEXTS
+
+  villages.py
+    Villages : une bande qui s'installe.
+    classes : Oath, Building
+    fonctions : monument_open, building_name, pull_down_monument, slots,
+      used_slots, build_weeks, build_cost, building_status, build_block_site,
+      build_block, build, stock_weeks, store_weeks, rot_mult,
+      weeks_to_harvest, note_forage, food_outlook, granary_growth,
+      growth_mult, herd_mult, food_mult, winter_famine_mult, yield_mult,
+      wall_parts, defense_parts, defense_mult, winter_prestige, loyalty_parts,
+      nearest_village, stability_parts, stability, stability_word,
+      stability_growth, fertility, land_profile, choose_fields, hands_mult,
+      field_hands_mult, expected_harvest, sow, harvest, found_block,
+      propose_name, found, seat_chiefs, ai_oath, found_preview, leave_block,
+      leave, palisade_state, palisade_block, build_palisade, armies_of,
+      companies_of, army_cap, home_of, warn_supply, weeks_home, army_quality,
+      army_morale, levy_size, militia, levy_plan, militia_text, plan_text,
+      army_block, raise_army, detach_block, detach, disband_block,
+      dissolve_block, dissolve, send_companies_home, disband, recall,
+      reequip_block, reequip, update, eat_seed, pillaged, lost, field_site,
+      soil_avg, next_step, lines, army_lines, occupations, free_for_craft,
+      occupation_lines
+    constantes : FIELD_WORKERS, MAX_FIELDS, FIELD_RADIUS, FIELD_FOOD, SEED,
+      LATE_SOW, STORE_WEEKS, GROWTH, SOIL_LOSS, SOIL_REST, GRAIN_ROT,
+      PALISADE_WEEKS, PALISADE_COST_WEEKS, PALISADE_DEFENSE, TOWER_DEFENSE,
+      BURNED, DISEASE_POP, FLOOD_CHANCE, MIN_FOUND_POP, FIELD_HANDS, HISTORY,
+      FIRST_VILLAGE_PRESTIGE, BASE_SLOTS, SLOT_POP, LOSE_BUILDING, NEAR,
+      ALERT_RANGE, ALERT_EVERY, FERTILITY, OATHS, OATH_ORDER, AI_OATH,
+      BUILDINGS, BUILD_ORDER, MONUMENT_STAGES, LEVIES, LEVY_SHARE,
+      ARMY_MIN_VILLAGE, ARMY_MIN, HUNTER_SHOT, HUNTER_SCOUT, WORKER_SHOT,
+      FARMER_GUARD, WARRIORS_GUARD, VILLAGE_KEEP, ARMY_SUPPLY_WEEKS,
+      ARMY_TERM, DESERTION, ARMY_HOME, WARRIORS_QUALITY, WARRIORS_MORALE,
+      FOOD_SAFE_WEEKS, FOOD_LOW_GROWTH, FORAGE_MEMORY, WILD_HERD,
+      RIVER_FIELDS, RIVER_IRRIGATION, STABILITY_BASE, UNREST, UNREST_SHARE,
+      UNREST_MIN_POP, CROWD_POP, UNREST_JOIN_RANGE, SOW_KEEP_WEEKS,
+      SUPPLY_WARN_MARGIN, SUPPLY_WARN_EVERY
+
+  battle.py
+    Batailles : un combat simule en passes d'armes.
+    classes : Side, Result, Battle
+    fonctions : cover_parts, start_morale, fighters_in, pursuit_rate, battles,
+      battle_of, in_battle, involves_human, slow, general, fighters_now,
+      start, join, day, advance, ask_retreat, fight, place_of, headline,
+      log_suffix, to_json, from_json, band_quality, band_force, helpers_of,
+      side_force, defense_force, prune_fight_marks, add_fight_mark,
+      resolve_raids, after_battle
+    constantes : ROUNDS, KILL, ROUT, SHOCK, PRESSURE, MAX_RATIO, MORALE_BASE,
+      ARMY_MORALE, KIN_MORALE, VILLAGE_MORALE, HOME_MORALE, HUNGER_MORALE,
+      GUARD_MORALE, MARCH_MORALE, LEADER_MORALE, WELD_MORALE, COVER, ESCAPE,
+      PURSUIT, ARMY_PURSUIT, CLAN_PURSUIT, ORDERLY, ENCIRCLED, SCATTER_RANGE,
+      WIPE_MIN, ARMY_BROKEN, LOOT, VILLAGE_SHIELD, PLACE, DAY_KILL,
+      KILLED_SHARE, MAX_DAYS, FORTUNE, FAMILIES_CAUGHT, WOUNDED_LOST,
+      WALL_WOMEN, GENERAL_STEP, FLEE_MORALE, FLEE_RATE, AI_LOSING, AI_FAR,
+      COMBAT_MARK_WEEKS, COMBAT_MARK_MAX, REINFORCE_RADIUS,
+      RETREAT_ALLY_RANGE, RETREAT_SEARCH_RADIUS, RETREAT_SAFE_DIST,
+      RETREAT_MIN_SHIELD
+
+  siege.py
+    LE SIEGE : la guerre contre les villages, telle que le neolithique la
+    connait (des palissades brulees, des enceintes investies ; les beliers, les
+    echelles et les tours roulantes viendront avec le bronze et les villes).
+    fonctions : at_war, defense_parts, erosion, food_mult, besiegers,
+      can_besiege, weekly, lines
+    constantes : SIEGE_RANGE
+
+  ost.py
+    L'OST : le suzerain appelle les troupes de ses tributaires.
+    fonctions : candidates, call_block, call, coming, weekly, join, foreign,
+      lines
+    constantes : OST_RANGE
+
+  grain.py
+    LE GRAIN DES DISETTES : l'argent sauve des vies.
+    fonctions : shortfall, in_dearth, sellers, spare, quote, buy, ai_weekly,
+      tip_lines
+    constantes : DEARTH_WEEKS, AI_DEARTH_WEEKS, PLANNED_MARKUP, PLAN_MARGIN,
+      PLAN_EVERY, GRAIN_WEEKS, KEEP_WEEKS, MARKUP, SCARCITY, WINTER,
+      SELL_RELATION, GRATITUDE, MIN_BUY, REACH
+
+  casus.py
+    LES CAUSES DE GUERRE et les guerres de soumission.
+    fonctions : monthly, country_power
+    constantes : CASUS_WEEKS, SUCCESSION_WEEKS, LAND_CELLS, RES_RADIUS,
+      CLAIM_RES, SUCCESSION_CLAIM, WEAK_RATIO, AI_CONQUEST_GAP,
+      CONQUER_CHANCE, MOTIVE_CHANCE, AI_MAX_WARS
+
+  situations.py
+    Les SITUATIONS : crises et conjonctures (spec 2026-10-02-profondeur-
+    epoques-situations.txt), inspirees d'EU5 (situations, catastrophes) et de
+    Stellaris (crises).
+    classes : Situation, Action, Spec, Disette, MalQuiCourt, GibierEpuise,
+      GrandHiver, GrandPassage, Rassemblement, Rouille, MalDesBetes, Crue,
+      GrandsTravaux, RouteDuSel, Chefferies, Surproduction, Effondrement,
+      Revolte, RevolteTributaires
+    fonctions : in_zone, zone_bands, price_mult, route_mult, effect_ids,
+      effect_specs, active, of_tribe, find, grant_effect, join, monthly,
+      risks_of, action_block, act, ranking, months_left, effect_lines,
+      to_json, from_json, copy_all
+    constantes : MONTH, YEAR, CRISE, CONJONCTURE, KEEP_ENDED, ALL_TERRAINS,
+      PASSAGE_MEAT, EFFONDREMENT_DEPTH, SPECS, EXTRA_EFFECTS
+
+  events.py
+    Evenements en chaines (voir la spec 2026-09-24, section 8).
+    classes : Follow, Outcome, Option, Event, Instance, Book
+    fonctions : names, check, conds_ok, apply, options_for, vocabulary,
+      effect_kinds, condition_kinds, effect_text, summarize, details, fire,
+      resolve, choose, default_index, decide_default, find, pending, text_for,
+      hook, monthly, weekly, copy_book, to_json, from_json
+    constantes : PLAYER_GAP, AI_GAP, PULSE_CAP, MAX_PENDING, MOOD_COLORS,
+      EVENTS, EFFECT_TEXT, OFFERS
+
+  events_data.py
+    Les evenements de l'age tribal (donnees). Moteur : events.py.
+    constantes : HUNT_LAND, EVENTS
+
+
+ETAGE 6  l'IA des bandes, les ordres
+
+  ai_war.py
+    IA : quand attaquer, et avec qui.
+    fonctions : helpers_at, force_at, odds_at, wins, fair_game, short_of_food,
+      plan_raid, go_to_war, start_plan, advance_plans, recheck_hunts,
+      unsafe_spots
+    constantes : AI_RAID_REST, SUPPLY_MARGIN, MOTIVE_RELATION, AI_RAID_EDGE,
+      AI_CALL_RANGE, AI_MERGE_RANGE, AI_PLAN_WEEKS, RAID_REACH_PER_WEEK,
+      EVENT_EFFECTS, EVENT_TEXTS
+
+  orders.py
+    Ordres du joueur a une bande : ce qu'elle peut faire, et sinon pourquoi.
+    fonctions : obeys, band_actions, camp_label, hints, labels, perform,
+      attack_preview
+    constantes : ACTIONS, INDOCILE, GRANARY, TROOP_CAMP, HOMEBOUND
+
+  wars.py
+    LES GUERRES vues par un peuple (l'ecran des guerres : render_wars.py).
+    classes : Front
+    fonctions : fronts, others, score_text
+
+
+ETAGE 7  l'IA
+
+  ai.py
+    L'IA DES PEUPLES : ce que chaque bande, village et troupe d'un peuple
+    de l'IA decide (decide_ai, appele a la fin de chaque semaine par sim).
+    fonctions : find_new_land, good_land, settle_spacing, head_for_new_land,
+      decide_ai
+    constantes : AI_SPLIT_POP, AI_REFINE, AI_SPLIT_AWAY, AI_RAID_WHIM,
+      AI_CONTENT, AI_BUILD_ORDER, AI_ARMY_WHIM, AI_ARMY_POP, AI_THREAT,
+      AI_THREAT_RANGE, AI_ARMY_REACH, AI_WAR_REACH, AI_WAR_RAID_WEEKS,
+      AI_BUILD_RESERVE, AI_FOOD_MARGIN, AI_SETTLE_POP, VILLAGE_SPACING,
+      FOREIGN_VILLAGE_ROOM, NEW_LAND_RADIUS, NEW_LAND_FAR, COLONY_RADIUS,
+      CROWDED_SPACING, SETTLE_PATIENCE_YEARS, FOUND_GOOD, FOUND_GOOD_HEXES,
+      AI_SIEGE_REACH, AI_SIEGE_FOOD_WEEKS, AI_SIEGE_EDGE, AI_CACHE_SEEK
+
+
+ETAGE 8  la semaine du monde
+
+  sim.py
+    LA SEMAINE DU MONDE : une partie neuve (new_game), un pas (tick), la
+    semaine (_week), et ce que le joueur lit d'une case ou d'une bande.
+    fonctions : hex_inspect, band_summary, band_lines, band_warn_from,
+      walk_line, river_line, inspect_lines, famine_loss, collect_food,
+      update_exhaustion, remove_dead_bands, resolve_joins, apply_movement,
+      update_population, update_influence, player_home_hex, fight_at,
+      fight_lines, fight_out, update_prestige, snapshot, new_game,
+      add_minor_peoples, apply_season_spread, tick, consume_ticks
+    constantes : RIVER_NAME_FR, FAMINE_RATE, WINTER_TAIL_WEEK, GROWTH_RATE
+
+
+ETAGE 9  les ordres des joueurs
+
+  commands.py
+    Les ordres des joueurs, par un seul canal (multijoueur).
+    fonctions : make, route_key, apply
+    constantes : KINDS, IN_BATTLE, NOT_YOURS
+
+
+ETAGE 10  la sauvegarde, le reseau, les essais
+
+  persist.py
+    LA SAUVEGARDE : une partie en JSON, et le dossier des sauvegardes.
+    fonctions : default_save_path, multi_save_path, prefs_path, load_prefs,
+      save_prefs, saves_dir, new_save_path, list_saves, latest_save,
+      trash_save, set_aside_save, save_game, dumps_game, loads_game,
+      game_to_json, load_game, map_id, game_from_json, peek_save
+    constantes : SAVE_VERSION, KEEP_ASIDE, NOT_SAVES, CORBEILLE,
+      CORBEILLE_KEEP
+
+  session.py
+    Une partie a plusieurs (lockstep).
+    classes : Seat, HostSession, ClientSession
+    fonctions : sync_digest, run_step
+    constantes : PROTO, LAG, DIGEST_EVERY, CATCH_UP, SLOTS, SLOT_NOTE,
+      MAX_CHAT
+
+  essai.py
+    L'essai du multijoueur sans fenetre : un hote et un ami joues par des
+    robots qui ne passent que par des ordres (commands.py), sur la vraie carte.
+    Chacun ecrit ses empreintes (session.sync_digest) dans un fichier JSON.
+    fonctions : robot, host_run, client_run, compare, from_env
+
+
+ETAGE -  l'interface (pygame)
+
+  app.py
+    L'APPLICATION : la fenetre, le menu de demarrage, le salon du
+    multijoueur, puis la partie a l'ecran (la classe Play).
+    classes : Settings, Play
+    fonctions : run, title_screen, play
+    constantes : TOAST_LIFE, MAX_TOASTS, CONFIRM_SECONDS, PANEL_KEYS,
+      ACTION_KEYS
+
+  globe.py
+    LA SPHERE A L'ECRAN : la planete (un cylindre de cases pour la
+    simulation) projetee sur un globe qu'on tourne et qu'on zoome.
+    fonctions : land_draw_stride, lonlat_from_offset, xyz_from_lonlat,
+      offset_to_xyz, rotate_xyz, inverse_rotate, dist_from_zoom, view_params,
+      project_xyz, hex_to_globe_screen, hex_corner_xyz, hit_globe, warp,
+      lonlat_to_colrow, pixel_to_hex_globe, look_at_offset, look_at_hex,
+      look_center, visible_hex_radius, globe_uses_texture, clamp_pitch,
+      orbit_sensitivity
+    constantes : HEX_SIZE, PITCH_LIMIT, NEAR_DIST, FOCUS_ZOOM, HEX_ROW_SHIFT,
+      HEX_ROW_SQUASH, WARP_SCALES, WARP_WAVES, WARP_MAX
+
+  globe_draw.py
+    Dessin de la planete avec numpy.
+    classes : Planet
+    fonctions : hex_screen_px
+    constantes : FOG_UNEXPLORED, TERRAINS, TERRAIN_CODE, SEASONS, POLY_HEX_PX,
+      FAST_SAMPLES, FINE_SAMPLES, RIVER_COLOR, RIVER_TINT
+
+  layout.py
+    LES MISES EN PAGE de l'interface : ou est chaque chose a l'ecran.
+    fonctions : page_layout, numbers_items, panel_box, split_hint, wrap_text,
+      hud_layout, hud_hit, menu_layout, menu_hit, fight_panel_layout,
+      fight_panel_hit, band_card_layout, map_mode_layout, map_mode_hit,
+      toast_box, toast_hit, band_card_hit, set_tree_hidden, tech_world,
+      tree_zoom_min, clamp_cam, cam_on, zoom_at, pan, to_screen,
+      tech_panel_layout, side_tabs, side_layout, side_hit, col_pixel_width,
+      row_pixel_height, world_pixel_size, min_zoom_for, zoom_scale,
+      max_zoom_for, focus_zoom_for, terrain_draw_mode, wrap_camera,
+      offset_to_pixel, hex_to_pixel, band_radius, band_screen_positions,
+      fight_mark_screen_pos, hex_screen_positions, pixel_to_hex
+    constantes : TAB_W, TAB_H, HEX_SIZE, MIN_ZOOM, MAX_ZOOM, OVERVIEW_HEX_PX,
+      HUD_HEIGHT, LABEL_DIST, JOURNAL_COLS, MENU_ITEMS, BAND_CARD_W,
+      BAND_BUTTONS, BAND_ROW, BAND_HINT, MAP_MODES, MAP_BUTTON_W,
+      MAP_BUTTON_H, MAP_ITEM_H, MAP_LEGEND_W, TOAST_W, FILTER_CHIPS,
+      SORT_CHIPS, FILTER_BY_HIT, TECH_HEADER_H, TECH_DETAIL_H, TREE_PAD,
+      TREE_GUTTER, TREE_COL, TREE_ROW, TREE_NODE_W, TREE_NODE_H, TREE_COLHEAD,
+      TREE_BAND, TREE_TURN_ROW, TREE_TURN_H, TREE_ZOOM_MAX, TREE_ZOOM_STEP,
+      TECH_ROW_H, TECH_GUTTER, SIDE_TABS, COMMERCE_TAB, TREASURY_TAB,
+      COUNTRY_TAB, WARS_TAB, SWORD_LIFT, STACK_SHIFT
+
+  look.py
+    LES COULEURS DE LA CARTE (presentation, sans pygame) : un sol selon sa
+    saison (season_color : neige, feuilles, herbes seches), et LA COULEUR DES
+    PAYS.
+    fonctions : season_color, country_color, realm_of, great_realms,
+      members_of, seen_color, turning_color
+    constantes : BIOME_COLORS, VASSAL_OWN, VASSAL_LIGHT, CONFED_OWN,
+      TURN_NONE, TURN_HERE, TURN_ADOPTED, TURN_CRADLE, TURN_UNKNOWN
+
+  music.py
+    LA MUSIQUE : la musique de guerre (Casus bellis).
+    classes : Director
+    fonctions : wants_war_music
+    constantes : WAR_TRACK, FADE_IN, FADE_OUT, DEFAULT_VOLUME, HOLD, CHECK
+
+  render.py
+    LE DESSIN DE LA PARTIE (pygame) : Renderer, la planete et tout ce qui
+    se pose dessus, la barre du haut, les onglets lateraux, les fiches.
+    classes : Renderer
+    fonctions : draw_journal
+    constantes : TAB_ICONS, SEASON_ICONS, KIND_ICONS, BAND_ICONS,
+      MAP_MODE_ICONS, SEASON_FR, INSPECT_MAX_W
+
+  render_battle.py
+    Les batailles EN COURS a l'ecran (battle.py), charte « Feu et ocre ».
+    fonctions : mine, layout, hit, draw, draw_on_map
+
+  render_country.py
+    L'ecran du PAYS, onglet LOIS (laws.py), dans le style du tresor :
+      - en tete, le pays : son nom, son suzerain, ses tributaires, sa
+        confederation ;
+      - les onglets du pays (pour l'instant : Lois) ;
+      - une rangee par loi : ce qu'elle dit, puis ses options en cartes ; la
+        carte de l'option tenue est doree ; "Adopter" (un second clic confirme
+        une reforme des nombres).
+    country_layout et country_hit sont purs (tests) ; draw_country dessine.
+    Tout changement passe par commands.py ("law").
+    fonctions : country_layout, country_hit, draw_country
+    constantes : GREEN, TABS
+
+  render_menu.py
+    Les ecrans d'avant la partie (dans le style des autres fenetres : cadre
+    dore, cartes en degrade) :
+      - le MENU DE DEMARRAGE, sur la planete qui tourne : Continuer (la partie
+        sauvegardee, resumee), Nouvelle partie, Multijoueur, Quitter ;
+      - la CREATION DE LA TRIBU : son nom (ecrit, ou tire au hasard), sa
+        couleur, et START_BONUS_PICKS bonus de depart choisis dans le pool
+        (tech.START_BONUSES), actifs START_BONUS_YEARS ans. En multijoueur, le
+        meme ecran (mode "host" ou "join" : l'adresse de l'hote en plus) ;
+      - le MULTIJOUEUR : son menu (heberger, rejoindre, reprendre), le SALON
+        (les quatre places, prets, discussion) et, en partie, le bandeau des
+        joueurs et la discussion (draw_mp_overlay).
+    Les *_layout et *_hit sont purs (tests) ; draw_* dessinent.
+    classes : TitleScene
+    fonctions : title_layout, title_hit, draw_title_backdrop, draw_title,
+      settings_layout, settings_hit, settings_value, draw_settings,
+      saved_when, load_layout, load_hit, draw_load, setup_layout, setup_hit,
+      draw_setup, planet_lines, random_name, new_setup, planet_choices,
+      setup_click, setup_key, setup_missing, setup_for_game, setup_ready,
+      title_planet, mp_menu_layout, mp_menu_hit, draw_mp_menu, lobby_layout,
+      lobby_hit, draw_lobby, draw_mp_overlay
+    constantes : PALETTE, NAME_MAX, TITLE_ZOOM, TITLE_SHIFT, BONUS_ICONS,
+      TITLE_ITEMS, VOLUME_STEP, LOAD_ROW, LOAD_W, START_LABEL, ADDRESS_MAX,
+      MP_ITEMS, MP_HELP, CHAT_SHOWN
+
+  render_numbers.py
+    L'onglet LES NOMBRES de l'ecran des savoirs (numbers.py).
+    fonctions : draw
+    constantes : GREEN
+
+  render_panels.py
+    Panneaux Tribu (chef, clans, attachement) et Peuples (diplomatie),
+    cartes d'evenements.
+    fonctions : event_icon, tribe_alert, has_nomads, tribe_tab_label,
+      start_bonus_text, draw_tribe, draw_villages, known_peoples,
+      draw_peoples, draw_event_cards, event_modal_layout, draw_event_modal,
+      commerce_ready, treasury_alert, commerce_alert, wars_ready, wars_alert,
+      army_ready
+    constantes : EVENT_WORDS, MOOD_ICONS, MOOD_STATE, BG, EDGE, TEXT, SOFT,
+      NOTE, GOLD, GOOD, BAD, WARN, APPROACH_COLORS, WAR_NEWS
+
+  render_situations.py
+    Les situations a l'ecran (situations.py), dans la charte « Feu et ocre ».
+    fonctions : banner_items, banner_layout, people_name, draw_banner,
+      window_layout, draw_window, window_hit, banner_hit, draw_on_map
+    constantes : RECENT, NEW, OUTCOME
+
+  render_tech.py
+    Ecran des savoirs, dans l'esprit de Victoria 3.
+    fonctions : SMALL_FONTS, medallion, focus_cam, draw, missing_first
+    constantes : GOLD, GOLD_DIM, GOLD_DEEP, INK, SOFT, NOTE, GOOD, BAD, STYLE,
+      STATE_LABEL, ERA_STYLE, BRANCH_ICONS, MEDAL_STATE, TURN_GOLD, ROMAN
+
+  render_trade.py
+    L'ecran Commerce (dans le style de l'ecran du village) :
+      - tuiles : biens pourvus, convois, ventes, achats, balance, partenaires ;
+      - a gauche, le MARCHE DU PEUPLE : chaque bien, sa reserve, ce qu'on en
+        fait et en mange, son prix ici ; en dessous, le graphe des ventes et des
+        achats des 24 derniers mois ;
+      - au milieu, les ROUTES : sens, bien, partenaire, convois (1 a 3), ce
+        qu'elles ont porte le dernier mois, fermer ;
+      - a droite, OUVRIR UNE ROUTE : partenaire, bien, vendre ou acheter,
+        convois, ce que la route rapporterait ; ce que le partenaire a de trop
+        ou lui manque ; les peuples a qui proposer un accord.
+    trade_layout et trade_hit sont purs (tests) ; draw_trade dessine.
+    fonctions : trade_layout, trade_hit, candidates, routes_shown, draw_trade
+    constantes : MAX_ROUTES_SHOWN, MAX_PARTNERS_SHOWN, MAX_CANDIDATES
+
+  render_treasury.py
+    L'ecran du TRESOR (money.py), dans le style de l'ecran du commerce :
+      - tuiles : le tresor, les rentrees et les depenses du dernier mois, la
+        balance, l'impot, l'etat de la solde ;
+      - a gauche, le COMPTE DU MOIS (chaque rentree, chaque depense) et ce que
+        le mois prochain promet ;
+      - au milieu, le BUDGET, en CURSEURS : l'impot en argent (0 a 8 sicles pour
+        cent villageois), la solde des troupes, les gages des gens de metier,
+        les presents aux familles, la paie des batisseurs (0 a 200 % du tarif) ;
+        puis les droits de passage et ce que l'argent fait ailleurs ;
+      - a droite, le graphe du tresor des 24 derniers mois.
+    treasury_layout et treasury_hit sont purs (tests) ; draw_treasury dessine.
+    Tout changement passe par commands.py ("budget").
+    fonctions : treasury_layout, treasury_hit, slider_span, slider_value,
+      slider_step, draw_treasury
+    constantes : SLIDERS
+
+  render_village.py
+    Fenetres du village et des batailles, dans le style de l'ecran des
+    savoirs (cadre dore, cartes en degrade, graphes) :
+      - "Fonder un village" : le lieu, ce qui change, le serment (un choix) ;
+      - l'ecran du village : tuiles, terres (petite carte, recoltes), batiments,
+        guerriers ;
+      - le rapport de bataille : les deux camps, le moral passe par passe.
+    Les *_layout sont des fonctions pures (tests) ; le reste dessine.
+    fonctions : glyph, medal, found_layout, found_hit, draw_found,
+      village_layout, village_hit, draw_village, numbers_mult, battle_layout,
+      draw_battle
+    constantes : WARN, CARD, STATUS_LABEL, PAGES, CHARGE_ORDER, RATE_TEXT,
+      CRAFT_CARD
+
+  render_wars.py
+    L'ARMEE ET LES GUERRES, un seul grand ecran (onglet Guerre ; touche A :
+    l'armee, touche W : les guerres) ; wars.py en donne le contenu.
+      - a gauche, VOTRE ARMEE (une carte : compagnies, guerriers), puis VOS
+        GUERRES (une carte par pays ennemi : depuis quand, l'avantage, les
+        buts), puis les guerres AILLEURS dans le monde ;
+      - a droite, l'armee choisie : LEVER dans chaque village (la milice, la
+        taille de la levee, Lever), VOS TROUPES (ou elles sont, leurs
+        compagnies, Voir, Dissoudre) ;
+      - ou la guerre choisie : qui l'a declaree, la barre de
+        l'AVANTAGE (et ce qui le fait), les buts, les deux CAMPS, les troupes
+        EN CAMPAGNE (les leurs : celles que vous voyez), les SIEGES, les
+        derniers COMBATS ; en bas, exiger leur soumission, proposer une treve,
+        leur fiche (Peuples).
+    La mise en page est faite au dessin (r.wars_hits) ; wars_hit la lit.
+    Tout changement passe par commands.py ("diplo").
+    fonctions : wars_hit, draw_wars
+    constantes : LIST_W, CARD_H, ROW_H, MAX_ROWS, ARMY, LEVY_SHORT
+
+  screens.py
+    Les GRANDS ECRANS de l'interface : le village, le commerce, le tresor, le
+    pays, les guerres.
+    classes : Screen
+    fonctions : is_open, opened, close_all, open, toggle, under_mouse, hit,
+      draw
+    constantes : SCREENS, BY_NAME
+
+  theme.py
+    La charte graphique « Feu et ocre » (docs/charte-graphique.txt), en code.
+    classes : C
+    fonctions : data_dir, font_file, font, reset, icon, medallion, grain,
+      chamfer, panel_surface, panel, glow, pulse, dotted, stroke, fit, wrap,
+      text, title, button, icon_button, bar, chip, tooltip, veil
+    constantes : FONT_FILES, ROLES, ICON_FILES, PANEL_CACHE, PANEL_STYLE
+
+  tree_graph.py
+    LE PLACEMENT DE L'ARBRE DES SAVOIRS, comme un graphe (a la Victoria 3).
+    fonctions : build, crossings, geometry
+    constantes : CARD_W, CARD_H, TURN_W, TURN_H, DUMMY_W, GAP, DUMMY_GAP,
+      CHANNEL, SWEEPS, POS_PASSES
+<<< fin auto >>>
 
 
 5. OU CHANGER X
 ---------------
-
-Besoin                              Fichier(s)
-------                              ----------
-Nouveau terrain / indice nourriture world.py (MOVE_COST, BIOME_INDEX,
-                                    CHAR_TO_TERRAIN) + types.py Terrain
-                                    + look.py couleur + mapgen.py climat
-Vitesse de marche d'un biome        world.py MOVE_COST
-                                    (60 / cout = hex par semaine)
-Nourriture, famine, stock max       sim.py collect_food, famine_loss,
-                                    FAMINE_RATE, STOCK_MAX_FACTOR
-                                    world.py food_production
-                                    Verifier : tests/test_balance.py
-Rayon de collecte                   sim.py FORAGE_RADIUS
-Croissance de population            sim.py update_population, GROWTH_RATE
-Scinder / reunir / rejoindre        sim.py split_band, merge_bands,
-                                    resolve_joins ; app.py band_action
-Raid : qui se bat, prestige         sim.py resolve_raids, _raid_sides
-Bataille (passes, moral, poursuite, battle.py (ROUNDS, KILL, SHOCK,
-  aneantissement, butin)            *_MORALE, COVER, ESCAPE, WIPE_MIN)
-Force d'une bande, d'un camp        sim.py CLAN_SHARE, band_quality,
-                                    side_force, defense_force
-Rapport de bataille (fenetre)       render_village.py draw_battle
-Repli apres defaite                 sim.py _retreat, _retreat_sites,
-                                    is_shielded, RETREAT_*
-Toast / journal cliquable           log.py LogEntry.hex, sim.note(where=)
-                                    app.py show_place, render.py toast_hit
-Prestige                            sim.py update_prestige
-Depart de partie (tribus, pops)     sim.py new_game
-Choix des hex de spawn              world.py pick_spawn_hexes (prefs,
-                                    min_forage) appele par new_game
-Fiche de bande                      sim.py band_summary / band_lines
-                                    render.py draw_band_card
-Comportement d'une IA               ai.py decide_ai
-                                    (IDs dans sim.py)
-Brouillard, rayon de vue            vision.py VISION_RADIUS
-Brouillard dessine                  globe_draw.py Planet.sync_fog
-Quand l'IA attaque / s'allie        ai_war.py (AI_RAID_EDGE, AI_CALL_RANGE,
-                                    AI_MERGE_RANGE, AI_PLAN_WEEKS)
-Sauvegarde, champs JSON             persist.py  (+ types si nouveau champ)
-Savoirs : arbre, conditions, effets tech.py TECHS (puis regenerer le
-                                    tableau de la spec des savoirs)
-Savoirs : rythme d'apprentissage    tech.py TIER_COST, LEARN_POP
-Savoirs : gout de l'IA, departs     peoples.py CULTURES (taste, knowledge)
-Savoirs : panneau                   render.py tech_panel_layout /
-                                    draw_savoirs, app.py clic "tech:"
-Cabotage (marcher sur l'eau)        tribe.cabotage, world.is_inshore
-Troupeau (steppe)                   tribe.troupeau, food_production(herd=)
-Zone d'influence (vitesse, rayon)   influence.py GAIN, MONTH_DECAY,
-                                    ZONE_MIN ; tech influence_radius
-Calque Zones / Ressources           globe_draw.py sync_zones, _resources
-Campements, caches                  sites.py ; tech camps, caches
-Villages : champs, recolte          villages.py FIELD_FOOD, SEED,
-                                    SOIL_*, STORE_WEEKS, GROWTH
-Croissance qui suit les vivres      villages.py FOOD_SAFE_WEEKS,
-                                    FOOD_LOW_GROWTH, FORAGE_MEMORY
-Metiers, biens, echanges            goods.py TEAM, TEAM_POP, MAX_TEAMS,
-                                    OUTPUT, NEED, CAP, RESERVE_WEEKS,
-                                    LOAD, CONVOYS_*, PRICE_*, TRADE_RANGE,
-                                    CRAFTS (valeurs)
-Emancipation (vitesse, departs)     chiefs.py AUTONOMY_* (VILLAGE_PULL,
-                                    INDOCILE), _grow_autonomy (un par mois) ;
-                                    peoples.MAX_LIVING_TRIBES
-Clan parti qui fonde son village    ai.py _settler, _go_settle, good_land,
-                                    find_new_land, CROWDED_SPACING,
-                                    SETTLE_PATIENCE_YEARS
-Types d'unites, ages                units.py UNITS (+ savoirs dans tech.py)
-Piles, levees, dissolution          villages.py raise_army, dissolve,
-                                    detach, reequip ; units.py
-Fusion des clans, anciens           sim.py _absorb, merge_bands, WELD_* ;
-                                    chiefs.py on_merge, add_notable
-Emancipation apres le village       chiefs.py AUTONOMY_*, emancipate,
-                                    secede ; villages._chief_takes_the_village,
-                                    seat_chiefs (anciennes sauvegardes)
-Civilisation, limite de bandes      sim.py civ_band_cap, civ_band_count
-                                    (plafond COMMUN a la culture),
-                                    max_bands_of, settler_people ;
-                                    peoples.py civ_of
-Ou l'IA se fixe (espacement)        ai.py VILLAGE_SPACING, FOREIGN_VILLAGE_ROOM,
-                                    find_new_land, head_for_new_land
-Stabilite des villages              villages.py stability_parts, STABILITY_*,
-                                    UNREST ; tech "stability" (neolithique)
-Campement leve, cache               sites.py _strike_camp, _maybe_found ;
-                                    ai.py _seek_cache
-Vue, marche (taille du monde)       tech.py BASE_VISION (8),
-                                    path.py MOVE_POINTS_PER_WEEK (40),
-                                    ai_war.py RAID_REACH_PER_WEEK
-Regrouper a distance                sim.py MERGE_NEAR (2), MERGE_CALL (5),
-                                    merge_mates ; resolve_joins (1 case)
-Rythme de la partie                 tech.py TIER_COST ; sim.py GROWTH_RATE
-Taille des bandes a l'ecran         render.py band_radius (fixe) ; carre
-                                    des villages : draw_village_icon
-Villages : serments, batiments      villages.py OATHS, BUILDINGS,
-                                    BASE_SLOTS, SLOT_POP (+ effets *_mult)
-Troupes : levee, desertion          villages.py LEVIES, ARMY_*, DESERTION
-Troupes de l'IA, chantiers de l'IA  ai.py _village_ai, _army_ai, AI_ARMY_*,
-                                    AI_THREAT, AI_BUILD_*
-Fondation, ecran du village         render_village.py ; app.py open_found,
-                                    open_village, village_click
-Chefs, traits, attachement          chiefs.py TRAITS, loyalty_parts,
-                                    OBEY / LEAVE
-Relations, pactes, propositions     diplo.py MOD_TEXT, evaluate
-Evenements (texte, chaines)         events_data.py (moteur : events.py)
-Peuples, cultures, petits peuples   peoples.py CULTURES, MINOR_*
-Ressources du pays                  resources.py COVER, generate_layers,
-                                    puis recuire la carte
-Boutons de la fiche de bande        orders.py + render.py BAND_BUTTONS
-Journal / toasts                    sim.py note / tick
-                                    log.py, persist.py, render.py
-Inspecter une case                  sim.py hex_inspect
-                                    app.py hover/pin, render.py carte
-Perf / aspect du globe              globe_draw.py (POLY_HEX_PX,
-                                    FAST_SAMPLES, FINE_SAMPLES)
-                                    render.py _draw_sphere (calque)
-Saison qui se deplace sur la carte  world.py seed_season / spread_season
-                                    sim.py apply_season_spread
-Couleur d'un biome selon la saison  look.py
-Noms de continents / oceans         atlas.py LAND_NAMES, SEA_NAMES,
-                                    INLAND_NAMES, puis recuire la carte
-Forme des continents, climat        mapgen.py (plaques, _elevation,
-                                    _moisture, _drainage, _biomes),
-                                    puis recuire
-Sphere, zoom, clic sur un hex       globe.py
-                                    app.py (orbe clic droit, molette)
-HUD, menu Echap, dessin des bandes  render.py
-Touche, clic, autosave, nouvelle    app.py
-                                    partie
-Menu de demarrage, creation du      render_menu.py ; app.title_screen,
-peuple, bonus de depart             tech.START_BONUSES, sim.new_game(setup)
-Un nouvel ordre du joueur           commands.py (genre + handler), puis
-                                    app.issue(commands.make(...))
-Multijoueur : salon, lockstep,      session.py (HostSession, ClientSession),
-ecarts, reprise                     net.py, app._multiplayer ; verifier
-                                    avec tools/essai_reseau.py
-Un message au journal d'un joueur   sim.note(..., to=peuple) ; ce que
-                                    tous voient : note_seen / note_all
-Ce que voit l'ecran                 state.viewer (jamais PLAYER_TRIBE_ID
-                                    dans render*/app) ; vision.vision_of
-Taille / forme de la planete        mapgen.py PLANET_WIDTH / HEIGHT
-                                    puis recuire data/kora_map.json
-Tests d'une regle                   tests/test_<sujet>.py
-Regles du code (contrat)            tests/test_architecture.py
-Clics dans le vrai jeu              tests/test_app_clicks.py (app.play
-                                    sans fenetre, scenario image par image)
-                                    (sans pygame, sauf test_app_import)
-Exe Windows                         Kora.spec puis
-                                    python -m PyInstaller --noconfirm Kora.spec
-                                    Ne PAS --collect-all pygame
-                                    Kora.exe en un fichier = DEUX processus
-                                    (l'extracteur, puis le jeu) : pour arreter
-                                    un essai, taskkill /T /F /PID (l'arbre),
-                                    sinon le jeu reste orphelin et verrouille
-                                    dist-unfichier/Kora.exe
-Essai reseau de l'exe               tools/essai_reseau.py 3 --exe
-                                    dist-unfichier/Kora.exe (KORA_ESSAI,
-                                    src/kora/essai.py ; KORA_BIND=127.0.0.1)
-Carte, polices, icones dans l'exe   Kora.spec ET Kora-unfichier.spec datas=
-                                    data/kora_map.json, data/fonts,
-                                    data/icons
-Une couleur, une police, un bouton  theme.py (et docs/charte-graphique.txt)
-Un texte affiche                    en francais accentue ; verifier :
-                                    python tools/accents.py --dry
-Bataille (jour apres jour)          battle.py : Battle, start, join, day,
-                                    advance, _end, ask_retreat, slow ;
-                                    sim.resolve_raids (commence), sim.tick
-                                    (jour ou semaine), sim.after_battle
-                                    (journal, prestige, marque) ; essais :
-                                    sim.fight_out (jusqu'au bout)
-Qui se bat, qui part en guerre      population.py (men_force, levable) ;
-                                    villages.levy_size, LEVIES
-Grenier du chef, familles, tribut   chiefdom.py ; page "chef" de
-                                    render_village (_draw_chef)
-Influence selon le sol              influence.PROJECTION / projection (cache
-                                    world._proj_cache)
-Savoir-faire, surproduction         production.py ; crises Surproduction et
-                                    Effondrement dans situations.py
-Le grand monument                   villages "monument" (monument_stages,
-                                    monument_open, pull_down_monument) ;
-                                    situations.GrandsTravaux
-Gagner du prestige                  sim.gain_prestige (jamais
-                                    tribe.prestige += a la main)
-Le risque d'une crise (prevenir)    Spec.risk ; situations._risks ->
-                                    state.situation_risks (bandeau, journal)
-Les nouvelles (toasts)              render.toast_box / draw_toasts
-Une fiche au survol d'un bouton     theme.tooltip(..., avoid=rect)
-Une crise ou une conjoncture        situations.py : une classe Spec,
-                                    l'ajouter a SPECS ; ses effets dans
-                                    stages / EXTRA_EFFECTS ; tests dans
-                                    tests/test_situations.py
+  Besoin                              Ou
+  ------                              --
+  Un sol (cout, nourriture, saisons)  world.MOVE_COST, world.BIOME_INDEX,
+                                      world.season_multiplier, look.py (couleur),
+                                      villages.FERTILITY, influence.PROJECTION,
+                                      battle (couvert), peoples (cultures),
+                                      mapgen (cuisson) ; test_planets les liste
+  Vitesse de marche, taille du monde  path.MOVE_POINTS_PER_WEEK, world.MOVE_COST,
+                                      tech.BASE_VISION (la vue)
+  Courant, gues                       world.RIVER_PCT, world.FORD_PCT,
+                                      world.FORD_BIG_PCT, world.step_cost
+  Nourriture, famine, croissance      sim.collect_food, sim.FAMINE_RATE,
+                                      sim.GROWTH_RATE, world.food_production ;
+                                      verifier : tests/test_balance.py
+  Scinder, reunir, rejoindre          bands.split_band, bands.merge_bands,
+                                      sim.resolve_joins ; les chefs y reagissent
+                                      par systems.BAND_SPLIT / BAND_MERGE
+  Chefs, attachement, emancipation    chiefs.py (AUTONOMY_*, emancipate)
+  Plafond de bandes d'une culture     bands.civ_band_cap, bands.max_bands_of
+  Peuples, cultures, petits peuples   peoples.CULTURES, peoples.MAX_LIVING_TRIBES
+  Zone d'influence                    influence.projection, influence.PROJECTION
+  Savoirs : arbre, effets, rythme     tech.TECHS, tech.Bonuses, learning.py ;
+                                      tournants : turning.py ; tirages : draws.py ;
+                                      placer l'arbre : tree_graph.py ;
+                                      python tools/arbre_savoirs.py --spec
+  Villages : champs, batiments,       villages.py (FIELD_FOOD, BUILDINGS, OATHS,
+  serments, stabilite                 stability_parts) ; places.VillageData
+  Metiers, biens, routes              goods.py (CRAFTS, price, open_route)
+  Troupes, levee, milice              villages.militia, villages.levy_plan,
+                                      units.UNITS ; l'ost : ost.py
+  Batailles (jour apres jour)         battle.py (Battle, day, advance)
+  Rapport de force avant l'attaque    orders.attack_preview, ai_war.odds_at
+  Diplomatie, guerre, paix            diplo.py (evaluate, declare_war, submit,
+                                      weariness) ; casus.py (motifs) ;
+                                      confed.py ; chiefdom.country
+  L'approche des chefs de l'IA        approach.PROFILES, approach.ACCEPT
+  L'IA (bandes, villages, troupes)    ai.py ; quand elle attaque : ai_war.py
+  Chefferie, tributaires, revoltes    chiefdom.py
+  Argent, budget, peages              money.py (SLIDER_KEYS, earn, book)
+  Nombres, bases, operations          numbers.py
+  Lois                                laws.py
+  Situations (crises, conjonctures)   situations.py (une classe Spec dans SPECS)
+  Savoir-faire, surproduction         production.py
+  Evenements (textes, chaines)        events_data.py (moteur : events.py)
+  Un ordre nouveau du joueur          commands.py (KINDS), puis Play.issue
+  Une touche, un clic                 Play._on_key, Play._on_click,
+                                      Play.side_click
+  Un grand ecran                      screens.SCREENS + render_<x>.py + sa
+                                      methode de clic dans Play
+  Un onglet, un panneau               layout.py (mise en page pure) +
+                                      Renderer.draw_side / render_panels.py
+  Un mode de carte                    layout.MAP_MODES, Renderer.draw_map_modes
+  Une couleur, une police, un bouton  theme.py (docs/charte-graphique.txt)
+  La couleur d'un pays                look.country_color
+  Le brouillard et sa memoire         vision.py, memory.py
+  La fiche d'une case                 sim.hex_inspect, sim.inspect_lines,
+                                      Renderer.draw_inspect
+  Le journal, les nouvelles           gamestate.note, log.py, Renderer.draw_toasts
+  Le menu, la creation du peuple,     render_menu.py ; app.title_screen ;
+  le salon                            session.py
+  Le multijoueur                      session.py, net.py ; verifier :
+                                      tools/essai_reseau.py
+  La sauvegarde                       persist.py (+ un champ type : records.py)
+  Les planetes (taille, sols,         mapgen.py, tools/cuire_planetes.py,
+  rivieres, ressources)               planets.py, resources.py
+  La musique                          music.py, tools/boucle_musique.py
+  Le jeu tourne-t-il pareil ?         tools/empreinte.py (check / record)
 
 
-6. COORDONNEES (PIEGE FREQUENT)
--------------------------------
+6. COORDONNEES ET ETAT EN MEMOIRE
+--------------------------------
+  Trois systemes de coordonnees, a ne pas melanger :
+    Axial    Hex(q, r)       tout l'API public (Band.position, A*)
+    Offset   (col, row)      le stockage, les fichiers ("odd-r")
+    Sphere   lon/lat, xyz    globe.py seulement
+  world.offset_to_axial / world.axial_to_offset ; wrap_x : les colonnes
+  tournent, pas les rangees (les poles). World.distance et World.neighbors
+  gerent le tour du monde ; world.hex_distance (brut) non.
 
-Trois systemes, ne pas les melanger :
-
-  Axial     Hex(q, r)           tout l'API public (Band.position, A*)
-  Offset    (col, row)          stockage grille, JSON carte, odd-r
-  Sphere    lon/lat puis xyz    globe.py seulement
-
-Conversions : offset_to_axial / axial_to_offset dans world.py.
-
-wrap_x=True : col tourne, row (poles) non.
-distance et neighbors gerent le wrap. hex_distance brut ne le gere pas.
-
-La sim est un cylindre hex. La vue est une sphere.
-Un chemin A* ne "traverse" pas les poles.
+  L'etat de la partie : gamestate.GameState (le monde, l'horloge, les
+  peuples, les bandes, les lieux, la diplomatie, les journaux et vues des
+  joueurs, les hasards : state.rng, state.story_rng, la graine des
+  savoirs). Ses fiches : types.Tribe, types.Band, places.Site,
+  places.VillageData (records.py les sauve d'apres leurs types). Le monde
+  (world.World) garde les grilles lourdes (epuisement, influence, saison
+  locale) : sim.snapshot ne copie que ce qui change.
 
 
-7. ETAT EN MEMOIRE
+7. DONNEES ET CODE
 ------------------
-
-GameState (sim.py) :
-  world, clock, tribes, bands, tick_count, rng,
-  last_error, player_dead, last_pressure, vision,
-  log, seen_enemy_tribes, fights, next_band_id,
-  story_rng (hasard du recit, separe de celui de l'IA), next_tribe_id,
-  presence, overlap (influence), sites, next_site_id, diplo,
-  next_person_id, events (cartes, suites), story (evenements actifs :
-  new_game et load_game ; False dans les etats de test montes a la main),
-  band_grid / force_memo (caches de l'IA, jamais sauvegardes),
-  rel_memo (relations gardees le temps d'une phase sans changement :
-  diplo.frozen_relations ; decide_ai, tech.update_learning, voisinages)
-
-Band : id, tribe_id, position, population, stock,
-       order, path, famine_in_period, recent_goals,
-       growth_acc, last_raid_tick, retreating, shield_until,
-       intent_prey, intent_until, leader (Person), loyalty, honored,
-       famine_tick, village, kind ("" clan / "armee" troupe), home
-       (village de la troupe), raised (semaine de la levee), units
-       ([type, hommes, village] par compagnie), homebound (dissoute, rentre),
-       notables (anciens), welded_until (groupe pas encore soude),
-       autonomy (independance d'un clan nomade d'un peuple fixe)
-
-Tribe : id, name, prestige, is_player, famine_during_winter,
-        cabotage, shore_seen, coast_weeks,
-        troupeau, steppe_seen, steppe_weeks,
-        knowledge, learning, progress, practice (savoirs),
-        culture, color, minor, origin, founded, flags, chief_band, heir,
-        settled_at (semaine du premier village, -1 : nomades),
-        civ (civilisation, 0 : la sienne ou celle de sa lignee)
-
-Hex est un tuple nomme (q, r) : hachage en C. Terrain et Season
-hachent par identite.
-
-World cache des champs lourds (epuisement, influence, saison locale).
-Ne pas copier World a chaque tick : snapshot() clone les grilles
-utiles, pas pygame.
-
-Renderer cache le mesh sphere (_xyz, _corners, _land_cells,
-_land_stride). Loin, on saute des terres selon la distance.
-Si tu changes width/height en cours de partie, invalide ce cache
-(aujourd'hui la carte est fixe).
+  La carte est de la DONNEE (comme chez Paradox) : une planete se cuit
+  (tools/cuire_planetes.py : mapgen.py, numpy, quelques minutes) et se livre
+  dans data/planetes ; le jeu ne genere rien. Une sauvegarde note sa
+  planete et se recharge dessus (persist.map_id ; l'ancienne carte :
+  planets.LEGACY). Les regles sont du Python, avec leurs tests.
 
 
-8. DONNEES VS CODE
-------------------
-
-Comme un jeu Paradox : la carte est de la donnee, pas du Python.
-
-  data/kora_map.json
-    width, height, wrap_x, rows (une lettre par hex)
-    Lettres : P V S F C M X E O D
-    (plaine vallee steppe foret colline montagne sommet eau cote desert)
-
-  saves/kora.json
-    etat de partie + vue camera (yaw/pitch/zoom/selected)
-    pas la carte entiere (la carte se recharge depuis data/)
-
-Changer un biome a la main : editer le JSON, ou regenerer.
-Changer une regle : Python + test.
-
-
-9. TESTS
---------
-
-pytest.ini : pythonpath = .
-Commande :  .venv/Scripts/python.exe -m pytest tests/ -q
-
-Fichier                    Couvre
--------                    ------
-test_hex.py                axial / offset / distance
-test_world.py              terrains, spawn, passable
-test_wrap.py               cylindre est-ouest
-test_clock.py              semaines, saisons, vitesses
-test_path.py               A*, duree en semaines
-test_food.py               collecte, partage, famine
-test_population.py         croissance / famine
-test_raid.py               combat, fuite, prestige
-test_movement.py           goto, marcher vers, wrap
-test_vision.py             rayon 16, explore / visible
-test_ai.py                 decisions sans "l'IA gagne"
-test_tech.py               arbre sain, chaque effet agit, texte =
-                           donnees, apprentissage, sauvegarde
-test_ai_war.py             pas de raid perdu d'avance, fusion,
-                           appel puis depart groupe, raid annule
-test_tick.py               new_game, 4 ticks, snapshot
-test_season_spread.py      propagation case par case
-test_season_look.py        couleurs
-test_atlas.py              labels
-test_persist.py            roundtrip JSON
-test_mapgen.py             continents, biomes (LENT)
-test_globe.py              projection, clic
-test_render_math.py        zoom / pixels sans fenetre
-test_hud.py                hits HUD / menu / journal
-test_log.py                journal, filtres, stride dezoom
-test_inspect.py            fiche case selon brouillard
-test_app_import.py         app s'importe
-test_bands.py              scinder, reunir, rejoindre, id, save
-test_economy.py            famine, stock, croissance, raids,
-                           renforts, departs par biome
-test_band_ui.py            fiche de bande, selection, empilement
-test_retreat.py            repli a pied, ordres bloques, protection
-test_balance.py            equilibrage vraie carte (LENT, ~40 s ;
-                           croissance jugee sur 4 graines)
-                           robot raisonnable vs joueur immobile
-test_peoples.py            cultures, noms, petits peuples
-test_influence.py          zone : presence, usure, rayon, effets
-test_sites.py              caches, campements, abri, pillage
-test_chiefs.py             chefs, attachement, depart, succession
-test_diplo.py              contacts, raisons, pactes, cadeaux,
-                           diffusion, clan invite
-test_events.py             evenements bien formes, cartes, suites
-test_ui_hover.py           la souris partout sur chaque ecran : aucune
-                           fiche au survol ne plante
-test_one_village.py        un village par peuple, villages freres, chaines
-                           de tributaires, metiers selon le sexe, fuite,
-                           repli de l'IA, loups des troupes
-test_war_chiefdom.py       population en classes, batailles en jours,
-                           fortune non binaire, general, repli, conquete,
-                           tributaires, chefferie, revolte, sauvegarde
-test_production.py         savoir-faire, surproduction, effondrement en
-                           cascade, grand monument, risques prevenus
-test_situations.py         les situations : declencheurs, effets, crise
-                           resolue = tout comme avant, prix a plusieurs,
-                           sauvegarde, hasard propre, IA
-test_resources.py          couches cuites, plusieurs par case
-test_villages.py           fonder, champs, recolte, semences,
-                           pillage, palissade
-test_panels.py             mise en page des nouveaux panneaux
-test_battle.py             passes d'armes, moral, poursuite, terrain,
-                           aneantissement, palissade, rapport sauve
-test_armies.py             troupes : levee, retour, rappel, desertion,
-                           bras manquants, IA menacee, sauvegarde
-test_village_screen.py     serments, batiments, age des villages,
-                           fenetres (mise en page, dessin sans ecran)
-test_units.py              types par age, piles, detacher, dissoudre,
-                           rentrer a pied, volee, tenue, reequiper
-test_merge.py              qui mene, anciens, attachement pondere,
-                           soudure, confier le clan
-test_emancipation.py       independance apres le village, chef au
-                           village, limite de bandes par civilisation,
-                           l'IA aussi, peuple de souche qui fonde son
-                           village, sauvegarde
-test_camps_caches.py       campement leve -> cache, cache prise par
-                           l'IA, onglet Armee, carre du village
-
-test_mapgen.py genere des planetes 768 x 384 (~15 s chacune,
-une seule fois par graine) : ~1 minute. Le reste est rapide.
-
-Refactoring "sans changer le jeu" : tools/empreinte.py record
-avant, check apres (etat compare semaine par semaine).
-
-Lancer sans mapgen ni equilibrage :
-  pytest tests/ -q --ignore=tests/test_mapgen.py -m "not slow"
-
-Changer un chiffre d'economie ou d'IA : lancer test_balance.py.
+8. LES OUTILS (tire des docstrings)
+-----------------------------------
+<<< auto : outils >>>
+  tools/accents.py
+    Remet les accents du francais dans les TEXTES AFFICHES du jeu (chaines
+    de caracteres qui ne sont ni des identifiants ni des docstrings) :
+        .venv/Scripts/python.exe tools/accents.py [--dry] [fichiers...]
+    Sans fichiers : src/kora/*.py et tests/*.py. --dry : montre sans ecrire.
+  tools/arbre_savoirs.py
+    Ecrit l'arbre des savoirs (donnees de tech.py) en texte.
+  tools/boucle_musique.py
+    Faire d'un morceau une BOUCLE sans couture (la musique de guerre).
+  tools/cuire_planetes.py
+    Cuire les planetes du jeu (0.20) : data/planetes/<id>.json, <id>.png et
+    index.json.
+  tools/dependances.py
+    Les dependances entre modules de src/kora : qui importe qui, les
+    imports caches (dans une fonction), les cercles, les etages.
+  tools/empreinte.py
+    Empreinte exacte d'une partie : prouve qu'un refactoring ne change pas le jeu.
+  tools/essai_graines.py
+    Une partie avancee se calcule-t-elle pareil sur deux machines ?
+  tools/essai_reseau.py
+    Essai du multijoueur en vrai : deux processus (comme deux PC : graines de
+    hachage Python differentes), la vraie carte, un robot par joueur qui ne
+    passe que par des ordres (src/kora/essai.py). A la fin, les deux parties
+    doivent etre identiques, sans resynchronisation.
+  tools/notes.py
+    LES NOTES DU DEPOT : ce que les IA lisent avant de travailler. Elles
+    doivent rester VRAIES : leurs dates, la version, les fichiers et les
+    fonctions qu'elles citent, et leurs parties tirees du code.
+  tools/planche_charte.py
+    La planche de la charte graphique, dessinee par le jeu (src/kora/theme.py) :
+        .venv/Scripts/python.exe tools/planche_charte.py [sortie.png]
+    Par defaut : docs/charte/planche.png.
+  tools/recuperer_assets.py
+    Recupere les polices et les icones du jeu (une fois ; elles sont dans le
+    depot ensuite) :
+        .venv/Scripts/python.exe tools/recuperer_assets.py
+<<< fin auto >>>
 
 
-10. BUILD ET CHEMINS FROZEN
----------------------------
+9. LES TESTS (tire des docstrings)
+----------------------------------
+  Tout : .venv/Scripts/python.exe -m pytest -q (environ 5 minutes ;
+  test_balance juge l'equilibrage sur 4 graines). Sans les lents :
+  -m "not slow" --ignore=tests/test_mapgen.py.
 
-Venv : .venv/Scripts/python.exe
+<<< auto : tests >>>
+  conftest.py                 (SANS DOCSTRING)
+  test_ai.py                  L'IA des bandes (ai.py) : elle va vers une
+                              meilleure case, garde son chemin,
+  test_ai_war.py              Quand l'IA attaque, et avec qui (ai_war.py) :
+                              pas de raid perdu d'avance,
+  test_app_clicks.py          Le jeu lui-meme, sans fenetre : un scenario de
+                              touches et de clics joue
+  test_app_import.py          L'application (app.py) s'importe : aucun module
+                              de l'interface ne casse au
+  test_approach.py            Les approches des dirigeants (approach.py) et
+                              les grandes chefferies
+  test_architecture.py        Les REGLES DU CODE de Kora, verifiees
+                              (docs/code/ajouter-un-systeme.txt).
+  test_armies.py              Troupes : levees au village, elles se battent,
+                              rentrent, desertent.
+  test_atlas.py               L'atlas (atlas.py) : un continent qui fait le
+                              tour du monde n'a qu'un nom,
+  test_balance.py             Equilibrage sur la vraie carte (LENT, ~30 s).
+  test_band_ui.py             La fiche d'une bande et la selection : boutons
+                              dans la fiche, lignes de la
+  test_bands.py               Scinder, reunir, rejoindre (bands.py) : partage
+                              des gens et des vivres,
+  test_battle.py              Batailles simulees : passes d'armes, moral,
+                              poursuite, aneantissement.
+  test_cabotage.py            Le cabotage (la pirogue) : ses conditions
+                              (peche, population, semaines sur
+  test_camps_caches.py        Campements leves au depart, caches prises par
+                              l'IA, onglet Armee, monde
+  test_chiefs.py              Chefs, clans, emprise : un clan loin du chef se
+                              detache, puis part.
+  test_clock.py               L'horloge (clock.py) : les saisons, le passage
+                              de l'annee, la vitesse et la
+  test_commands.py            Le canal des ordres (commands.py) : chaque genre
+                              d'ordre fait ce que
+  test_confed.py              La confederation (confed.py) : deux peuples, un
+                              seul pays au dehors.
+  test_diplo.py               Diplomatie : relations lisibles, pactes,
+                              propositions, diffusion.
+  test_economy.py             L'economie des bandes : la famine prend une
+                              part, les reserves passent
+  test_emancipation.py        Apres le premier village, les clans errants
+                              s'eloignent et partent fonder
+  test_events.py              Evenements en chaines : bien formes, choisis,
+                              suivis (ou pas).
+  test_food.py                La collecte (rayon 2 : 19 cases) et la faim :
+                              une petite bande de vallee au
+  test_globe.py               La sphere (globe.py) : voisins de part et
+                              d'autre de la ligne de changement
+  test_goods.py               Metiers, biens du peuple, accords commerciaux ;
+                              savoirs des peuples fixes ;
+  test_grain.py               Le grain des disettes (grain.py) : un village
+                              affame achete du grain,
+  test_hex.py                 Les coordonnees des cases (world.py) : aller-
+                              retour offset / axial,
+  test_hud.py                 La barre du haut et les panneaux (layout.py) :
+                              vitesses, onglets, l'arbre en
+  test_influence.py           Zone d'influence : ou l'on vit, pas ce que l'on
+                              possede.
+  test_inshore.py             Les eaux du rivage : seules les cases d'eau qui
+                              touchent la terre se
+  test_inspect.py             La fiche d'une case (sim.hex_inspect) selon le
+                              brouillard : rien
+  test_log.py                 Le journal (log.py) : les dernieres lignes et
+                              leurs filtres, ce que le
+  test_map_clicks.py          Les clics sur la carte : un pays clique sans
+                              armee choisie ouvre sa
+  test_mapgen.py              La generation des planetes (mapgen.py, LENT) :
+                              continents varies, chaines de
+  test_memory.py              La memoire du brouillard (memory.py) : ce qu'on
+                              a vu la derniere fois.
+  test_merge.py               Fusion des bandes : qui mene, les anciens,
+                              l'attachement, la soudure.
+  test_movement.py            La marche des bandes : quatre cases de plaine
+                              par semaine, ordres invalides
+  test_mp_ui.py               La boucle du jeu (app.play) en multijoueur, pour
+                              de vrai : l'ecran d'un
+  test_multiplayer_sim.py     Plusieurs peuples joueurs dans une meme partie
+                              (multijoueur, phase B) :
+  test_notes.py               Les NOTES que lisent les IA disent vrai
+                              (tools/notes.py) : les dates, la
+  test_numbers_money.py       Les nombres et l'argent (0.7.0) : comptage,
+                              nombres additifs et base,
+  test_one_village.py         Un village par peuple (les autres lui sont
+                              tributaires, ou freres), les
+  test_ost_siege.py           L'ost (les troupes des tributaires rejoignent
+                              celle du suzerain) et le
+  test_panels.py              Mise en page des nouveaux panneaux (sans
+                              fenetre).
+  test_path.py                Les chemins (path.py) : A* en ligne droite,
+                              trois semaines pour douze
+  test_peoples.py             Peuples en donnees : cultures, noms, couleurs,
+                              petits peuples.
+  test_persist.py             La sauvegarde (persist.py) : aller-retour
+                              (horloge, bandes, brouillard,
+  test_planets.py             0.20 : les nouvelles planetes (planets.py) :
+                              registre, sauvegarde, departs
+  test_population.py          La croissance des bandes : une bande nourrie
+                              grandit, une bande affamee non.
+  test_production.py          Le savoir-faire des villages (production.py), la
+                              surproduction et
+  test_raid.py                Les raids : le plus fort fait fuir l'autre, une
+                              marque de combat visible
+  test_realm.py               Le pays (chiefdom.country) : les tributaires
+                              suivent leur suzerain a la
+  test_render_math.py         La projection a l'ecran sans fenetre : pixel et
+                              case aller-retour, colonnes
+  test_research.py            La recherche refaite : les grands tournants
+                              (turning.py, a la maniere des
+  test_resources.py           Ressources du pays : plusieurs par case, cuites
+                              avec la carte.
+  test_retreat.py             Le repli du vaincu : il perd des vivres et
+                              rentre A PIED vers son groupe ou
+  test_saves_music.py         Les sauvegardes (une par partie, charger,
+                              supprimer, copier) et la
+  test_season_look.py         Les couleurs des saisons (look.py) : l'hiver
+                              blanchit, l'ete jaunit la
+  test_season_spread.py       La saison locale qui avance sur la carte
+                              (world.py) : pas d'un coup, jusqu'a
+  test_session.py             Multijoueur de bout en bout : un hote et un ami
+                              relies par TCP (sur cette
+  test_sites.py               Caches et campements : debloques par les
+                              savoirs.
+  test_situations.py          Les situations (situations.py) : crises et
+                              conjonctures. Chacune nait de
+  test_start_menu.py          Menu de demarrage, creation du peuple et bonus
+                              de depart (5 ans).
+  test_steward.py             L'intendant des villages IA (G7) : les champs
+                              d'abord, les metiers rendent
+  test_tech.py                Savoirs : l'arbre tient debout, chaque effet
+                              affiche agit vraiment.
+  test_tick.py                Le pas du monde (sim.tick) : une partie neuve,
+                              quatre semaines sans planter,
+  test_troupeau.py            Le troupeau de la steppe : ses conditions, l'IA,
+                              les semaines de steppe, la
+  test_ui_hover.py            La souris partout : chaque ecran se dessine sans
+                              erreur quel que soit ce
+  test_ui_pure.py             Dessiner ne change pas la partie. En
+                              multijoueur, chaque joueur ouvre ses
+  test_units.py               Unites : types par role et par age, piles,
+                              detacher, dissoudre, reequiper.
+  test_village_screen.py      Le village : serment de fondation, batiments,
+                              ecrans (sans fenetre).
+  test_villages.py            Villages : une bande qui s'installe, des champs
+                              sur plusieurs cases.
+  test_vision.py              Le brouillard (vision.py) : une bande ennemie
+                              hors de vue ne se voit pas.
+  test_war.py                 La guerre declaree (diplo.py) : entre peuples
+                              qui ont la diplomatie, on
+  test_war_chiefdom.py        La population (enfants, hommes, femmes, anciens,
+                              blesses), les batailles
+  test_war_goals.py           Les guerres qui bougent : les buts de guerre
+                              (soumettre un peuple, ou
+  test_wars_screen.py         L'ecran des guerres (wars.py, render_wars.py),
+                              le rapport de force avant
+  test_white_peace.py         0.18 : la diplomatie vient avec les villages
+                              (Messagers et serments) ;
+  test_world.py               La planete (world.py) : bornes, eau
+                              infranchissable, rayon de collecte,
+  test_wrap.py                Le monde qui tourne d'est en ouest (wrap_x) : le
+                              bord est touche le bord
+<<< fin auto >>>
 
-Exe onedir (pas un seul fichier) :
-  python -m PyInstaller --noconfirm Kora.spec
-  livrable = tout le dossier dist/Kora  (pas seulement l'exe)
 
-Si Kora.exe tourne : WinError 5 a l'ecriture. Le fermer.
+10. L'EXE ET LES CHEMINS
+------------------------
+  python -m PyInstaller --noconfirm Kora.spec   -> dist/Kora (le dossier
+  entier : Kora.exe a besoin de _internal) ; Kora-unfichier.spec
+  --distpath dist-unfichier -> un seul Kora.exe. Les deux embarquent TOUS
+  les modules (KORA_MODULES) et data/ (planetes, ancienne carte, polices,
+  icones, musique). Si Kora.exe tourne : WinError 5 ; ne pas reconstruire
+  dist/Kora (le joueur l'utilise) : construire a part et le dire.
+  Kora.exe en un seul fichier = DEUX processus (l'extracteur, puis le jeu) :
+  pour arreter un essai, taskkill /T /F /PID (l'arbre), sinon le jeu reste
+  orphelin et verrouille dist-unfichier/Kora.exe.
+  Les parties : %APPDATA%\Kora\saves dans l'exe (saves/ dans le depot en
+  developpement) : persist.saves_dir. JAMAIS toucher celles du joueur : les
+  copier dans le scratchpad.
+  Publier : __version__ (src/kora/__init__.py), commit, etiquette vX.Y.Z
+  poussee : .github/workflows/release.yml fait le reste.
 
-Carte en dev :
-  data/kora_map.json
-Carte dans l'exe :
-  dist/Kora/_internal/data/kora_map.json
-  (PyInstaller datas)
 
-Sauvegarde :
-  %APPDATA%\Kora\saves\kora.json   (frozen)
-  <depot>/saves/kora.json            (python main.py)
+11. LES SPECS (tire des fichiers)
+---------------------------------
+  Une spec par chantier, nommee du JOUR ou elle est ecrite (la date se lit :
+  tools/notes.py le verifie contre git). docs/superpowers/plans : les plans
+  du debut (aout) ; docs/historique : les notes depassees, gardees.
+
+<<< auto : specs >>>
+  specs/2026-08-14-tribal-grand-strategy-proto-design.txt
+    PROTO TRIBAL — GRANDE STRATEGIE
+    Statut : en revue
+  specs/2026-08-15-cabotage-decisions-design.txt
+    CABOTAGE — DECISION DE TRIBU
+    Statut : en place
+  specs/2026-08-15-hiver-cabotage-combat-design.txt
+    HIVER 30/50, CABOTAGE SANS PRESTIGE, EPEE DE COMBAT
+    Statut : a implementer
+  specs/2026-08-15-journal-inspect-design.txt
+    JOURNAL, TOASTS, INSPECTER UNE CASE
+    Statut : implemente
+  specs/2026-08-15-saisons-sauvegarde-atlas.txt
+    SAISONS SUR CARTE, SAUVEGARDE, ATLAS
+    Statut : en place (corrige)
+  specs/2026-08-15-troupeau-savoir-design.txt
+    TROUPEAU — SAVOIR (PAS UN ARBRE TECH)
+    Statut : implemente
+  specs/2026-09-23-economie-bandes-design.txt
+    ECONOMIE, BANDES MULTIPLES, BROUILLARD, PERF
+    Statut : en place
+  specs/2026-09-23-perf-ia-carte-design.txt
+    OPTIMISATION, IA PRUDENTE ET SOLIDAIRE, NOUVELLE PLANETE
+    Statut : en place
+  specs/2026-09-23-savoirs-design.txt
+    SAVOIRS (ARBRE) - AGE TRIBAL ET NEOLITHIQUE
+    Statut : en place
+  specs/2026-09-24-tribus-vivantes-neolithique-design.txt
+    TRIBUS VIVANTES ET PIVOT NEOLITHIQUE
+    Statut : en place (phases 0 a 8 faites le 2026-09-24)
+  specs/2026-09-24-villages-armees-batailles-design.txt
+    Villages, premieres armees, batailles
+    Statut : en place (voir la fin).
+  specs/2026-09-25-carte-commerce-arbre-savoirs-design.txt
+    Mode de carte Commerce, arbre des savoirs navigable, fin des tribus
+    renaissantes
+    Statut : en place (voir la fin).
+  specs/2026-09-25-commerce-proto-pays-design.txt
+    Proto-pays et commerce (routes commerciales)
+    Statut : en place (voir la fin).
+  specs/2026-09-25-metiers-echanges-design.txt
+    Metiers, echanges, villages qui grandissent
+    Statut : en place (voir la fin).
+  specs/2026-09-25-plafond-commun-civilisation.txt
+    Un plafond de bandes commun a chaque civilisation
+    Statut : en place.
+  specs/2026-09-25-profondeur-deux-ages-propositions.txt
+    De la profondeur pour l'age tribal et le neolithique (propositions)
+    Statut : PROPOSITIONS, rien n'est decide.
+  specs/2026-09-25-profondeur-deuxieme-reflexion.txt
+    Profondeur des deux ages : deuxieme reflexion (plus loin)
+    Statut : PROPOSITIONS a choisir, rien n'est code.
+  specs/2026-09-25-unites-fusion-emancipation-design.txt
+    Unites, fusion des bandes, emancipation des clans
+    Statut : en place (voir la fin).
+  specs/2026-09-27-menu-bonus-multijoueur.txt
+    Menu de demarrage, bonus de depart, multijoueur
+    Statut : en place (version 0.2.0, corrigee en 0.2.1).
+  specs/2026-10-02-chefferie-population-batailles.txt
+    La chefferie, la population en classes, les batailles qui durent
+    Statut : FAIT (version 0.5.0).
+  specs/2026-10-02-influence-savoir-faire-surproduction.txt
+    Projection d'influence, savoir-faire, surproduction, grand monument
+    Statut : FAIT (version 0.4.0).
+  specs/2026-10-02-nombres-et-argent.txt
+    Les nombres et l'argent
+    Statut : FAIT (version 0.7.0).
+  specs/2026-10-02-profondeur-epoques-situations.txt
+    Profondeur des deux époques, et le système des SITUATIONS
+    Statut : réflexion + système des situations EN PLACE
+  specs/2026-10-02-profondeur-propositions-detaillees.txt
+    La profondeur des deux âges : propositions détaillées (à choisir)
+    Statut : PROPOSITIONS, rien n'est codé. Elles remplacent
+  specs/2026-10-02-voix-et-coutumes-detail.txt
+    1A. Les voix du peuple et les coutumes (détail, à valider)
+    Statut : MIS DE CÔTÉ à sa demande (« ne fais pas le 1A pour
+  specs/2026-10-03-chefs-et-grandes-chefferies.txt
+    Les approches des chefs, les grandes chefferies, les noms des savoirs
+    Statut : FAIT (version 0.8.0).
+  specs/2026-10-03-frontieres-naturelles-propositions.txt
+    Briser l'hexagone : des frontieres naturelles (PROPOSITIONS)
+    Statut : PROPOSE, en attente de son choix.
+  specs/2026-10-03-vague-de-corrections-0.9.0.txt
+    Une vague de corrections : pays, lois, argent, brouillard, terrain
+    Statut : FAIT (version 0.9.0 ; complements 0.9.1, section 11).
+  specs/2026-10-09-arbre-coherent-guerre-declaree.txt
+    Un arbre coherent, des chiffres vrais, la guerre declaree
+    Statut : FAIT (version 0.12.0) ; l'argent : PROPOSE
+  specs/2026-10-09-arbre-tire-terrain-echanges.txt
+    L'arbre selon le sort, un terrain moins hexagonal, les ressources par
+    l'echange
+    Statut : FAIT (version 0.15.0) ; section 4 : PROPOSE.
+  specs/2026-10-09-guerres-qui-bougent.txt
+    Des guerres qui bougent : buts de guerre, alliances qui s'usent,
+    motifs
+    Statut : FAIT (version 0.14.0).
+  specs/2026-10-09-guerres-sauvegardes-musique.txt
+    L'ecran des guerres, le rapport de force, les vivres, les sauvegardes,
+    la musique
+    Statut : FAIT (version 0.16.0).
+  specs/2026-10-09-ost-siege-milice-grain.txt
+    L'ost, le siege, la milice, le grain des disettes
+    Statut : FAIT (version 0.13.0).
+  specs/2026-10-09-recherche-tournants-et-tirages.txt
+    La recherche refaite : les grands tournants et les tirages
+    Statut : FAIT (version 0.10.0 ; l'arbre lisible : 0.10.1 a 0.10.3,
+      sections 5 et 6 ;
+  specs/2026-10-10-diplomatie-paix-blanche.txt
+    La diplomatie avec les villages, la paix blanche, la fiche des
+    savoirs, la musique
+    Statut : FAIT (version 0.18.0).
+  specs/2026-10-10-intendant-des-villages.txt
+    L'intendant des villages (G7)
+    Statut : FAIT (version 0.17.0).
+  specs/2026-10-11-nouvelles-planetes-design.txt
+    Les nouvelles planetes (carte agrandie et amelioree) : conception
+    Statut : FAIT (version 0.20.0).
+  specs/2026-10-11-prerequis-musique-armee-guerres.txt
+    Les prerequis toujours, la musique des vraies guerres, l'armee et les
+    guerres en un ecran
+    Statut : FAIT (version 0.19.0). La carte (4e demande) :
+  plans/2026-08-14-proto-tribal-kora.txt
+    PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
+  plans/2026-08-15-cabotage.txt
+    CABOTAGE — PLAN D'IMPL
+  historique/2026-08-15-suite-possible.txt
+    HISTORIQUE (gardee pour memoire, DEPASSEE) : l'etude d'aout 2026,
+    ecrite
+    Statut : etude, pas une spec a implementer
+<<< fin auto >>>
 
 
-11. PIEGES CONNUS
+12. PIEGES CONNUS
 -----------------
-
-- sim n'importe pas pygame. Un import "pour debugger" suffit
-  a casser les tests headless.
-
-- La spec du 14 aout decrit une carte 150 x 100 faite main
-  et 2 bandes joueur. Le code actuel : planete 768 x 384,
-  1 bande joueur au depart (scindable jusqu'a 8),
-  generation cuite dans le JSON.
-  Croire la spec sans lire new_game() = faux depart.
-
-- camera_x / camera_y existent encore dans la vue sauvegardee.
-  L'orbite reelle est globe_yaw / globe_pitch. Ne pas reintroduire
-  un rendu rectangle "quand on zoome".
-
-- L'IA n'a pas de brouillard, le joueur si. Dessiner une bande
-  ennemie sans enemy_band_visible = fuite d'info.
-
-- pick_spawn_hexes separe les 4 departs (min_sep selon la largeur).
-  Forcer d'anciennes coords (75, 88) n'a plus de sens.
-
-- A* a un plafond de noeuds. Un ordre vers l'autre bout du monde
-  peut echouer silencieusement (bande inchangee). C'est voulu.
-
-- Exception dans tick : l'etat revient en arriere, pause,
-  last_error dans le HUD. Ne pas avaler l'exception ailleurs.
-
-- Un combat ne met PAS le jeu en pause et ne bouge pas la camera
-  (spec du 15 aout). Ne pas remettre clock.paused = True dans
-  resolve_raids.
-
-- Bande en repli : set_goto / set_march_to_band / split / merge
-  sont ignores. Un test qui donne un ordre juste apres un combat
-  doit d'abord laisser le repli finir.
-
-- world.hexes_in_radius renvoie une liste PARTAGEE (cache pour
-  les rayons <= 4). Ne jamais la modifier : copier d'abord.
-
-- World._season_frontier est une liste de RANGEES (la saison
-  avance par rangees entieres). Ne pas y remettre des (col, row).
-
-- decide_ai : une bande decide quand (tick_count + id) % 4 == 0.
-  Un test d'IA doit choisir son tick et son id en consequence.
-
-- Recuire kora_map.json change la carte ; une ancienne save
-  (meme taille) reste chargeable mais les biomes sous les pieds
-  peuvent ne plus matcher si tu as regenere. Taille differente
-  = load refuse, et la save est renommee kora-ancienne-<date>.json
-  (jamais ecrasee). Recuire change aussi tools/empreinte.py :
-  l'enregistrer de nouveau.
-
-- hexes_and_distances / hexes_in_radius renvoient des listes du
-  cache : ne pas les modifier.
-
-- Planet (globe_draw) lit world._terrains a sa creation. Si un
-  test change la carte apres, creer un nouveau Renderer.
-
-- Un village est une BANDE installee : set_goto / set_march_to_band
-  l'ignorent. Pour partir, scinder (Former bande) ou quitter le village.
-
-- Une troupe est une bande (kind "armee") : elle ne compte pas dans
-  tribe_band_count, ne se mele qu'aux troupes (merge_bands), rentre au
-  village par villages.disband. Une bande qui visait une troupe amie
-  s'arrete au lieu de fusionner.
-
-- Une bataille a son propre hasard (battle._seed : tour + bandes) :
-  elle ne consomme ni state.rng ni story_rng (sauf la mort du chef).
-
-- Sur une case ou plusieurs bandes se battraient, c'est celle qui est
-  venue attaquer qui livre la bataille (sinon le village, d'id plus
-  bas, passait avant sa troupe).
-
-- Les evenements ne tournent que si state.story est vrai (vraie
-  partie). Un test qui veut des evenements le met a True.
-
-- Le hasard du recit (state.story_rng : noms, chefs, evenements) est
-  separe de state.rng (IA) : ajouter un evenement ne change pas les
-  marches de l'IA... sauf par ses effets.
-
-- diplo.frozen_relations : seulement autour d'une phase ou AUCUNE relation
-  ne change (ni add_mod, ni pacte, ni chef remplace). Sinon, les relations
-  gardees seraient fausses.
-
-- L'IA cherche un savoir a apprendre une semaine sur quatre (decalee
-  selon le peuple) ; un test qui appelle update_learning doit faire
-  avancer tick_count.
-
-- world.influence : la carte est RECONSTRUITE chaque mois
-  (influence.update). Ne pas garder une reference a une cellule.
-
-
-12. COMMENT TRAVAILLER SANS SE PERDRE
--------------------------------------
-
-1. Trouver le fichier dans la table "Ou changer X".
-2. Lire le test du meme sujet avant de modifier.
-3. Changer la sim sans toucher render, ou l'inverse.
-4. pytest sur le fichier vise, puis tests/ -q.
-5. Si l'exe doit suivre : PyInstaller, dossier dist/Kora entier.
-
-Python du projet, pas le Python systeme :
-  .venv/Scripts/python.exe
+  - Un import de pygame "pour deboguer" dans la simulation casse les tests
+    sans fenetre (test_architecture).
+  - L'IA n'a pas de brouillard, le joueur si : dessiner une bande etrangere
+    sans vision.enemy_band_visible = une fuite d'information.
+  - path.astar a un plafond de noeuds : un ordre vers l'autre bout du monde
+    peut echouer sans bruit. C'est voulu.
+  - Un combat ne met jamais le jeu en pause et ne bouge pas la camera (P5).
+  - Une bande en repli ignore les ordres : un test qui donne un ordre juste
+    apres un combat laisse d'abord le repli finir.
+  - World.hexes_in_radius et World.hexes_and_distances rendent des listes
+    du CACHE : ne jamais les modifier.
+  - World._season_frontier est une liste de RANGEES.
+  - ai.decide_ai : une bande decide quand (tick_count + id) % 4 == 0 ; l'IA
+    cherche un savoir une semaine sur quatre : un test choisit son tick.
+  - Un village est une BANDE installee (Band.village) : les ordres de marche
+    l'ignorent. Une troupe est une bande (Band.kind == "armee") : elle ne
+    compte pas dans le plafond de bandes et ne se mele qu'aux troupes.
+  - Une bataille a son propre hasard (battle._seed) ; les situations aussi
+    (situations._rand) ; les tirages des savoirs (draws.py) ; une situation
+    qui tirerait story_rng changerait tout l'equilibrage.
+  - Les evenements ne tournent que si state.story est vrai (une vraie
+    partie) : un test qui en veut le met a True.
+  - diplo.frozen_relations : seulement autour d'une phase ou AUCUNE relation
+    ne change.
+  - L'influence est RECONSTRUITE chaque mois (influence.update) : ne pas
+    garder une reference a une cellule.
+  - famine_in_period est efface chaque semaine : lire Band.famine_tick.
+  - Un monkeypatch d'une constante importee par nom ne touche pas la copie :
+    lire module.CONST.
+  - tools/accents.py sans --dry ECRIT (meme avec --help) ; il propose de
+    faux accents ("Accepte" en tete de phrase, "l'a" / "n'a") : reformuler.
+  - Un module appele seulement par systems.py n'etait pas dans l'exe : il
+    l'est par KORA_MODULES (test) ; toujours essayer l'exe avant de publier.
+  - soundfile plante en ecrivant un long OGG d'un coup (ecrire par blocs) ;
+    les tests forcent SDL_AUDIODRIVER=dummy (conftest).
+  - La cuisson des planetes : en avant-plan, ou un seul processus en
+    arriere-plan (deux cuissons concurrentes s'etranglent).
+  - Mesurer un ralentissement sur une copie du code (git worktree) : les
+    sondes importent le code vivant ; une sonde de robot change avec le
+    robot, pas avec le jeu.

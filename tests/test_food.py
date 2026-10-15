@@ -1,3 +1,6 @@
+"""La collecte (rayon 2 : 19 cases) et la faim : une petite bande de vallee au
+printemps tient, une bande sans reserve en hiver dans les collines souffre."""
+
 from src.kora.clock import Clock
 from src.kora.sim import collect_food
 from src.kora.bands import forage_hexes
