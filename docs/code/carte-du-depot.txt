@@ -426,14 +426,14 @@ ETAGE 5  LES SYSTEMES
   chiefdom.py
     La CHEFFERIE (age des villages) : le grenier du chef, les familles, les
     tributaires.
-    fonctions : kin_villages, kin_of, split_extra_villages, has_chiefdom,
-      families, holder, charge_power, war_chief_bonus, trade_mult, craft_mult,
-      craft_output, set_charge, favour_word, set_rate, take_from_harvest,
-      granary_pay, feast_cost, feast_block, feast, stability_parts,
-      army_morale, overlord_of, top_lord, lords_of, descendants, followers,
-      country, sight_partners, vassals_of, vassal_cap, protect_ratio, feasted,
-      make_vassal, village_taken, ai_choice, conquer, protection_power,
-      unrest, monthly, overthrow, village_secedes, lines
+    fonctions : kin_villages, kin_of, is_kin, split_extra_villages,
+      has_chiefdom, families, holder, charge_power, war_chief_bonus,
+      trade_mult, craft_mult, craft_output, set_charge, favour_word, set_rate,
+      take_from_harvest, granary_pay, feast_cost, feast_block, feast,
+      stability_parts, army_morale, overlord_of, top_lord, lords_of,
+      descendants, followers, country, sight_partners, vassals_of, vassal_cap,
+      protect_ratio, feasted, make_vassal, village_taken, ai_choice, conquer,
+      protection_power, unrest, monthly, overthrow, village_secedes, lines
     constantes : RATES, DEFAULT_RATE, RATE_STABILITY, GRANARY_ROT,
       FEAST_WEEKS, FEAST_STABILITY, FEAST_TERM, FEAST_PRESTIGE, RELIEF_WEEKS,
       RELIEF_GIVE, VASSAL_SHARE, REVOLT_UNREST, TRAITS, CHARGES, CHARGE_TRAIT,

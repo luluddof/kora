@@ -596,11 +596,12 @@ def forage_mult(site, band) -> float:
 
 
 def _village_sites(state, tribe_id: int) -> list:
-    return [
-        s
-        for s in sorted(state.sites.values(), key=lambda s: s.id)
-        if s.kind == "village" and s.tribe_id == tribe_id and places.band_of(state, s) is not None
-    ]
+    # filtrer avant de trier : le meme resultat, sans trier tous les lieux du
+    # monde a chaque appel (des dizaines de milliers par mois).
+    return sorted(
+        (s for s in state.sites.values() if s.kind == "village" and s.tribe_id == tribe_id and places.band_of(state, s) is not None),
+        key=lambda s: s.id,
+    )
 
 
 def _village_hexes(state, tribe_id: int) -> list:
@@ -608,7 +609,9 @@ def _village_hexes(state, tribe_id: int) -> list:
 
 
 def has_village(state, tribe_id: int) -> bool:
-    return bool(_village_hexes(state, tribe_id))
+    return any(
+        s.kind == "village" and s.tribe_id == tribe_id and places.band_of(state, s) is not None for s in state.sites.values()
+    )
 
 
 def reserve(state, tribe_id: int) -> float:

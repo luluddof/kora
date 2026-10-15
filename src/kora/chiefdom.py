@@ -113,6 +113,25 @@ def kin_of(state, tid: int) -> set:
     return out
 
 
+def is_kin(state, tid: int, other: int) -> bool:
+    """`other in kin_of(state, tid)`, sans construire tout l'ensemble : la
+    relation (diplo._base) le demande pour chaque paire de peuples, des
+    milliers de fois par mois. Le meme resultat : un tributaire de tid (le
+    pacte "vassal" a toujours pour payeur l'un des deux), ou un peuple vivant
+    de sa civilisation qui ne s'est pas razzie avec lui depuis un an."""
+    tribe = state.tribes.get(tid)
+    if tribe is None or not tech.bonuses(tribe).kin:
+        return False
+    if any(p.kind == "vassal" and p.payer == other and p.payer != tid for p in diplo.pacts_between(state, tid, other)):
+        return True
+    o = state.tribes.get(other)
+    if other == tid or o is None or civ_of(state, o) != civ_of(state, tribe):
+        return False
+    if diplo._recent_raid(state, tid, other, 52) is not None or diplo._recent_raid(state, other, tid, 52) is not None:
+        return False
+    return any(b.tribe_id == other and b.population > 0 for b in state.bands.values())
+
+
 def split_extra_villages(state) -> None:
     """En cet age, un peuple ne tient qu'un village (anciennes parties : il en
     avait plusieurs). Le village du chef reste le sien ; chacun des autres

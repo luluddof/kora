@@ -17,7 +17,7 @@ import json
 import sys
 from pathlib import Path
 
-from src.kora.world import World, load_world
+from src.kora.world import World, cost_pct, load_world
 
 LEGACY = "kora"
 LEGACY_NAME = "L'ancienne Kora"
@@ -126,4 +126,9 @@ def load(pid: str) -> World | None:
     except (KeyError, ValueError, OSError):
         return None
     world.planet = pid
+    if pid == LEGACY:
+        # L'ancienne carte n'a pas sa variation du cout de marche cuite : on la
+        # calcule ici, au chargement (1 a 2 s, une fois par session), plutot qu'a
+        # la premiere marche de la partie (l'ecran se figeait).
+        cost_pct(world)
     return world

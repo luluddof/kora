@@ -285,7 +285,7 @@ def _base(state, a: int, b: int) -> list[tuple[str, float]]:
         elif p.kind == confed.KIND:
             out.append(("Même confédération", 20.0))
     # Villages freres : la meme civilisation, ou suzerain et tributaire.
-    if b in chiefdom.kin_of(state, a) or a in chiefdom.kin_of(state, b):
+    if chiefdom.is_kin(state, a, b) or chiefdom.is_kin(state, b, a):
         out.append(("Villages frères", 15.0))
     for t in (a, b):
         chief = _chief_traits(state, t)

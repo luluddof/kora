@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import copy as _copy
 import dataclasses
+import marshal as _marshal
 import typing
 from typing import Any
 
@@ -44,11 +45,23 @@ _PLANS: dict = {}
 def json_copy(value):
     """Copie d'une donnee JSON (dicts, listes, nombres, textes) : meme
     resultat que deepcopy, bien plus vite (la sauvegarde du pas en fait une
-    par lieu et par tribu)."""
+    par lieu et par tribu). marshal (format 2 : sans references partagees,
+    comme deepcopy d'une donnee JSON ; les nombres a l'identique) la fait en
+    C, dix fois plus vite ; un type du jeu (Hex, Person...) qu'il refuse
+    passe par la copie pas a pas."""
+    if isinstance(value, (dict, list)):
+        try:
+            return _marshal.loads(_marshal.dumps(value, 2))
+        except ValueError:
+            return _json_copy(value)
+    return _json_copy(value)
+
+
+def _json_copy(value):
     if isinstance(value, dict):
-        return {k: json_copy(v) for k, v in value.items()}
+        return {k: _json_copy(v) for k, v in value.items()}
     if isinstance(value, list):
-        return [json_copy(v) for v in value]
+        return [_json_copy(v) for v in value]
     if isinstance(value, (int, float, str, bool, type(None))):
         return value
     return _copy.deepcopy(value)
