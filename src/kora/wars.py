@@ -4,7 +4,7 @@ Une GUERRE, pour le joueur, c'est un FRONT : tous les peuples d'un meme
 pays ennemi (chiefdom.country : un suzerain, ses tributaires, ses
 confederes) avec qui il est en guerre declaree. Pour chacune :
   - qui l'a declaree, depuis quand ; les buts (le sien, le leur) ;
-  - l'AVANTAGE (diplo.score) : le sien contre chaque peuple ennemi ;
+  - l'AVANTAGE (guerre.score) : le sien contre chaque peuple ennemi ;
   - les deux CAMPS : son pays et ses allies en guerre / leur pays et leurs
     allies en guerre ;
   - les troupes EN CAMPAGNE : les siennes et celles de son pays ; celles de
@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 
 from src.kora import chiefdom, diplo, places, villages
 from src.kora.vision import is_visible
+from src.kora import troupes
+from src.kora import guerre
 
 
 @dataclass
@@ -51,13 +53,13 @@ class Front:
 
 
 def _war_pact(state, a: int, b: int):
-    return next((p for p in diplo._pacts(state, a, b) if p.kind == diplo.WAR), None)
+    return next((p for p in diplo.pacts_between(state, a, b) if p.kind == guerre.WAR), None)
 
 
 def fronts(state, me: int) -> list[Front]:
     """Les guerres de `me`, une par pays ennemi, les plus anciennes d'abord."""
     by_key: dict[int, list[int]] = {}
-    for enemy in diplo.wars_of(state, me):
+    for enemy in guerre.wars_of(state, me):
         by_key.setdefault(chiefdom.top_lord(state, enemy), []).append(enemy)
     out = []
     mine = chiefdom.country(state, me) | {me}
@@ -69,12 +71,12 @@ def fronts(state, me: int) -> list[Front]:
         their_side = sorted(
             t for t in state.tribes
             if t in theirs
-            or (diplo.declared_war(state, t, me) and (chiefdom.top_lord(state, t) == key or any(diplo.allied(state, t, e) for e in enemies)))
+            or (guerre.declared_war(state, t, me) and (chiefdom.top_lord(state, t) == key or any(diplo.allied(state, t, e) for e in enemies)))
         )
         # Le notre : nous, notre pays, nos allies en guerre contre eux.
         my_side = sorted(
             t for t in state.tribes
-            if t in mine or (diplo.allied(state, t, me) and any(diplo.declared_war(state, t, e) for e in enemies))
+            if t in mine or (diplo.allied(state, t, me) and any(guerre.declared_war(state, t, e) for e in enemies))
         )
         front = Front(
             key=key,
@@ -83,9 +85,9 @@ def fronts(state, me: int) -> list[Front]:
             declared_by=first.payer if first else 0,
             my_side=my_side,
             their_side=their_side,
-            my_goals=[t for t in diplo.goals_of(state, me) if t in theirs],
-            their_goals=[e for e in their_side if diplo.goal_of(state, e, me)],
-            scores={e: diplo.score(state, me, e) for e in enemies},
+            my_goals=[t for t in guerre.goals_of(state, me) if t in theirs],
+            their_goals=[e for e in their_side if guerre.goal_of(state, e, me)],
+            scores={e: guerre.score(state, me, e) for e in enemies},
         )
         _fill(state, me, front)
         out.append(front)
@@ -108,8 +110,8 @@ def _doing(state, band) -> str:
     for site in state.sites.values():
         if site.kind == "village" and getattr(site.data, "siege", 0) and state.world.distance(site.hex, band.position) <= 1 and site.tribe_id != band.tribe_id:
             return f"assiège {places.name(site)}"
-    home = villages.home_of(state, band)
-    if home is not None and state.world.distance(home.hex, band.position) <= villages.ARMY_HOME:
+    home = troupes.home_of(state, band)
+    if home is not None and state.world.distance(home.hex, band.position) <= troupes.ARMY_HOME:
         return "au village"
     return "en campagne" if not band.path else "en marche"
 
@@ -142,8 +144,8 @@ def others(state, me: int) -> list[tuple[int, int, int]]:
     known = set(diplo.contacts_of(state, me))
     mine = chiefdom.country(state, me) | {me}
     seen: dict = {}
-    for (a, b), pacts in diplo._d(state).pacts.items():
-        war = next((p for p in pacts if p.kind == diplo.WAR), None)
+    for (a, b), pacts in diplo.of(state).pacts.items():
+        war = next((p for p in pacts if p.kind == guerre.WAR), None)
         if war is None or a in mine or b in mine or a not in known or b not in known:
             continue
         ka, kb = chiefdom.top_lord(state, a), chiefdom.top_lord(state, b)
@@ -156,7 +158,7 @@ def others(state, me: int) -> list[tuple[int, int, int]]:
 
 def score_text() -> str:
     return (
-        f"+{diplo.WIN_SCORE:.0f} par combat gagné, -{diplo.WIN_SCORE:.0f} par combat perdu, "
-        f"+{diplo.VILLAGE_SCORE:.0f} par village pris, +{diplo.SIEGE_SCORE:.0f} par semaine de siège "
-        f"(de -{diplo.SCORE_CAP:.0f} à +{diplo.SCORE_CAP:.0f})"
+        f"+{guerre.WIN_SCORE:.0f} par combat gagné, -{guerre.WIN_SCORE:.0f} par combat perdu, "
+        f"+{guerre.VILLAGE_SCORE:.0f} par village pris, +{guerre.SIEGE_SCORE:.0f} par semaine de siège "
+        f"(de -{guerre.SCORE_CAP:.0f} à +{guerre.SCORE_CAP:.0f})"
     )

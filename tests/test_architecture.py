@@ -261,9 +261,11 @@ def test_every_big_screen_is_wired():
     for s in screens.SCREENS:
         mod, fn = s.draw.rsplit(".", 1)
         assert callable(getattr(importlib.import_module(f"src.kora.{mod}"), fn)), s.name
-    app = (SRC / "app.py").read_text(encoding="utf-8")
+    # La classe Play (partie.py et ses bases partie_carte.py, partie_ecrans.py)
+    # route le clic de chaque grand ecran vers sa methode.
+    play = "".join((SRC / f"{m}.py").read_text(encoding="utf-8") for m in ("partie", "partie_carte", "partie_ecrans"))
     for s in screens.SCREENS:
-        assert f'"{s.name}":' in app, f"app.play : pas de fonction de clic pour l'écran {s.name}"
+        assert f'"{s.name}":' in play, f"Play : pas de fonction de clic pour l'écran {s.name}"
 
 
 # --- la charte -------------------------------------------------------------------------

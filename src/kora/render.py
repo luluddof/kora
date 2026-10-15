@@ -71,7 +71,7 @@ from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.theme import C
 from src.kora import resources
 from src.kora.resources import COLORS, LABELS, NAMES
-from src.kora.villages import palisade_state
+from src.kora.batiments import palisade_state
 from src.kora.layout import panel_box
 from src.kora.layout import (  # noqa: F401
     BAND_BUTTONS,

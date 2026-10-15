@@ -211,6 +211,7 @@ class CodeIndex:
         self.modules: dict[str, set] = {}
         self.classes: dict[str, set] = {}
         self.trees: dict[str, ast.Module] = {}
+        self.bases: dict[str, set] = {}
         for folder in (SRC, TOOLS):
             for p in sorted(folder.glob("*.py")):
                 if p.stem == "__init__":
@@ -230,6 +231,10 @@ class CodeIndex:
                         ):
                             attrs.add(node.attr)
                     self.classes.setdefault(cls.name, set()).update(attrs)
+                    for b in cls.bases:
+                        base = b.attr if isinstance(b, ast.Attribute) else getattr(b, "id", None)
+                        if base:
+                            self.bases.setdefault(cls.name, set()).add(base)
                 # world.atlas = ... (un champ pose du dehors, sur un nom d'instance connu)
                 for node in ast.walk(tree):
                     if (
@@ -239,6 +244,16 @@ class CodeIndex:
                         and node.value.id in ALIASES
                     ):
                         self.classes.setdefault(ALIASES[node.value.id], set()).add(node.attr)
+        # ce qu'une classe herite de ses bases (Play : MapInput, ScreenClicks)
+        for cls in list(self.classes):
+            seen, todo = set(), list(self.bases.get(cls, ()))
+            while todo:
+                b = todo.pop()
+                if b in seen or b not in self.classes:
+                    continue
+                seen.add(b)
+                self.classes[cls] |= self.classes[b]
+                todo.extend(self.bases.get(b, ()))
 
     def knows(self, left: str, right: str) -> bool | None:
         """Vrai / faux si "left.right" est un nom du jeu qu'on sait juger ;

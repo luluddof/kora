@@ -12,13 +12,16 @@ from src.kora.render import Renderer
 from src.kora.vision import recompute_vision
 from src.kora.world import offset_to_axial
 from test_approach import _state
+from src.kora import guerre
+from src.kora import partie_carte
+from src.kora import partie
 
 
 def _play(st):
     pygame.init()
     renderer = Renderer(pygame.display.set_mode((1280, 720)))
-    boot = app._start_view(st, app._first_player_band(st), 1280, 720)
-    return app.Play(renderer, None, boot)
+    boot = app._start_view(st, partie_carte.first_player_band(st), 1280, 720)
+    return partie.Play(renderer, None, boot)
 
 
 def test_a_click_on_a_country_opens_its_diplomacy_or_its_overlords():
@@ -65,7 +68,7 @@ def test_a_right_click_attacks_a_left_click_talks():
     play.globe_yaw, play.globe_pitch = look_at_hex(foe.position, st.world.width, st.world.height)
     gcx, gcy, focal, dist = view_params(play.zoom, play.sw, play.sh, HUD_HEIGHT)
     x, y = (int(v) for v in hex_to_globe_screen(foe.position, st.world, play.globe_yaw, play.globe_pitch, gcx, gcy, focal, dist))
-    hit = app._band_at_pixel(st, x, y, play.zoom, play.globe_yaw, play.globe_pitch, play.sw, play.sh)
+    hit = partie_carte.band_at_pixel(st, x, y, play.zoom, play.globe_yaw, play.globe_pitch, play.sw, play.sh)
     assert hit is not None and hit.tribe_id == 3
     # Clic droit glisse : rien.
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=3))
@@ -76,12 +79,12 @@ def test_a_right_click_attacks_a_left_click_talks():
     assert play.side_panel == "peuples" and play.ui["people_pick"] == 3
     assert st.bands[1].order.kind.name == "STAY"
     # En paix (tous deux ont la diplomatie) : le clic droit ne lance rien.
-    assert diplo.needs_declaration(st, 1, 3)
+    assert guerre.needs_declaration(st, 1, 3)
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=3))
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(x, y), button=3))
     assert st.bands[1].order.kind.name == "STAY"
     # La guerre declaree : le clic droit attaque.
-    diplo.declare_war(st, 1, 3)
+    guerre.declare_war(st, 1, 3)
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(x, y), button=3))
     play._on_event(pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(x, y), button=3))
     assert st.bands[1].order.kind.name == "MARCH_TO_BAND" and st.bands[1].order.target_band_id == hit.id
@@ -102,7 +105,7 @@ def test_army_and_wars_share_one_screen():
     play.open_war_room(None)
     assert play.ui.get("wars_open") and play.ui["war_pick"] == render_wars.ARMY, "sans guerre, W montre l'armée"
     screens.close_all(play.ui)
-    diplo.declare_war(st, 1, 2)
+    guerre.declare_war(st, 1, 2)
     play.open_war_room(None)
     assert play.ui["war_pick"] == 2
     play.open_war_room(render_wars.ARMY)

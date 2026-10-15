@@ -12,6 +12,8 @@ import pygame
 from src.kora import diplo, music, persist, render_menu
 from src.kora.persist import save_game
 from test_war_goals import _three
+from src.kora import guerre
+from src.kora import partie
 
 
 def _saves_in(monkeypatch, tmp_path):
@@ -72,7 +74,7 @@ def test_the_load_page_plays_and_deletes_with_a_second_click():
 def test_war_music_plays_only_while_the_player_is_at_war():
     st = _three()
     assert not music.wants_war_music(st)
-    diplo.declare_war(st, 2, 1)
+    guerre.declare_war(st, 2, 1)
     assert music.wants_war_music(st)
     pygame.init()
     d = music.Director({"music_volume": 0.5})
@@ -80,13 +82,13 @@ def test_war_music_plays_only_while_the_player_is_at_war():
     if d.broken:
         return  # pas de carte son : rien ne joue, rien ne plante
     assert d.playing and abs(d.heard_volume() - 0.5) < 0.01
-    diplo.end_war(st, 1, 2)
+    guerre.end_war(st, 1, 2)
     d.update(st, 1.0)
     assert d.playing, "elle attend un peu (HOLD) avant de s'eteindre"
     d.update(st, music.HOLD + 0.1)
     assert not d.playing
     d.set_volume(0.0)
-    diplo.declare_war(st, 2, 1)
+    guerre.declare_war(st, 2, 1)
     d.update(st, 1.0)
     assert not d.playing, "volume a zero : rien"
 
@@ -96,7 +98,9 @@ def test_the_settings_change_the_volume_and_remember_it(monkeypatch, tmp_path):
 
     _saves_in(monkeypatch, tmp_path)
     monkeypatch.setattr(app, "load_prefs", persist.load_prefs)
+    monkeypatch.setattr(partie, "load_prefs", persist.load_prefs)
     monkeypatch.setattr(app, "save_prefs", persist.save_prefs)
+    monkeypatch.setattr(partie, "save_prefs", persist.save_prefs)
     pygame.init()
     screen = pygame.display.set_mode((1280, 720))
 
@@ -106,7 +110,7 @@ def test_the_settings_change_the_volume_and_remember_it(monkeypatch, tmp_path):
     r = R()
     r.screen = screen
     d = music.Director({"music_volume": 0.5})
-    s = app.Settings(d)
+    s = partie.Settings(d)
     s.show()
     render_menu.draw_settings(r, d.volume, d.on, d.listening)
     lay = r.settings_hits

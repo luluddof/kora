@@ -55,6 +55,8 @@ from src.kora.theme import C, _gradient_card, _lerp
 from src.kora.sim import GROWTH_RATE
 from src.kora.battle import band_force
 from src.kora.bands import bonus_of, stock_max
+from src.kora import troupes
+from src.kora import batiments
 
 WARN = C.alerte
 CARD = {
@@ -443,11 +445,11 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     right = (mid[0] + mw + 16, body_y, rw, body_h)
     # Batiments : 4 colonnes de cartes.
     per_row = 4
-    rows_n = -(-len(villages.BUILD_ORDER) // per_row)
+    rows_n = -(-len(batiments.BUILD_ORDER) // per_row)
     card_w = (mw - (per_row - 1) * 8) // per_row
     card_h = max(58, min(78, (body_h - 24 - 190) // rows_n - 8))
     cards = {}
-    for i, bid in enumerate(villages.BUILD_ORDER):
+    for i, bid in enumerate(batiments.BUILD_ORDER):
         col, row = i % per_row, i // per_row
         cards[bid] = (mid[0] + col * (card_w + 8), body_y + 24 + row * (card_h + 8), card_w, card_h)
     detail_y = body_y + 24 + rows_n * (card_h + 8) + 6
@@ -462,7 +464,7 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     for i, role in enumerate(_units.ROLES):
         types[role] = (right[0] + (i % 2) * (type_w + 8), body_y + 52 + (i // 2) * 28, type_w, 24)
     chip_w = (rw - 2 * 8) // 3
-    chips = {key: (right[0] + i * (chip_w + 8), body_y + 118, chip_w, 24) for i, (key, _s, _l) in enumerate(villages.LEVIES)}
+    chips = {key: (right[0] + i * (chip_w + 8), body_y + 118, chip_w, 24) for i, (key, _s, _l) in enumerate(troupes.LEVIES)}
     raise_ = (right[0], body_y + 190, rw, 30)
     rows = []
     y = raise_[1] + 84
@@ -621,7 +623,7 @@ def draw_village(r, state, ui) -> None:
     if band is None:
         r.village_hits = {}
         return
-    armies = villages.armies_of(state, site)
+    armies = troupes.armies_of(state, site)
     w, h = r.screen.get_size()
     page = ui.get("village_page") or "village"
     lay = village_layout(w, h, len(armies), page)
@@ -657,12 +659,12 @@ def draw_village(r, state, ui) -> None:
         else f"{weeks:.0f} semaines de vivres"
     )
     tiles = (
-        ("HABITANTS", f"{band.population}", f"places à bâtir {villages.used_slots(site)}/{villages.slots(state, site)}", INK),
+        ("HABITANTS", f"{band.population}", f"places à bâtir {batiments.used_slots(site)}/{batiments.slots(state, site)}", INK),
         ("GRENIER", f"{band.stock:.0f} / {cap:.0f}", store_sub, GOOD if weeks >= 8 else WARN),
         ("SEMENCES", f"{site.data.seed:.0f}", f"{step} (~{left} sem.)", INK),
         ("RÉCOLTE ATTENDUE", f"~{crop:.0f}" if site.data.fields else "-", f"{len(site.data.fields)} champs · sol {100 * villages.soil_avg(site):.0f} %", INK),
         ("DÉFENSE", f"x{defense:.2f}".replace(".", ","), f"force {band_force(state, band):.0f} · {len(villages.defense_parts(state, band))} abri(s)", INK),
-        ("GUERRIERS", f"{warriors}", f"troupes {villages.companies_of(state, site)}/{villages.army_cap(state, site)}", INK),
+        ("GUERRIERS", f"{warriors}", f"troupes {troupes.companies_of(state, site)}/{troupes.army_cap(state, site)}", INK),
     )
     stab = villages.stability(state, site, band)
     tiles = tiles + (
@@ -1022,25 +1024,25 @@ def _draw_lands(r, state, site, band, lay) -> None:
 def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     screen = r.screen
     x, y, w, _h = lay["mid"]
-    _section(r, x, y, w, f"BÂTIMENTS  ·  places {villages.used_slots(site)}/{villages.slots(state, site)} (une de plus par {villages.SLOT_POP} habitants)")
-    pick = ui.get("village_pick") or next((b for b in villages.BUILD_ORDER if villages.building_status(state, site, b) == "possible"), villages.BUILD_ORDER[0])
+    _section(r, x, y, w, f"BÂTIMENTS  ·  places {batiments.used_slots(site)}/{batiments.slots(state, site)} (une de plus par {batiments.SLOT_POP} habitants)")
+    pick = ui.get("village_pick") or next((b for b in batiments.BUILD_ORDER if batiments.building_status(state, site, b) == "possible"), batiments.BUILD_ORDER[0])
     job = places.works(site)
     for bid, rect in lay["cards"].items():
-        b = villages.BUILDINGS[bid]
-        st = villages.building_status(state, site, bid)
+        b = batiments.BUILDINGS[bid]
+        st = batiments.building_status(state, site, bid)
         top, bot, edge, text_c = CARD[st]
         cx, cy, cw, ch = rect
         hover = _hover(rect, mx, my)
         screen.blit(_gradient_card(cw, ch, top, bot, 6), (cx, cy))
         pygame.draw.rect(screen, (239, 228, 204) if bid == pick else edge, rect, 2 if bid == pick or hover else 1, border_radius=6)
         screen.blit(medal(bid, edge, top, 14), (cx + 6, cy + ch // 2 - 15))
-        parts = _wrap(r.tiny, villages.building_name(site, bid, short=True), cw - 48)[:2]
+        parts = _wrap(r.tiny, batiments.building_name(site, bid, short=True), cw - 48)[:2]
         ty = cy + 10
         for part in parts:
             screen.blit(r.tiny.render(part, True, text_c), (cx + 40, ty))
             ty += 13
         if st == "chantier" and job:
-            done = 1.0 - job[1] / max(1, villages.build_weeks(site, bid))
+            done = 1.0 - job[1] / max(1, batiments.build_weeks(site, bid))
             bar = (cx + 40, cy + ch - 14, cw - 50, 5)
             pygame.draw.rect(screen, (18, 14, 11), bar, border_radius=2)
             pygame.draw.rect(screen, edge, (bar[0], bar[1], int(bar[2] * done), 5), border_radius=2)
@@ -1055,14 +1057,14 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
     dx, dy, dw, dh = lay["detail"]
     screen.blit(_gradient_card(dw, dh, (42, 32, 25), (26, 20, 15), 8), (dx, dy))
     pygame.draw.rect(screen, GOLD_DEEP, lay["detail"], 1, border_radius=8)
-    b = villages.BUILDINGS[pick]
-    st = villages.building_status(state, site, pick)
+    b = batiments.BUILDINGS[pick]
+    st = batiments.building_status(state, site, pick)
     top, _bot, edge, _t = CARD[st]
     half = lay["today"][0] - 16 - dx
     screen.blit(medal(pick, edge, top, 17), (dx + 10, dy + 8))
-    screen.blit(head_font.render(_fit(head_font, villages.building_name(site, pick), half - 60), True, INK), (dx + 52, dy + 8))
-    cost = villages.build_cost(state, site, pick)
-    weeks = villages.build_weeks(site, pick)
+    screen.blit(head_font.render(_fit(head_font, batiments.building_name(site, pick), half - 60), True, INK), (dx + 52, dy + 8))
+    cost = batiments.build_cost(state, site, pick)
+    weeks = batiments.build_weeks(site, pick)
     meta = f"{cost:.0f} vivres  ·  {weeks} semaines"
     screen.blit(r.tiny.render(_fit(r.tiny, meta, half - 60), True, NOTE), (dx + 52, dy + 30))
     yy = dy + 50
@@ -1085,7 +1087,7 @@ def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
                 pygame.draw.polygon(screen, (178, 205, 140), [(dx + 16, yy + 3), (dx + 22, yy + 7), (dx + 16, yy + 11)])
             screen.blit(r.tiny.render(part, True, (178, 205, 140)), (dx + 28, yy))
             yy += 15
-    why = villages.build_block_site(state, site, pick)
+    why = batiments.build_block_site(state, site, pick)
     on = not why
     label = {"bati": "Bâti", "chantier": "En chantier"}.get(st, "Construire")
     _button(screen, r.small, lay["build"], label, on, on and _hover(lay["build"], mx, my))
@@ -1115,7 +1117,7 @@ def _today(r, state, site, band, rect) -> None:
         (f"Croissance : ~{growth:.0f} % par an sans famine", SOFT),
         (f"Récolte : x{villages.yield_mult(state, site):.2f}".replace(".", ",") + f"  ·  vivres x{villages.food_mult(state, band):.2f}".replace(".", ","), SOFT),
         ("Défense : " + (", ".join(f"{lab} x{m:.2f}".replace(".", ",") for lab, m in parts) if parts else "aucune"), SOFT),
-        (f"Troupes : {villages.army_cap(state, site)} au plus", SOFT),
+        (f"Troupes : {troupes.army_cap(state, site)} au plus", SOFT),
     ]
     oath = villages.OATHS.get(places.oath_of(site))
     if oath is not None:
@@ -1134,15 +1136,15 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
     screen = r.screen
     x, y, w, _h = lay["right"]
     tribe = state.tribes[band.tribe_id]
-    _section(r, x, y, w, f"GUERRIERS  ·  troupes {villages.companies_of(state, site)}/{villages.army_cap(state, site)}")
+    _section(r, x, y, w, f"GUERRIERS  ·  troupes {troupes.companies_of(state, site)}/{troupes.army_cap(state, site)}")
     text = "La milice : chacun se bat comme il vit (on ne choisit pas). Une levée prend la même part de chacun."
     yy = y + 22
     for part in _wrap(r.tiny, text, w)[:2]:
         screen.blit(r.tiny.render(part, True, SOFT), (x, yy))
         yy += 13
     # La milice du village : les levables de chaque categorie.
-    pool = dict((u.role, n) for u, n in villages._split_by(villages.militia(state, band), villages.levy_size(band, 1.0, state)))
-    away = villages._away(state, site)
+    pool = dict((u.role, n) for u, n in troupes.split_by(troupes.militia(state, band), troupes.levy_size(band, 1.0, state)))
+    away = troupes.men_away(state, site)
     origin = {
         "melee": "Les gens des champs et des métiers, et des chasseurs",
         "tir": "La moitié des chasseurs, un sur cinq aux champs et aux métiers",
@@ -1173,22 +1175,22 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
                 tip.append(("Plus tard : " + ", ".join(later), NOTE))
             ui.setdefault("_vtips", []).append((tip, mx, my))
     key = ui.get("levy") or "troupe"
-    share = villages.LEVY_SHARE.get(key, villages.LEVY_SHARE["troupe"])
+    share = troupes.LEVY_SHARE.get(key, troupes.LEVY_SHARE["troupe"])
     short = {"poignee": "Poignée", "troupe": "Troupe", "masse": "Masse"}
     for k, rect in lay["chips"].items():
-        n = villages.levy_size(band, villages.LEVY_SHARE[k], state)
+        n = troupes.levy_size(band, troupes.LEVY_SHARE[k], state)
         r._draw_chip(rect, _fit(r.tiny, f"{short.get(k, k)} {n}", rect[2] - 6), k == key)
-    plan = villages.levy_plan(state, band, share)
+    plan = troupes.levy_plan(state, band, share)
     n = sum(c for _u, c in plan)
     ly = lay["chips"][key][1] + 30
     info = [
         (" · ".join(f"{c} {u.short.lower() if u.short else u.name.lower()}" for u, c in plan) or "Personne à lever", INK),
-        (f"{min(band.stock, villages.ARMY_SUPPLY_WEEKS * n):.0f} vivres emportés · {band.population - n} restent", NOTE),
+        (f"{min(band.stock, troupes.ARMY_SUPPLY_WEEKS * n):.0f} vivres emportés · {band.population - n} restent", NOTE),
     ]
     for t, c in info:
         screen.blit(r.tiny.render(_fit(r.tiny, t, w), True, c), (x, ly))
         ly += 13
-    why = villages.army_block(state, band.id, share)
+    why = troupes.army_block(state, band.id, share)
     on = not why
     _button(screen, r.small, lay["raise"], "Lever la compagnie [L]", on, on and _hover(lay["raise"], mx, my))
     if why:
@@ -1205,7 +1207,7 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
         pygame.draw.rect(screen, GOLD_DEEP, row["row"], 1, border_radius=6)
         lead = army.leader.name if army.leader else "?"
         d = state.world.distance(site.hex, army.position)
-        where = "au village" if d <= villages.ARMY_HOME else f"à {d} cases"
+        where = "au village" if d <= troupes.ARMY_HOME else f"à {d} cases"
         if army.homebound:
             where = f"rentre ({d} c.)"
         head = f"{army.population} guerriers · {lead} · {where}"
@@ -1213,14 +1215,14 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
         comp = " · ".join(f"{men} {units.UNITS[t].short if t in units.UNITS else t}" for t, men, _h in units.normalize(army))
         screen.blit(r.tiny.render(_fit(r.tiny, comp, rw - 14), True, SOFT), (rx + 8, ry + 20))
         _button(screen, r.tiny, row["see"], "Voir", True, _hover(row["see"], mx, my))
-        re_on = not villages.reequip_block(state, army.id)
+        re_on = not troupes.reequip_block(state, army.id)
         _button(screen, r.tiny, row["reequip"], "Rééquiper", re_on, re_on and _hover(row["reequip"], mx, my))
         if _hover(row["reequip"], mx, my):
-            why_re = villages.reequip_block(state, army.id) or f"{units.REEQUIP_COST:.0f} vivres par homme : les armes de l'âge"
+            why_re = troupes.reequip_block(state, army.id) or f"{units.REEQUIP_COST:.0f} vivres par homme : les armes de l'âge"
             ui.setdefault("_vtips", []).append(([(why_re, WARN if not re_on else SOFT)], mx, my))
-        home = d <= villages.ARMY_HOME and not army.homebound
+        home = d <= troupes.ARMY_HOME and not army.homebound
         label = "Libérer" if home else "Dissoudre"
-        on_d = not villages.dissolve_block(state, army.id)
+        on_d = not troupes.dissolve_block(state, army.id)
         _button(screen, r.tiny, row["recall"], label, on_d, on_d and _hover(row["recall"], mx, my))
     for tip in ui.pop("_vtips", []):
         _tip(r, *tip)

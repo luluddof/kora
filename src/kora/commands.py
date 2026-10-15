@@ -34,6 +34,9 @@ from src.kora import (
 )
 from src.kora.types import Hex
 from src.kora.bands import set_goto, set_march_to_band
+from src.kora import troupes
+from src.kora import batiments
+from src.kora import guerre
 
 KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
@@ -125,10 +128,10 @@ def _march(state, tid, band_id, target_id):
     if band.homebound:
         return _out(orders.HOMEBOUND + ".")
     if target.tribe_id != tid:
-        why = diplo.may_start(state, tid, target.tribe_id)
+        why = guerre.may_start(state, tid, target.tribe_id)
         if why:
             return _out(why + ".")
-        if diplo.needs_declaration(state, tid, target.tribe_id) and not diplo.declared_war(state, tid, target.tribe_id) and not diplo.at_war(state, tid, target.tribe_id):
+        if guerre.needs_declaration(state, tid, target.tribe_id) and not guerre.declared_war(state, tid, target.tribe_id) and not guerre.at_war(state, tid, target.tribe_id):
             return _out(f"Vous êtes en paix avec les {state.tribes[target.tribe_id].name} : déclarez-leur d'abord la guerre (écran Peuples)")
     band.ost = 0
     set_march_to_band(state, band.id, target.id)
@@ -246,10 +249,10 @@ def _build(state, tid, band_id, building):
     band, why = _own_band(state, tid, band_id)
     if band is None:
         return _out(why)
-    why = villages.build_block(state, band.id, building) or ("" if chiefs.obeys(state, band) else orders.INDOCILE)
+    why = batiments.build_block(state, band.id, building) or ("" if chiefs.obeys(state, band) else orders.INDOCILE)
     if why:
         return _out(why)
-    villages.build(state, band.id, building)
+    batiments.build(state, band.id, building)
     return _out()
 
 
@@ -257,12 +260,12 @@ def _raise(state, tid, band_id, size, type_id):
     band, why = _own_band(state, tid, band_id)
     if band is None:
         return _out(why)
-    share = villages.LEVY_SHARE.get(size, villages.LEVY_SHARE["troupe"])
+    share = troupes.LEVY_SHARE.get(size, troupes.LEVY_SHARE["troupe"])
     # type_id : ignore (on ne choisit pas : la milice du village part).
-    why = villages.army_block(state, band.id, share) or ("" if chiefs.obeys(state, band) else orders.INDOCILE)
+    why = troupes.army_block(state, band.id, share) or ("" if chiefs.obeys(state, band) else orders.INDOCILE)
     if why:
         return _out(why)
-    army = villages.raise_army(state, band.id, share)
+    army = troupes.raise_army(state, band.id, share)
     return _out(sel=army.id if army is not None else None)
 
 
@@ -270,10 +273,10 @@ def _reequip(state, tid, band_id):
     band, why = _own_band(state, tid, band_id)
     if band is None:
         return _out(why)
-    why = villages.reequip_block(state, band.id)
+    why = troupes.reequip_block(state, band.id)
     if why:
         return _out(why)
-    villages.reequip(state, band.id)
+    troupes.reequip(state, band.id)
     return _out()
 
 
@@ -281,10 +284,10 @@ def _dissolve(state, tid, band_id):
     band, why = _own_band(state, tid, band_id)
     if band is None:
         return _out(why)
-    why = villages.dissolve_block(state, band.id)
+    why = troupes.dissolve_block(state, band.id)
     if why:
         return _out(why)
-    villages.dissolve(state, band.id)
+    troupes.dissolve(state, band.id)
     return _out()
 
 

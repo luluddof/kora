@@ -16,6 +16,9 @@ from src.kora.types import Band
 from src.kora.vision import is_visible, recompute_vision, vision_of
 from src.kora.world import offset_to_axial
 from test_approach import _state
+from src.kora import guerre
+from src.kora import partie_carte
+from src.kora import partie
 
 
 def _realm():
@@ -32,16 +35,16 @@ def _realm():
 def test_a_tributary_does_not_start_a_war_but_joins_its_overlords():
     st = _realm()
     assert chiefdom.country(st, 3) == {2, 3} and chiefdom.lords_of(st, 3) == [2]
-    assert "tributaire" in diplo.may_start(st, 3, 1)
+    assert "tributaire" in guerre.may_start(st, 3, 1)
     assert not diplo.hostile_intent(st, 3, 1)
     # Un suzerain peut, lui ; et son tributaire le suit.
-    assert diplo.may_start(st, 2, 1) == ""
+    assert guerre.may_start(st, 2, 1) == ""
     diplo.add_pact(st, 1, 3, "treve", diplo.TRUCE_WEEKS)
-    diplo.declare_war(st, 2, 1)
+    guerre.declare_war(st, 2, 1)
     assert not diplo.has_pact(st, 1, 3), "la guerre du suzerain est celle du tributaire"
-    assert diplo.may_start(st, 3, 1) == "" and diplo.hostile_intent(st, 3, 1)
+    assert guerre.may_start(st, 3, 1) == "" and diplo.hostile_intent(st, 3, 1)
     # Se revolter contre son suzerain reste possible.
-    assert diplo.may_start(st, 3, 2) == ""
+    assert guerre.may_start(st, 3, 2) == ""
 
 
 def test_an_attack_on_a_tributary_is_an_attack_on_the_country():
@@ -110,13 +113,13 @@ def test_a_known_town_in_the_fog_opens_its_diplomacy_even_with_a_clan_chosen():
     pygame.init()
     renderer = Renderer(pygame.display.set_mode((1280, 720)))
     boot = app._start_view(st, 1, 1280, 720)
-    play = app.Play(renderer, None, boot)
+    play = partie.Play(renderer, None, boot)
     play.selected = 1  # un clan, pas une troupe
     play.sw, play.sh = 1280, 720
     play.globe_yaw, play.globe_pitch = app.look_at_hex(village.hex, st.world.width, st.world.height)
     gcx, gcy, focal, dist = view_params(play.zoom, play.sw, play.sh, HUD_HEIGHT)
     x, y = hex_to_globe_screen(village.hex, st.world, play.globe_yaw, play.globe_pitch, gcx, gcy, focal, dist)
-    assert app._seen_village_at_pixel(st, x + 3, y, play.zoom, play.globe_yaw, play.globe_pitch, play.sw, play.sh) == 3
+    assert partie_carte.seen_village_at_pixel(st, x + 3, y, play.zoom, play.globe_yaw, play.globe_pitch, play.sw, play.sh) == 3
     play._on_click(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=(int(x), int(y)), button=1))
     assert play.side_panel == "peuples" and play.ui["people_pick"] == 3
     assert st.bands[1].order.kind.name == "STAY", "le clan ne part pas vers la ville"

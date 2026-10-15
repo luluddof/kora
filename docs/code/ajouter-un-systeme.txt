@@ -32,10 +32,10 @@ bas au plus haut :
   4  les savoirs, les gens
        tech, units, vision, population
   5  LES SYSTEMES
-       learning, bands, chiefs, sites, influence, production, diplo, goods,
-       money, approach, numbers, laws, chiefdom, confed, memory, draws,
-       turning, villages, battle, siege, ost, grain, casus, situations,
-       events, events_data
+       learning, bands, chiefs, sites, influence, production, diplo, guerre,
+       goods, money, approach, numbers, laws, chiefdom, confed, memory, draws,
+       turning, villages, batiments, troupes, battle, siege, ost, grain,
+       casus, situations, events, events_data
   6  l'IA des bandes, les ordres
        ai_war, orders, wars
   7  l'IA
@@ -47,10 +47,11 @@ bas au plus haut :
   10  la sauvegarde, le reseau, les essais
        persist, session, essai
   -  l'interface (pygame)
-       app, globe, globe_draw, layout, look, music, render, render_battle,
-       render_country, render_menu, render_numbers, render_panels,
-       render_situations, render_tech, render_trade, render_treasury,
-       render_village, render_wars, screens, theme, tree_graph
+       app, globe, globe_draw, layout, look, music, partie, partie_carte,
+       partie_ecrans, render, render_battle, render_country, render_menu,
+       render_numbers, render_panels, render_situations, render_tech,
+       render_trade, render_treasury, render_village, render_wars, screens,
+       theme, tree_graph
 <<< fin auto >>>
 
   - Les systemes (etage 5) s'appellent entre eux : ils s'importent alors
@@ -145,9 +146,13 @@ bas au plus haut :
          son dessin dans render_<x>.py ;
        - un mode de carte : layout.MAP_MODES (et sa touche) ;
        - un GRAND ECRAN (comme le commerce, le tresor, le pays) : une ligne
-         dans screens.SCREENS et sa methode de clic dans app.Play
-         (screen_clicks) ; ouvrir, fermer, Echap, la souris : deja faits ;
-       - une touche : Play._on_key ; un clic sur la carte : Play._on_click ;
+         dans screens.SCREENS, son dessin et sa mise en page dans
+         render_<x>.py, sa methode de clic dans partie_ecrans.ScreenClicks
+         (une base de partie.Play ; le routage : Play._on_click) ; ouvrir,
+         fermer, Echap, la souris : deja faits ;
+       - une touche : Play._on_key ; un clic sur la carte : Play._on_click
+         (partie_carte.MapInput) ; le coeur de la partie a l'ecran (la
+         boucle, les ordres : Play.issue) : partie.py ;
        - le reste : section 4.10.
 
   j) Les regles du jeu a respecter partout : section 4.
@@ -253,11 +258,11 @@ La carte du depot (section 4) donne cet ordre en detail.
     kill, kill_fighters, wound, lose_wounded, mix ; 0.5.0).
   - En cet age, un peuple = un village (0.6.0) ; un peuple sedentaire ne
     refait jamais de bande nomade par une troupe (0.5.2).
-  - Une levee ne choisit pas le genre de ses guerriers (villages.militia /
+  - Une levee ne choisit pas le genre de ses guerriers (troupes.militia /
     levy_plan : la meme part de chaque categorie ; 0.13.0).
   - Une troupe peut porter des compagnies d'un autre peuple (l'ost :
     ost.py), qui rentrent chez elles et y redeviennent de leur peuple
-    (villages._go_home ; 0.13.0).
+    (troupes.send_companies_home ; 0.13.0).
   - Ce qui change la defense ou les vivres d'un village passe par
     systems.VILLAGE_DEFENSE / VILLAGE_FOOD ; ce qui se passe chaque semaine
     apres les marches, par systems.WEEKLY (0.13.0).
@@ -269,21 +274,21 @@ La carte du depot (section 4) donne cet ordre en detail.
 4.6 La diplomatie et la guerre
   - Une decision de l'IA envers un autre peuple passe par l'approche de
     son chef (approach.factor ; une reponse : approach.accept ; 0.8.0).
-  - Attaquer : diplo.may_start (un tributaire ne declare pas de guerre) en
+  - Attaquer : guerre.may_start (un tributaire ne declare pas de guerre) en
     plus d'at_peace ; une guerre ou une paix s'etend au PAYS
     (chiefdom.country / followers ; 0.9.1).
   - Entre peuples qui ont la diplomatie (Messagers et serments, avec un
-    village : diplo.diplomatic ; 0.18.0), toute attaque passe par une
-    guerre declaree (diplo.declare_war ; l'IA : ai_war.go_to_war ; 0.12.0).
-  - Une guerre a un BUT (Diplomacy.goals) et un AVANTAGE (diplo.add_score) ;
-    soumettre passe par diplo.submit (on ne sert qu'un suzerain ; l'ancien
+    village : guerre.diplomatic ; 0.18.0), toute attaque passe par une
+    guerre declaree (guerre.declare_war ; l'IA : ai_war.go_to_war ; 0.12.0).
+  - Une guerre a un BUT (Diplomacy.goals) et un AVANTAGE (guerre.add_score) ;
+    soumettre passe par guerre.submit (on ne sert qu'un suzerain ; l'ancien
     fait la treve) ; un pacte de paix = diplo.PEACE_PACTS (pas le
-    commerce) ; un motif de guerre = diplo.set_casus avec sa raison (casus.py
+    commerce) ; un motif de guerre = guerre.set_casus avec sa raison (casus.py
     en fait naitre) ; une alliance doit avoir une raison (ennemi commun,
     meme guerre) ou elle s'use (0.14.0).
-  - Une reponse a une treve passe par diplo._truce_mood (la lassitude :
-    diplo.weariness, et le cours de la guerre) ; apres un an de guerre
-    (diplo._long_war), la relation ne filtre plus les offres de paix
+  - Une reponse a une treve passe par guerre.truce_mood (la lassitude :
+    guerre.weariness, et le cours de la guerre) ; apres un an de guerre
+    (guerre.long_war), la relation ne filtre plus les offres de paix
     (0.18.0).
   - Un rapport de force montre au joueur est celui de l'IA (ai_war.odds_at ;
     0.16.0).
@@ -364,22 +369,30 @@ La carte du depot (section 4) donne cet ordre en detail.
 
 5. CE QUI RESTE A AMELIORER (dette connue)
 ------------------------------------------
+Fait le 2026-10-16 (sans changer le jeu : empreinte et deux parties du
+joueur jouees 26 semaines, identiques) : villages.py -> villages (champs,
+recoltes, stabilite, fondation), batiments (batiments, chantiers, monument,
+palissade), troupes (levee, milice, retour) ; diplo.py -> diplo (contacts,
+relations, pactes, propositions), guerre (la guerre declaree, ses buts, sa
+lassitude) ; app.py -> app (menus, salon), partie (la classe Play, sa
+boucle), partie_carte (la carte, le clavier), partie_ecrans (les grands
+ecrans, les panneaux). Les noms prives qui passaient d'un module a l'autre
+sont devenus publics (diplo.of, diplo.pacts_between, troupes.men_away...).
 Les plus gros modules (a decouper quand un chantier y touche, et
 seulement si le decoupage rend le systeme plus simple a changer) :
 
 <<< auto : gros-modules >>>
-  villages.py            ~2100 lignes
-  app.py                 ~2100 lignes
-  diplo.py               ~1900 lignes
   situations.py          ~1800 lignes
   events.py              ~1600 lignes
   render.py              ~1500 lignes
+  diplo.py               ~1500 lignes
   tech.py                ~1400 lignes
   render_village.py      ~1400 lignes
   battle.py              ~1300 lignes
   events_data.py         ~1300 lignes
   goods.py               ~1200 lignes
   world.py               ~1200 lignes
+  villages.py            ~1200 lignes
   sim.py                 ~1100 lignes
   render_panels.py       ~1000 lignes
 <<< fin auto >>>

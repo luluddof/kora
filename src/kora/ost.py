@@ -6,7 +6,7 @@ OST_RANGE cases ou moins marchent vers elle (Band.ost : la troupe qu'elles
 rejoignent) et, arrivees, se fondent dans sa pile. Une seule grande troupe,
 sous le chef du suzerain : il la mene et paie sa solde. Les compagnies
 gardent leur village : dissoute, chacune rentre chez elle et y redevient
-villageoise de son peuple (villages.dissolve).
+villageoise de son peuple (troupes.dissolve).
 Le lien se rompt (le tributaire s'est affranchi) : ses compagnies quittent
 la troupe et rentrent chez elles (sauf si leur peuple est en guerre avec le
 suzerain : elles sont prisonnieres de la pile, comme avant).
@@ -19,11 +19,12 @@ N'importe pas pygame.
 
 from __future__ import annotations
 
-from src.kora import battle, chiefdom, siege, villages
+from src.kora import battle, chiefdom, siege, units, villages
 from src.kora.bands import _absorb, merge_text, set_goto
 from src.kora.gamestate import is_human, note
 from src.kora.log import LogKind
 from src.kora.types import stay_order
+from src.kora import troupes
 
 OST_RANGE = 20
 
@@ -166,9 +167,9 @@ def _release(state) -> None:
         for tid, comps in sorted(parts.items()):
             if tid in vassals or siege.at_war(state, tid, army.tribe_id):
                 continue
-            if len(comps) >= len(villages._companies(army)):
+            if len(comps) >= len(units.normalize(army)):
                 break
-            villages.send_companies_home(state, army, comps)
+            troupes.send_companies_home(state, army, comps)
 
 
 def lines(state, army) -> list[str]:

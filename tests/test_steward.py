@@ -4,6 +4,7 @@ marge, et le grain achete d'avance, moins cher (pour le joueur aussi)."""
 
 from src.kora import ai, goods, grain, money, villages
 from test_grain import _two
+from src.kora import batiments
 
 
 def _short(st, band, site):
@@ -40,12 +41,12 @@ def test_no_building_site_or_raid_levy_without_a_food_margin():
     _short(st, buyer, bsite)
     st.clock.week = 20
     built = []
-    real = villages.build
-    villages.build = lambda *a, **k: built.append(a) or real(*a, **k)
+    real = batiments.build
+    batiments.build = lambda *a, **k: built.append(a) or real(*a, **k)
     try:
         ai._village_ai(st, buyer, 6.0)
     finally:
-        villages.build = real
+        batiments.build = real
     assert not built, "pas de chantier quand le grenier ne tiendra pas"
 
 

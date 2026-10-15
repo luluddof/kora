@@ -46,7 +46,8 @@ par theme).
   La SIMULATION (tout sauf l'interface) n'importe jamais pygame, ne lit
   jamais state.viewer, et tourne en Python pur (le multijoueur exige les
   memes nombres sur chaque machine). L'INTERFACE (app, render, render_*,
-  theme, look, globe, globe_draw, layout, screens, tree_graph, music) lit la
+  theme, look, globe, globe_draw, layout, screens, tree_graph, music, et la
+  partie a l'ecran : partie, partie_carte, partie_ecrans) lit la
   partie et ne la change QUE par un ordre (commands.py, via Play.issue).
   numpy : seulement globe_draw.py (le rendu) et mapgen.py (la cuisson des
   planetes, hors du jeu).
@@ -221,7 +222,7 @@ ETAGE 3  ce qui s'y pose
     classes : VillageData, Site
     fonctions : site_of, band_of, name, rank_name, oath_of, built, has,
       monument_stages, works, watch_spots, influence_radius
-    constantes : RANKS
+    constantes : RANKS, NEAR
 
 
 ETAGE 4  les savoirs, les gens
@@ -337,27 +338,33 @@ ETAGE 5  LES SYSTEMES
   diplo.py
     Diplomatie : contacts, relations, pactes, propositions, diffusion.
     classes : frozen_relations, Verdict
-    fonctions : pair, copy_diplo, in_contact, contacts_of, contact_count,
+    fonctions : pair, of, copy_diplo, in_contact, contacts_of, contact_count,
       friend_count, ally_count, make_contact, update_contacts, add_mod,
-      has_pact, allied, peace_pact, migrate, diplomatic, needs_declaration,
-      declared_war, at_peace, base_relation, reasons, relation, level_of,
-      level, status_line, on_fight, betray, hostile_intent, at_war, may_start,
-      set_casus, motive_against, casus_of, add_score, score, weariness,
-      goal_of, goals_of, submit, goal_done, alliance_bound, alliance_left,
-      add_pact, break_pact, monthly, teachers, diffusion_bonus, power, gap,
-      pop_of, evaluate, war_allies, war_pairs, declare_war, end_war, wars_of,
-      gift_carrier, gift_sizes, present_sizes, present_value, gift_value,
-      perform, invitable, invite_chance, invite, on_cooldown, absorb, forget,
-      ai_monthly, to_json, from_json
+      pacts_between, has_pact, allied, peace_pact, base_relation, reasons,
+      relation, level_of, level, status_line, on_fight, betray,
+      hostile_intent, alliance_bound, alliance_left, add_pact, drop_for_war,
+      break_pact, monthly, teachers, diffusion_bonus, power, gap, pop_of,
+      evaluate, gift_carrier, gift_sizes, present_sizes, present_value,
+      gift_value, perform, invitable, invite_chance, invite, on_cooldown,
+      absorb, forget, ai_monthly, to_json, from_json
     constantes : CONTACT_RANGE, NEIGHBOR_RANGE, TRUCE_WEEKS, TRIBUTE_WEEKS,
       TRIBUTE_EVERY, GIFT_RANGE, GIFT_SIZES, PRESENT_SIZES, PRESENT_NO_MONEY,
       AI_PRESENT, INVITE_COST, BETRAYAL_PRESTIGE, DIFFUSE_NEIGHBOR,
-      DIFFUSE_ALLY, DIFFUSE_CAP, OFFER_COOLDOWN, MOD_TEXT, PEACE_PACTS, WAR,
-      WAR_FADE_WEEKS, DECLARE_RELATION, DECLARE_PRESTIGE, WAR_WEEKS,
-      WIN_SCORE, VILLAGE_SCORE, SIEGE_SCORE, SCORE_CAP, SUBMIT_BASE,
-      WEARY_SEASON, WEARY_STEP, WEARY_CAP, LEAD_PER, LEAD_CAP, ALLIANCE_WEAR,
-      ALLIANCE_WARN, ACTIONS, ACTION_LABELS, HUMAN_OFFERS, INVITE_RANGE,
-      AI_WAR_WEEKS, AI_ALLY_FRIENDS, PROPOSE_EVERY
+      DIFFUSE_ALLY, DIFFUSE_CAP, OFFER_COOLDOWN, MOD_TEXT, PEACE_PACTS,
+      ALLIANCE_WEAR, ALLIANCE_WARN, ACTIONS, ACTION_LABELS, HUMAN_OFFERS,
+      INVITE_RANGE, AI_WAR_WEEKS, AI_ALLY_FRIENDS, PROPOSE_EVERY
+
+  guerre.py
+    LA GUERRE DECLAREE : qui est en paix, qui est en guerre, pourquoi, et
+    comment elle finit.
+    fonctions : migrate, diplomatic, needs_declaration, declared_war,
+      at_peace, at_war, may_start, set_casus, motive_against, casus_of,
+      add_score, score, weariness, long_war, truce_mood, goal_of, goals_of,
+      submit, goal_done, submit_verdict, fade_wars, war_allies, war_pairs,
+      war_verdict, declare_war, end_war, wars_of
+    constantes : WAR, WAR_FADE_WEEKS, DECLARE_RELATION, DECLARE_PRESTIGE,
+      WAR_WEEKS, WIN_SCORE, VILLAGE_SCORE, SIEGE_SCORE, SCORE_CAP,
+      SUBMIT_BASE, WEARY_SEASON, WEARY_STEP, WEARY_CAP, LEAD_PER, LEAD_CAP
 
   goods.py
     Metiers des villages, marche du peuple, routes commerciales.
@@ -464,39 +471,50 @@ ETAGE 5  LES SYSTEMES
 
   villages.py
     Villages : une bande qui s'installe.
-    classes : Oath, Building
+    classes : Oath
+    fonctions : stock_weeks, store_weeks, rot_mult, weeks_to_harvest,
+      note_forage, food_outlook, granary_growth, growth_mult, herd_mult,
+      food_mult, winter_famine_mult, yield_mult, wall_parts, defense_parts,
+      defense_mult, winter_prestige, loyalty_parts, nearest_village,
+      stability_parts, stability, stability_word, stability_growth, fertility,
+      land_profile, choose_fields, hands_mult, field_hands_mult,
+      expected_harvest, sow, harvest, found_block, propose_name, found,
+      seat_chiefs, ai_oath, found_preview, leave_block, leave, update,
+      eat_seed, pillaged, lost, field_site, soil_avg, next_step, lines,
+      occupations, free_for_craft, occupation_lines
+    constantes : FIELD_WORKERS, MAX_FIELDS, FIELD_RADIUS, FIELD_FOOD, SEED,
+      LATE_SOW, STORE_WEEKS, GROWTH, SOIL_LOSS, SOIL_REST, GRAIN_ROT, BURNED,
+      DISEASE_POP, FLOOD_CHANCE, MIN_FOUND_POP, FIELD_HANDS, HISTORY,
+      FIRST_VILLAGE_PRESTIGE, LOSE_BUILDING, ALERT_RANGE, ALERT_EVERY,
+      FERTILITY, OATHS, OATH_ORDER, AI_OATH, FOOD_SAFE_WEEKS, FOOD_LOW_GROWTH,
+      FORAGE_MEMORY, WILD_HERD, RIVER_FIELDS, RIVER_IRRIGATION,
+      STABILITY_BASE, UNREST, UNREST_SHARE, UNREST_MIN_POP, CROWD_POP,
+      UNREST_JOIN_RANGE, SOW_KEEP_WEEKS
+
+  batiments.py
+    LES BATIMENTS D'UN VILLAGE : ce qu'on y bati, les chantiers, le grand
+    monument, la palissade.
+    classes : Building
     fonctions : monument_open, building_name, pull_down_monument, slots,
       used_slots, build_weeks, build_cost, building_status, build_block_site,
-      build_block, build, stock_weeks, store_weeks, rot_mult,
-      weeks_to_harvest, note_forage, food_outlook, granary_growth,
-      growth_mult, herd_mult, food_mult, winter_famine_mult, yield_mult,
-      wall_parts, defense_parts, defense_mult, winter_prestige, loyalty_parts,
-      nearest_village, stability_parts, stability, stability_word,
-      stability_growth, fertility, land_profile, choose_fields, hands_mult,
-      field_hands_mult, expected_harvest, sow, harvest, found_block,
-      propose_name, found, seat_chiefs, ai_oath, found_preview, leave_block,
-      leave, palisade_state, palisade_block, build_palisade, armies_of,
-      companies_of, army_cap, home_of, warn_supply, weeks_home, army_quality,
-      army_morale, levy_size, militia, levy_plan, militia_text, plan_text,
-      army_block, raise_army, detach_block, detach, disband_block,
-      dissolve_block, dissolve, send_companies_home, disband, recall,
-      reequip_block, reequip, update, eat_seed, pillaged, lost, field_site,
-      soil_avg, next_step, lines, army_lines, occupations, free_for_craft,
-      occupation_lines
-    constantes : FIELD_WORKERS, MAX_FIELDS, FIELD_RADIUS, FIELD_FOOD, SEED,
-      LATE_SOW, STORE_WEEKS, GROWTH, SOIL_LOSS, SOIL_REST, GRAIN_ROT,
-      PALISADE_WEEKS, PALISADE_COST_WEEKS, PALISADE_DEFENSE, TOWER_DEFENSE,
-      BURNED, DISEASE_POP, FLOOD_CHANCE, MIN_FOUND_POP, FIELD_HANDS, HISTORY,
-      FIRST_VILLAGE_PRESTIGE, BASE_SLOTS, SLOT_POP, LOSE_BUILDING, NEAR,
-      ALERT_RANGE, ALERT_EVERY, FERTILITY, OATHS, OATH_ORDER, AI_OATH,
-      BUILDINGS, BUILD_ORDER, MONUMENT_STAGES, LEVIES, LEVY_SHARE,
-      ARMY_MIN_VILLAGE, ARMY_MIN, HUNTER_SHOT, HUNTER_SCOUT, WORKER_SHOT,
-      FARMER_GUARD, WARRIORS_GUARD, VILLAGE_KEEP, ARMY_SUPPLY_WEEKS,
-      ARMY_TERM, DESERTION, ARMY_HOME, WARRIORS_QUALITY, WARRIORS_MORALE,
-      FOOD_SAFE_WEEKS, FOOD_LOW_GROWTH, FORAGE_MEMORY, WILD_HERD,
-      RIVER_FIELDS, RIVER_IRRIGATION, STABILITY_BASE, UNREST, UNREST_SHARE,
-      UNREST_MIN_POP, CROWD_POP, UNREST_JOIN_RANGE, SOW_KEEP_WEEKS,
-      SUPPLY_WARN_MARGIN, SUPPLY_WARN_EVERY
+      build_block, build, advance_works, palisade_state, palisade_block,
+      build_palisade
+    constantes : PALISADE_WEEKS, PALISADE_COST_WEEKS, PALISADE_DEFENSE,
+      TOWER_DEFENSE, BASE_SLOTS, SLOT_POP, BUILDINGS, BUILD_ORDER,
+      MONUMENT_STAGES
+
+  troupes.py
+    LES TROUPES DU VILLAGE : la levee, la milice, la marche, le retour.
+    fonctions : armies_of, companies_of, army_cap, home_of, warn_supply,
+      weeks_home, army_quality, army_morale, men_away, levy_size, militia,
+      split_by, levy_plan, militia_text, plan_text, army_block, raise_army,
+      detach_block, detach, disband_block, dissolve_block, village_near,
+      dissolve, send_companies_home, disband, recall, reequip_block, reequip,
+      update_armies, army_lines
+    constantes : LEVIES, LEVY_SHARE, ARMY_MIN_VILLAGE, ARMY_MIN, HUNTER_SHOT,
+      HUNTER_SCOUT, WORKER_SHOT, FARMER_GUARD, WARRIORS_GUARD, VILLAGE_KEEP,
+      ARMY_SUPPLY_WEEKS, ARMY_TERM, DESERTION, ARMY_HOME, WARRIORS_QUALITY,
+      WARRIORS_MORALE, SUPPLY_WARN_MARGIN, SUPPLY_WARN_EVERY
 
   battle.py
     Batailles : un combat simule en passes d'armes.
@@ -668,10 +686,7 @@ ETAGE -  l'interface (pygame)
   app.py
     L'APPLICATION : la fenetre, le menu de demarrage, le salon du
     multijoueur, puis la partie a l'ecran (la classe Play).
-    classes : Settings, Play
     fonctions : run, title_screen, play
-    constantes : TOAST_LIFE, MAX_TOASTS, CONFIRM_SECONDS, PANEL_KEYS,
-      ACTION_KEYS
 
   globe.py
     LA SPHERE A L'ECRAN : la planete (un cylindre de cases pour la
@@ -728,6 +743,27 @@ ETAGE -  l'interface (pygame)
     classes : Director
     fonctions : wants_war_music
     constantes : WAR_TRACK, FADE_IN, FADE_OUT, DEFAULT_VOLUME, HOLD, CHECK
+
+  partie.py
+    LA PARTIE A L'ECRAN : la classe Play (une partie qu'on joue, seul ou a
+    plusieurs) et la fenetre des reglages.
+    classes : Settings, Play
+    fonctions : view_dict, fresh_ui
+    constantes : TOAST_LIFE, MAX_TOASTS
+
+  partie_carte.py
+    LA PARTIE A L'ECRAN, COTE CARTE : la souris sur la planete, le clavier,
+    les ordres aux bandes (MapInput, une des bases de partie.Play).
+    classes : MapInput
+    fonctions : look_hex, band_at_pixel, seen_village_at_pixel,
+      fight_at_pixel, player_band_ids, first_player_band, refresh_selection,
+      next_player_band, nearest_band_of, in_rect
+    constantes : CONFIRM_SECONDS, PANEL_KEYS, ACTION_KEYS
+
+  partie_ecrans.py
+    LA PARTIE A L'ECRAN, COTE ECRANS : les grands ecrans, les fenetres et
+    les panneaux lateraux (ScreenClicks, une des bases de partie.Play).
+    classes : ScreenClicks
 
   render.py
     LE DESSIN DE LA PARTIE (pygame) : Renderer, la planete et tout ce qui
@@ -923,16 +959,22 @@ ETAGE -  l'interface (pygame)
                                       tournants : turning.py ; tirages : draws.py ;
                                       placer l'arbre : tree_graph.py ;
                                       python tools/arbre_savoirs.py --spec
-  Villages : champs, batiments,       villages.py (FIELD_FOOD, BUILDINGS, OATHS,
-  serments, stabilite                 stability_parts) ; places.VillageData
+  Villages : champs, serments,        villages.py (villages.FIELD_FOOD,
+  stabilite, recoltes                 villages.OATHS, villages.stability_parts) ;
+                                      places.VillageData
+  Batiments, chantiers, monument,     batiments.py (batiments.BUILDINGS,
+  palissade                           batiments.build, batiments.slots)
   Metiers, biens, routes              goods.py (CRAFTS, price, open_route)
-  Troupes, levee, milice              villages.militia, villages.levy_plan,
+  Troupes, levee, milice, retour     troupes.militia, troupes.levy_plan,
                                       units.UNITS ; l'ost : ost.py
   Batailles (jour apres jour)         battle.py (Battle, day, advance)
   Rapport de force avant l'attaque    orders.attack_preview, ai_war.odds_at
-  Diplomatie, guerre, paix            diplo.py (evaluate, declare_war, submit,
-                                      weariness) ; casus.py (motifs) ;
-                                      confed.py ; chiefdom.country
+  Diplomatie : contacts, relations,   diplo.py (diplo.evaluate, diplo.perform,
+  pactes, propositions                diplo.add_pact) ; confed.py
+  La guerre declaree, la paix,        guerre.py (guerre.at_peace,
+  les buts, la lassitude              guerre.declare_war, guerre.submit,
+                                      guerre.weariness) ; casus.py (motifs) ;
+                                      chiefdom.country (le pays)
   L'approche des chefs de l'IA        approach.PROFILES, approach.ACCEPT
   L'IA (bandes, villages, troupes)    ai.py ; quand elle attaque : ai_war.py
   Chefferie, tributaires, revoltes    chiefdom.py
@@ -943,10 +985,14 @@ ETAGE -  l'interface (pygame)
   Savoir-faire, surproduction         production.py
   Evenements (textes, chaines)        events_data.py (moteur : events.py)
   Un ordre nouveau du joueur          commands.py (KINDS), puis Play.issue
-  Une touche, un clic                 Play._on_key, Play._on_click,
-                                      Play.side_click
+  Une touche, un clic sur la carte    Play._on_key, Play._on_click
+                                      (partie_carte.py)
+  Un clic dans un panneau, un ecran   Play.side_click, Play.village_click...
+                                      (partie_ecrans.py)
+  La boucle, les ordres, le temps     partie.py (Play.run, Play._frame,
+                                      Play.issue) ; les menus : app.py
   Un grand ecran                      screens.SCREENS + render_<x>.py + sa
-                                      methode de clic dans Play
+                                      methode de clic (partie_ecrans.py)
   Un onglet, un panneau               layout.py (mise en page pure) +
                                       Renderer.draw_side / render_panels.py
   Un mode de carte                    layout.MAP_MODES, Renderer.draw_map_modes

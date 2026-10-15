@@ -26,6 +26,7 @@ from src.kora.places import (  # noqa: F401
     _village_data,
 )
 from src.kora.bands import stock_max
+from src.kora import guerre
 
 CAMP_STORE = 600
 CACHE_ROT = 0.015
@@ -299,7 +300,7 @@ def _maybe_found(state, site: Site, foes: list) -> None:
         # vient la chercher : ai._seek_cache).
         if site.kind == "cache" and foe.position != site.hex and state.story_rng.random() >= FIND_CHANCE:
             continue
-        if diplo.at_peace(state, foe.tribe_id, site.tribe_id):
+        if guerre.at_peace(state, foe.tribe_id, site.tribe_id):
             continue
         take = min(site.store, max(0.0, stock_max(foe, state) - foe.stock))
         if take < 1:

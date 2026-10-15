@@ -15,7 +15,7 @@ fiche du village passent par records.py (d'apres leurs types) ; une partie
 note sa planete ("map" -> "id" : map_id ; une ancienne partie est sur
 "kora", l'ancienne carte) et la version du jeu ("game_version"). Un champ
 absent d'une vieille partie prend sa valeur par defaut ; les migrations des
-systemes (diplo.migrate, turning.migrate...) s'appliquent au chargement.
+systemes (guerre.migrate, turning.migrate...) s'appliquent au chargement.
 dumps_game / loads_game : la meme chose en texte (le multijoueur l'envoie).
 N'importe pas pygame.
 """
@@ -40,6 +40,7 @@ from src.kora.world import World, offset_to_axial
 from src.kora.francais import convert
 from src.kora.peoples import LEGACY_COLOR, LEGACY_CULTURE, MINOR_START, free_color
 from src.kora.sim import add_minor_peoples
+from src.kora import guerre
 
 SAVE_VERSION = 1
 
@@ -595,7 +596,7 @@ def game_from_json(data, world: World | None) -> tuple[GameState, dict] | None:
         if "seed" not in state.research:
             draws.set_seed(state, draws.seed_from(state))
         turning.migrate(state)
-        diplo.migrate(state)
+        guerre.migrate(state)
         if "diplo" not in data and world.width >= 300 and len(tribes) <= 4:
             # Partie d'avant les petits peuples : ils naissent hors de ce que
             # le joueur a deja explore (ils etaient la, on ne les voyait pas).

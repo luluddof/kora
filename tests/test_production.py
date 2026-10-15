@@ -7,6 +7,7 @@ from src.kora.gamestate import PLAYER_TRIBE_ID
 from src.kora.situations import SPECS
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world
+from src.kora import batiments
 
 
 def _world():
@@ -161,20 +162,20 @@ def test_the_monument_rises_in_stages_and_only_the_winner_keeps_it():
     st = _villages_state((1, 2))
     s1, s2 = _site(st, 1), _site(st, 2)
     b1, b2 = places.band_of(st, s1), places.band_of(st, s2)
-    assert villages.building_status(st, s1, "monument") == "verrouille"
-    assert "grands travaux" in villages.build_block_site(st, s1, "monument")
+    assert batiments.building_status(st, s1, "monument") == "verrouille"
+    assert "grands travaux" in batiments.build_block_site(st, s1, "monument")
     inst = situations._start(st, SPECS["travaux"], s1.hex, 40, [1, 2], {})
-    assert villages.building_status(st, s1, "monument") == "possible"
+    assert batiments.building_status(st, s1, "monument") == "possible"
     for band, site, stages in ((b1, s1, 3), (b2, s2, 1)):
         for k in range(stages):
             band.stock = 3000.0
-            weeks = villages.build_weeks(site, "monument")
-            assert villages.build(st, band.id, "monument")
+            weeks = batiments.build_weeks(site, "monument")
+            assert batiments.build(st, band.id, "monument")
             for _ in range(weeks):
-                villages._advance_works(st, site, band)
+                batiments.advance_works(st, site, band)
             assert places.monument_stages(site) == k + 1
-    assert villages.build_weeks(s1, "monument") > villages.BUILDINGS["monument"].weeks, "chaque etape est plus longue"
-    assert "Grand monument · 3/" in villages.building_name(s1, "monument")
+    assert batiments.build_weeks(s1, "monument") > batiments.BUILDINGS["monument"].weeks, "chaque etape est plus longue"
+    assert "Grand monument · 3/" in batiments.building_name(s1, "monument")
     SPECS["travaux"].month(st, inst)
     assert inst.participants[1]["score"] == 3 and inst.participants[2]["score"] == 1
     prestige = villages.winter_prestige(st, 1)

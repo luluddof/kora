@@ -25,6 +25,8 @@ from src.kora.look import country_color
 from src.kora.render_tech import GOLD, INK, NOTE, SOFT
 from src.kora.render_village import _fonts, _frame, _hover, _section, _tip
 from src.kora.theme import C, _gradient_card
+from src.kora import troupes
+from src.kora import guerre
 
 LIST_W = 340
 CARD_H = 70
@@ -116,7 +118,7 @@ def draw_wars(r, state, ui) -> None:
     if not fronts:
         lines = (
             ("Pour déclarer une guerre : l'écran Peuples [P], sur le peuple visé.", "Une guerre se fait contre tout un pays : son suzerain, ses tributaires, ses confédérés.")
-            if diplo.diplomatic(state, me)
+            if guerre.diplomatic(state, me)
             else ("Les guerres déclarées viennent avec Messagers et serments (la diplomatie vient avec les villages).", "Avant, des bandes qui s'accrochent : attaquez au clic droit.")
         )
         for para in lines:
@@ -204,13 +206,13 @@ def _army_card(r, state, me, pos, on: bool, lay, mx, my) -> int:
 
 
 def _where(state, army) -> str:
-    home = villages.home_of(state, army)
+    home = troupes.home_of(state, army)
     if army.homebound:
         return "rentre au village"
     if home is None:
         return "sans village"
     d = state.world.distance(home.hex, army.position)
-    return "au village" if d <= villages.ARMY_HOME else f"à {d} cases de {places.name(home)}"
+    return "au village" if d <= troupes.ARMY_HOME else f"à {d} cases de {places.name(home)}"
 
 
 def _draw_army(r, state, me, area, lay, ui, mx, my, tips) -> None:
@@ -252,23 +254,23 @@ def _draw_army(r, state, me, area, lay, ui, mx, my, tips) -> None:
         theme.button(screen, name_rect, theme.fit(theme.font("bouton_petit"), places.name(site), 150), "second", True, _hover(name_rect, mx, my), role="bouton_petit")
         if _hover(name_rect, mx, my):
             tips.append(([("Ouvrir l'écran du village", SOFT)], mx, my, name_rect))
-        info = f"{home.population} habitants  ·  troupes {villages.companies_of(state, site)}/{villages.army_cap(state, site)}"
+        info = f"{home.population} habitants  ·  troupes {troupes.companies_of(state, site)}/{troupes.army_cap(state, site)}"
         theme.text(screen, theme.fit(theme.font("mini"), info, cw - 190), "mini", SOFT, (cx + 180, cy + 11))
-        milice = "Milice : " + (villages.militia_text(state, home) or "personne à lever")
+        milice = "Milice : " + (troupes.militia_text(state, home) or "personne à lever")
         theme.text(screen, theme.fit(theme.font("mini"), milice, cw - 20), "mini", INK, (cx + 10, cy + 36))
         key = sizes.get(site.id, "troupe")
         sx = cx + 10
         bw3 = max(64, min(86, (cw - 20 - 104 - 3 * 6) // 3))
-        for k, _share, label in villages.LEVIES:
-            n = villages.levy_size(home, villages.LEVY_SHARE[k], state)
+        for k, _share, label in troupes.LEVIES:
+            n = troupes.levy_size(home, troupes.LEVY_SHARE[k], state)
             rect = (sx, cy + 62, bw3, 24)
             lay["buttons"][f"asize:{site.id}:{k}"] = rect
             theme.button(screen, rect, f"{LEVY_SHORT[k]} {n}", "second", True, _hover(rect, mx, my), role="bouton_petit", active=k == key)
             if _hover(rect, mx, my):
                 tips.append(([(f"{label} : {n} guerriers", INK), ("La même part de chaque catégorie de la milice", SOFT)], mx, my, rect))
             sx += bw3 + 6
-        share = villages.LEVY_SHARE.get(key, villages.LEVY_SHARE["troupe"])
-        why = villages.army_block(state, home.id, share) or ("" if chiefs.obeys(state, home) else "Ce clan n'obéit plus")
+        share = troupes.LEVY_SHARE.get(key, troupes.LEVY_SHARE["troupe"])
+        why = troupes.army_block(state, home.id, share) or ("" if chiefs.obeys(state, home) else "Ce clan n'obéit plus")
         raise_rect = (cx + cw - 104, cy + 60, 94, 28)
         lay["buttons"][f"araise:{site.id}"] = raise_rect
         theme.button(screen, raise_rect, "Lever [L]", "principal" if not why else "second", not why, not why and _hover(raise_rect, mx, my), role="bouton_petit")
@@ -303,7 +305,7 @@ def _draw_army(r, state, me, area, lay, ui, mx, my, tips) -> None:
         theme.button(screen, see, "Voir", "second", True, _hover(see, mx, my), role="bouton_petit")
         dis = (x + w - 92, y, 92, 22)
         lay["buttons"][f"adissolve:{army.id}"] = dis
-        why = villages.dissolve_block(state, army.id)
+        why = troupes.dissolve_block(state, army.id)
         theme.button(screen, dis, "Dissoudre", "second", not why, not why and _hover(dis, mx, my), role="bouton_petit")
         if _hover(dis, mx, my):
             tips.append(([(why or "Chaque compagnie rentre à pied à son village", C.alerte if why else SOFT)], mx, my, dis))
@@ -322,7 +324,7 @@ def _draw_front(r, state, me, front, area, lay, mx, my, tips) -> None:
     told = _declared(state, me, front)
     if told:
         info += f"  ·  {told}"
-    worn = diplo.weariness(state, me, front.key)
+    worn = guerre.weariness(state, me, front.key)
     if worn:
         info += f"  ·  lassitude +{worn} pour une trêve"
     theme.text(screen, info, "mini", NOTE, (x, y + 24))
@@ -332,7 +334,7 @@ def _draw_front(r, state, me, front, area, lay, mx, my, tips) -> None:
     bar = (x, y + 4, w, 14)
     pygame.draw.rect(screen, C.cuir, bar, border_radius=7)
     mid = x + w // 2
-    span = (w // 2) * min(1.0, abs(score) / diplo.SCORE_CAP)
+    span = (w // 2) * min(1.0, abs(score) / guerre.SCORE_CAP)
     fill = (mid, bar[1], span, bar[3]) if score >= 0 else (mid - span, bar[1], span, bar[3])
     if span >= 1:
         pygame.draw.rect(screen, _tone(score), fill, border_radius=7)

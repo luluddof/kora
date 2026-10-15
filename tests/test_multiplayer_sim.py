@@ -12,6 +12,7 @@ from src.kora.gamestate import PLAYER_TRIBE_ID, human_dead, humans, is_human, lo
 from src.kora.types import Terrain
 from src.kora.vision import is_explored, is_visible, vision_of
 from src.kora.world import make_filled_world
+from src.kora import guerre
 
 
 def _world():
@@ -101,7 +102,7 @@ def test_a_player_decides_the_offer_of_another_player():
     assert "décider" in msg, msg
     cards = [c for c in events.pending(st, 2) if c.event_id == "offre_treve"]
     assert len(cards) == 1 and cards[0].other == 1
-    assert not diplo.at_peace(st, 1, 2)
+    assert not guerre.at_peace(st, 1, 2)
     events.choose(st, cards[0].uid, 0)
     assert diplo.has_pact(st, 1, 2, "treve")
     assert any("ont répondu" in e.text for e in st.log.entries)

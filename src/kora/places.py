@@ -114,6 +114,9 @@ def name(site) -> str:
 
 # Rang d'un village selon ses habitants (titre de son ecran, panneau).
 RANKS = ((150, "Gros village"), (50, "Village"), (0, "Hameau"))
+# Le rayon des effets d'un village sur les clans alentour (autel, serment,
+# attachement : chiefs.py).
+NEAR = 8
 
 
 def rank_name(population: int) -> str:

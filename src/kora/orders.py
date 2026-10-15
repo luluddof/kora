@@ -27,6 +27,8 @@ from src.kora.bands import (
     welded_left,
 )
 from src.kora.peoples import civ_of
+from src.kora import troupes
+from src.kora import guerre
 
 ACTIONS = ("split", "merge", "next", "chief", "village", "camp", "deposit", "withdraw", "honor", "army")
 INDOCILE = "Ce clan n'obéit plus (attachement trop bas)"
@@ -49,7 +51,7 @@ HOMEBOUND = "Dissoute, la troupe rentre au village"
 def _army_actions(state, band) -> dict[str, str]:
     own = sum(1 for b in state.bands.values() if b.tribe_id == band.tribe_id and b.population > 0)
     out = {
-        "split": villages.detach_block(state, band.id),
+        "split": troupes.detach_block(state, band.id),
         "next": "" if own > 1 else "Une seule bande",
         "chief": chiefs.can_move_chief(state, band.id),
         "village": "Une troupe ne fonde pas de village",
@@ -58,7 +60,7 @@ def _army_actions(state, band) -> dict[str, str]:
         "withdraw": TROOP_CAMP,
         # Une troupe n'a pas a etre honoree : ce bouton appelle l'ost.
         "honor": ost.call_block(state, band.id),
-        "army": villages.dissolve_block(state, band.id),
+        "army": troupes.dissolve_block(state, band.id),
     }
     if band.homebound:
         for key in ("split", "merge", "chief", "army", "honor"):
@@ -66,7 +68,7 @@ def _army_actions(state, band) -> dict[str, str]:
         return out
     if band.retreating:
         out["merge"] = "La troupe est en repli"
-    elif villages.disband_block(state, band.id) == "" or _mates(state, band):
+    elif troupes.disband_block(state, band.id) == "" or _mates(state, band):
         out["merge"] = ""
     else:
         out["merge"] = "Aucune troupe sur cette case (au village : rentrer)"
@@ -121,7 +123,7 @@ def band_actions(state, band_id: int) -> dict[str, str]:
     if not listens:
         out["army"] = INDOCILE
     elif band.village:
-        out["army"] = villages.army_block(state, band_id)
+        out["army"] = troupes.army_block(state, band_id)
     else:
         out["army"] = "Seul un village leve des guerriers"
     here = sites.own_site_at(state, band)
@@ -171,7 +173,7 @@ def labels(state, band_id: int) -> dict:
         out["army"] = "Lever [L]"
     elif band is not None and band.kind == "armee":
         out["split"] = "Détacher [S]"
-        at_home = villages.disband_block(state, band_id) == "" and not _mates(state, band)
+        at_home = troupes.disband_block(state, band_id) == "" and not _mates(state, band)
         out["merge"] = "Rentrer [F]" if at_home else "Réunir [F]"
         out["army"] = "Dissoudre [L]"
         out["honor"] = "Ost [H]"
@@ -194,14 +196,14 @@ def perform(state, band_id: int, key: str):
 
     if key == "split":
         if band.kind == "armee":
-            part = villages.detach(state, band_id)
+            part = troupes.detach(state, band_id)
             return (part.id if part is not None else band_id), ""
         nid = split_band(state, band_id)
         return (nid if nid is not None else band_id), ""
     if key == "merge":
-        if band.kind == "armee" and villages.disband_block(state, band_id) == "" and not _mates(state, band):
-            site = villages._village_near(state, band)
-            villages.disband(state, band_id)
+        if band.kind == "armee" and troupes.disband_block(state, band_id) == "" and not _mates(state, band):
+            site = troupes.village_near(state, band)
+            troupes.disband(state, band_id)
             home = places.band_of(state, site) if site is not None else None
             return (home.id if home is not None else band_id), ""
         merge_bands(state, band_id)
@@ -238,11 +240,11 @@ def perform(state, band_id: int, key: str):
         return band_id, ""
     if key == "army":
         if band.kind == "armee":
-            site = villages._village_near(state, band)
-            villages.dissolve(state, band_id)
+            site = troupes.village_near(state, band)
+            troupes.dissolve(state, band_id)
             home = places.band_of(state, site) if site is not None and band_id not in state.bands else None
             return (home.id if home is not None else band_id), ""
-        army = villages.raise_army(state, band_id)
+        army = troupes.raise_army(state, band_id)
         return (army.id if army is not None else band_id), ""
     if key == "leave":
         villages.leave(state, band_id)
@@ -280,9 +282,9 @@ def attack_preview(state, band_id: int, prey_id: int) -> dict | None:
         out["blocked"] = "Un village ne bouge pas : formez une bande [S] pour attaquer"
     elif band.homebound:
         out["blocked"] = HOMEBOUND
-    elif diplo.may_start(state, me, them):
-        out["blocked"] = diplo.may_start(state, me, them)
-    elif diplo.needs_declaration(state, me, them) and not diplo.declared_war(state, me, them) and not diplo.at_war(state, me, them):
+    elif guerre.may_start(state, me, them):
+        out["blocked"] = guerre.may_start(state, me, them)
+    elif guerre.needs_declaration(state, me, them) and not guerre.declared_war(state, me, them) and not guerre.at_war(state, me, them):
         out["blocked"] = f"Vous êtes en paix avec les {who} : déclarez-leur d'abord la guerre (écran Peuples)"
     ratio, word = ai_war.odds_at(state, band, prey)
     out["ratio"], out["word"] = ratio, word
@@ -311,7 +313,7 @@ def attack_preview(state, band_id: int, prey_id: int) -> dict | None:
         weeks = travel_weeks(state.world, band.position, path, water_ok=water, costs=ai_war.costs_of(state, me))
         text = f"Trajet : ~{weeks} sem."
         if band.kind == "armee":
-            back = villages.weeks_home(state, band, prey.position)
+            back = troupes.weeks_home(state, band, prey.position)
             stock = f"{food:.0f} sem." if food >= 1 else "moins d'une semaine"
             text += f" ; vivres : {stock} ; retour au village : ~{back} sem."
             rows.append((text, "alerte" if food < weeks + back else "note"))

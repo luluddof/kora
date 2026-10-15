@@ -8,6 +8,9 @@ from src.kora.persist import load_game, save_game
 from src.kora.sim import apply_movement, resolve_joins, tick
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
+from src.kora import troupes
+from src.kora import batiments
+from src.kora import guerre
 
 NEO = {"huttes", "semis", "sedentarite", "palissade", "arc", "palabres", "messagers"}
 
@@ -45,8 +48,8 @@ def _realm():
     for a, b in ((1, 2), (1, 3), (2, 3)):
         diplo.make_contact(st, a, b, quiet=True)
     chiefdom.make_vassal(st, 1, 2, "force")
-    a1 = villages.raise_army(st, 1)
-    a2 = villages.raise_army(st, 2)
+    a1 = troupes.raise_army(st, 1)
+    a2 = troupes.raise_army(st, 2)
     a1.position = offset_to_axial(14, 15)
     a2.position = offset_to_axial(26, 15)
     return st, a1, a2, lsite, vsite
@@ -80,7 +83,7 @@ def test_a_dissolved_ost_sends_each_company_home_to_its_own_people():
     ost.join(st, a1, a2)
     vmen = sum(u[1] for u in a1.units if u[2] == vsite.id)
     before = st.bands[2].population
-    villages.dissolve(st, a1.id)
+    troupes.dissolve(st, a1.id)
     back = [b for b in st.bands.values() if b.kind == "armee" and b.tribe_id == 2]
     assert len(back) == 1 and back[0].population == vmen and back[0].homebound
     for _ in range(12):
@@ -114,7 +117,7 @@ def test_the_ai_overlord_too_weak_alone_calls_the_ost():
     prey = Band(3, 3, offset_to_axial(14, 22), 100, 300.0)
     st.bands[3] = prey
     chiefs.ensure(st)
-    diplo.declare_war(st, 1, 3)
+    guerre.declare_war(st, 1, 3)
     assert not ai_war.wins(st, [a1], prey) and ai_war.wins(st, [a1, a2], prey)
     plan = ai_war.plan_raid(st, a1, 12, hungry=True)
     assert plan[0] == "ost" and plan[1] is a2
@@ -136,13 +139,13 @@ def test_torches_halve_the_walls_of_a_village_you_attack():
     vb, vsite = _village(st, 3, 3)
     vsite.data.buildings.append("palissade")
     walls = villages.defense_mult(st, vb)
-    assert abs(walls - villages.PALISADE_DEFENSE) < 1e-6
+    assert abs(walls - batiments.PALISADE_DEFENSE) < 1e-6
     st.tribes[1].knowledge.add("torches")
     tech.invalidate()
     burnt = 1.0
     for _label, m in villages.defense_parts(st, vb, 1):
         burnt *= m
-    assert abs(burnt - (1 + (villages.PALISADE_DEFENSE - 1) * tech.SIEGE_FIRE)) < 1e-3
+    assert abs(burnt - (1 + (batiments.PALISADE_DEFENSE - 1) * tech.SIEGE_FIRE)) < 1e-3
     # Sans torches chez l'attaquant : les murs tiennent.
     assert abs(villages.defense_mult(st, vb) - walls) < 1e-6
     assert any("palissades" in line for line in tech.effect_lines(tech.TECHS["torches"]))
@@ -158,7 +161,7 @@ def test_a_siege_starves_a_village_and_wears_its_defense_down():
     st.bands[60] = army
     siege.weekly(st)
     assert vsite.data.siege == 0, "en paix : pas de siege"
-    diplo.declare_war(st, 1, 3)
+    guerre.declare_war(st, 1, 3)
     food = villages.food_mult(st, vb)
     before = villages.defense_mult(st, vb)
     for _ in range(5):
@@ -188,12 +191,12 @@ def test_the_ai_raises_a_troop_to_besiege_a_village_it_could_not_storm():
     psite.data.buildings.append("palissade")
     st.tribes[1].is_player = False
     diplo.make_contact(st, 1, 3, quiet=True)
-    diplo.declare_war(st, 1, 3)
+    guerre.declare_war(st, 1, 3)
     assert not ai._could_take(st, me, prey, "masse")
     st.tribes[1].knowledge.update(("torches", "siege"))
     tech.invalidate()
     assert ai._could_take(st, me, prey, "masse")
-    army = villages.raise_army(st, 1, villages.LEVY_SHARE["masse"])
+    army = troupes.raise_army(st, 1, troupes.LEVY_SHARE["masse"])
     assert ai._besiege(st, army, 10.0) and army.path
     army.position, army.path = army.path[-1], []
     siege.weekly(st)

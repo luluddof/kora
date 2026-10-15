@@ -29,6 +29,7 @@ from __future__ import annotations
 from src.kora import diplo, places, tech, villages
 from src.kora.gamestate import is_human, note
 from src.kora.log import LogKind
+from src.kora import guerre
 
 SIEGE_RANGE = 1
 
@@ -46,9 +47,9 @@ def at_war(state, a: int, b: int) -> bool:
     diplomatie) une hostilite ouverte."""
     if a == b:
         return False
-    if diplo.declared_war(state, a, b):
+    if guerre.declared_war(state, a, b):
         return True
-    return not diplo.needs_declaration(state, a, b) and diplo.hostile_intent(state, a, b)
+    return not guerre.needs_declaration(state, a, b) and diplo.hostile_intent(state, a, b)
 
 
 def _foes_at(state, site) -> list[int]:
@@ -127,7 +128,7 @@ def weekly(state) -> None:
         site.data.siege = was + 1
         site.data.besieger = here[0].tribe_id
         # Chaque semaine de siege : un avantage dans la guerre (diplo).
-        diplo.add_score(state, here[0].tribe_id, site.tribe_id, diplo.SIEGE_SCORE)
+        guerre.add_score(state, here[0].tribe_id, site.tribe_id, guerre.SIEGE_SCORE)
         if not was:
             who = state.tribes[here[0].tribe_id].name
             _tell(state, site, here[0].tribe_id, f"Les {who} assiègent {places.name(site)} : on ne sort plus des murs.")

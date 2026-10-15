@@ -82,6 +82,8 @@ from src.kora.world import (
     FORD_PCT,
     RIVER_SIZE_FR,
 )
+from src.kora import troupes
+from src.kora import guerre
 
 RIVER_NAME_FR = ("", "Ruisseau", "Rivière", "Fleuve")
 from src.kora.resources import hidden_for
@@ -294,7 +296,7 @@ def _village_lines(state: GameState, band: Band) -> list[str]:
 def _army_lines(state: GameState, band: Band) -> list[str]:
     if band.kind != "armee":
         return []
-    return villages.army_lines(state, band) + ost.lines(state, band)
+    return troupes.army_lines(state, band) + ost.lines(state, band)
 
 
 def _raid_lines(state: GameState, band: Band) -> list[str]:
@@ -587,7 +589,7 @@ def resolve_joins(state: GameState) -> None:
             band.path = []
             continue
         if band.kind == "armee" and target.village:
-            if villages.disband(state, band.id):
+            if troupes.disband(state, band.id):
                 continue
         names = [band.leader.name] if band.leader is not None and band.kind == target.kind else []
         _absorb(state, target, band)
@@ -985,7 +987,7 @@ def new_game(
     # sans elle, la meme pour toutes : les tests, l'empreinte).
     draws.set_seed(st, int((setup or {}).get("seed", 1)))
     turning.migrate(st)
-    diplo.migrate(st)
+    guerre.migrate(st)
     if minor_peoples is None:
         # Les petites cartes des tests restent a 4 peuples.
         minor_peoples = (MINOR_START_PLANET if world.rivers else MINOR_START) if world.width >= 300 else 0

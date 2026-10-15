@@ -11,6 +11,8 @@ from src.kora.battle import helpers_of, resolve_raids
 from src.kora.gamestate import PLAYER_TRIBE_ID, GameState
 from src.kora.types import Band, Order, OrderKind, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
+from src.kora import troupes
+from src.kora import guerre
 
 
 def _state(terrain=Terrain.PLAINE, player=True):
@@ -83,12 +85,12 @@ def test_a_levy_takes_men_only_and_they_come_back_as_men():
     st = _state()
     vb, site = _village(st, 1, 1, pop=120)
     kids = population.counts(vb)["enfants"]
-    army = villages.raise_army(st, 1, villages.LEVY_SHARE["masse"])
+    army = troupes.raise_army(st, 1, troupes.LEVY_SHARE["masse"])
     assert army is not None and army.population == int(population.fit_men(Band(9, 1, vb.position, 120, 0.0)) * population.LEVY_MAX)
     assert population.counts(vb)["enfants"] == kids
     assert population.counts(vb)["hommes"] < population.counts(Band(9, 1, vb.position, 120, 0.0))["hommes"]
     army.position = site.hex
-    villages.disband(st, army.id)
+    troupes.disband(st, army.id)
     assert vb.population == 120 and population.counts(vb)["hommes"] == population.counts(Band(9, 1, vb.position, 120, 0.0))["hommes"]
 
 
@@ -268,7 +270,7 @@ def test_a_taken_village_keeps_its_families_and_the_player_chooses():
     assert card.other == 2 and card.site_id == site.id
     events.choose(st, card.uid, 0)
     assert chiefdom.overlord_of(st, 2) == 1 and chiefdom.vassals_of(st, 1) == [2]
-    assert diplo.at_peace(st, 1, 2)
+    assert guerre.at_peace(st, 1, 2)
 
 
 def test_a_tributary_pays_each_month_and_follows_to_war():

@@ -1,6 +1,6 @@
 """LES CAUSES DE GUERRE et les guerres de soumission.
 
-Des MOTIFS naissent (diplo.set_casus ; ils durent CASUS_WEEKS et se
+Des MOTIFS naissent (guerre.set_casus ; ils durent CASUS_WEEKS et se
 renouvellent chaque mois tant que la cause dure) :
   - LA TERRE : deux peuples a villages dont les zones se chevauchent sur
     LAND_CELLS cases ou plus : le plus nombreux, a l'etroit, a un motif
@@ -12,7 +12,7 @@ renouvellent chaque mois tant que la cause dure) :
   - UNE SUCCESSION : un chef meurt ; les peuples dont les chefs sont lies
     au sien par des mariages (une alliance, des mariages passes) peuvent
     reclamer, un sur deux ("Succession disputée", SUCCESSION_WEEKS).
-  Un motif : declarer la guerre sans honte (diplo._war_verdict), et l'IA
+  Un motif : declarer la guerre sans honte (guerre.war_verdict), et l'IA
   raide un voisin meme cordial (ai_war.fair_game).
 LES GUERRES DE SOUMISSION de l'IA (chaque mois, un peuple sur quatre) :
   - un chef CONQUERANT vise un voisin bien plus faible (WEAK_RATIO, son
@@ -32,6 +32,7 @@ from src.kora import approach, chiefdom, chiefs, diplo, goods, influence
 from src.kora.gamestate import is_human
 from src.kora.log import LogKind
 from src.kora.resources import PRESENT
+from src.kora import guerre
 
 CASUS_WEEKS = 56
 SUCCESSION_WEEKS = 104
@@ -130,7 +131,7 @@ def _successions(state) -> None:
         for other in diplo.contacts_of(state, tid):
             if other not in state.tribes or not _rivals(state, other, tid):
                 continue
-            married = diplo.allied(state, tid, other) or any(m.key == "mariage" for m in diplo._d(state).mods.get(diplo.pair(tid, other), []))
+            married = diplo.allied(state, tid, other) or any(m.key == "mariage" for m in diplo.of(state).mods.get(diplo.pair(tid, other), []))
             if not married or state.story_rng.random() >= SUCCESSION_CLAIM:
                 continue
             _claim(state, other, tid, SUCCESSION_WEEKS, "Succession disputée : le sang de vos chefs")
@@ -139,8 +140,8 @@ def _successions(state) -> None:
 
 
 def _claim(state, a: int, b: int, weeks: int, why: str) -> None:
-    new = not diplo.casus_of(state, a, b)
-    diplo.set_casus(state, a, b, weeks, why)
+    new = not guerre.casus_of(state, a, b)
+    guerre.set_casus(state, a, b, weeks, why)
     if new and is_human(state, a) and not why.startswith("Succession"):
         diplo._note(state, LogKind.POLITIQUE, f"Un motif de guerre contre les {state.tribes[b].name} : {why[0].lower() + why[1:]}.", to=a)
 
@@ -158,23 +159,23 @@ def _ai_wars(state) -> None:
         tribe = state.tribes[tid]
         if tribe.is_player or (state.tick_count // 4 + tid) % 4:
             continue
-        if chiefdom.lords_of(state, tid) or not diplo.diplomatic(state, tid):
+        if chiefdom.lords_of(state, tid) or not guerre.diplomatic(state, tid):
             continue
-        if len(diplo.wars_of(state, tid)) >= AI_MAX_WARS:
+        if len(guerre.wars_of(state, tid)) >= AI_MAX_WARS:
             continue
         if len(chiefdom.vassals_of(state, tid)) >= chiefdom.vassal_cap(state, tid):
             continue
         style = approach.of(state, tid)
         mine = country_power(state, tid)
         for other in diplo.contacts_of(state, tid):
-            if other not in owners or not _rivals(state, tid, other) or diplo.declared_war(state, tid, other):
+            if other not in owners or not _rivals(state, tid, other) or guerre.declared_war(state, tid, other):
                 continue
             if diplo.gap(state, tid, other) > AI_CONQUEST_GAP:
                 continue
-            theirs = country_power(state, other) + sum(country_power(state, t) for t in diplo.war_allies(state, other, tid))
+            theirs = country_power(state, other) + sum(country_power(state, t) for t in guerre.war_allies(state, other, tid))
             if mine < WEAK_RATIO * max(1.0, theirs):
                 continue
-            motive = diplo.motive_against(state, tid, other)
+            motive = guerre.motive_against(state, tid, other)
             if style == "conquerant":
                 chance = CONQUER_CHANCE
             elif motive:
@@ -191,7 +192,7 @@ def _ai_wars(state) -> None:
                 diplo.betray(state, tid, other)
             if diplo.evaluate(state, tid, other, "guerre").blocked:
                 continue
-            diplo.declare_war(state, tid, other, other)
+            guerre.declare_war(state, tid, other, other)
             break
 
 
@@ -201,8 +202,8 @@ def _ai_submissions(state) -> None:
         tribe = state.tribes[tid]
         if tribe.is_player or (state.tick_count // 4 + tid) % 2:
             continue
-        for other in diplo.wars_of(state, tid):
-            if diplo.score(state, tid, other) <= 0 or diplo.on_cooldown(state, tid, other, "soumission"):
+        for other in guerre.wars_of(state, tid):
+            if guerre.score(state, tid, other) <= 0 or diplo.on_cooldown(state, tid, other, "soumission"):
                 continue
             verdict = diplo.evaluate(state, tid, other, "soumission")
             if verdict.blocked:

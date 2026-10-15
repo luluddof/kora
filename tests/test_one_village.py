@@ -7,6 +7,7 @@ from src.kora.sim import fight_out
 from src.kora.battle import helpers_of, resolve_raids
 from src.kora.types import Band, Order, OrderKind, Terrain
 from test_war_chiefdom import _attack, _band, _state, _village
+from src.kora import troupes
 
 
 def _all_knowledge(st, tid):
@@ -135,10 +136,10 @@ def test_village_people_work_by_trade_and_sex_and_soldiers_return_to_work():
     vb.demo = {"hommes": 0.6, "enfants": 0.4}
     assert "femmes" in goods.add_block(st, site, "potiers") or goods.max_teams(st, site, "potiers") <= 1
     vb.demo = {}
-    army = villages.raise_army(st, 1, villages.LEVY_SHARE["troupe"])
+    army = troupes.raise_army(st, 1, troupes.LEVY_SHARE["troupe"])
     assert villages.occupations(st, vb)["soldats"] == army.population
     army.position = site.hex
-    villages.disband(st, army.id)
+    troupes.disband(st, army.id)
     assert villages.occupations(st, vb)["soldats"] == 0
 
 
@@ -150,7 +151,7 @@ def test_demoralised_warriors_desert_home_and_clans_lose_heart():
 
     st = _state(player=False)
     vb, site = _village(st, 2, 2, pop=200, col=10)
-    army = villages.raise_army(st, 2, villages.LEVY_SHARE["masse"])
+    army = troupes.raise_army(st, 2, troupes.LEVY_SHARE["masse"])
     foe = _band(st, 9, 1, 400, col=30)
     army.position = foe.position
     _attack(foe, army)

@@ -28,6 +28,8 @@ from src.kora.bands import bands_near, bonus_of, campaign_weeks, costs_of, is_sh
 from src.kora.gamestate import GameState, humans, note
 from src.kora.types import Band, OrderKind, stay_order
 from src.kora.vision import is_visible
+from src.kora import troupes
+from src.kora import guerre
 
 AI_RAID_REST = 12
 SUPPLY_MARGIN = 2
@@ -107,11 +109,11 @@ def fair_game(state: GameState, band: Band, prey: Band, hungry: bool) -> bool:
     a, b = band.tribe_id, prey.tribe_id
     if a == b or diplo.peace_pact(state, a, b):
         return False
-    if diplo.may_start(state, a, b):
+    if guerre.may_start(state, a, b):
         return False
-    if diplo.needs_declaration(state, a, b) and not diplo.declared_war(state, a, b) and diplo.evaluate(state, a, b, "guerre").blocked:
+    if guerre.needs_declaration(state, a, b) and not guerre.declared_war(state, a, b) and diplo.evaluate(state, a, b, "guerre").blocked:
         return False
-    if not hungry and diplo.relation(state, band.tribe_id, prey.tribe_id) >= (MOTIVE_RELATION if diplo.casus_of(state, a, b) else 15):
+    if not hungry and diplo.relation(state, band.tribe_id, prey.tribe_id) >= (MOTIVE_RELATION if guerre.casus_of(state, a, b) else 15):
         return False
     return True
 
@@ -156,9 +158,9 @@ def short_of_food(state: GameState, band: Band, target=None) -> bool:
         return False
     need = SUPPLY_MARGIN
     if target is not None:
-        need += weeks_between(state, band.position, target) + villages.weeks_home(state, band, target)
+        need += weeks_between(state, band.position, target) + troupes.weeks_home(state, band, target)
     else:
-        need += villages.weeks_home(state, band)
+        need += troupes.weeks_home(state, band)
     return campaign_weeks(state, band) < need
 
 
@@ -228,13 +230,13 @@ def plan_raid(state: GameState, band: Band, max_weeks: int, hungry: bool = True)
 
 def go_to_war(state: GameState, band: Band, prey: Band) -> None:
     """Le raid part : entre peuples qui ont la diplomatie, l'IA declare
-    d'abord la guerre (diplo.declare_war)."""
+    d'abord la guerre (guerre.declare_war)."""
     a, b = band.tribe_id, prey.tribe_id
-    if diplo.needs_declaration(state, a, b) and not diplo.declared_war(state, a, b):
+    if guerre.needs_declaration(state, a, b) and not guerre.declared_war(state, a, b):
         # Un chef qui a des villages fait la guerre pour soumettre (sauf un
         # affame : il veut du grain).
         wants = chiefdom.has_chiefdom(state, a) and chiefdom.has_chiefdom(state, b) and chiefdom.ai_choice(state, a, b) == "soumettre"
-        diplo.declare_war(state, a, b, b if wants else 0)
+        guerre.declare_war(state, a, b, b if wants else 0)
 
 
 def start_plan(state: GameState, band: Band, plan) -> None:
@@ -342,7 +344,7 @@ def recheck_hunts(state: GameState) -> None:
             # La proie fuit et l'entraine trop loin : on rentre avant la faim.
             band.order = stay_order()
             band.path = []
-            villages.dissolve(state, band.id)
+            troupes.dissolve(state, band.id)
             continue
         hunters = [
             b
@@ -354,8 +356,8 @@ def recheck_hunts(state: GameState) -> None:
         ]
         if (
             is_shielded(state, target)
-            or diplo.at_peace(state, band.tribe_id, target.tribe_id)
-            or diplo.may_start(state, band.tribe_id, target.tribe_id)
+            or guerre.at_peace(state, band.tribe_id, target.tribe_id)
+            or guerre.may_start(state, band.tribe_id, target.tribe_id)
             or not wins(state, hunters, target, edge=1.0)
         ):
             band.order = stay_order()
@@ -371,7 +373,7 @@ def unsafe_spots(state: GameState, band: Band, radius: int) -> list:
     for foe in bands_near(state, band.position, reach):
         if foe.tribe_id == band.tribe_id:
             continue
-        if is_shielded(state, foe) or diplo.at_peace(state, foe.tribe_id, band.tribe_id):
+        if is_shielded(state, foe) or guerre.at_peace(state, foe.tribe_id, band.tribe_id):
             continue
         if side_force(state, foe) >= mine:
             spots.append(foe.position)

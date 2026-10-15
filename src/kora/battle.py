@@ -55,6 +55,8 @@ from src.kora.bands import (
 from src.kora.gamestate import GameState, PLAYER_TRIBE_ID, humans, is_human, note
 from src.kora.vision import is_explored, is_visible
 from src.kora.world import enter_cost_for, food_production
+from src.kora import troupes
+from src.kora import guerre
 
 ROUNDS = 6
 KILL = 0.12
@@ -200,7 +202,7 @@ def start_morale(state, band: Band, attacker: bool, h) -> tuple[float, list[tupl
     parts: list[tuple[str, float]] = []
     tribe = state.tribes[band.tribe_id]
     if band.kind == "armee":
-        parts.append(("Troupe aguerrie", ARMY_MORALE + villages.army_morale(state, band)))
+        parts.append(("Troupe aguerrie", ARMY_MORALE + troupes.army_morale(state, band)))
     elif not attacker:
         parts.append(("Défend les siens", KIN_MORALE))
     if band.village and not attacker:
@@ -597,7 +599,7 @@ def _flee(state, bt, side: Side, morale: float, rng) -> int:
             n = min(n, b.population - b.wounded - 1)
             if n <= 0:
                 continue
-            home = villages.home_of(state, b)
+            home = troupes.home_of(state, b)
             _kill(b, n)
             band = places.band_of(state, home) if home is not None else None
             if band is not None:
@@ -989,7 +991,7 @@ def band_quality(state: GameState, band: Band) -> float:
     if band.leader is not None:
         q *= chiefs.band_combat(band)
     if band.kind == "armee":
-        q *= villages.army_quality(state, band)
+        q *= troupes.army_quality(state, band)
     return q
 
 
@@ -1077,7 +1079,7 @@ def _retreat_sites(state: GameState, band: Band, winner: Band) -> list[Hex]:
         for b in state.bands.values()
         if b.tribe_id != band.tribe_id
         and b.population > 0
-        and not diplo.at_peace(state, b.tribe_id, band.tribe_id)
+        and not guerre.at_peace(state, b.tribe_id, band.tribe_id)
         and world.distance(b.position, band.position) <= span
     ]
     scored: list[tuple[float, Hex]] = []
@@ -1309,7 +1311,7 @@ def _will_fight(state: GameState, a: Band, b: Band) -> bool:
     (treve, alliance, tribut) - a moins que l'une ne soit venue attaquer."""
     if diplo.hostile_intent(state, a.tribe_id, b.tribe_id):
         return True
-    if diplo.needs_declaration(state, a.tribe_id, b.tribe_id) and not diplo.declared_war(state, a.tribe_id, b.tribe_id):
+    if guerre.needs_declaration(state, a.tribe_id, b.tribe_id) and not guerre.declared_war(state, a.tribe_id, b.tribe_id):
         # Entre peuples qui ont la diplomatie : pas de combat sans guerre.
         return False
     return _hunts(a, b) or _hunts(b, a)

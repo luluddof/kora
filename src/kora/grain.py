@@ -30,6 +30,7 @@ from src.kora.bands import stock_max
 from src.kora.gamestate import is_human, note
 from src.kora.log import LogKind
 from src.kora.types import Season
+from src.kora import guerre
 
 DEARTH_WEEKS = 3
 AI_DEARTH_WEEKS = 1
@@ -80,7 +81,7 @@ def sellers(state, tid: int) -> list[int]:
     for other in sorted(state.tribes):
         if other == tid or not goods.has_village(state, other) or not _knows_money(state, other):
             continue
-        if siege.at_war(state, tid, other) or diplo.declared_war(state, tid, other):
+        if siege.at_war(state, tid, other) or guerre.declared_war(state, tid, other):
             continue
         linked = diplo.has_pact(state, tid, other, "commerce") or diplo.allied(state, tid, other) or other in country
         if not linked:

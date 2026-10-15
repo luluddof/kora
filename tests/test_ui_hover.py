@@ -9,7 +9,9 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 import pygame
 
 from src.kora import battle, session, situations
-from src.kora.app import _fresh_ui, _start_view, _first_player_band
+from src.kora.app import _start_view
+from src.kora.partie import fresh_ui as _fresh_ui
+from src.kora.partie_carte import first_player_band as _first_player_band
 from src.kora.render import Renderer
 from src.kora.gamestate import PLAYER_TRIBE_ID
 from test_ui_pure import _advanced

@@ -9,6 +9,8 @@ from src.kora.bands import stock_max
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
+from src.kora import troupes
+from src.kora import batiments
 
 
 def _state(known=("huttes", "semis", "sedentarite"), pop=90, stock=3000.0):
@@ -49,22 +51,22 @@ def test_the_oath_changes_the_village_for_good():
     assert stock_max(band2, st2) > cap * 1.1
     st3, band3 = _state(known=("huttes", "semis", "sedentarite", "palissade"))
     site3 = villages.found(st3, 1, oath="pieux")
-    assert villages.build_weeks(site3, "palissade") == villages.PALISADE_WEEKS // 2
-    assert villages.build_cost(st3, site3, "palissade") < villages.build_cost(st, plain, "palissade")
+    assert batiments.build_weeks(site3, "palissade") == batiments.PALISADE_WEEKS // 2
+    assert batiments.build_cost(st3, site3, "palissade") < batiments.build_cost(st, plain, "palissade")
     assert villages.defense_mult(st3, band3) > 1.0
 
 
 def test_a_building_costs_food_takes_weeks_then_works():
     st, band = _state()
     site = villages.found(st, 1)
-    assert villages.build_block(st, 1, "grenier") == ""
+    assert batiments.build_block(st, 1, "grenier") == ""
     before = band.stock
     cap = stock_max(band, st)
-    assert villages.build(st, 1, "grenier")
-    assert band.stock == before - villages.build_cost(st, site, "grenier")
-    assert villages.building_status(st, site, "grenier") == "chantier"
-    assert "à la fois" in villages.build_block(st, 1, "puits")
-    for _ in range(villages.BUILDINGS["grenier"].weeks):
+    assert batiments.build(st, 1, "grenier")
+    assert band.stock == before - batiments.build_cost(st, site, "grenier")
+    assert batiments.building_status(st, site, "grenier") == "chantier"
+    assert "à la fois" in batiments.build_block(st, 1, "puits")
+    for _ in range(batiments.BUILDINGS["grenier"].weeks):
         villages.update(st)
     assert places.has(site, "grenier")
     assert stock_max(band, st) > cap
@@ -73,11 +75,11 @@ def test_a_building_costs_food_takes_weeks_then_works():
 def test_buildings_need_knowledge_and_room():
     st, band = _state(pop=40, known=("huttes", "semis", "sedentarite", "rites"))
     site = villages.found(st, 1)
-    assert villages.building_status(st, site, "palissade") == "verrouille"
-    assert "Palissades" in villages.build_block(st, 1, "palissade")
-    assert villages.slots(st, site) == villages.BASE_SLOTS + 1
+    assert batiments.building_status(st, site, "palissade") == "verrouille"
+    assert "Palissades" in batiments.build_block(st, 1, "palissade")
+    assert batiments.slots(st, site) == batiments.BASE_SLOTS + 1
     site.data.buildings = ["grenier", "puits", "enclos"]
-    assert "place" in villages.build_block(st, 1, "autel")
+    assert "place" in batiments.build_block(st, 1, "autel")
 
 
 def test_old_palisades_are_read_as_buildings():
@@ -86,9 +88,9 @@ def test_old_palisades_are_read_as_buildings():
     st, band = _state()
     site = villages.found(st, 1)
     site.data = _village_data({"band": 1, "palisade": -1, "buildings": []})
-    assert villages.palisade_state(site) == "built"
+    assert batiments.palisade_state(site) == "built"
     site.data = _village_data({"band": 1, "palisade": 5, "fields": []})
-    assert villages.palisade_state(site) == "building"
+    assert batiments.palisade_state(site) == "building"
     assert places.works(site) == ("palissade", 5)
 
 
@@ -169,8 +171,8 @@ def test_the_windows_draw_without_error():
         render_village.draw_found(r, st, {"found": 1, "found_oath": "feu"})
         assert r.found_hits["ok"]
         site = villages.found(st, 1, oath="feu")
-        villages.build(st, 1, "palissade")
-        army = villages.raise_army(st, 1)
+        batiments.build(st, 1, "palissade")
+        army = troupes.raise_army(st, 1)
         render_village.draw_village(r, st, {"village_open": site.id, "levy": "masse"})
         assert r.village_armies == [army.id]
         st.tribes[2] = Tribe(2, "Steppe", 20, False, knowledge=set(tech.START_KNOWLEDGE))

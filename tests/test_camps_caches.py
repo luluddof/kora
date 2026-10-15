@@ -11,6 +11,7 @@ from src.kora.bands import set_goto
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
+from src.kora import troupes
 
 
 def _state():
@@ -128,7 +129,7 @@ def test_the_army_pane_of_the_war_screen_and_square_villages_draw():
         st.bands[1].population = 120
         sites.make_camp(st, 1)
         site = villages.found(st, 1)
-        army = villages.raise_army(st, 1)
+        army = troupes.raise_army(st, 1)
         ui = {"war_pick": render_wars.ARMY}
         render_wars.draw_wars(r, st, ui)
         buttons = r.wars_hits["buttons"]

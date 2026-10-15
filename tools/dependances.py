@@ -19,7 +19,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "kora"
 
 # La presentation (pygame) ; le reste est la simulation et ses outils.
-PRESENTATION = {"app", "render", "theme", "look", "globe", "globe_draw", "screens", "layout", "tree_graph", "music"}
+PRESENTATION = {
+    "app", "partie", "partie_carte", "partie_ecrans", "render", "theme", "look", "globe", "globe_draw", "screens",
+    "layout", "tree_graph", "music",
+}
 
 # LES ETAGES, du plus bas au plus haut. Un module n'importe en tete que des
 # etages plus bas ; un import cache (dans une fonction) ne vise que le meme
@@ -39,8 +42,8 @@ LAYERS = (
     # 5. LES SYSTEMES : ils se parlent entre eux (en tete s'il n'y a pas de
     #    cercle, sinon dans la fonction), de preference par systems.py
     (
-        "learning", "bands", "chiefs", "sites", "influence", "production", "diplo", "goods", "money", "approach",
-        "numbers", "laws", "chiefdom", "confed", "memory", "draws", "turning", "villages", "battle", "siege", "ost", "grain", "casus", "situations", "events",
+        "learning", "bands", "chiefs", "sites", "influence", "production", "diplo", "guerre", "goods", "money", "approach",
+        "numbers", "laws", "chiefdom", "confed", "memory", "draws", "turning", "villages", "batiments", "troupes", "battle", "siege", "ost", "grain", "casus", "situations", "events",
         "events_data",
     ),
     # 6. l'IA et les ordres des bandes

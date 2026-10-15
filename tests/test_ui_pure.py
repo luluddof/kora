@@ -11,11 +11,14 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 import pygame
 
 from src.kora import events, session
-from src.kora.app import _fresh_ui, _start_view, _first_player_band
+from src.kora.app import _start_view
+from src.kora.partie import fresh_ui as _fresh_ui
+from src.kora.partie_carte import first_player_band as _first_player_band
 from src.kora.render import Renderer
 from src.kora.sim import _default_world, hex_inspect, new_game, tick
 from src.kora.gamestate import PLAYER_TRIBE_ID
 from test_balance import _robot
+from src.kora import troupes
 
 
 def _advanced():
@@ -42,7 +45,7 @@ def _advanced():
             villages.found(st, band.id)
     home = next(b for b in st.bands.values() if b.tribe_id == PLAYER_TRIBE_ID and b.village)
     unit = units.best(st.tribes[PLAYER_TRIBE_ID], "melee")
-    villages.raise_army(st, home.id, villages.LEVY_SHARE["troupe"], unit.id if unit else None)
+    troupes.raise_army(st, home.id, troupes.LEVY_SHARE["troupe"], unit.id if unit else None)
     diplo.make_contact(st, PLAYER_TRIBE_ID, 2)
     diplo.add_pact(st, PLAYER_TRIBE_ID, 2, "commerce")
     goods.open_route(st, PLAYER_TRIBE_ID, 2, goods.GOODS[0], True, 1)

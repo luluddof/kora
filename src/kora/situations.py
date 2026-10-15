@@ -33,6 +33,8 @@ from src.kora.types import Hex, Season, Terrain
 from src.kora.gamestate import humans, is_human, note
 from src.kora.world import axial_to_offset, enter_cost_for
 from src.kora.bands import gain_prestige, set_goto
+from src.kora import batiments
+from src.kora import guerre
 
 MONTH = 4
 YEAR = 52
@@ -620,7 +622,7 @@ class Rassemblement(Spec):
         for tid in sorted(state.tribes):
             if not _alive(state, tid) or _has_village(state, tid):
                 continue
-            friends = [o for o in diplo.contacts_of(state, tid) if diplo.at_peace(state, tid, o) and _alive(state, o)]
+            friends = [o for o in diplo.contacts_of(state, tid) if guerre.at_peace(state, tid, o) and _alive(state, o)]
             if len(friends) >= 2:
                 bands = _bands(state, tid, village=False)
                 if bands:
@@ -880,7 +882,7 @@ class GrandsTravaux(Spec):
                 score += places.monument_stages(site)
                 job = places.works(site)
                 if job and job[0] == "monument":
-                    total = max(1, villages.build_weeks(site, "monument"))
+                    total = max(1, batiments.build_weeks(site, "monument"))
                     score += 1.0 - job[1] / total
             inst.participants[tid]["score"] = round(score, 3)
 
@@ -907,7 +909,7 @@ class GrandsTravaux(Spec):
         for t in sorted(inst.participants):
             if t == win:
                 continue
-            gone = sum(1 for site in _villages(state, t) if villages.pull_down_monument(state, site))
+            gone = sum(1 for site in _villages(state, t) if batiments.pull_down_monument(state, site))
             if gone:
                 _note(state, t, LogKind.DECOUVERTE, f"Les grands travaux sont perdus : nos monuments sont abattus ({gone}).")
         for t in inst.participants:

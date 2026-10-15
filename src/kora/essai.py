@@ -20,6 +20,7 @@ from pathlib import Path
 from src.kora.commands import make
 from src.kora.sim import _default_world
 from src.kora import chiefs, learning, money, net, orders, places, session, situations, tech, villages
+from src.kora import batiments
 
 
 def robot(state, issue, me: int, rng: random.Random) -> None:
@@ -51,7 +52,7 @@ def robot(state, issue, me: int, rng: random.Random) -> None:
     if band.village:
         site = places.site_of(state, band)
         if site is not None and rng.random() < 0.3:
-            pick = next((b for b in villages.BUILD_ORDER if villages.building_status(state, site, b) == "possible"), None)
+            pick = next((b for b in batiments.BUILD_ORDER if batiments.building_status(state, site, b) == "possible"), None)
             if pick:
                 issue(make(me, "build", band.id, pick))
         return

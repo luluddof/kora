@@ -8,6 +8,7 @@ from src.kora.bands import merge_bands, set_goto, set_march_to_band, split_band,
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Season, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
+from src.kora import batiments
 
 
 def _state(known=("huttes", "semis", "sedentarite"), pop=60, stock=600.0, week=1):
@@ -123,13 +124,13 @@ def test_a_village_does_not_flee_it_is_pillaged():
 
 def test_a_palisade_takes_time_and_food_then_defends():
     st, band, site = _village(known=("huttes", "semis", "sedentarite", "palissade"), stock=900.0)
-    assert villages.palisade_block(st, 1) == ""
-    assert villages.build_palisade(st, 1)
-    assert villages.palisade_state(site) == "building"
-    for _ in range(villages.PALISADE_WEEKS):
+    assert batiments.palisade_block(st, 1) == ""
+    assert batiments.build_palisade(st, 1)
+    assert batiments.palisade_state(site) == "building"
+    for _ in range(batiments.PALISADE_WEEKS):
         villages.update(st)
-    assert villages.palisade_state(site) == "built"
-    assert villages.defense_mult(st, band) == villages.PALISADE_DEFENSE
+    assert batiments.palisade_state(site) == "built"
+    assert villages.defense_mult(st, band) == batiments.PALISADE_DEFENSE
 
 
 def test_a_band_leaves_the_village_and_can_come_back_to_settle():

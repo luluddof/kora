@@ -35,6 +35,7 @@ from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
 from src.kora import approach, chiefs, confed, diplo, events, places, population, situations, tech, villages
 from src.kora.bands import gain_prestige, stock_max
+from src.kora import guerre
 
 RATES = (0, 10, 20, 30)
 DEFAULT_RATE = 10
@@ -522,7 +523,7 @@ def village_taken(state, winner, loser, site_id: int) -> str:
     perdu (pillage tout de suite)."""
     w, l = winner.tribe_id, loser.tribe_id
     # Un village pris : un grand avantage dans la guerre.
-    diplo.add_score(state, w, l, diplo.VILLAGE_SCORE)
+    guerre.add_score(state, w, l, guerre.VILLAGE_SCORE)
     if overlord_of(state, l) == w:
         # Deja son tributaire (il s'etait dresse contre lui) : on pille.
         return conquer(state, w, l, site_id, "piller")
@@ -535,7 +536,7 @@ def village_taken(state, winner, loser, site_id: int) -> str:
 
 def ai_choice(state, w: int, l: int) -> str:
     # Sa guerre etait pour les soumettre (ou soumettre leur pays) : il soumet.
-    if diplo.goal_of(state, w, l) or diplo.goal_of(state, w, top_lord(state, l)):
+    if guerre.goal_of(state, w, l) or guerre.goal_of(state, w, top_lord(state, l)):
         return "soumettre" if len(vassals_of(state, w)) < vassal_cap(state, w) else "piller"
     # Un chef aux abois veut du grain, pas des tributaires.
     if diplo.relation(state, w, l) < -60 or approach.of(state, w) == "affame":
@@ -551,8 +552,8 @@ def conquer(state, w: int, l: int, site_id: int, choice: str) -> str:
         return ""
     if choice == "soumettre":
         # On ne sert qu'un suzerain : il quitte l'ancien, qui fait la treve
-        # (le but de guerre est atteint, diplo.submit).
-        diplo.submit(state, w, l, "conquete")
+        # (le but de guerre est atteint, guerre.submit).
+        guerre.submit(state, w, l, "conquete")
         gain_prestige(state, state.tribes[w], 5)
         return ""
     if band is None:

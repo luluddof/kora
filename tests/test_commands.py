@@ -8,6 +8,7 @@ from src.kora.sim import new_game
 from src.kora.types import OrderKind, Terrain
 from src.kora.world import make_filled_world, offset_to_axial
 from src.kora import learning, places
+from src.kora import batiments
 
 
 def _mp():
@@ -62,7 +63,7 @@ def test_found_a_village_and_run_it():
     res = apply(st, make(1, "found", band.id, sorted(villages.OATHS)[0]))
     assert res["site"] is not None and st.sites[res["site"]].kind == "village"
     site = st.sites[res["site"]]
-    pick = next(b for b in villages.BUILD_ORDER if villages.building_status(st, site, b) == "possible")
+    pick = next(b for b in batiments.BUILD_ORDER if batiments.building_status(st, site, b) == "possible")
     assert apply(st, make(1, "build", band.id, pick))["msg"] == ""
     assert places.works(site)
     cid = next(c for c in goods.CRAFTS if not goods.add_block(st, site, c))

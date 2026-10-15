@@ -36,6 +36,8 @@ from src.kora.layout import (  # noqa: F401
     panel_box,
 )
 from src.kora.layout import HUD_HEIGHT
+from src.kora import batiments
+from src.kora import guerre
 
 # L'icone d'un evenement : un mot de son nom, sinon son humeur.
 EVENT_WORDS = (
@@ -488,7 +490,7 @@ def draw_villages(r, state, layout, ui) -> None:
         # Seconde ligne : rang, metiers, chantier.
         crafts = ", ".join(f"{goods.CRAFTS[c].name.lower()} {n}" for c, n in sorted(goods.teams(site).items()) if n)
         job = places.works(site)
-        work = f"chantier : {villages.BUILDINGS[job[0]].name.lower()} ({job[1]} sem.)" if job else "pas de chantier"
+        work = f"chantier : {batiments.BUILDINGS[job[0]].name.lower()} ({job[1]} sem.)" if job else "pas de chantier"
         second = f"{places.rank_name(band.population)}  ·  {crafts or 'aucun métier'}  ·  {work}"
         _text(r, r.tiny, r._fit(r.tiny, second, cols["act"] - cols["nom"] - 24), NOTE, cols["nom"] + 16, y + 20)
         see = (cols["act"], y + 7, 44, 20)
@@ -618,7 +620,7 @@ def draw_peoples(r, state, layout, ui) -> None:
         _text(r, r.tiny, r._fit(r.tiny, second, 130), GOLD if nv or t.is_player else NOTE, lx + 32, ly + 23)
         rel = diplo.relation(state, state.viewer, tid)
         lvl = diplo.level(state, state.viewer, tid)
-        if diplo.declared_war(state, state.viewer, tid):
+        if guerre.declared_war(state, state.viewer, tid):
             lvl = "En guerre"
         val = _signed(rel)
         vw = r.small.size(val)[0]
@@ -823,7 +825,7 @@ def draw_peoples(r, state, layout, ui) -> None:
     ah = 46
     # En guerre : exiger leur soumission ; un tributaire : la guerre a tout
     # son pays (on ne sert qu'un suzerain).
-    at_war = diplo.declared_war(state, state.viewer, pick)
+    at_war = guerre.declared_war(state, state.viewer, pick)
     acts = ["soumission" if at_war else "guerre"]
     if not at_war and chiefdom.top_lord(state, pick) != pick:
         acts.append("guerre_pays")
@@ -1006,7 +1008,7 @@ def commerce_alert(state) -> bool:
 def wars_ready(state) -> bool:
     """L'onglet des guerres : avec la diplomatie (on declare la guerre), ou
     des qu'on est en guerre."""
-    return diplo.diplomatic(state, state.viewer) or bool(diplo.wars_of(state, state.viewer))
+    return guerre.diplomatic(state, state.viewer) or bool(guerre.wars_of(state, state.viewer))
 
 
 # On vous a declare la guerre depuis moins de WAR_NEWS semaines : l'onglet
@@ -1016,8 +1018,8 @@ WAR_NEWS = 8
 
 def wars_alert(state) -> bool:
     me = state.viewer
-    for enemy in diplo.wars_of(state, me):
-        pact = next((p for p in diplo._pacts(state, me, enemy) if p.kind == diplo.WAR), None)
+    for enemy in guerre.wars_of(state, me):
+        pact = next((p for p in diplo.pacts_between(state, me, enemy) if p.kind == guerre.WAR), None)
         if pact is not None and pact.payer != me and state.tick_count - pact.since <= WAR_NEWS:
             return True
     return False

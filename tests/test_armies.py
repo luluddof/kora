@@ -9,6 +9,7 @@ from src.kora.bands import can_split, merge_bands, set_march_to_band, tribe_band
 from src.kora.gamestate import GameState
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
+from src.kora import troupes
 
 
 def _village(pop=90, stock=3000.0, known=("huttes", "semis", "sedentarite")):
@@ -28,35 +29,35 @@ def test_a_village_raises_a_troop_from_its_people():
     from src.kora import population
 
     # Seule une part des hommes valides part : ni enfants, ni femmes, ni anciens.
-    n = villages.levy_size(village, villages.LEVY_SHARE["troupe"])
+    n = troupes.levy_size(village, troupes.LEVY_SHARE["troupe"])
     assert 0 < n < population.fit_men(village) < 30
-    army = villages.raise_army(st, 1, villages.LEVY_SHARE["troupe"])
+    army = troupes.raise_army(st, 1, troupes.LEVY_SHARE["troupe"])
     assert army is not None and army.kind == "armee" and army.home == site.id
     assert army.population == n and village.population == 90 - n
     assert population.counts(village)["enfants"] == population.counts(Band(9, 1, site.hex, 90, 0.0))["enfants"]
-    assert army.stock == villages.ARMY_SUPPLY_WEEKS * n
+    assert army.stock == troupes.ARMY_SUPPLY_WEEKS * n
     assert army.leader is not None and army.loyalty == 100.0
     # Une troupe n'est pas un clan : elle ne compte pas dans la limite.
     assert tribe_band_count(st, 1) == before
     assert not can_split(st, army.id)
-    assert "guerriers" in " ".join(villages.army_lines(st, army))
+    assert "guerriers" in " ".join(troupes.army_lines(st, army))
 
 
 def test_raising_needs_people_and_one_troop_at_a_time():
     st, village, site = _village(pop=30)
-    assert "habitants" in villages.army_block(st, 1)
+    assert "habitants" in troupes.army_block(st, 1)
     st2, v2, s2 = _village(pop=400)
-    first = villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"])
+    first = troupes.raise_army(st2, 1, troupes.LEVY_SHARE["poignee"])
     # Levee au village : elle rejoint la troupe qui y est (une seule troupe).
-    assert villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"]) is first
-    assert villages.companies_of(st2, s2) == 1
+    assert troupes.raise_army(st2, 1, troupes.LEVY_SHARE["poignee"]) is first
+    assert troupes.companies_of(st2, s2) == 1
     first.position = offset_to_axial(40, 15)
-    second = villages.raise_army(st2, 1, villages.LEVY_SHARE["poignee"])
+    second = troupes.raise_army(st2, 1, troupes.LEVY_SHARE["poignee"])
     assert second is not None and second is not first
     second.position = offset_to_axial(20, 15)
-    assert "troupes" in villages.army_block(st2, 1, villages.LEVY_SHARE["poignee"])
+    assert "troupes" in troupes.army_block(st2, 1, troupes.LEVY_SHARE["poignee"])
     s2.data.buildings.append("guerriers")
-    assert villages.army_block(st2, 1, villages.LEVY_SHARE["poignee"]) == ""
+    assert troupes.army_block(st2, 1, troupes.LEVY_SHARE["poignee"]) == ""
 
 
 def test_a_village_never_has_more_than_its_levable_men_under_arms():
@@ -64,11 +65,11 @@ def test_a_village_never_has_more_than_its_levable_men_under_arms():
 
     st, village, site = _village(pop=150)
     men = population.fit_men(village)
-    while villages.raise_army(st, 1, villages.LEVY_SHARE["masse"]) is not None:
+    while troupes.raise_army(st, 1, troupes.LEVY_SHARE["masse"]) is not None:
         pass
-    away = sum(villages._away(st, site).values())
+    away = sum(troupes.men_away(st, site).values())
     assert 0 < away <= int(men * population.LEVY_MAX)
-    assert "sous les armes" in villages.army_block(st, 1, villages.LEVY_SHARE["masse"])
+    assert "sous les armes" in troupes.army_block(st, 1, troupes.LEVY_SHARE["masse"])
 
 
 def test_a_nomad_band_cannot_raise_a_troop():
@@ -79,7 +80,7 @@ def test_a_nomad_band_cannot_raise_a_troop():
 def test_the_troop_comes_home_and_its_warriors_return():
     st, village, site = _village(pop=90)
     village.loyalty = 77.0
-    army = villages.raise_army(st, 1)
+    army = troupes.raise_army(st, 1)
     assert orders.band_actions(st, army.id)["merge"] == ""
     assert orders.labels(st, army.id)["merge"] == "Rentrer [F]"
     sel, msg = orders.perform(st, army.id, "merge")
@@ -89,12 +90,12 @@ def test_the_troop_comes_home_and_its_warriors_return():
 
 def test_a_far_troop_deserts_after_a_while():
     st, village, site = _village(pop=90)
-    army = villages.raise_army(st, 1)
+    army = troupes.raise_army(st, 1)
     army.position = offset_to_axial(45, 15)
     assert orders.band_actions(st, army.id)["army"] == ""
-    assert "Rentrez" in villages.disband_block(st, army.id)
+    assert "Rentrez" in troupes.disband_block(st, army.id)
     # Les desertions se comptent toutes les 4 semaines.
-    st.tick_count = (villages.ARMY_TERM // 4 + 2) * 4
+    st.tick_count = (troupes.ARMY_TERM // 4 + 2) * 4
     before = army.population
     villages.update(st)
     assert army.population < before and village.population > 60
@@ -102,7 +103,7 @@ def test_a_far_troop_deserts_after_a_while():
 
 def test_a_troop_does_not_grow_and_has_no_families():
     st, village, site = _village(pop=90)
-    army = villages.raise_army(st, 1)
+    army = troupes.raise_army(st, 1)
     n = army.population
     army.growth_acc = 0.99
     update_population(st)
@@ -111,7 +112,7 @@ def test_a_troop_does_not_grow_and_has_no_families():
 
 def test_clans_and_troops_do_not_mix_by_accident():
     st, village, site = _village(pop=90)
-    army = villages.raise_army(st, 1)
+    army = troupes.raise_army(st, 1)
     n = army.population
     army.position = offset_to_axial(40, 15)
     clan = Band(40, 1, army.position, 20, 0.0)
@@ -131,7 +132,7 @@ def test_clans_and_troops_do_not_mix_by_accident():
 
 def test_a_troop_without_village_becomes_a_clan():
     st, village, site = _village(pop=90)
-    army = villages.raise_army(st, 1)
+    army = troupes.raise_army(st, 1)
     villages.leave(st, 1)
     villages.update(st)
     assert army.kind == "" and army.home == 0
@@ -145,7 +146,7 @@ def test_a_troop_away_leaves_the_harvest_short_of_hands():
     # Beaucoup de champs : il faut tous les bras.
     site.data.fields = [[c, 0] for c in range(6)]
     full = villages.field_hands_mult(site, village)
-    villages.raise_army(st, 1, villages.LEVY_SHARE["masse"])
+    troupes.raise_army(st, 1, troupes.LEVY_SHARE["masse"])
     assert villages.field_hands_mult(site, village) < full
 
 
@@ -157,7 +158,7 @@ def test_troops_are_saved(tmp_path):
     st.bands[1].stock = 2000.0
     sites.make_camp(st, 1)
     site = villages.found(st, 1)
-    army = villages.raise_army(st, 1)
+    army = troupes.raise_army(st, 1)
     path = tmp_path / "kora.json"
     save_game(st, path, {})
     loaded, _ = load_game(path, world)
@@ -191,7 +192,7 @@ def test_an_ai_village_raises_a_troop_when_threatened():
     for week in range(8):
         st.tick_count = week
         decide_ai(st)
-    assert villages.armies_of(st, site)
+    assert troupes.armies_of(st, site)
 
 
 def test_a_dissolved_troop_never_becomes_a_nomad_clan_of_a_settled_people():
@@ -200,15 +201,15 @@ def test_a_dissolved_troop_never_becomes_a_nomad_clan_of_a_settled_people():
     from src.kora import population
 
     st, village, site = _village(pop=120)
-    army = villages.raise_army(st, 1)
+    army = troupes.raise_army(st, 1)
     n = army.population
     army.position = offset_to_axial(55, 15)
-    real = villages.set_goto
-    villages.set_goto = lambda state, bid, goal, **kw: setattr(state.bands[bid], "path", [])
+    real = troupes.set_goto
+    troupes.set_goto = lambda state, bid, goal, **kw: setattr(state.bands[bid], "path", [])
     try:
-        assert villages.dissolve(st, army.id)
+        assert troupes.dissolve(st, army.id)
     finally:
-        villages.set_goto = real
+        troupes.set_goto = real
     assert army.id not in st.bands, "la troupe a rejoint son village"
     assert village.population == 120 and not any(b.kind == "" and not b.village and b.tribe_id == 1 for b in st.bands.values())
     assert population.counts(village)["hommes"] >= n

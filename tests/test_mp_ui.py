@@ -14,6 +14,7 @@ from src.kora import app, net, session
 from src.kora.render import Renderer
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world
+from src.kora import partie, partie_carte
 
 HOST = {"name": "Aroha", "color": (220, 70, 70), "bonuses": ["bonus:conteurs", "bonus:froid"]}
 FRIEND = {"name": "Tahu", "color": (60, 190, 190), "bonuses": ["bonus:guerriers", "bonus:fertiles"]}
@@ -95,7 +96,8 @@ def _screen():
 
 def test_friend_screen_plays_along(tmp_path, monkeypatch):
     monkeypatch.setattr(app, "multi_save_path", lambda: tmp_path / "multi.json")
-    monkeypatch.setattr(app, "default_save_path", lambda: tmp_path / "solo.json")
+    monkeypatch.setattr(partie, "multi_save_path", lambda: tmp_path / "multi.json")
+    monkeypatch.setattr(partie, "default_save_path", lambda: tmp_path / "solo.json")
     host, client = _pair()
     host.set_speed(5)
     r = _screen()
@@ -109,7 +111,7 @@ def test_friend_screen_plays_along(tmp_path, monkeypatch):
         70: [quit_],
     }
     clock = Script(lambda: host.pump(0.05), steps)
-    boot = app._start_view(client.state, app._first_player_band(client.state), 1280, 720)
+    boot = app._start_view(client.state, partie_carte.first_player_band(client.state), 1280, 720)
     outcome, _msg = app.play(r, clock, boot, client)
     assert outcome == "quit"
     assert host.state.clock.paused, "la pause demandee par l'ami arrête le temps de l'hôte"
@@ -128,7 +130,8 @@ def test_friend_screen_plays_along(tmp_path, monkeypatch):
 
 def test_host_screen_runs_the_game(tmp_path, monkeypatch):
     monkeypatch.setattr(app, "multi_save_path", lambda: tmp_path / "multi.json")
-    monkeypatch.setattr(app, "default_save_path", lambda: tmp_path / "solo.json")
+    monkeypatch.setattr(partie, "multi_save_path", lambda: tmp_path / "multi.json")
+    monkeypatch.setattr(partie, "default_save_path", lambda: tmp_path / "solo.json")
     host, client = _pair()
     r = _screen()
     pygame.event.clear()
@@ -142,7 +145,7 @@ def test_host_screen_runs_the_game(tmp_path, monkeypatch):
         60: [quit_],
     }
     clock = Script(lambda: client.pump(0.05), steps)
-    boot = app._start_view(host.state, app._first_player_band(host.state), 1280, 720)
+    boot = app._start_view(host.state, partie_carte.first_player_band(host.state), 1280, 720)
     outcome, _msg = app.play(r, clock, boot, host)
     assert outcome == "quit"
     for _ in range(100):

@@ -656,7 +656,7 @@ def price_word(state, tribe_id: int, good: str) -> str:
 
 
 def _d(state):
-    return diplo._d(state)
+    return diplo.of(state)
 
 
 def _pact(state, a: int, b: int) -> bool:

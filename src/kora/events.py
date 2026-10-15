@@ -38,6 +38,7 @@ from src.kora.types import stay_order
 from src.kora.vision import vision_of
 from src.kora import chiefdom, chiefs, confed, diplo, goods, places, sites, systems, tech, villages
 from src.kora.bands import gain_prestige, max_bands_of, set_goto, split_band, stock_max, tribe_band_count
+from src.kora import guerre
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
 PLAYER_GAP = 16
@@ -429,7 +430,7 @@ def _cond_foreign_near(state, inst, tribe, band, *args) -> bool:
         for b in state.bands.values()
         if b.tribe_id != tribe.id
         and b.population > 0
-        and not diplo.at_peace(state, b.tribe_id, tribe.id)
+        and not guerre.at_peace(state, b.tribe_id, tribe.id)
         and world.distance(b.position, band.position) <= args[0]
     ]
     if not near:
@@ -621,7 +622,7 @@ def _eff_pact(state, inst, tribe, band, *args) -> None:
             if not confed.block(state, inst.other, tribe.id):
                 confed.form(state, inst.other, tribe.id)
         elif what == "soumission":
-            diplo.submit(state, inst.other, tribe.id)
+            guerre.submit(state, inst.other, tribe.id)
 
 
 def _eff_conquest(state, inst, tribe, band, *args) -> None:

@@ -3,6 +3,7 @@
 from src.kora import battle, chiefdom, confed, diplo, events, tech
 from src.kora.world import offset_to_axial
 from test_approach import _state
+from src.kora import guerre
 
 
 def _pair():
@@ -32,7 +33,7 @@ def test_two_peoples_confederate_and_share_their_peace():
     assert ("Même confédération", 20.0) in diplo.reasons(st, 2, 3)
     assert "Confédérés" in diplo.status_line(st, 2, 3)
     # Ils ne se raident pas.
-    assert diplo.at_peace(st, 2, 3)
+    assert guerre.at_peace(st, 2, 3)
 
 
 def test_a_raid_against_one_is_a_raid_against_all():

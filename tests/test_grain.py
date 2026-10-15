@@ -4,6 +4,7 @@ plus cher que le marche, a un partenaire qui en a de trop."""
 from src.kora import commands, diplo, grain, money, tech
 from src.kora.types import Season
 from test_ost_siege import _state, _village
+from src.kora import guerre
 
 MONEY = {"valeurs", "comptage", "don"}
 
@@ -37,7 +38,7 @@ def test_a_starving_village_buys_grain_dearer_than_the_market():
     assert abs((buyer.stock - before) - (sold - seller.stock)) < 1e-6
     assert abs(st.tribes[1].money - (50.0 - q["sicles"])) < 1e-6 and abs(st.tribes[3].money - q["sicles"]) < 1e-6
     assert st.tribes[1].money_month.get("grain", 0) < 0 < st.tribes[3].money_month.get("grain", 0)
-    assert any(m.key == "grain" for m in diplo._d(st).mods.get(diplo.pair(1, 3), []))
+    assert any(m.key == "grain" for m in diplo.of(st).mods.get(diplo.pair(1, 3), []))
 
 
 def test_no_grain_without_dearth_partner_or_treasure():
@@ -50,7 +51,7 @@ def test_no_grain_without_dearth_partner_or_treasure():
     st.tribes[1].money = 0.0
     assert "vide" in grain.quote(st, 1, bsite.id)["why"]
     st, buyer, bsite, seller, ssite = _two()
-    diplo.declare_war(st, 1, 3)
+    guerre.declare_war(st, 1, 3)
     assert grain.quote(st, 1, bsite.id)["why"]
 
 

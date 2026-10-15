@@ -12,6 +12,7 @@ import pygame
 from src.kora import app, money, tech
 from src.kora.render import Renderer
 from test_goods import _village
+from src.kora import partie, partie_carte
 
 W, H = 1280, 720
 
@@ -75,9 +76,9 @@ def _play(monkeypatch, tmp_path, st, steps):
 
     monkeypatch.setattr(pygame.event, "get", get)
     monkeypatch.setattr(pygame.mouse, "get_pos", lambda: pos["xy"])
-    monkeypatch.setattr(app, "default_save_path", lambda: tmp_path / "kora.json")
+    monkeypatch.setattr(partie, "default_save_path", lambda: tmp_path / "kora.json")
     st.clock.paused = True
-    boot = app._start_view(st, app._first_player_band(st), W, H)
+    boot = app._start_view(st, partie_carte.first_player_band(st), W, H)
     out = app.play(renderer, _Clock(), boot)
     assert out[0] == "quit"
     return renderer

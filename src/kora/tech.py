@@ -463,7 +463,7 @@ TECHS: dict[str, Tech] = {
         ),
         # La DIPLOMATIE vient avec les villages : avant elle, des bandes qui
         # s'accrochent ; avec elle (des deux cotes), on declare la guerre et
-        # l'on fait la paix (diplo.needs_declaration).
+        # l'on fait la paix (guerre.needs_declaration).
         Tech(
             "messagers", "Messagers et serments", 4, 7,
             "Des messagers vont de village en village, porteurs de paroles et de serments : on déclare la guerre, on fait la paix, et l'on s'y tient.",

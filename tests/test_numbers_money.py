@@ -11,6 +11,8 @@ from src.kora import battle, commands, diplo, goods, laws, money, numbers, persi
 from src.kora.types import Band, Terrain, Tribe
 from src.kora.world import make_filled_world, offset_to_axial
 from test_goods import CENTER, _village
+from src.kora import troupes
+from src.kora import batiments
 
 MONEY = ("comptage", "nombres", "valeurs")
 
@@ -155,18 +157,18 @@ def test_paid_soldiers_hold_better_and_unpaid_ones_worse():
     army = Band(5, 1, band.position, 30, 0.0, kind="armee")
     st.bands[5] = army
     st.next_band_id = 6
-    base = villages.army_morale(st, army)
+    base = troupes.army_morale(st, army)
     money.set_budget(st, 1, "solde", True)
     tribe.money = 100.0
     money.monthly(st)
     assert money.budget(tribe)["etat_solde"] == "payee"
-    assert villages.army_morale(st, army) == base + 5
+    assert troupes.army_morale(st, army) == base + 5
     assert money.flee_mult(st, 1) < 1.0
     tribe.money = 0.0
     tribe.budget["impot"] = 0
     money.monthly(st)
     assert money.budget(tribe)["etat_solde"] == "impayee"
-    assert villages.army_morale(st, army) == base - 5
+    assert troupes.army_morale(st, army) == base - 5
     assert money.flee_mult(st, 1) > 1.0
 
 
@@ -453,13 +455,13 @@ def test_paid_builders_finish_sooner():
         tribe = st.tribes[1]
         tribe.money = 500.0
         band.stock = 50000.0
-        bid = next(b for b in villages.BUILD_ORDER if not villages.build_block(st, band.id, b))
-        villages.build(st, band.id, bid)
+        bid = next(b for b in batiments.BUILD_ORDER if not batiments.build_block(st, band.id, b))
+        batiments.build(st, band.id, bid)
         money.set_budget(st, 1, "chantiers", level)
         money.monthly(st)
         n = 0
         while site.data.build and n < 200:
-            villages._advance_works(st, site, band)
+            batiments.advance_works(st, site, band)
             n += 1
         return n, money.last_month(tribe).get("chantiers", 0.0)
 
