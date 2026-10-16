@@ -1351,6 +1351,13 @@ class Renderer:
             lines.append((text, tones.get(tone, C.lin), "petit_gras" if i == 0 else "petit"))
         theme.tooltip(self.screen, lines, mx + 18, my + 18, 430)
 
+    def draw_engine(self, rows: list) -> None:
+        """La fiche du moteur (F3, partie.Play.engine_lines) : en haut a
+        gauche, sous la barre."""
+        tones = {"alerte": C.alerte, "note": C.lin, "": C.os, "titre": C.os}
+        lines = [(text, tones.get(tone, C.os), "petit_gras" if tone == "titre" else "petit") for text, tone in rows]
+        theme.tooltip(self.screen, lines, 12, HUD_HEIGHT + 10, 360)
+
     def draw_inspect(self, hover_info: dict | None, pin_info: dict | None) -> None:
         """La fiche d'une case : au survol (pres de la souris, INSPECT_MAX_W au
         plus) et epinglee (en bas a gauche)."""

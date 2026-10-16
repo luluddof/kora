@@ -57,15 +57,18 @@ par theme).
 
 3. UNE IMAGE, UN PAS, UNE SEMAINE
 ---------------------------------
-  Une IMAGE (Play._frame, ~60 par seconde) : en solo, sim.consume_ticks
-  fait 0 ou 1 pas selon la vitesse ; en reseau, l'hote annonce les pas
-  (session.py) et chacun les calcule ; puis les nouvelles (le journal du
-  joueur), le survol, le dessin (Renderer.draw). Sauvegarde automatique
-  toutes les 8 semaines.
-  Un PAS (sim.tick) : une semaine, ou un jour quand une bataille touche un
-  joueur (battle.slow). Une exception : l'etat d'avant revient
+  Une IMAGE (Play._frame, ~60 par seconde) : en solo, sim.TickRunner
+  avance la partie par MORCEAUX de semaine (sim.tick_steps) sans depasser
+  un budget de calcul par image : l'ecran ne se fige jamais, meme pendant
+  une semaine de mois lourde ; en reseau, l'hote annonce les pas
+  (session.py) et chacun les calcule d'une traite (sim.tick) ; puis les
+  nouvelles (le journal du joueur), le survol, le dessin (Renderer.draw),
+  et la fiche du moteur (F3 : Play.engine_lines). Sauvegarde automatique
+  toutes les 8 semaines, jamais au milieu d'une semaine.
+  Un PAS (sim.tick, ou sim.tick_steps en morceaux) : une semaine, ou un
+  jour quand une bataille touche un joueur (battle.slow). Une exception : l'etat d'avant revient
   (sim.snapshot), pause, state.last_error.
-  Une SEMAINE (sim._week), dans cet ordre (le changer change le jeu) :
+  Une SEMAINE (sim._week_steps), dans cet ordre (le changer change le jeu) :
      1. clock (Clock.advance_week) ; une saison nouvelle se note
      2. sim.apply_season_spread   la saison locale avance par rangees
      3. sim.apply_movement        les marches (path, world.step_cost)
@@ -639,13 +642,15 @@ ETAGE 8  la semaine du monde
   sim.py
     LA SEMAINE DU MONDE : une partie neuve (new_game), un pas (tick), la
     semaine (_week), et ce que le joueur lit d'une case ou d'une bande.
+    classes : TickRunner
     fonctions : hex_inspect, band_summary, band_lines, band_warn_from,
       walk_line, river_line, inspect_lines, famine_loss, collect_food,
       update_exhaustion, remove_dead_bands, resolve_joins, apply_movement,
       update_population, update_influence, player_home_hex, fight_at,
       fight_lines, fight_out, update_prestige, snapshot, new_game,
-      add_minor_peoples, apply_season_spread, tick, consume_ticks
-    constantes : RIVER_NAME_FR, FAMINE_RATE, WINTER_TAIL_WEEK, GROWTH_RATE
+      add_minor_peoples, apply_season_spread, tick, tick_steps, consume_ticks
+    constantes : RIVER_NAME_FR, FAMINE_RATE, WINTER_TAIL_WEEK, GROWTH_RATE,
+      RUNNER_MAX_DUE, RUNNER_BUDGET, RUNNER_BUDGET_LATE
 
 
 ETAGE 9  les ordres des joueurs
@@ -1011,6 +1016,8 @@ ETAGE -  l'interface (pygame)
   rivieres, ressources)               planets.py, resources.py
   La musique                          music.py, tools/boucle_musique.py
   Le jeu tourne-t-il pareil ?         tools/empreinte.py (check / record)
+  Le jeu tourne-t-il vite ?           tools/moteur.py (semaines, morceaux,
+                                      images, profil) ; sim.TickRunner
 
 
 6. COORDONNEES ET ETAT EN MEMOIRE
@@ -1068,6 +1075,9 @@ ETAGE -  l'interface (pygame)
     hachage Python differentes), la vraie carte, un robot par joueur qui ne
     passe que par des ordres (src/kora/essai.py). A la fin, les deux parties
     doivent etre identiques, sans resynchronisation.
+  tools/moteur.py
+    LE BANC DU MOTEUR : mesurer ce que coutent la semaine et l'image, avant
+    de toucher au moteur (et apres, pour prouver le gain).
   tools/notes.py
     LES NOTES DU DEPOT : ce que les IA lisent avant de travailler. Elles
     doivent rester VRAIES : leurs dates, la version, les fichiers et les
@@ -1162,6 +1172,8 @@ ETAGE -  l'interface (pygame)
                               a vu la derniere fois.
   test_merge.py               Fusion des bandes : qui mene, les anciens,
                               l'attachement, la soudure.
+  test_moteur.py              Le moteur du temps (sim.tick_steps,
+                              sim.TickRunner) : la semaine calculee
   test_movement.py            La marche des bandes : quatre cases de plaine
                               par semaine, ordres invalides
   test_mp_ui.py               La boucle du jeu (app.play) en multijoueur, pour

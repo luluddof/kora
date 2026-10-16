@@ -33,6 +33,7 @@ import json
 import math
 import random
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -1040,7 +1041,20 @@ def apply_season_spread(state: GameState) -> None:
 def tick(state: GameState) -> None:
     """Un pas de la partie : une SEMAINE ; ou un JOUR quand une bataille touche
     un joueur (battle.slow : le temps ralentit en bataille). Sept jours font la
-    semaine. state.step compte les pas (le multijoueur s'y cale)."""
+    semaine. state.step compte les pas (le multijoueur s'y cale). D'une
+    traite : tick_steps est le meme pas, en morceaux."""
+    for _ in tick_steps(state):
+        pass
+
+
+def tick_steps(state: GameState):
+    """Le MEME pas que tick, en morceaux : un generateur qui rend la main
+    entre les phases de la semaine. TickRunner s'en sert pour que l'ecran
+    dessine entre deux morceaux (il ne se fige plus pendant les semaines
+    lourdes) ; le resultat est exactement celui de tick, a condition que rien
+    ne change la partie entre deux morceaux (un ordre attend la fin du pas :
+    TickRunner.finish). Une erreur : la partie revient a l'etat d'avant le
+    pas (snapshot), en pause, l'erreur dans state.last_error."""
     saved = snapshot(state)
     tech.begin_tick()
     try:
@@ -1050,11 +1064,11 @@ def tick(state: GameState) -> None:
             state.day += 1
             if state.day >= 7:
                 state.day = 0
-                _week(state, 0)
+                yield from _week_steps(state, 0)
         else:
             days = 7 - state.day
             state.day = 0
-            _week(state, days)
+            yield from _week_steps(state, days)
         state.step += 1
         state.last_error = None
     except Exception as exc:
@@ -1066,8 +1080,15 @@ def tick(state: GameState) -> None:
 
 
 def _week(state: GameState, battle_days: int) -> None:
-    """La semaine du monde. Les batailles sans joueur y font `battle_days`
-    jours."""
+    """La semaine du monde, d'une traite."""
+    for _ in _week_steps(state, battle_days):
+        pass
+
+
+def _week_steps(state: GameState, battle_days: int):
+    """La semaine du monde, phase apres phase (un `yield` entre deux). Les
+    batailles sans joueur y font `battle_days` jours. L'ORDRE est celui du
+    calcul : le changer change le jeu (empreinte)."""
     prev_season = state.clock.season()
     state.clock.advance_week()
     if state.clock.season() is not prev_season:
@@ -1077,36 +1098,141 @@ def _week(state: GameState, battle_days: int) -> None:
             f"{season_fr(state.clock.season())} commence.",
         )
     apply_season_spread(state)
+    yield
     apply_movement(state)
+    yield
     resolve_joins(state)
-    systems.run(systems.WEEKLY, state)
+    for path in systems.WEEKLY:
+        systems.fn(path)(state)
+        yield
     learning.update_practice(state)
+    yield
     prune_fight_marks(state)
     resolve_raids(state)
+    yield
     if battle_days:
         battle.advance(state, battle_days, humans=False)
+        yield
     update_exhaustion(state)
+    yield
     collect_food(state)
+    yield
     remove_dead_bands(state)
     sites.update(state)
+    yield
     state.tick_count += 1
     monthly = state.tick_count % 4 == 0
     if monthly:
         update_population(state)
         population.monthly(state)
+        yield
     update_influence(state)
+    yield
     if monthly:
         # Le mois de chaque systeme, dans l'ordre du tableau (systems.py).
-        systems.run(systems.MONTHLY, state)
+        for path in systems.MONTHLY:
+            systems.fn(path)(state)
+            yield
     events.weekly(state)
     tech.invalidate()
     update_prestige(state)
     learning.update_learning(state)
+    yield
     tech.invalidate()
     recompute_vision(state)
     memory.update(state)
     _note_spotted_enemies(state)
+    yield
     decide_ai(state)
+
+
+# Le temps a l'ecran (TickRunner) : combien de pas dus au plus (la vitesse
+# ne s'accumule pas sans fin quand le calcul est en retard), et le temps de
+# calcul permis par image (plus quand le jeu est en retard sur sa vitesse).
+RUNNER_MAX_DUE = 2.0
+RUNNER_BUDGET = 0.008
+RUNNER_BUDGET_LATE = 0.016
+
+
+class TickRunner:
+    """LE TEMPS A L'ECRAN, en solo : chaque image, il avance la partie par
+    morceaux de pas (tick_steps) sans depasser un budget de calcul, pour que
+    l'ecran ne se fige jamais, meme quand une semaine de mois coute plusieurs
+    centaines de millisecondes. Le resultat est celui de tick : memes phases,
+    meme ordre, et rien ne change la partie entre deux morceaux (finish avant
+    un ordre, une sauvegarde, un depart). En pause, il termine le pas en
+    cours mais n'en commence pas d'autre. Il mesure aussi : la duree de
+    calcul du dernier pas (step_ms) et les semaines vraiment faites par
+    seconde (weeks_per_s), pour la fiche du moteur (F3)."""
+
+    def __init__(self, state: GameState) -> None:
+        self.state = state
+        self.steps = None
+        self.due = 0.0
+        self.step_ms = 0.0
+        self.weeks_per_s = 0.0
+        self._work = 0.0
+        self._clock = 0.0
+        self._done_in_window = 0
+
+    @property
+    def busy(self) -> bool:
+        """Un pas est en cours (la partie est entre deux phases)."""
+        return self.steps is not None
+
+    def finish(self) -> None:
+        """Termine d'une traite le pas en cours (avant un ordre, une
+        sauvegarde, un depart : la partie n'est jamais lue a moitie faite)."""
+        if self.steps is None:
+            return
+        t = time.perf_counter()
+        for _ in self.steps:
+            pass
+        self._work += time.perf_counter() - t
+        self._finished()
+
+    def _finished(self) -> None:
+        self.steps = None
+        self.step_ms = self._work * 1000.0
+        self._work = 0.0
+        self._done_in_window += 1
+
+    def frame(self, dt: float, hold: bool = False) -> int:
+        """Une image : la vitesse ajoute des pas dus ; on calcule jusqu'au
+        budget (un pas commence au plus par image). hold (le menu Echap
+        ouvert, le peuple du joueur disparu) : le pas en cours se termine,
+        aucun autre ne commence. Rend les pas finis."""
+        state = self.state
+        running = not hold and not state.clock.paused and not state.player_dead
+        if running:
+            self.due = min(RUNNER_MAX_DUE, self.due + dt * state.clock.ticks_per_second())
+        elif self.steps is None:
+            self.due = 0.0
+        self._clock += dt
+        if self._clock >= 1.0:
+            self.weeks_per_s = self._done_in_window / self._clock
+            self._clock, self._done_in_window = 0.0, 0
+        budget = RUNNER_BUDGET_LATE if self.due >= 1.0 and self.steps is not None else RUNNER_BUDGET
+        start = time.perf_counter()
+        finished = 0
+        started = False
+        while True:
+            if self.steps is None:
+                if started or not running or self.due < 1.0:
+                    break
+                self.due -= 1.0
+                self.steps = tick_steps(state)
+                started = True
+            t = time.perf_counter()
+            more = next(self.steps, StopIteration) is not StopIteration
+            self._work += time.perf_counter() - t
+            if not more:
+                self._finished()
+                finished += 1
+                running = not hold and not state.clock.paused and not state.player_dead
+            if time.perf_counter() - start >= budget:
+                break
+        return finished
 
 
 def consume_ticks(

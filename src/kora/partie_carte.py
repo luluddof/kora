@@ -318,6 +318,9 @@ class MapInput:
                     self.ui["tech_cam"] = zoom_at(tlay["cam"], view, tlay["world"], view[0] + view[2] / 2, view[1] + view[3] / 2, TREE_ZOOM_STEP if zin else 1.0 / TREE_ZOOM_STEP)
         elif event.key == pygame.K_SPACE:
             self.toggle_pause()
+        elif event.key == pygame.K_F3:
+            # la fiche du moteur : l'image, la semaine, la vitesse tenue
+            self.show_engine = not self.show_engine
         elif event.key == pygame.K_F5:
             if self.mp is not None and self.mp.role != "host":
                 self.toast("C'est l'hôte qui sauvegarde la partie.")

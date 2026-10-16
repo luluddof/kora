@@ -208,6 +208,19 @@ La carte du depot (section 4) donne cet ordre en detail.
   - Une grille tiree des coordonnees se calcule en nombres de Python (pas
     numpy : le multijoueur) et une fois par taille de carte (0.15.0).
 
+  - LE MOTEUR DU TEMPS (2026-10-16) : la semaine est un generateur
+    (sim.tick_steps : un `yield` entre deux phases) ; sim.tick l'execute
+    d'une traite (le multijoueur, les tests, l'empreinte) ; a l'ecran, en
+    solo, sim.TickRunner l'avance par morceaux sans depasser un budget par
+    image (sim.RUNNER_BUDGET) : l'ecran ne se fige plus. Rien ne change la
+    partie entre deux morceaux : un ordre, une sauvegarde, un depart
+    attendent la fin du pas (TickRunner.finish : Play.issue, Play.persist).
+    Une phase nouvelle de la semaine = son appel dans sim._week_steps, suivi
+    d'un `yield` ; un systeme du mois (systems.MONTHLY) a deja son morceau.
+    Avant de toucher au moteur, mesurer : tools/moteur.py (semaines,
+    morceaux, images, profil) ; apres, prouver que le jeu n'a pas change
+    (empreinte, parties du joueur relues et jouees).
+
 4.2 Les ordres, les joueurs, le multijoueur
   - Tout changement de la partie par l'interface passe par commands.py (un
     ordre) ; l'interface lit state.viewer, jamais PLAYER_TRIBE_ID ; un
@@ -390,10 +403,10 @@ seulement si le decoupage rend le systeme plus simple a changer) :
   render_village.py      ~1400 lignes
   battle.py              ~1300 lignes
   events_data.py         ~1300 lignes
+  sim.py                 ~1300 lignes
   goods.py               ~1200 lignes
   world.py               ~1200 lignes
   villages.py            ~1200 lignes
-  sim.py                 ~1100 lignes
   render_panels.py       ~1000 lignes
 <<< fin auto >>>
 

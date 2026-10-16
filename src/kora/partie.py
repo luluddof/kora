@@ -20,6 +20,8 @@ au menu de demarrage et a la partie (reglages.json).
 
 from __future__ import annotations
 
+import time
+
 import pygame
 
 from src.kora import (
@@ -57,7 +59,7 @@ from src.kora.persist import (
 )
 from src.kora.render_situations import window_hit
 from src.kora.render_village import found_hit
-from src.kora.sim import consume_ticks, fight_at, hex_inspect
+from src.kora.sim import TickRunner, fight_at, hex_inspect
 
 
 TOAST_LIFE = 4.0
@@ -202,7 +204,11 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         self.right_press = None
         # Le rapport de force au survol d'un etranger (orders.attack_preview).
         self.preview_cache: dict = {}
-        self.acc = 0.0
+        # Le temps en solo : la partie avance par morceaux de pas, l'ecran ne
+        # se fige jamais (sim.TickRunner) ; F3 montre ce que fait le moteur.
+        self.runner = TickRunner(self.state)
+        self.show_engine = False
+        self.frame_ms = 0.0
         # En multijoueur, seul l'hote sauvegarde (a part : la partie solo reste).
         self.save_path = multi_save_path() if self.mp is not None else (save_path or default_save_path())
         self.last_auto = -1
@@ -234,6 +240,8 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
     def persist(self) -> None:
         if self.mp is not None and self.mp.role != "host":
             return
+        # jamais une partie a moitie de sa semaine
+        self.runner.finish()
         save_game(
             self.state,
             self.save_path,
@@ -256,9 +264,30 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         l'hote en multijoueur. then recoit la reponse quand il s'applique."""
         then = then or self.say
         if self.mp is None:
+            # un ordre s'applique entre deux pas, jamais au milieu (TickRunner)
+            self.runner.finish()
             then(commands.apply(self.state, cmd))
         else:
             self.mp.issue(cmd, then)
+
+    def engine_lines(self) -> list:
+        """La fiche du moteur (F3) : ce que coutent l'image et la semaine, et
+        la vitesse vraiment tenue (sim.TickRunner)."""
+        r = self.runner
+        clock = self.state.clock
+        num = lambda v: f"{v:.1f}".replace(".", ",")  # noqa: E731
+        out = [("Le moteur (F3)", "titre"), (f"Image : {self.frame_ms:.0f} ms", "")]
+        if self.mp is None:
+            out.append((f"Dernière semaine : {r.step_ms:.0f} ms de calcul", ""))
+            want = 0 if clock.paused else clock.ticks_per_second()
+            out.append((f"{num(r.weeks_per_s)} semaines par seconde ({want} voulues)", "alerte" if want and r.weeks_per_s < want * 0.8 else ""))
+            if r.busy:
+                out.append(("Une semaine se calcule, image après image", "note"))
+        else:
+            out.append(("En réseau : l'hôte tient le temps", "note"))
+        villages_n = sum(1 for s in self.state.sites.values() if s.kind == "village")
+        out.append((f"{len(self.state.tribes)} peuples, {len(self.state.bands)} bandes, {villages_n} villages", "note"))
+        return out
 
     def me(self) -> int:
         return self.state.viewer
@@ -462,6 +491,7 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         """Une image : le temps (solo) ou l'hote (multijoueur), les nouvelles,
         ce que survole la souris, le dessin ; rend ("menu", message) pour
         quitter la partie, sinon None."""
+        frame_start = time.perf_counter()
         if self.mp is not None:
             # Le temps est a l'hote : il annonce les semaines, chacun les calcule.
             self.mp.pump(dt)
@@ -483,20 +513,20 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
             if self.mp.role == "host" and self.state.tick_count > 0 and self.state.tick_count % 8 == 0 and self.state.tick_count != self.last_auto:
                 self.persist()
                 self.last_auto = self.state.tick_count
-        elif not self.menu_open and not self.state.clock.paused and not human_dead(self.state, self.state.viewer):
-            # Un combat ne deplace plus la camera et n'arrete plus le temps :
-            # toast + journal + epee ; un clic sur le toast ou la ligne y mene.
-            self.acc = consume_ticks(self.state, self.acc, dt)
+        else:
+            # Le temps (sim.TickRunner) : un peu de calcul a chaque image, la
+            # partie avance sans figer l'ecran. Un combat ne deplace pas la
+            # camera et n'arrete pas le temps : toast + journal + epee.
+            self.runner.frame(dt, hold=self.menu_open or human_dead(self.state, self.state.viewer))
             self.selected = partie_carte.refresh_selection(self.state, self.selected)
             if (
-                self.state.tick_count > 0
+                not self.runner.busy
+                and self.state.tick_count > 0
                 and self.state.tick_count % 8 == 0
                 and self.state.tick_count != self.last_auto
             ):
                 self.persist()
                 self.last_auto = self.state.tick_count
-        else:
-            self.acc = 0.0
         if self.ui["event_open"] is not None and events.find(self.state, self.ui["event_open"]) is None:
             self.close_event()
         self.selected = partie_carte.refresh_selection(self.state, self.selected)
@@ -573,4 +603,7 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         if self.mp is not None:
             render_menu.draw_mp_overlay(self.renderer, self.mp, self.state, self.chat_text)
         self.settings.draw(self.renderer)
+        if self.show_engine:
+            self.renderer.draw_engine(self.engine_lines())
+        self.frame_ms = (time.perf_counter() - frame_start) * 1000.0
         pygame.display.flip()
