@@ -50,8 +50,8 @@ bas au plus haut :
        app, globe, globe_draw, layout, look, music, partie, partie_carte,
        partie_ecrans, render, render_battle, render_country, render_menu,
        render_numbers, render_panels, render_situations, render_tech,
-       render_trade, render_treasury, render_village, render_wars, screens,
-       theme, tree_graph
+       render_trade, render_treasury, render_tutoriel, render_village,
+       render_wars, screens, theme, tree_graph, tutoriel
 <<< fin auto >>>
 
   - Les systemes (etage 5) s'appellent entre eux : ils s'importent alors
@@ -370,6 +370,12 @@ La carte du depot (section 4) donne cet ordre en detail.
     (LOOPSTART / LOOPLENGTH) et se joue en flux (pygame.mixer.music) ; la
     musique de guerre ne joue que pour une guerre declaree (0.16.0 a
     0.19.0).
+  - LE TUTORIEL (tutoriel.py, render_tutoriel.py ; 2026-10-16) : une etape
+    = un Step de tutoriel.STEPS (titre, texte court, le geste attendu et sa
+    verification : une fonction de (play, mark) qui LIT l'ecran et la
+    partie, jamais ne les change ; ce qui s'eclaire : target). Une
+    fonctionnalite que le joueur doit decouvrir tot y prend sa place. Son
+    etat est celui de l'ecran (Play.ui["tuto"]) : ni sauve, ni ordre.
   - Combats : jamais de pause ni de saut de camera (P5) ; ce qui
     "interrompt" le joueur passe par les nouvelles et le journal cliquable.
 

@@ -51,7 +51,11 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 
 ## Premiers pas
 
-- Au lancement, le **menu** : *Continuer* votre partie, *Nouvelle partie*, *Multijoueur*.
+- **Première fois ?** Le menu propose un **Tutoriel** : une partie guidée, en quatorze petites étapes (tourner la
+  planète, choisir sa bande, la faire marcher, lancer le temps, manger, passer l'hiver, les savoirs, les clans, les
+  autres peuples...). La fiche avance d'elle-même quand vous avez fait le geste demandé. Dans toute partie, le bouton
+  **Tuto** (en bas à gauche, à côté de *Carte*) ou **F1** l'ouvre et le ferme ; il reprend où vous l'aviez laissé.
+- Au lancement, le **menu** : *Continuer* votre partie, *Nouvelle partie*, *Tutoriel*, *Multijoueur*.
 - Une nouvelle partie commence par **votre peuple** : son nom (ou *Au hasard*), sa couleur, et **2 bonus de départ**
   à choisir parmi 12 (chasseurs d'aurochs, enfants du froid, conteurs, guerriers…). Ils durent **5 ans**, puis
   s'éteignent (le panneau *Tribu* dit combien de temps il leur reste).
@@ -95,7 +99,8 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - La **musique de guerre** (*Casus bellis*) part de son début quand vous entrez dans une **guerre déclarée** (pas
   pour un accrochage entre bandes), boucle sans couture et s'éteint à la paix ; son volume se
   règle dans *Réglages* (menu de démarrage et *Échap*).
-- **Espace** : pause. **1 à 5** : vitesse du temps.
+- **Espace** : pause. **1 à 5** : vitesse du temps. L'écran ne se fige plus pendant les semaines lourdes d'une partie
+  avancée : la semaine se calcule par petits morceaux, entre deux images (F3 montre la vitesse vraiment tenue).
 - Survolez une case pour voir ce qu'elle produit et ce qu'y coûte la marche (chaque case varie un peu, doucement
   d'une case à sa voisine : les chemins suivent le pays) ; un clic l'épingle.
 - Le **journal** (à droite) raconte ce qui arrive ; un clic sur une ligne y emmène la caméra.
@@ -204,6 +209,8 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
 | **Z** / **U** / **I** / **R** / **X** | Modes de carte : influence / suzerains / tournants / ressources / commerce |
+| **F1** | Le tutoriel (l'ouvrir, le fermer ; aussi le bouton **Tuto**, en bas à gauche) |
+| **F3** | La fiche du moteur : ce que coûtent l'image et la semaine, la vitesse vraiment tenue |
 | **F5** | Sauvegarder (le jeu sauvegarde aussi tout seul) |
 | **Entrée** | À plusieurs : écrire aux autres joueurs |
 | **Échap** | Fermer une fenêtre · menu (Reprendre, Sauvegarder, Menu principal, Quitter) |

@@ -51,6 +51,8 @@ RECETTE = DOCS / "code" / "ajouter-un-systeme.txt"
 CHARTE = DOCS / "charte-graphique.txt"
 CLAUDE = ROOT / "CLAUDE.md"
 README = ROOT / "README.md"
+# Les notes de chaque version publiee (GitHub Releases) : release.yml les joint.
+RELEASE_NOTES = ROOT / ".github" / "release-notes.md"
 # Les notes vivantes (elles disent ce qui est vrai aujourd'hui).
 LIVING = (CLAUDE, VISION, CARTE, RECETTE, CHARTE, README)
 
@@ -394,6 +396,17 @@ def check_vision(text: str, today: dt.date, tags: dict, current: str) -> list[st
     return out
 
 
+def check_release_notes(text: str, current: str) -> list[str]:
+    """Les notes de version disent la version publiee (\"Nouveau dans la X.Y\")."""
+    m = re.search(r"Nouveau dans la (\d+\.\d+)", text)
+    major_minor = ".".join(current.split(".")[:2])
+    if not m:
+        return [".github/release-notes.md : pas de 'Nouveau dans la X.Y'"]
+    if m.group(1) != major_minor:
+        return [f".github/release-notes.md : 'Nouveau dans la {m.group(1)}' mais le jeu est en {current} : les reecrire avant de publier"]
+    return []
+
+
 def check_carte_version(text: str, current: str) -> list[str]:
     m = re.search(r"A jour pour la version\s*:\s*(\d+\.\d+\.\d+)", text)
     if not m:
@@ -579,6 +592,8 @@ def check(today: dt.date | None = None) -> list[str]:
         elif path == CARTE:
             out += check_carte_version(text, current)
         out += check_refs(name, refresh(living) if AUTO.search(living) else living, index)
+    if RELEASE_NOTES.exists():
+        out += check_release_notes(_read(RELEASE_NOTES), current)
     for path in spec_files():
         text = _read(path)
         out += check_spec(path, text, today, git)

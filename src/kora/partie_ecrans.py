@@ -35,6 +35,7 @@ from src.kora import (
     screens,
     situations,
     troupes,
+    tutoriel,
     villages,
     wars,
 )
@@ -599,3 +600,12 @@ class ScreenClicks:
                     self.issue(commands.make(self.me(), "diplo", tid, action))
             return True
         return choice == "panel"
+
+    def tuto_click(self, choice) -> None:
+        """Un clic dans la fiche du tutoriel (render_tutoriel.tuto_hit)."""
+        if choice == "close":
+            tutoriel.guide_close(self)
+        elif choice == "next":
+            tutoriel.go(self, 1)
+        elif choice == "prev":
+            tutoriel.go(self, -1)

@@ -63,6 +63,7 @@ BONUS_ICONS = {
 TITLE_ITEMS = (
     ("continuer", "Continuer"),
     ("nouvelle", "Nouvelle partie"),
+    ("tutoriel", "Tutoriel"),
     ("charger", "Charger une partie"),
     ("multijoueur", "Multijoueur"),
     ("reglages", "Réglages"),
@@ -558,6 +559,16 @@ def _draw_planet_pick(r, lay, pid: str, mx: int, my: int) -> None:
 
 def random_name(rng, taken=()) -> str:
     return make_name(rng, CULTURES["joueur"], taken)
+
+
+# Le tutoriel (menu : Tutoriel) : une partie neuve sur une planete et une
+# graine connues (un bon depart : une vallee, une riviere), sans bonus.
+TUTO_PLANET = "aurane"
+TUTO_SEED = 7
+
+
+def tuto_setup(rng) -> dict:
+    return {"name": random_name(rng), "color": PALETTE[0], "bonuses": [], "planet": TUTO_PLANET, "seed": TUTO_SEED}
 
 
 def new_setup(rng) -> dict:

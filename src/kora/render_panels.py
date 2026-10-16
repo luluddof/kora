@@ -892,6 +892,10 @@ def draw_event_cards(r, state, ui) -> None:
     if not pending:
         return
     x, y = 10, HUD_HEIGHT + 110
+    # La fiche du tutoriel, ouverte, est en haut a gauche : les cartes passent dessous.
+    box = (getattr(r, "tuto_hits", None) or {}).get("box")
+    if box is not None:
+        y = max(y, box[1] + box[3] + 10)
     t = pygame.time.get_ticks() / 1000.0
     for k, inst in enumerate(pending[:5]):
         ev = events.EVENTS.get(inst.event_id)

@@ -1,0 +1,202 @@
+Kora - Des notes qui disent vrai, un code decoupe, un moteur du temps, un tutoriel
+===============================================================================
+Date : 2026-10-16. Statut : FAIT (version 0.21.0).
+
+Sa demande : "en lisant bien les docs ... pose un regard objectif sur ce
+projet". Puis ses reponses au regard (ses mots, raccourcis) :
+  1. "je continuerais [d'ajouter], car c'est ce que j'aime faire" ;
+  2. "pourquoi pas un rapide tutoriel avec un bouton tuto" ;
+  3. "corriger les notes que l'IA regarde, puis faire en sorte qu'elle
+     continue de les corriger et de les maintenir a l'avenir" ;
+  4. "je ne veux pas de fin pour l'instant" ;
+  5. "oui pour le decoupage, tant qu'il est intelligent et qu'il permet de
+     modifier, d'ameliorer et d'ajouter facilement et efficacement" ;
+  6. "je prefere garder Python, mais si tu peux transformer le projet pour
+     qu'avec Python et ce qui est deja fait on ait un moteur cree pour le jeu
+     pour qu'il tourne bien, je ne dis pas non".
+
+
+1. LE REGARD (reponse ecrite, rien a coder)
+-------------------------------------------
+  Forces : le socle (determinisme prouve, multijoueur, etages verifies,
+  ~700 tests), le pilotage par la VISION, des idees de jeu originales, la
+  charte. Faiblesses : un fun jamais verifie par d'autres (13 telechargements
+  en 34 versions, aucune issue) ; des ajouts plus rapides que la
+  consolidation ; le jeu s'explique dans le README, pas en jeu ; des notes qui
+  mentaient (dates inventees, carte du depot en 0.10, README) ; une dette qui
+  grossissait (villages, app, diplo) ; pas de fin ni d'age suivant ;
+  l'ambition "jusqu'a l'espace" au-dela de ce moteur. Ses reponses : ci-dessus.
+
+
+2. LES NOTES QUI DISENT VRAI (point 3)
+-------------------------------------
+  CORRIGER
+  - Les DATES : du 25 septembre au 11 octobre, des sessions avaient avance
+    leur date d'un jour par chantier (le travail du 11 octobre etait date du
+    18). Corrige d'apres git (dates des commits, des etiquettes, de l'entree
+    des fichiers) : onze specs renommees (2026-09-26 -> 09-25, 2026-10-10 a
+    10-14 -> 10-09, 10-15 et 10-16 -> 10-10, 10-17 et 10-18 -> 10-11), leurs
+    renvois, la VISION section 3 (chaque entree porte ses versions en titre).
+  - La VISION : section 4, deux regles (R10 les dates se lisent ; R11 les
+    notes disent vrai) ; section 5 refaite : la version, le chantier, UNE
+    liste des pistes ouvertes (en attente de son choix, plus tard, mis de
+    cote, refuse, a proposer) ; les 22 blocs "REGLES NOUVELLES" partis, par
+    theme, dans docs/code/ajouter-un-systeme.txt (section 4).
+  - La carte du depot refaite : elle derivait depuis 0.10 (des fonctions
+    disparues, la mini-carte, la carte 768 x 384, l'ordre de la semaine faux).
+    Ses parties "modules", "outils", "tests", "specs" sont maintenant TIREES
+    DU CODE (les docstrings) ; le reste est verifie.
+  - Les docstrings : 14 modules et 31 tests n'en avaient pas ; deux citaient
+    des noms disparus (layout.tree_links, tech.SITUATION_EFFECTS).
+  - Le README : les sauvegardes (une par partie depuis 0.16, il disait
+    encore kora.json) ; .github/release-notes.md : chaque version publiee
+    depuis la 0.3 portait encore les notes de la 0.2 ; refaites.
+  - docs/code/suite-possible.txt (aout, depasse) -> docs/historique.
+  - La memoire locale : les memes dates corrigees ; le long journal des
+    chantiers (qui doublait la VISION) remplace par une note courte.
+  TENIR (pour l'avenir)
+  - tools/notes.py : status (la vraie date, la version, la derniere spec,
+    les notes en retard), check (sortie 1 si une note ment), write (refait
+    les parties tirees du code). Il verifie : les dates (rien dans le futur ;
+    une spec pas posterieure a son entree dans git ni a sa version ; une
+    entree de la VISION pas posterieure a son etiquette ; l'en-tete) ; la
+    version (VISION section 5, carte du depot, notes de version) ; chaque
+    fichier, "module.nom" et "Classe.champ" cite par une note vivante ou une
+    docstring (il comprend l'heritage : Play herite de ses bases) ; chaque
+    spec citee ; les parties automatiques a jour ; une docstring partout.
+  - tests/test_notes.py : une note qui ment casse les tests (et des cas
+    fabriques : la derive d'octobre est attrapee).
+  - .claude/settings.json : au debut de chaque session, le crochet
+    SessionStart affiche `notes.py status --court` (la vraie date, et les
+    problemes a corriger d'abord).
+  - CLAUDE.md : notes.py au debut et a la fin de chaque chantier ; la regle
+    des dates ; le Python du projet (.venv, pygame-ce).
+  - La preuve que le mecanisme marche : pendant ce chantier meme, chaque
+    decoupage a fait casser test_notes la ou une note citait un nom deplace
+    (12 renvois), et il a fallu les corriger.
+
+
+3. LE DECOUPAGE (point 5)
+-------------------------
+  Un module = un role ; un nom prive qui passait d'un module a l'autre
+  devient public. SANS CHANGER LE JEU : l'empreinte identique, et trois
+  parties du joueur (copies : l'ancienne carte a l'an 70 et a l'an 25,
+  Caldere a l'an 1) jouees 26 semaines, identiques octet pour octet a la
+  version d'avant (un git worktree de l'ancien code).
+  - villages.py (2 111 lignes) -> villages (champs, recoltes, stabilite,
+    fondation : ~1 200), batiments (batiments, chantiers, monument,
+    palissade : ~320), troupes (levee, milice, retour, vivres : ~650).
+  - diplo.py (1 918) -> diplo (contacts, relations, pactes, propositions :
+    ~1 500) et guerre (la guerre declaree, buts, avantage, lassitude : ~440).
+  - app.py (2 091) -> app (menus, salon : ~490), partie (la classe Play, sa
+    boucle : ~600), partie_carte (MapInput : la carte, la souris, le
+    clavier : ~540), partie_ecrans (ScreenClicks : les grands ecrans, les
+    panneaux : ~610). Play herite de MapInput et ScreenClicks : "une touche
+    ou un clic = une methode de Play" reste vrai, dans le fichier qui lui
+    ressemble.
+  - Renommes publics : diplo.of, diplo.pacts_between, diplo.drop_for_war ;
+    troupes.men_away, troupes.village_near, troupes.split_by,
+    troupes.update_armies ; batiments.advance_works ; guerre.war_verdict,
+    submit_verdict, truce_mood, long_war, fade_wars ; partie_carte.look_hex,
+    band_at_pixel... ; places.NEAR (le rayon des villages).
+  - Les outils (un "mover" qui deplace des definitions par l'AST, recable
+    les imports, signale les lectures au chargement) sont restes dans le
+    scratchpad de la session.
+
+
+4. LE MOTEUR (point 6)
+---------------------
+  Garder Python ; mesurer d'abord (tools/moteur.py, nouveau : semaines,
+  morceaux, images, profil, vieillir).
+  MESURES DE DEPART
+  - Sa partie de l'an 70 (ancienne carte, 70 peuples, 62 villages) : 258 ms
+    par semaine en moyenne, 627 ms les semaines de mois (pic 1 061 ms) : a
+    la vitesse 5, l'ecran se figeait pres d'une seconde chaque mois.
+  - Aurane a l'an 20 (78 peuples, 70 villages) : 67 ms (de mois : 136).
+  - Les images : 3 a 7 ms de pres ; 25 a 45 ms quand toute la planete
+    tourne de loin (le dessin tient : le probleme etait la simulation).
+  LE MEME JEU, PLUS VITE (chaque gain prouve : empreinte + ses parties)
+  - chiefdom.is_kin : "b est-il frere de a" pour la seule paire ;
+    diplo._base construisait tout l'ensemble des freres (28 % du temps dans
+    sa partie).
+  - records.json_copy par marshal (format 2 : les memes donnees, sans
+    references partagees, comme deepcopy) : la copie de securite de chaque
+    semaine dix fois plus rapide.
+  - goods._village_sites filtre avant de trier ; has_village s'arrete au
+    premier village.
+  - L'ancienne carte calcule sa variation du cout de marche au chargement
+    (planets.load), plus a la premiere marche (un gel de 2 s).
+  - Resultat : sa partie de l'an 70 : 258 -> 101 ms par semaine (de mois
+    627 -> 236, pic 1 061 -> 385) ; Aurane an 20 : 67 -> 45 ms.
+  LA SEMAINE EN MORCEAUX (l'ecran ne se fige plus)
+  - sim.tick_steps : la semaine est un generateur, un `yield` entre deux
+    phases (chaque systeme du mois a son morceau) ; sim.tick l'execute d'une
+    traite : le multijoueur, les tests, l'empreinte ne changent pas.
+  - sim.TickRunner : en solo, chaque image avance la partie par morceaux
+    sans depasser un budget (8 ms, 16 en retard) ; un ordre, une sauvegarde,
+    un depart attendent la fin de la semaine (finish) ; la pause acheve la
+    semaine en cours ; une erreur ramene a la semaine d'avant.
+  - F3 : la fiche du moteur (image moyenne et pire, la derniere semaine,
+    les semaines par seconde tenues et voulues).
+  - Mesure (sa partie de l'an 70, vitesse 5, sans fenetre, 600 images) :
+    image la plus longue 552 -> 116 ms, p95 162 -> 55 ms, 5,4 -> 8,2
+    semaines par seconde (9,0 dans une capture, 10 voulues).
+  - tests/test_moteur.py : la semaine en morceaux donne EXACTEMENT la meme
+    partie que d'une traite (l'ecran lisant l'etat entre deux morceaux) ;
+    ordre, pause, erreur, la vitesse tenue.
+  CE QUI RESTE (pistes, a proposer)
+  - Les plus longs morceaux de sa partie : casus.monthly ~45 ms,
+    update_influence ~44, diplo.monthly ~34, la fin de la semaine (l'IA) ~30 :
+    les couper (des generateurs dans ces systemes) ou les accelerer ; les
+    relations (diplo.relation, 16 % du temps restant) : une memoire du pas
+    sure demanderait des compteurs de version sur la diplomatie.
+  - Le dessin de loin quand la planete tourne (25 a 45 ms) : un rendu plus
+    grossier pendant le mouvement.
+  - Hors de portee de ce moteur sans le changer de nature : la simulation
+    dans un autre processus (l'etat entier a transmettre) ; numpy dans la
+    simulation (le multijoueur exige les memes nombres partout).
+
+
+5. LE TUTORIEL (point 2)
+-----------------------
+  - tutoriel.py : 14 etapes (bienvenue, vos gens, marcher, le temps,
+    manger, l'hiver, les savoirs, les clans, les autres peuples, les
+    combats, le journal, les cartes, vers le village, a vous) ; la plupart
+    demandent un geste et passent d'elles-memes a la suivante quand il est
+    fait (tourner la planete, choisir sa bande - la camera revient sur
+    elle -, la faire marcher, deux semaines de temps, ouvrir les savoirs,
+    scinder, ouvrir Peuples et le Journal, changer de carte) ; les autres
+    ont Suivant ; ce que l'etape concerne s'eclaire (le bouton du temps, un
+    onglet, le bouton Carte, le bouton Tuto).
+  - render_tutoriel.py : la fiche en haut a gauche (les cartes d'evenements
+    passent dessous), le bouton Tuto a cote du bouton Carte ; F1.
+  - Le menu : Tutoriel (une partie neuve sur Aurane, graine 7 : une vallee,
+    une riviere, un bon depart).
+  - Son etat est celui de l'ecran (Play.ui["tuto"]) : il ne se sauve pas,
+    ne passe pas par commands.py, ne change rien au jeu (test).
+  - Verifie : joue de bout en bout dans la vraie boucle, sans fenetre, avec
+    les vrais gestes (les 14 etapes) ; il a revele un blocage corrige : au
+    debut aucun savoir n'est a portee (il faut du vecu), l'etape demande
+    donc d'ouvrir l'arbre et d'y lire ce qu'il faut. tests/test_tutoriel.py
+    (etapes, gestes, boutons, Tuto et F1 dans la vraie boucle) ;
+    test_ui_hover (la fiche ouverte, la souris partout).
+
+
+6. LES POINTS 1 ET 4
+-------------------
+  Note dans la VISION et la memoire : il continue d'ajouter (ne pas lui
+  conseiller de geler) ; pas de fin pour l'instant (section 5 : refuse).
+
+
+7. VERIFICATIONS
+---------------
+  - 722 tests (dont test_notes, test_moteur, test_tutoriel) ; tools/notes.py
+    check : 0 probleme ; tools/accents.py : 0.
+  - L'empreinte identique apres chaque etape (decoupage, optimisations,
+    semaine en generateur) : le jeu n'a pas change.
+  - Ses parties (copies) : identiques avant / apres sur 26 semaines.
+  - Le multijoueur : tools/essai_reseau.py 6 (deux processus, 6 ans :
+    identiques) et 3 --exe (deux Kora.exe : identiques).
+  - L'exe : dist/Kora et dist-unfichier reconstruits (Kora.exe n'etait pas
+    ouvert) ; lance seul avec un APPDATA isole : il tourne, sans journal
+    d'erreur.

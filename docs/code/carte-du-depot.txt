@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.20.2
+A jour pour la version : 0.21.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -812,13 +812,13 @@ ETAGE -  l'interface (pygame)
     fonctions : title_layout, title_hit, draw_title_backdrop, draw_title,
       settings_layout, settings_hit, settings_value, draw_settings,
       saved_when, load_layout, load_hit, draw_load, setup_layout, setup_hit,
-      draw_setup, planet_lines, random_name, new_setup, planet_choices,
-      setup_click, setup_key, setup_missing, setup_for_game, setup_ready,
-      title_planet, mp_menu_layout, mp_menu_hit, draw_mp_menu, lobby_layout,
-      lobby_hit, draw_lobby, draw_mp_overlay
+      draw_setup, planet_lines, random_name, tuto_setup, new_setup,
+      planet_choices, setup_click, setup_key, setup_missing, setup_for_game,
+      setup_ready, title_planet, mp_menu_layout, mp_menu_hit, draw_mp_menu,
+      lobby_layout, lobby_hit, draw_lobby, draw_mp_overlay
     constantes : PALETTE, NAME_MAX, TITLE_ZOOM, TITLE_SHIFT, BONUS_ICONS,
-      TITLE_ITEMS, VOLUME_STEP, LOAD_ROW, LOAD_W, START_LABEL, ADDRESS_MAX,
-      MP_ITEMS, MP_HELP, CHAT_SHOWN
+      TITLE_ITEMS, VOLUME_STEP, LOAD_ROW, LOAD_W, START_LABEL, TUTO_PLANET,
+      TUTO_SEED, ADDRESS_MAX, MP_ITEMS, MP_HELP, CHAT_SHOWN
 
   render_numbers.py
     L'onglet LES NOMBRES de l'ecran des savoirs (numbers.py).
@@ -880,6 +880,14 @@ ETAGE -  l'interface (pygame)
       slider_step, draw_treasury
     constantes : SLIDERS
 
+  render_tutoriel.py
+    LE DESSIN DU TUTORIEL (tutoriel.py) : sa fiche en haut a gauche, sous la
+    barre du haut (les cartes d'evenements passent dessous), et le bouton Tuto,
+    a cote du bouton Carte ; ce que l'etape concerne s'eclaire (un onglet, le
+    bouton du temps, celui des cartes).
+    fonctions : button_rect, tuto_layout, tuto_hit, draw_button, draw
+    constantes : CARD_W, PAD, HEAD, FOOT, BUTTON_W
+
   render_village.py
     Fenetres du village et des batailles, dans le style de l'ecran des
     savoirs (cadre dore, cartes en degrade, graphes) :
@@ -934,6 +942,13 @@ ETAGE -  l'interface (pygame)
     fonctions : build, crossings, geometry
     constantes : CARD_W, CARD_H, TURN_W, TURN_H, DUMMY_W, GAP, DUMMY_GAP,
       CHANNEL, SWEEPS, POS_PASSES
+
+  tutoriel.py
+    LE TUTORIEL : les premieres minutes guidees, une fiche a la fois.
+    classes : Step
+    fonctions : mark, is_open, current, guide_open, guide_close, guide_toggle,
+      go, guide_update, doing
+    constantes : DONE_PAUSE, STEPS, BY_KEY
 <<< fin auto >>>
 
 
@@ -1236,6 +1251,8 @@ ETAGE -  l'interface (pygame)
                               quatre semaines sans planter,
   test_troupeau.py            Le troupeau de la steppe : ses conditions, l'IA,
                               les semaines de steppe, la
+  test_tutoriel.py            Le tutoriel (tutoriel.py, render_tutoriel.py) :
+                              des etapes bien formees ;
   test_ui_hover.py            La souris partout : chaque ecran se dessine sans
                               erreur quel que soit ce
   test_ui_pure.py             Dessiner ne change pas la partie. En
@@ -1411,6 +1428,10 @@ ETAGE -  l'interface (pygame)
     Les prerequis toujours, la musique des vraies guerres, l'armee et les
     guerres en un ecran
     Statut : FAIT (version 0.19.0). La carte (4e demande) :
+  specs/2026-10-16-notes-decoupage-moteur-tutoriel.txt
+    Des notes qui disent vrai, un code decoupe, un moteur du temps, un
+    tutoriel
+    Statut : FAIT (version 0.21.0).
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

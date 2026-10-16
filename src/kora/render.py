@@ -38,6 +38,7 @@ from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
 from src.kora.look import country_color
 from src.kora import (
+    render_tutoriel,
     __version__,
     battle as _battle,
     chiefdom,
@@ -289,6 +290,9 @@ class Renderer:
         self.turning_hits: dict = {}
         self.panel_hits: dict = {}
         self.event_hits: dict = {}
+        # Le tutoriel (render_tutoriel.py) : sa fiche, son bouton.
+        self.tuto_hits: dict = {}
+        self.tuto_button = None
         # Le bandeau des situations (uid -> dalle) et leur fenetre.
         self.situation_hits: dict = {}
         self.situation_window: dict = {}
@@ -521,6 +525,9 @@ class Renderer:
         self.draw_side(state, side_panel, log_filter, log_newest, tech_pick, ui)
         # Le grand ecran ouvert : village, commerce ou tresor (screens.py).
         screens.draw(self, state, ui)
+        # Le tutoriel : le bouton Tuto (a cote du bouton Carte), puis sa fiche.
+        render_tutoriel.draw_button(self, ui)
+        render_tutoriel.draw(self, state, ui)
         if ui.get("found") is not None:
             render_village.draw_found(self, state, ui)
         else:
@@ -1352,11 +1359,11 @@ class Renderer:
         theme.tooltip(self.screen, lines, mx + 18, my + 18, 430)
 
     def draw_engine(self, rows: list) -> None:
-        """La fiche du moteur (F3, partie.Play.engine_lines) : en haut a
-        gauche, sous la barre."""
+        """La fiche du moteur (F3, partie.Play.engine_lines) : en haut, au
+        milieu, sous la barre (la gauche est au tutoriel et aux evenements)."""
         tones = {"alerte": C.alerte, "note": C.lin, "": C.os, "titre": C.os}
         lines = [(text, tones.get(tone, C.os), "petit_gras" if tone == "titre" else "petit") for text, tone in rows]
-        theme.tooltip(self.screen, lines, 12, HUD_HEIGHT + 10, 360)
+        theme.tooltip(self.screen, lines, self.screen.get_width() // 2 - 180, HUD_HEIGHT + 10, 360)
 
     def draw_inspect(self, hover_info: dict | None, pin_info: dict | None) -> None:
         """La fiche d'une case : au survol (pres de la souris, INSPECT_MAX_W au

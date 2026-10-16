@@ -1,17 +1,16 @@
-## Nouveau dans la 0.2
+## Nouveau dans la 0.21
 
-**0.2.1** : à plusieurs, après une recopie de la partie (une machine écartée, un joueur qui revient), toutes les
-machines repartent exactement de la même partie (plus de recopies à répétition).
+- **Un tutoriel** : au menu, *Tutoriel* lance une partie guidée, en quatorze petites étapes (tourner la planète,
+  choisir sa bande, la faire marcher, lancer le temps, manger, l'hiver, les savoirs, les clans, les autres
+  peuples...). La fiche avance d'elle-même quand vous avez fait le geste demandé. Dans toute partie, le bouton
+  **Tuto** (en bas à gauche, à côté de *Carte*) ou **F1** l'ouvre et le ferme.
+- **Le jeu ne se fige plus** dans les parties avancées : la semaine se calcule par petits morceaux, entre deux
+  images. Les parties avancées tournent aussi **jusqu'à 2,5 fois plus vite**, sans que rien ne change au jeu
+  (la même partie, les mêmes résultats). **F3** montre ce que coûtent l'image et la semaine, et la vitesse tenue.
+- Sous le capot : le code est rangé en modules plus petits (les villages, leurs bâtiments, leurs troupes ; la
+  diplomatie et la guerre ; la partie à l'écran), et ses notes de travail sont désormais vérifiées.
 
-- **Un menu de démarrage** : *Continuer* votre partie, *Nouvelle partie*, *Multijoueur*. Une nouvelle partie met
-  l'ancienne de côté (elle n'est plus effacée).
-- **Votre peuple** : son nom (ou *Au hasard*), sa couleur, et **2 bonus de départ parmi 12** (chasseurs d'aurochs,
-  enfants du froid, conteurs, guerriers redoutés, peuple fécond…). Ils durent **5 ans**, puis s'éteignent.
-- **Le multijoueur**, jusqu'à 4 joueurs sur la même planète : un joueur héberge, les autres le rejoignent par son
-  adresse ; chacun son peuple (vallée, steppe, forêt, côte), les places libres restent à l'IA. Pause et vitesse pour
-  tous, discussion (**Entrée**), propositions entre joueurs en cartes à décider, reprise d'une partie sauvegardée.
-  Par Internet : un réseau privé commun (Radmin VPN, ZeroTier, Tailscale) ou le port 45170 ouvert chez l'hôte.
-  Tout le monde doit avoir **la même version**. Le détail : la page du projet (README), *Jouer à plusieurs*.
+Toutes les nouveautés, version par version : la page du projet et ses *Releases*.
 
 ## Installer (Windows 10 ou 11, 64 bits)
 
@@ -38,4 +37,5 @@ privés).
 Mise à jour : remplacez simplement l'ancien fichier ; votre partie est gardée dans `%APPDATA%\Kora\saves`.
 
 Les touches et les premiers pas : voir la page du projet (README).
-Un problème ? Envoyez le fichier `%APPDATA%\Kora\kora_erreur.txt` (et votre `kora.json`).
+Un problème ? Envoyez le fichier `%APPDATA%\Kora\kora_erreur.txt` (et la sauvegarde de la partie, dans
+`%APPDATA%\Kora\saves`).

@@ -25,6 +25,7 @@ import time
 import pygame
 
 from src.kora import (
+    tutoriel,
     commands,
     events,
     music,
@@ -179,7 +180,7 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
     ecran, les ordres) ; run() : la boucle, _on_event : un evenement,
     _frame : une image."""
 
-    def __init__(self, renderer, clock, boot, mp=None, save_path=None, director=None) -> None:
+    def __init__(self, renderer, clock, boot, mp=None, save_path=None, director=None, tuto: bool = False) -> None:
         self.renderer, self.clock, self.boot, self.mp = renderer, clock, boot, mp
         # La musique de guerre (music.py) et la fenetre des reglages.
         self.director = director or music.Director(load_prefs())
@@ -209,6 +210,8 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         self.runner = TickRunner(self.state)
         self.show_engine = False
         self.frame_ms = 0.0
+        # les dernieres images (une seconde) : la moyenne et la pire, pour F3
+        self.frame_times: list[float] = []
         # En multijoueur, seul l'hote sauvegarde (a part : la partie solo reste).
         self.save_path = multi_save_path() if self.mp is not None else (save_path or default_save_path())
         self.last_auto = -1
@@ -236,6 +239,9 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
             "guerres": self.wars_click,
         }
         assert set(self.screen_clicks) == set(screens.BY_NAME)
+        # Une partie guidee (le menu : Tutoriel) : la fiche du tutoriel s'ouvre.
+        if tuto:
+            tutoriel.guide_open(self, 0)
 
     def persist(self) -> None:
         if self.mp is not None and self.mp.role != "host":
@@ -276,7 +282,9 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         r = self.runner
         clock = self.state.clock
         num = lambda v: f"{v:.1f}".replace(".", ",")  # noqa: E731
-        out = [("Le moteur (F3)", "titre"), (f"Image : {self.frame_ms:.0f} ms", "")]
+        seen = self.frame_times or [self.frame_ms]
+        mean, worst = sum(seen) / len(seen), max(seen)
+        out = [("Le moteur (F3)", "titre"), (f"Image : {mean:.0f} ms en moyenne, {worst:.0f} ms au pire", "alerte" if worst > 50 else "")]
         if self.mp is None:
             out.append((f"Dernière semaine : {r.step_ms:.0f} ms de calcul", ""))
             want = 0 if clock.paused else clock.ticks_per_second()
@@ -581,6 +589,8 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
                 hover_info = None
         if self.ui["situation_open"] is not None and situations.find(self.state, self.ui["situation_open"]) is None:
             self.close_situation()
+        # Le tutoriel : le geste de l'etape est-il fait ?
+        tutoriel.guide_update(self, dt)
         self.renderer.draw(
             self.state,
             self.camera_x,
@@ -606,4 +616,5 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         if self.show_engine:
             self.renderer.draw_engine(self.engine_lines())
         self.frame_ms = (time.perf_counter() - frame_start) * 1000.0
+        self.frame_times = (self.frame_times + [self.frame_ms])[-60:]
         pygame.display.flip()

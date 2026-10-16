@@ -30,9 +30,11 @@ from src.kora import (
     money,
     orders,
     render_battle,
+    render_tutoriel,
     render_wars,
     screens,
     sites,
+    tutoriel,
 )
 from src.kora.globe import hex_to_globe_screen, look_at_hex, pixel_to_hex_globe, view_params
 from src.kora.layout import (
@@ -318,6 +320,9 @@ class MapInput:
                     self.ui["tech_cam"] = zoom_at(tlay["cam"], view, tlay["world"], view[0] + view[2] / 2, view[1] + view[3] / 2, TREE_ZOOM_STEP if zin else 1.0 / TREE_ZOOM_STEP)
         elif event.key == pygame.K_SPACE:
             self.toggle_pause()
+        elif event.key == pygame.K_F1:
+            # le tutoriel : l'ouvrir (la ou on l'avait laisse) ou le fermer
+            tutoriel.guide_toggle(self)
         elif event.key == pygame.K_F3:
             # la fiche du moteur : l'image, la semaine, la vitesse tenue
             self.show_engine = not self.show_engine
@@ -391,7 +396,8 @@ class MapInput:
             return None
         if event.button in (2, 3):
             mx, my = event.pos
-            if side_hit(self.renderer.side_hits, mx, my) is None and not screens.under_mouse(self.renderer, self.ui, mx, my):
+            on_card = render_tutoriel.tuto_hit(self.renderer.tuto_hits, mx, my) is not None
+            if side_hit(self.renderer.side_hits, mx, my) is None and not screens.under_mouse(self.renderer, self.ui, mx, my) and not on_card:
                 self.dragging = True
                 self.drag_button = event.button
                 self.last_mouse = event.pos
@@ -413,6 +419,14 @@ class MapInput:
                 self.open_situation(sit_uid)
                 return None
             if ui_hit == "bar":
+                return None
+            # Le tutoriel : sa fiche (par-dessus les ecrans), son bouton Tuto.
+            th = render_tutoriel.tuto_hit(self.renderer.tuto_hits, mx, my) if tutoriel.is_open(self.ui) else None
+            if th is not None:
+                self.tuto_click(th)
+                return None
+            if self.renderer.tuto_button is not None and in_rect(self.renderer.tuto_button, mx, my):
+                tutoriel.guide_toggle(self)
                 return None
             scr, schoice = screens.hit(self.renderer, self.ui, mx, my)
             if scr is not None:

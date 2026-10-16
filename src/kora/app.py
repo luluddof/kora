@@ -180,7 +180,7 @@ def run() -> None:
                 save_path = new_save_path()
                 boot = _new_boot(worlds, choice[1], sw, sh)
         _settle_memory()
-        outcome, message = play(renderer, clock, boot, mp, save_path, director)
+        outcome, message = play(renderer, clock, boot, mp, save_path, director, tuto=choice[0] == "tuto")
         if outcome == "quit":
             break
     pygame.quit()
@@ -336,6 +336,8 @@ def title_screen(renderer, clock, worlds, message: str = "", director=None):
                 if hit == "reglages":
                     settings.show()
                     continue
+                if hit == "tutoriel":
+                    return ("tuto", render_menu.tuto_setup(rng))
                 if hit == "nouvelle":
                     setup = _prefilled(render_menu.new_setup(rng))
                     scene.world = worlds.preview(setup.get("planet"))
@@ -481,8 +483,8 @@ def _multiplayer(renderer, clock, worlds, choice):
         pygame.display.flip()
 
 
-def play(renderer, clock, boot, mp=None, save_path=None, director=None) -> tuple[str, str]:
+def play(renderer, clock, boot, mp=None, save_path=None, director=None, tuto: bool = False) -> tuple[str, str]:
     """Une partie, jusqu'au retour au menu ("menu", message) ou au depart
     ("quit", ""). mp : la session multijoueur (session.py), sinon solo ;
     save_path : sa sauvegarde (par defaut kora.json) ; director : la musique."""
-    return partie.Play(renderer, clock, boot, mp, save_path, director).run()
+    return partie.Play(renderer, clock, boot, mp, save_path, director, tuto=tuto).run()

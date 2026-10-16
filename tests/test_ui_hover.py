@@ -73,6 +73,10 @@ def test_every_screen_survives_the_mouse_everywhere(monkeypatch):
     screens.append((None, {"trade_open": True, "trade_partner": others[0]}))
     screens.append((None, {"situation_open": inst.uid}))
     screens.append(("battle", {}))
+    # Le tutoriel ouvert (une etape a geste, une etape a lire), par-dessus un
+    # panneau et sous un grand ecran.
+    screens.append(("savoirs", {"tuto": {"open": True, "step": 6, "mark": {}, "wait": None}}))
+    screens.append((None, {"tuto": {"open": True, "step": 4, "mark": {}, "wait": None}, "village_open": mine[0].id}))
     before = session.sync_digest(st)
     pos = {"xy": (0, 0)}
     monkeypatch.setattr(pygame.mouse, "get_pos", lambda: pos["xy"])

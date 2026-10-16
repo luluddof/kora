@@ -20,7 +20,7 @@ SRC = ROOT / "src" / "kora"
 
 # La presentation (pygame) ; le reste est la simulation et ses outils.
 PRESENTATION = {
-    "app", "partie", "partie_carte", "partie_ecrans", "render", "theme", "look", "globe", "globe_draw", "screens",
+    "app", "partie", "partie_carte", "partie_ecrans", "tutoriel", "render", "theme", "look", "globe", "globe_draw", "screens",
     "layout", "tree_graph", "music",
 }
 

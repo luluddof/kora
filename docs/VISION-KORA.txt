@@ -644,7 +644,7 @@ lente, bandes dessinees petites a taille fixe.
     (ruisseau, riviere, fleuve) sont notes pour toute recuisson.
   - La fiche de survol d'une case debordait : FAIT (0.20.2) : la ligne de
     la riviere en peu de mots, la fiche ne depasse plus 360 pixels.
-2026-10-16
+2026-10-16 (0.21.0)
   - "En lisant bien les docs qui t'aident a comprendre le projet,
     dissemines un peu partout, je voudrais que tu poses un regard objectif
     sur ce projet." FAIT (reponse ecrite) : un socle technique solide
@@ -658,9 +658,9 @@ lente, bandes dessinees petites a taille fixe.
     grossit (villages, app, diplo), pas de fin ni d'age suivant.
   - Ses reponses, point par point :
     1. "Je continuerais [d'ajouter], car c'est ce que j'aime faire." NOTE.
-    2. "Pourquoi pas un rapide tutoriel avec un bouton Tuto." EN COURS.
+    2. "Pourquoi pas un rapide tutoriel avec un bouton Tuto." FAIT (spec 2026-10-16-notes-decoupage-moteur-tutoriel.txt).
     3. "Corriger les notes que l'IA regarde, puis faire en sorte qu'elle
-       continue de les corriger et de les maintenir a l'avenir." EN COURS :
+       continue de les corriger et de les maintenir a l'avenir." FAIT (spec 2026-10-16-notes-decoupage-moteur-tutoriel.txt) :
        tools/notes.py (status, check, write) et tests/test_notes.py ; les
        dates corrigees d'apres git (onze specs renommees) ; les regles du
        code regroupees par theme dans docs/code/ajouter-un-systeme.txt ;
@@ -669,10 +669,10 @@ lente, bandes dessinees petites a taille fixe.
     4. "Je ne veux pas de fin pour l'instant." NOTE (section 5 : refuse).
     5. "Oui pour le decoupage, tant qu'il est intelligent et permet de
        modifier, d'ameliorer et d'ajouter facilement et efficacement des
-       fonctionnalites." EN COURS.
+       fonctionnalites." FAIT (spec 2026-10-16-notes-decoupage-moteur-tutoriel.txt).
     6. "Je prefere garder Python, mais si tu peux transformer le projet
        pour qu'avec Python et ce qui est deja fait on ait un moteur cree
-       pour le jeu, pour qu'il tourne bien, je ne dis pas non." EN COURS.
+       pour le jeu, pour qu'il tourne bien, je ne dis pas non." FAIT (spec 2026-10-16-notes-decoupage-moteur-tutoriel.txt).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -725,11 +725,12 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.20.2
+Version du jeu : 0.21.0
 
-Chantier en cours (2026-10-16) : ses reponses au regard objectif (section
-3) : les notes justes et tenues, le decoupage des gros modules, le moteur
-fait pour le jeu, le tutoriel.
+Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
+decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
+morceaux, 2,5x plus vite), tutoriel (menu, bouton Tuto, F1). Exe reconstruit ;
+PAS encore pousse ni publie (v0.21.0 a etiqueter).
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
