@@ -132,3 +132,8 @@ qu'on appelle en anglais la 'flavor', et c'est ce qui rend un jeu 'juicy'."
     test_revolte (11 : affranchir, la crise, l'IA qui affranchit) ; la
     suite entiere ; notes.py check : 0 ; accents : 0.
   - L'empreinte identique (robot, repos).
+  - Deux parties d'IA de 120 ans (aurane, graines 3 et 11) : 55 et 53
+    tributaires a la fin ; un suzerain IA a affranchi 3 fois dans l'une,
+    0 dans l'autre ; aucune revolte. La regle joue, rarement.
+  - L'exe reconstruit (dist/Kora.exe, un seul fichier ; dist/Kora : il ne
+    tournait pas) ; essai reseau avec l'exe : identiques.
