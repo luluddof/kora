@@ -289,6 +289,17 @@ La carte du depot (section 4) donne cet ordre en detail.
     l'action "revolte", guerre.revolt_verdict), pas avant guerre.oath_left,
     et le pays de son suzerain lui fait la guerre (un but, un motif) ;
     diplo.break_pact garde le serment de qui le doit (0.22.0).
+  - Un serment de tributaire ne tombe que par guerre.rebel (le tributaire)
+    ou guerre.free (le suzerain l'affranchit : un bienfait, relation
+    +FREED_RELATION) ; les deux passent par guerre._drop_oath (ses
+    guerriers quittent l'ost de l'autre). break_pact(kind=None) n'en touche
+    aucun, dans aucun sens. Un geste qui ne se defait pas, a l'ecran
+    Peuples : deux clics (partie_ecrans.CONFIRM_TWICE) ; une action sans
+    attente : diplo.NO_COOLDOWN (0.23.0).
+  - "En guerre avec vous" a l'ecran (le lisere rouge, le survol) :
+    guerre.hostiles (guerre declaree, ou raid de moins d'un an entre les
+    pays, sans paix depuis) ; at_war, lui, compte aussi un simple motif
+    (il ouvre la guerre) : ne pas confondre (0.23.0).
   - Une decision de l'IA envers un autre peuple passe par l'approche de
     son chef (approach.factor ; une reponse : approach.accept ; 0.8.0).
   - Attaquer : guerre.may_start (un tributaire ne declare pas de guerre) en
@@ -370,6 +381,15 @@ La carte du depot (section 4) donne cet ordre en detail.
   - Une unite qui marche (un chemin, ou un ordre de marche) porte son signe :
     layout.band_heading dit ou et comment (marche, repli, retour),
     render._draw_heading le dessine, par-dessus les chemins (0.22.0).
+  - Les autres signes des jetons (la faim de vos unites : sim.band_hunger ;
+    le lisere des hostiles : guerre.hostiles) se calculent dans
+    Renderer._band_marks, jamais a chaque image (la faim par semaine de jeu,
+    l'hostilite deux fois par seconde) ; un signe de quelques pixels se
+    DESSINE (render._draw_hunger : un bol), une icone SVG si petite ne se
+    lit pas ; ce que le signe montre, le survol le dit en mots (0.23.0).
+  - Un compte a rebours affiche dit sa derniere semaine en mots
+    (render_panels.deadline_text : "derniere semaine", jamais "encore 0
+    sem.") (0.23.0).
   - L'armee (lever, troupes) vit dans l'ecran des guerres
     (render_wars._draw_army) ; plus de panneau lateral Armee (0.19.0).
   - La musique et les sons sont de l'interface (music.py), jamais dans la
@@ -415,12 +435,12 @@ seulement si le decoupage rend le systeme plus simple a changer) :
   tech.py                ~1400 lignes
   render_village.py      ~1400 lignes
   battle.py              ~1300 lignes
-  events_data.py         ~1300 lignes
   sim.py                 ~1300 lignes
+  events_data.py         ~1300 lignes
   goods.py               ~1200 lignes
   world.py               ~1200 lignes
   villages.py            ~1200 lignes
-  render_panels.py       ~1000 lignes
+  render_panels.py       ~1100 lignes
 <<< fin auto >>>
 
   - Les systemes de l'etage 5 forment encore un cercle (ils s'importent en

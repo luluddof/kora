@@ -45,6 +45,13 @@ from src.kora.sim import player_home_hex
 from src.kora.situations import SPECS
 from src.kora.types import Hex
 
+# Les gestes de l'ecran Peuples qui ne se defont pas : un second clic les
+# confirme (ce que dit le premier).
+CONFIRM_TWICE = {
+    "revolte": "Cliquez encore pour vous révolter : leur pays vous fera la guerre.",
+    "affranchir": "Cliquez encore pour les affranchir : leur tribut et leurs guerriers s'en vont.",
+}
+
 
 class ScreenClicks:
     def open_found(self, band_id) -> None:
@@ -594,14 +601,14 @@ class ScreenClicks:
             tid = self.ui.get("people_pick")
             action = choice.split(":")[1]
             if tid is not None:
-                if diplo.on_cooldown(self.state, self.state.viewer, tid, action) and action not in ("rompre", "revolte"):
+                if diplo.on_cooldown(self.state, self.state.viewer, tid, action) and action not in diplo.NO_COOLDOWN:
                     self.toast("Vous avez déjà proposé cela récemment.")
-                elif action == "revolte" and self.ui.get("revolt_confirm") != (tid, self.state.tick_count):
-                    # Se revolter ne se defait pas : un second clic le confirme.
-                    self.ui["revolt_confirm"] = (tid, self.state.tick_count)
-                    self.toast("Cliquez encore pour vous révolter : leur pays vous fera la guerre.")
+                elif action in CONFIRM_TWICE and self.ui.get("diplo_confirm") != (tid, action, self.state.tick_count):
+                    # Se revolter, affranchir : cela ne se defait pas ; un second clic le confirme.
+                    self.ui["diplo_confirm"] = (tid, action, self.state.tick_count)
+                    self.toast(CONFIRM_TWICE[action])
                 else:
-                    self.ui["revolt_confirm"] = None
+                    self.ui["diplo_confirm"] = None
                     self.issue(commands.make(self.me(), "diplo", tid, action))
             return True
         return choice == "panel"

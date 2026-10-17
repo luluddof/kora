@@ -1305,16 +1305,24 @@ class RevolteTributaires(Spec):
     era = 1
     icon = "balance"
     about = "Un peuple qui vous paie le tribut se sent assez fort, ou assez maltraité, pour rejeter votre joug."
-    goal = "Le tenir : montrer vos guerriers près de ses villages, lui faire des présents, ou le menacer. Un tributaire tenu ne gronde plus."
+    goal = "Le tenir : montrer vos guerriers près de ses villages, lui faire des présents, ou le menacer. Un tributaire tenu ne gronde plus. Ou l'affranchir de bonne grâce : il part libre, sans guerre."
     fail = "Ratée : il se révolte et ne paie plus ; votre pays lui fait la guerre pour le soumettre à nouveau."
     stages = (("Le tribut arrive en retard", "Les porteurs viennent les mains moins pleines ; les anciens du tributaire parlent haut.", {"diplo": -5}),)
     actions = (
         Action("presents", "Faire des présents", "Des vivres au chef tributaire : il se souvient de ce que vous valez.", vivres=150, progress=30, cooldown=4 * MONTH),
         Action("menacer", "Menacer", "Vos envoyés rappellent ce qu'il en coûte de vous trahir.", prestige=6, progress=25, cooldown=4 * MONTH),
+        # L'IA ne le choisit pas au hasard (score < 0) : elle affranchit
+        # seulement quand elle perdrait la guerre d'independance (month).
+        Action("affranchir", "L'affranchir", "Le délier de son serment, de bonne grâce : il part libre, sans guerre, et s'en souviendra (relation +15).", progress=100, score=-1.0, cooldown=YEAR),
     )
     months = 8
     cooldown = 3 * YEAR
     natural = 5.0
+    # L'IA suzeraine affranchit plutot que de perdre la guerre : apres
+    # FREE_AFTER mois de crise, si le tributaire est au moins aussi fort que
+    # le reste de son pays (guerre.revolt_odds).
+    FREE_AFTER = 4
+    FREE_ODDS = 1.0
 
     def candidates(self, state):
         out = []
@@ -1351,6 +1359,13 @@ class RevolteTributaires(Spec):
             return
         if chiefdom.unrest(state, vassal, lord) < chiefdom.REVOLT_UNREST:
             inst.progress += 15
+        elif (
+            not state.tribes[lord].is_player
+            and (state.tick_count - inst.started) // MONTH >= self.FREE_AFTER
+            and guerre.revolt_odds(state, vassal, lord)[1] >= self.FREE_ODDS
+        ):
+            guerre.free(state, lord, vassal)
+            inst.progress = 100.0
 
     def act(self, state, inst, tid, action):
         vassal = inst.data.get("vassal", 0)
@@ -1360,6 +1375,8 @@ class RevolteTributaires(Spec):
             diplo.add_mod(state, tid, vassal, "cadeau", 10, actor=tid)
         elif action == "menacer":
             diplo.add_mod(state, tid, vassal, "intimidation", -3, actor=tid)
+        elif action == "affranchir" and chiefdom.overlord_of(state, vassal) == tid:
+            guerre.free(state, tid, vassal)
 
     def end(self, state, inst):
         if inst.outcome != "ratee":

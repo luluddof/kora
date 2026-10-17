@@ -45,6 +45,8 @@ from src.kora import (
     diplo,
     draws,
     events,
+    grain,
+    guerre,
     influence,
     learning,
     memory,
@@ -198,6 +200,9 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
                 "population": band.population,
                 "stock": band.stock,
                 "ally": band.tribe_id == me,
+                "hunger": band_hunger(state, band) if band.tribe_id == me else "",
+                "village": bool(band.village),
+                "hostile": guerre.hostile(state, me, band.tribe_id),
             }
             break
     site = sites.site_on_hex(state, placed)
@@ -236,6 +241,43 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
         "walk": walk_line(state, placed),
         "river": river_line(state.world, placed),
     }
+
+
+# La faim d'une unite (son signe sur la carte) : la disette quand la collecte
+# ne suffit pas et que la reserve tombe sous ce nombre de semaines (la meme
+# regle que l'alerte de la fiche).
+HUNGER_STOCK_WEEKS = 4
+HUNGER_TEXT = {
+    "famine": "Elle meurt de faim : des gens meurent chaque semaine. Bougez, scindez, ou nourrissez-la.",
+    "disette": "Disette : la collecte ne suffit plus et la réserve baisse.",
+    "village_famine": "Le village a faim : des gens meurent. Achetez du grain (fiche du village).",
+    "village_disette": "Disette en vue : le grenier ne tiendra pas jusqu'à la récolte.",
+}
+
+
+def hunger_text(kind: str, village: bool) -> str:
+    return HUNGER_TEXT[("village_" if village else "") + kind] if kind else ""
+
+
+def band_hunger(state: GameState, band: Band) -> str:
+    """"famine" (elle meurt de faim : cette semaine ou la precedente),
+    "disette" (la collecte ne suffit pas et la reserve baisse ; un village :
+    sa disette en vue, grain.shortfall), ou "" (elle mange)."""
+    if band.population <= 0:
+        return ""
+    if band.famine_tick >= state.tick_count - 2:
+        return "famine"
+    if band.village:
+        return "disette" if grain.in_dearth(state, band) or grain.shortfall(state, band) > 0 else ""
+    if band.stock / band.population >= HUNGER_STOCK_WEEKS:
+        return ""
+    herd = _herd_ok(state, band.tribe_id)
+    bonus = bonus_of(state, band.tribe_id)
+    forage = sum(
+        food_production(state.world, h, state.world.hex_season(h), herd=herd, bonus=bonus)
+        for h in forage_hexes(state, band)
+    )
+    return "disette" if forage < band.population else ""
 
 
 def band_summary(state: GameState, band_id: int) -> dict | None:
@@ -281,6 +323,7 @@ def band_summary(state: GameState, band_id: int) -> dict | None:
         "army": band.kind == "armee",
         "force": band_force(state, band),
         "obeys": chiefs.obeys(state, band),
+        "hunger": band_hunger(state, band),
         "site": sites.site_lines(state, sites.own_site_at(state, band))
         if sites.own_site_at(state, band) and not band.village
         else [],
@@ -353,7 +396,9 @@ def band_lines(info: dict) -> list[str]:
         )
     elif not info.get("obeys", True):
         lines.append("Indocile : ce clan n'obéit plus. Rapprochez le chef ou honorez-le.")
-    elif info["forage"] < info["need"] and stock < 4:
+    elif info.get("hunger") == "famine":
+        lines.append(hunger_text("famine", False))
+    elif info["forage"] < info["need"] and stock < HUNGER_STOCK_WEEKS:
         lines.append("La collecte ne suffit pas : bougez ou scindez.")
     return lines
 
@@ -408,7 +453,9 @@ def inspect_lines(info: dict) -> list[str]:
         band = info.get("band")
         if band:
             who = "Vous" if band.get("ally") else band.get("name", "?")
-            lines.append(f"{who}  ·  {band['population']}")
+            lines.append(f"{who}  ·  {band['population']}" + ("  ·  en guerre avec vous" if band.get("hostile") else ""))
+            if band.get("hunger"):
+                lines.append(hunger_text(band["hunger"], band.get("village", False)))
     lines.extend(info.get("resources") or [])
     lines.extend(info.get("zone") or [])
     lines.extend(info.get("site") or [])

@@ -47,6 +47,7 @@ from src.kora import (
     diplo,
     draws,
     goods,
+    guerre,
     laws,
     learning,
     look,
@@ -64,7 +65,7 @@ from src.kora import (
     turning,
     theme,
 )
-from src.kora.sim import band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
+from src.kora.sim import band_hunger, band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
 from src.kora.gamestate import GameState, human_dead, log_of
 from src.kora.types import Hex, Season
 from src.kora.vision import enemy_band_visible, is_explored, is_visible, vision_of
@@ -401,6 +402,26 @@ class Renderer:
         if dist >= 1.72:
             self._draw_atlas_globe(target, state, planet, yaw, pitch, cx, cy, focal, dist)
 
+    def _band_marks(self, state: GameState) -> tuple[dict, set]:
+        """Ce que disent les jetons au-dela de la marche : la FAIM de vos bandes
+        (sim.band_hunger, une fois par semaine de jeu) et les peuples EN GUERRE
+        avec vous (guerre.hostiles, deux fois par seconde : une guerre declaree
+        en pause se voit aussitot)."""
+        key = (id(state), state.tick_count, state.viewer)
+        if getattr(self, "_hunger_key", None) != key:
+            self._hunger_key = key
+            self._hunger = {}
+            for b in state.bands.values():
+                if b.tribe_id == state.viewer:
+                    h = band_hunger(state, b)
+                    if h:
+                        self._hunger[b.id] = h
+        key2 = (*key, pygame.time.get_ticks() // 500)
+        if getattr(self, "_hostile_key", None) != key2:
+            self._hostile_key = key2
+            self._hostile = guerre.hostiles(state, state.viewer)
+        return self._hunger, self._hostile
+
     def _draw_atlas_globe(self, target, state, planet, yaw, pitch, cx, cy, focal, dist) -> None:
         world = state.world
         for lab in self._atlas_labels(world):
@@ -453,6 +474,8 @@ class Renderer:
         tags = []
         # Les signes de la marche : dessines en dernier, par-dessus les chemins.
         heads = []
+        hunger, hostile = self._band_marks(state)
+        hungry = []
         for band_id, (bx, by, radius) in spots.items():
             band = state.bands[band_id]
             if bx < -40 or by < -40 or bx > w + 40 or by > h + 40:
@@ -469,6 +492,11 @@ class Renderer:
                 _draw_troop(self.screen, ix, iy, colr, max(6, radius))
             else:
                 _draw_token(self.screen, ix, iy, colr, radius)
+            if band.tribe_id in hostile:
+                # Un lisere rouge : un peuple en guerre avec vous (les neutres n'en ont pas).
+                _draw_hostile(self.screen, ix, iy, radius + (4 if band.village else 3), band.village)
+            if band.id in hunger:
+                hungry.append((ix, iy, radius + (2 if band.village else 0), hunger[band.id]))
             if band.tribe_id == state.viewer and not chiefs.is_chief_band(state, band):
                 # Clan qui se detache : anneau orange (indocile), rouge (pret a partir).
                 if band.loyalty < chiefs.LEAVE:
@@ -509,6 +537,8 @@ class Renderer:
             self._outlined_text(self.tiny, tag, (250, 246, 232), tx + tw / 2, ty)
         for head in heads:
             _draw_heading(self.screen, *head)
+        for mark in hungry:
+            _draw_hunger(self.screen, *mark)
         self.draw_hud(state)
         self._legend_state = state
         extra_y = HUD_HEIGHT + 8
@@ -1556,6 +1586,29 @@ def _draw_heading(surf: pygame.Surface, cx: int, cy: int, radius: int, dx: float
     pygame.draw.polygon(surf, C.nuit, [(x + 1, y + 2) for x, y in pts])
     pygame.draw.polygon(surf, color, pts)
     pygame.draw.polygon(surf, C.nuit, pts, 2)
+
+
+def _draw_hostile(surf: pygame.Surface, cx: int, cy: int, r: int, square: bool) -> None:
+    """Le lisere rouge d'une unite en guerre avec vous : rouge vif, cerne de
+    sombre pour se detacher de toutes les terres."""
+    _ring(surf, C.nuit, cx, cy, r + 1, square)
+    _ring(surf, C.mauvais, cx, cy, r, square)
+    _ring(surf, C.mauvais, cx, cy, r - 1, square)
+
+
+def _draw_hunger(surf: pygame.Surface, cx: int, cy: int, radius: int, kind: str) -> None:
+    """Le signe de la faim, en bas a gauche du jeton : un bol vide sur une
+    pastille rouge si elle meurt de faim (famine), ocre si sa collecte ne
+    suffit plus et que sa reserve baisse (disette). Dessine a la main : une
+    icone de 13 pixels ne se lit pas."""
+    color = C.mauvais if kind == "famine" else C.ocre_jaune
+    d = int(radius * 0.72) + 5
+    x, y = cx - d, cy + d
+    pygame.draw.circle(surf, C.nuit, (x, y), 9)
+    pygame.draw.circle(surf, color, (x, y), 8)
+    bowl = [(x - 5, y - 2), (x + 5, y - 2)] + [(x + round(5 * math.cos(a / 6 * math.pi)), y - 2 + round(5 * math.sin(a / 6 * math.pi))) for a in range(1, 6)]
+    pygame.draw.polygon(surf, C.nuit, bowl)
+    pygame.draw.line(surf, C.nuit, (x - 2, y + 4), (x + 2, y + 4), 2)
 
 
 def _draw_token(surf: pygame.Surface, cx: int, cy: int, color, radius: int) -> None:

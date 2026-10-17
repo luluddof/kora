@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.22.0
+A jour pour la version : 0.23.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -354,22 +354,23 @@ ETAGE 5  LES SYSTEMES
       TRIBUTE_EVERY, GIFT_RANGE, GIFT_SIZES, PRESENT_SIZES, PRESENT_NO_MONEY,
       AI_PRESENT, INVITE_COST, BETRAYAL_PRESTIGE, DIFFUSE_NEIGHBOR,
       DIFFUSE_ALLY, DIFFUSE_CAP, OFFER_COOLDOWN, MOD_TEXT, PEACE_PACTS,
-      ALLIANCE_WEAR, ALLIANCE_WARN, ACTIONS, ACTION_LABELS, HUMAN_OFFERS,
-      INVITE_RANGE, AI_WAR_WEEKS, AI_ALLY_FRIENDS, PROPOSE_EVERY
+      ALLIANCE_WEAR, ALLIANCE_WARN, ACTIONS, NO_COOLDOWN, ACTION_LABELS,
+      HUMAN_OFFERS, INVITE_RANGE, AI_WAR_WEEKS, AI_ALLY_FRIENDS, PROPOSE_EVERY
 
   guerre.py
     LA GUERRE DECLAREE : qui est en paix, qui est en guerre, pourquoi, et
     comment elle finit.
     fonctions : migrate, diplomatic, needs_declaration, declared_war,
-      at_peace, at_war, may_start, set_casus, motive_against, casus_of,
-      add_score, score, weariness, long_war, truce_mood, goal_of, goals_of,
-      submit, goal_done, submit_verdict, fade_wars, war_allies, war_pairs,
-      war_verdict, declare_war, end_war, wars_of, vassal_pact, oath_weeks,
-      oath_left, revolt_verdict, rebel
+      at_peace, at_war, hostiles, hostile, may_start, set_casus,
+      motive_against, casus_of, add_score, score, weariness, long_war,
+      truce_mood, goal_of, goals_of, submit, goal_done, submit_verdict,
+      fade_wars, war_allies, war_pairs, war_verdict, declare_war, end_war,
+      wars_of, vassal_pact, oath_weeks, oath_left, revolt_odds,
+      revolt_verdict, rebel, free_verdict, free
     constantes : WAR, WAR_FADE_WEEKS, DECLARE_RELATION, DECLARE_PRESTIGE,
       WAR_WEEKS, WIN_SCORE, VILLAGE_SCORE, SIEGE_SCORE, SCORE_CAP,
       SUBMIT_BASE, WEARY_SEASON, WEARY_STEP, WEARY_CAP, LEAD_PER, LEAD_CAP,
-      PERJURY_PRESTIGE, HOSTAGES_PRESTIGE, REBEL_MOTIVE_WEEKS
+      PERJURY_PRESTIGE, HOSTAGES_PRESTIGE, REBEL_MOTIVE_WEEKS, FREED_RELATION
 
   goods.py
     Metiers des villages, marche du peuple, routes commerciales.
@@ -645,14 +646,16 @@ ETAGE 8  la semaine du monde
     LA SEMAINE DU MONDE : une partie neuve (new_game), un pas (tick), la
     semaine (_week), et ce que le joueur lit d'une case ou d'une bande.
     classes : TickRunner
-    fonctions : hex_inspect, band_summary, band_lines, band_warn_from,
-      walk_line, river_line, inspect_lines, famine_loss, collect_food,
-      update_exhaustion, remove_dead_bands, resolve_joins, apply_movement,
-      update_population, update_influence, player_home_hex, fight_at,
-      fight_lines, fight_out, update_prestige, snapshot, new_game,
-      add_minor_peoples, apply_season_spread, tick, tick_steps, consume_ticks
+    fonctions : hex_inspect, hunger_text, band_hunger, band_summary,
+      band_lines, band_warn_from, walk_line, river_line, inspect_lines,
+      famine_loss, collect_food, update_exhaustion, remove_dead_bands,
+      resolve_joins, apply_movement, update_population, update_influence,
+      player_home_hex, fight_at, fight_lines, fight_out, update_prestige,
+      snapshot, new_game, add_minor_peoples, apply_season_spread, tick,
+      tick_steps, consume_ticks
     constantes : RIVER_NAME_FR, FAMINE_RATE, WINTER_TAIL_WEEK, GROWTH_RATE,
-      RUNNER_MAX_DUE, RUNNER_BUDGET, RUNNER_BUDGET_LATE
+      HUNGER_STOCK_WEEKS, HUNGER_TEXT, RUNNER_MAX_DUE, RUNNER_BUDGET,
+      RUNNER_BUDGET_LATE
 
 
 ETAGE 9  les ordres des joueurs
@@ -771,6 +774,7 @@ ETAGE -  l'interface (pygame)
     LA PARTIE A L'ECRAN, COTE ECRANS : les grands ecrans, les fenetres et
     les panneaux lateraux (ScreenClicks, une des bases de partie.Play).
     classes : ScreenClicks
+    constantes : CONFIRM_TWICE
 
   render.py
     LE DESSIN DE LA PARTIE (pygame) : Renderer, la planete et tout ce qui
@@ -832,9 +836,9 @@ ETAGE -  l'interface (pygame)
     cartes d'evenements.
     fonctions : event_icon, tribe_alert, has_nomads, tribe_tab_label,
       start_bonus_text, draw_tribe, draw_villages, known_peoples,
-      draw_peoples, draw_event_cards, event_modal_layout, draw_event_modal,
-      commerce_ready, treasury_alert, commerce_alert, wars_ready, wars_alert,
-      army_ready
+      draw_peoples, draw_event_cards, deadline_text, event_modal_layout,
+      draw_event_modal, commerce_ready, treasury_alert, commerce_alert,
+      wars_ready, wars_alert, army_ready
     constantes : EVENT_WORDS, MOOD_ICONS, MOOD_STATE, BG, EDGE, TEXT, SOFT,
       NOTE, GOLD, GOOD, BAD, WARN, APPROACH_COLORS, WAR_NEWS
 
@@ -999,7 +1003,14 @@ ETAGE -  l'interface (pygame)
                                       chiefdom.country (le pays)
   La revolte d'un tributaire          guerre.rebel, guerre.revolt_verdict,
                                       guerre.oath_left ; tech.VASSAL_OATH_WEEKS
+  Affranchir un tributaire            guerre.free, guerre.free_verdict,
+                                      guerre.FREED_RELATION ; la crise :
+                                      situations.RevolteTributaires
   Le signe de la marche (jetons)      layout.band_heading, render._draw_heading
+  La faim, le lisere des hostiles     sim.band_hunger, guerre.hostiles ;
+  (jetons)                            render._draw_hunger, _draw_hostile,
+                                      Renderer._band_marks
+  Un compte a rebours affiche         render_panels.deadline_text
   L'approche des chefs de l'IA        approach.PROFILES, approach.ACCEPT
   L'IA (bandes, villages, troupes)    ai.py ; quand elle attaque : ai_war.py
   Chefferie, tributaires, revoltes    chiefdom.py
@@ -1244,6 +1255,8 @@ ETAGE -  l'interface (pygame)
                               (world.py) : pas d'un coup, jusqu'a
   test_session.py             Multijoueur de bout en bout : un hote et un ami
                               relies par TCP (sur cette
+  test_signes_carte.py        Ce que disent les jetons sur la carte
+                              (2026-10-17, au-dela du signe de la
   test_sites.py               Caches et campements : debloques par les
                               savoirs.
   test_situations.py          Les situations (situations.py) : crises et
@@ -1439,9 +1452,12 @@ ETAGE -  l'interface (pygame)
     Des notes qui disent vrai, un code decoupe, un moteur du temps, un
     tutoriel
     Statut : FAIT (version 0.21.0).
+  specs/2026-10-17-faim-hostiles-affranchir.txt
+    La faim et les hostiles sur la carte, la derniere semaine, Affranchir
+    Statut : FAIT (version 0.23.0) ; section 5 : PROPOSE.
   specs/2026-10-17-signe-de-marche-revolte-des-tributaires.txt
     Le signe de la marche, la revolte des tributaires
-    Statut : FAIT (version 0.22.0) ; section 4 : PROPOSE.
+    Statut : FAIT (version 0.22.0) ; section 4 : V4, V5, V8, V9
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

@@ -1,0 +1,134 @@
+Kora - La faim et les hostiles sur la carte, la derniere semaine, Affranchir
+==========================================================================
+Date : 2026-10-17. Statut : FAIT (version 0.23.0) ; section 5 : PROPOSE.
+
+Ses mots (il choisit dans la liste V1-V9 de la 0.22) : "V4 - un signe de
+faim sur les jetons : bande en famine, ou dont la collecte ne suffit plus.
+V5 - un lisere rouge sur les unites etrangeres en guerre avec toi, pour
+distinguer les hostiles des neutres. Je prends. Les cartes d'evenements
+affichent 'encore 0 sem.' la derniere semaine ; il vaudrait mieux 'derniere
+semaine'. V9 - cote suzerain, le bouton qui libere un tributaire devrait
+s'appeler 'Affranchir' et donner de la relation, au lieu d'un malus de
+rupture. Ca aussi je prends. Propose d'autres choses comme ca : c'est ce
+qu'on appelle en anglais la 'flavor', et c'est ce qui rend un jeu 'juicy'."
+
+
+1. LE SIGNE DE LA FAIM (V4)
+--------------------------
+  - Une pastille en bas a gauche du jeton de VOS unites (bande, troupe,
+    village), un bol vide dessine a la main (une icone de 13 pixels ne se
+    lisait pas) : ROUGE, elle meurt de faim (des gens sont morts cette
+    semaine ou la precedente) ; OCRE, la disette (la collecte ne suffit
+    plus et la reserve est sous 4 semaines ; un village : sa disette ou sa
+    disette en vue, comme sa fiche - le grenier ne tiendra pas jusqu'a la
+    recolte). Dessinee en dernier, par-dessus la lueur de la selection.
+  - Le survol de la case le dit en mots ; la fiche de la bande aussi (la
+    famine avant "la collecte ne suffit pas").
+  - Les etrangers n'en ont pas : leur faim ne se voit pas de loin.
+  - Code : sim.band_hunger (pur ; HUNGER_STOCK_WEEKS, hunger_text),
+    render._draw_hunger, Renderer._band_marks (une fois par semaine de jeu).
+
+
+2. LE LISERE DES HOSTILES (V5)
+-----------------------------
+  - Un lisere rouge vif, cerne de sombre, autour des unites etrangeres d'un
+    peuple EN GUERRE avec vous : une guerre declaree, ou un raid, un
+    accrochage entre vos deux pays depuis moins d'un an, sans paix faite
+    depuis. Un simple motif (casus) n'est pas une guerre. Un raid contre
+    votre tributaire rend hostile tout le pays de l'agresseur. Les neutres
+    n'ont rien.
+  - Au survol : "Elo · 29 · en guerre avec vous".
+  - Une guerre declaree en pause se voit aussitot (relu deux fois par
+    seconde ; une seule passe sur les raids : 0,1 ms pour ses 122 peuples,
+    au lieu de 5 ms la premiere version).
+  - Code : guerre.hostiles / hostile, render._draw_hostile.
+
+
+3. "DERNIERE SEMAINE" (V8)
+-------------------------
+  - La carte d'un evenement dit "derniere semaine" au lieu de "encore 0
+    sem." ; sa fenetre "Sans reponse cette semaine, le choix par defaut
+    sera fait" (en ocre) au lieu de "dans 0 semaines". Le choix par defaut
+    tombe bien a la fin de cette semaine-la (events : deadline <= tick).
+  - Code : render_panels.deadline_text.
+
+
+4. AFFRANCHIR (V9)
+-----------------
+  - Chez votre tributaire, l'ecran Peuples montre "Affranchir" (a la place
+    de "Declarer la guerre") : "Ils vous en sauront gre : relation +15".
+    Deux clics (cela ne se defait pas). Pas de prestige perdu ni de
+    "rupture" : le souvenir "Vous les avez affranchis" (+15, s'efface
+    lentement). Leur tribut cesse, leurs guerriers quittent votre ost ;
+    leurs propres tributaires restent les leurs. Le journal le dit aux deux.
+  - "Rompre le pacte" ne touche plus aucun serment, dans les deux sens : chez
+    son tributaire, il rompt les autres accords (refuse s'il n'y a que le
+    serment : "on ne rompt pas, on affranchit").
+  - La crise "Les tributaires grondent" a une troisieme issue : "L'affranchir"
+    (de bonne grace : il part libre, sans guerre ; la crise est resolue).
+    L'IA ne la tire pas au hasard ; un suzerain IA affranchit apres 4 mois de
+    crise seulement s'il perdrait la guerre d'independance (le tributaire au
+    moins aussi fort que le reste de son pays : guerre.revolt_odds).
+  - Code : guerre.free, free_verdict, FREED_RELATION, _drop_oath (partage
+    avec rebel), revolt_odds ; diplo (l'action "affranchir", NO_COOLDOWN,
+    le souvenir "affranchi", break_pact garde tout serment) ;
+    situations.RevolteTributaires ; partie_ecrans.CONFIRM_TWICE.
+
+
+5. LA "FLAVOR" ET LE "JUICE" : D'AUTRES IDEES (PROPOSEES, a son choix)
+---------------------------------------------------------------------
+  Le "juice" : que chaque chose qui arrive se SENTE, tout de suite.
+  - J1. Les chiffres qui sautent : a la recolte, "+340" dore monte au-dessus
+    du village ; une famine, "-6" rouge ; un savoir decouvert, son icone qui
+    s'envole vers l'onglet Savoirs.
+  - J2. Le choc d'une bataille : une gerbe d'etincelles et un petit
+    tremblement de la case au premier jour ; une banniere plantee sur le
+    village pris (elle reste une saison).
+  - J3. Les fumees : une colonne de fumee au-dessus d'un village pille,
+    assiege ou en feu ; on voit de loin qu'il se passe quelque chose.
+  - J4. Les traces : des empreintes qui s'effacent en deux semaines derriere
+    les bandes qui marchent (aussi celles de l'ennemi vu passer : on lit
+    d'ou il vient).
+  - J5. La frontiere qui avance : un court eclat le long de la zone
+    d'influence quand elle gagne une case.
+  - J6. La banniere du savoir : a une decouverte, un bandeau descend avec
+    l'icone et une phrase d'ambiance ("Le feu tient la nuit a distance"),
+    deux secondes, sans arreter le temps.
+  La "flavor" : que le monde ait une histoire, la SIENNE.
+  - J7. Les surnoms : un village qui a tenu un siege ou survecu a une famine
+    en gagne un ("Kerau-la-Tenace") ; un chef vainqueur de trois batailles
+    devient "le Hardi", celui qui affranchit "le Juste".
+  - J8. Les lieux qui se souviennent : une grande bataille laisse son nom
+    sur la carte ("le Gue des Trois Lances"), au survol, pour des
+    generations.
+  - J9. La chronique de l'an : a chaque nouvel an, trois lignes ("L'an 44 :
+    l'annee de la grande disette ; les Maesen ont pris Kerau ; on a appris
+    la poterie"), gardees dans un onglet : l'histoire de sa partie.
+  - J10. Les epitaphes : a la mort d'un chef, une ligne qui resume sa vie
+    ("Arn le Genereux, 61 ans, 22 hivers a la tete des Utopie, trois
+    villages fondes").
+  - J11. Les rumeurs : des nouvelles des peuples lointains, deformees par
+    la distance ("On dit que les Elo ont mille guerriers...") : le
+    brouillard qui parle. (Proche de 1A, les voix du peuple, mis de cote :
+    a lui de dire.)
+  Le son (G3 : il avait dit "plus tard") :
+  - J12. Quelques sons courts : un tambour a la guerre declaree, une corne
+    quand une troupe ennemie entre en vue, le grain qui coule a la recolte.
+  Restent en attente de la 0.22 : V1, V2, V3 (des regles trop faciles a
+  contourner), V6, V7 (la destination au survol ; le serment en clair).
+
+
+6. VERIFICATIONS
+---------------
+  - DANS SA PARTIE (copie, Caldere an 43) : son village (213) porte la
+    pastille ocre - il manquera 4 semaines de vivres a la recolte, ce que
+    dit sa fiche ("Disette en vue") ; une bande Elo amenee a cote avec un
+    raid recent porte le lisere, une bande Mamaze (neutre) non, et le
+    survol dit "en guerre avec vous" ; une carte d'evenement a sa derniere
+    semaine le dit ; les Maelita faits ses tributaires : "Rompre" refuse,
+    "Affranchir" en deux clics, relation -20 -> +3, prestige 97 inchange,
+    le journal : "Vous affranchissez les Maelita".
+  - Tests : test_signes_carte (9 : faim, hostiles, derniere semaine),
+    test_revolte (11 : affranchir, la crise, l'IA qui affranchit) ; la
+    suite entiere ; notes.py check : 0 ; accents : 0.
+  - L'empreinte identique (robot, repos).

@@ -1,4 +1,16 @@
-## Nouveau dans la 0.22
+## Nouveau dans la 0.23
+
+- **La faim se voit sur la carte** : une pastille (un bol vide) au pied de vos unités qui ont faim, rouge si
+  elles meurent de faim, ocre si la collecte ne suffit plus et que la réserve baisse (un village : sa disette en
+  vue, quand le grenier ne tiendra pas jusqu'à la récolte).
+- **Les ennemis aussi** : un liseré rouge autour des unités des peuples en guerre avec vous (guerre déclarée, ou un
+  raid depuis moins d'un an) ; les neutres n'en ont pas. Le survol le dit en mots.
+- **Affranchir** : chez votre tributaire, l'écran *Peuples* propose de l'affranchir. Il part libre, sans guerre,
+  et vous en sait gré (relation +15) ; plus de malus de rupture. La crise « Les tributaires grondent » peut finir
+  ainsi, et un suzerain de l'IA affranchit plutôt que de perdre la guerre d'indépendance.
+- Les cartes d'événements disent « dernière semaine » au lieu de « encore 0 sem. ».
+
+Et dans les 0.21 et 0.22 :
 
 - **Le signe de la marche** : une unité qui marche porte une petite pointe au bord de son jeton, tournée vers où elle
   va (rouge : un repli ; pâle : une troupe qui rentre au village) ; dès l'ordre donné, et aussi sur les unités
@@ -7,9 +19,6 @@
   serment (deux ans, quatre si le suzerain garde des otages), au prix de son honneur ; et tout le pays du suzerain
   lui fait la guerre pour le soumettre à nouveau. Libre pour de bon seulement s'il tient jusqu'à la paix. Les
   peuples de l'IA suivent la même règle.
-
-Et depuis la 0.20 :
-
 - **Un tutoriel** : au menu, *Tutoriel* lance une partie guidée, en quatorze petites étapes (tourner la planète,
   choisir sa bande, la faire marcher, lancer le temps, manger, l'hiver, les savoirs, les clans, les autres
   peuples...). La fiche avance d'elle-même quand vous avez fait le geste demandé. Dans toute partie, le bouton

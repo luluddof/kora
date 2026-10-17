@@ -90,6 +90,7 @@ MOD_TEXT = {
     "soutien": ("Vous les avez soutenus dans l'effondrement", "Ils vous ont soutenus dans l'effondrement", 0.3),
     "soumis": ("Vous les avez soumis", "Ils vous ont soumis", 0.2),
     "revolte": ("Ils se sont révoltés", "Vous vous êtes révoltés", 0.3),
+    "affranchi": ("Vous les avez affranchis", "Ils vous ont affranchis", 0.2),
     "protection": ("Ils sont sous votre protection", "Vous êtes sous leur protection", 0.2),
     # Les grandes chefferies.
     "festin": ("Ils ont mangé à votre table", "Vous avez mangé à leur table", 0.4),
@@ -595,9 +596,10 @@ def break_pact(state, actor: int, other: int, kind: str | None = None) -> bool:
     d = of(state)
     k = pair(actor, other)
     pacts = d.pacts.get(k, [])
-    # Tout rompre (kind None) garde le serment que l'on doit soi-meme : un
-    # tributaire ne s'en libere qu'en se revoltant (guerre.rebel).
-    kept = [p for p in pacts if (kind is not None and p.kind != kind) or (kind is None and p.kind == "vassal" and p.payer == actor)]
+    # Tout rompre (kind None) garde le serment d'un tributaire, dans les deux
+    # sens : le tributaire ne s'en libere qu'en se revoltant (guerre.rebel),
+    # le suzerain le delie en l'affranchissant (guerre.free).
+    kept = [p for p in pacts if (kind is not None and p.kind != kind) or (kind is None and p.kind == "vassal")]
     if len(kept) == len(pacts):
         return False
     if kept:
@@ -789,8 +791,10 @@ def pop_of(state, tid: int) -> int:
 
 ACTIONS = (
     "cadeau", "present", "guerre", "guerre_pays", "soumission", "treve", "alliance", "commerce", "tribut", "proteger",
-    "confederer", "union", "rompre", "revolte",
+    "confederer", "union", "rompre", "revolte", "affranchir",
 )
+# Pas d'attente entre deux fois : ce ne sont pas des propositions.
+NO_COOLDOWN = ("rompre", "revolte", "affranchir")
 ACTION_LABELS = {
     "proteger": "Prendre sous sa protection",
     "cadeau": "Offrir des vivres",
@@ -806,6 +810,7 @@ ACTION_LABELS = {
     "union": "Proposer l'union",
     "rompre": "Rompre le pacte",
     "revolte": "Se révolter",
+    "affranchir": "Affranchir",
 }
 
 
@@ -887,12 +892,17 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
     if action == "rompre":
         if not has_pact(state, actor, target):
             return Verdict(blocked="Aucun pacte avec eux")
-        # Le serment d'un tributaire ne se rompt pas : il faut se revolter.
-        if all(p.kind == "vassal" and p.payer == actor for p in pacts_between(state, actor, target) if p.kind != guerre.WAR):
-            return Verdict(blocked="Un tributaire ne rompt pas son serment : il se révolte (Se révolter)")
+        # Le serment d'un tributaire ne se rompt pas : il faut se revolter, ou
+        # (le suzerain) l'affranchir.
+        if all(p.kind == "vassal" for p in pacts_between(state, actor, target) if p.kind != guerre.WAR):
+            if any(p.payer == actor for p in pacts_between(state, actor, target) if p.kind == "vassal"):
+                return Verdict(blocked="Un tributaire ne rompt pas son serment : il se révolte (Se révolter)")
+            return Verdict(blocked="Ce sont vos tributaires : on ne rompt pas, on affranchit (Affranchir)")
         return Verdict(score=1, reasons=[("Rompre coûte du prestige (-3) et de la relation (-20)", 0)])
     if action == "revolte":
         return guerre.revolt_verdict(state, actor, target)
+    if action == "affranchir":
+        return guerre.free_verdict(state, actor, target)
     if action == "treve":
         if guerre.at_peace(state, actor, target):
             return Verdict(blocked="Vous êtes déjà en paix")
@@ -1131,6 +1141,8 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         return guerre.declare_war(state, actor, lord, lord if chiefdom.has_chiefdom(state, actor) else 0)
     if action == "revolte":
         return guerre.rebel(state, actor, target)
+    if action == "affranchir":
+        return guerre.free(state, actor, target)
     if action == "rompre":
         break_pact(state, actor, target)
         if human:

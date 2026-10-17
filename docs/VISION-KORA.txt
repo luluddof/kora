@@ -689,7 +689,25 @@ lente, bandes dessinees petites a taille fixe.
     suit la meme regle. Verifie dans SA partie de Caldere (il s'etait libere
     des Maesen d'un clic).
   - "Regarde d'autres trucs de ce genre et dis-les moi." PROPOSE (spec,
-    section 4) : V1 a V9.
+    section 4) : V1 a V9 ; il en prend quatre (ci-dessous).
+2026-10-17 (0.23.0)
+  - "V4 - un signe de faim sur les jetons ; V5 - un lisere rouge sur les
+    unites etrangeres en guerre avec toi, pour distinguer les hostiles des
+    neutres. Je prends." FAIT (0.23.0 ; spec 2026-10-17-faim-hostiles-
+    affranchir.txt) : une pastille (un bol vide) en bas a gauche de vos
+    unites, rouge en famine, ocre en disette (un village : sa disette en
+    vue) ; un lisere rouge sur les unites d'un peuple en guerre declaree ou
+    qui s'est battu avec vous depuis un an ; le survol le dit en mots.
+  - "Les cartes d'evenements : 'derniere semaine' plutot que 'encore 0
+    sem.'" FAIT (la carte et sa fenetre).
+  - "V9 - cote suzerain, 'Affranchir', qui donne de la relation au lieu
+    d'un malus de rupture. Ca aussi je prends." FAIT : le bouton Affranchir
+    (relation +15, deux clics), Rompre ne touche plus aucun serment ; la
+    crise "Les tributaires grondent" peut finir ainsi ; un suzerain IA
+    affranchit plutot que de perdre la guerre d'independance. Verifie
+    dans SA partie.
+  - "Propose d'autres choses comme ca : la 'flavor', ce qui rend un jeu
+    'juicy'." PROPOSE (spec, section 5) : J1 a J12.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -742,21 +760,27 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.22.0
+Version du jeu : 0.23.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
 morceaux, 2,5x plus vite), tutoriel (menu, bouton Tuto, F1).
 Fait le 2026-10-17 (0.22.0) : le signe de la marche, la revolte des
 tributaires (publiee avec la 0.21 : v0.22.0).
+Fait le 2026-10-17 (0.23.0) : la faim et les hostiles sur la carte (V4,
+V5), "derniere semaine" (V8), Affranchir (V9).
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   En attente de SON choix (propose, rien de code) :
-  - V1 a V9     des regles trop faciles a contourner (tribut, confederation,
-                treve) et des choses que l'ecran ne dit pas (faim, ennemis,
-                destination, serment) : 2026-10-17-signe-de-marche-revolte-
-                des-tributaires.txt, section 4.
+  - J1 a J12    la "flavor" et le "juice" : chiffres qui sautent, choc des
+                batailles, fumees, traces, surnoms, lieux nommes, chronique
+                de l'an, epitaphes, rumeurs, sons :
+                2026-10-17-faim-hostiles-affranchir.txt, section 5.
+  - V1-V3, V6, V7  le tribut, la confederation, la treve trop faciles a
+                rompre ; la destination au survol, le serment en clair :
+                2026-10-17-signe-de-marche-revolte-des-tributaires.txt,
+                section 4 (V4, V5, V8, V9 faits en 0.23.0).
   - S1, S2, S4   frontieres naturelles (S3 fait en 0.9.0) ; "au pire on
                  verra plus tard" (2026-10-03-frontieres-naturelles-
                  propositions.txt).

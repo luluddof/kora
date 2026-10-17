@@ -104,6 +104,32 @@ def at_war(state, a: int, b: int) -> bool:
     return False
 
 
+def hostiles(state, a: int) -> set:
+    """Ce que dit le lisere rouge des unites sur la carte : les peuples en
+    guerre declaree avec a, ou dont le pays s'est battu avec le sien depuis
+    un an (un raid, un accrochage) sans avoir fait la paix depuis. Un simple
+    motif n'est pas une guerre (at_war le compte : il ouvre la guerre). Une
+    seule passe sur les raids : la carte le relit deux fois par seconde."""
+    if a not in state.tribes:
+        return set()
+    out = set(wars_of(state, a))
+    mine = chiefdom.country(state, a)
+    countries: dict = {}
+    for (x, y), hit in diplo.of(state).raids.items():
+        if state.tick_count - hit[0] > WAR_WEEKS:
+            continue
+        for us, them in ((x, y), (y, x)):
+            if us in mine and them not in mine and them in state.tribes:
+                if them not in countries:
+                    countries[them] = chiefdom.country(state, them)
+                out |= countries[them]
+    return {t for t in out if t not in mine and t in state.tribes and (declared_war(state, a, t) or not diplo.peace_pact(state, a, t))}
+
+
+def hostile(state, a: int, b: int) -> bool:
+    return b in hostiles(state, a)
+
+
 def may_start(state, a: int, b: int) -> str:
     """Pourquoi a ne peut pas attaquer b de lui-meme ("" : il peut). Un
     TRIBUTAIRE suit son suzerain a la guerre mais n'en declare pas : il ne
@@ -470,6 +496,17 @@ def oath_left(state, vassal: int, lord: int) -> int:
     return max(0, pact.since + oath_weeks(state, lord) - state.tick_count)
 
 
+def revolt_odds(state, vassal: int, lord: int) -> tuple[int, float]:
+    """La guerre d'independance : combien de peuples du pays du suzerain
+    entreraient en guerre, et la force du rebelle (et de ses propres
+    tributaires) face a la leur."""
+    mine = {vassal} | set(chiefdom.descendants(state, vassal))
+    country = chiefdom.country(state, lord) - mine
+    theirs_power = sum(diplo.power(state, t) for t in country)
+    mine_power = sum(diplo.power(state, t) for t in mine)
+    return len(country), mine_power / max(1.0, theirs_power)
+
+
 def revolt_verdict(state, vassal: int, lord: int) -> diplo.Verdict:
     """Se revolter contre son suzerain : possible ou non, et ce qu'il en
     coutera (la fiche de l'ecran Peuples, la decision de l'IA)."""
@@ -481,12 +518,9 @@ def revolt_verdict(state, vassal: int, lord: int) -> diplo.Verdict:
         more = " (ils gardent vos otages)" if hostages else ""
         return diplo.Verdict(blocked=f"Votre serment est trop récent{more} : encore {left} semaines")
     mine = {vassal} | set(chiefdom.descendants(state, vassal))
-    country = chiefdom.country(state, lord) - mine
-    theirs_power = sum(diplo.power(state, t) for t in country)
-    mine_power = sum(diplo.power(state, t) for t in mine)
-    ratio = mine_power / max(1.0, theirs_power)
+    n, ratio = revolt_odds(state, vassal, lord)
     out = [
-        (f"Leur pays entre en guerre contre vous : {len(country)} peuple{'s' if len(country) > 1 else ''}", 0),
+        (f"Leur pays entre en guerre contre vous : {n} peuple{'s' if n > 1 else ''}", 0),
         (f"Votre force face à la leur : {ratio:.1f}".replace(".", ","), 0),
         (f"Le parjure : prestige -{PERJURY_PRESTIGE}", 0),
     ]
@@ -498,9 +532,9 @@ def revolt_verdict(state, vassal: int, lord: int) -> diplo.Verdict:
     return diplo.Verdict(score=1, reasons=out)
 
 
-def rebel(state, vassal: int, lord: int) -> str:
-    """vassal se revolte contre lord : le pacte tombe, le parjure coute, et
-    le pays de lord lui fait la guerre pour le soumettre a nouveau."""
+def _drop_oath(state, vassal: int, lord: int) -> None:
+    """Le pacte de tributaire tombe ; les guerriers du tributaire (et de ses
+    propres tributaires) venus dans l'ost de l'autre camp rentrent chez eux."""
     pacts = diplo.of(state).pacts
     k = diplo.pair(vassal, lord)
     kept = [p for p in pacts.get(k, []) if not (p.kind == "vassal" and p.payer == vassal)]
@@ -508,17 +542,23 @@ def rebel(state, vassal: int, lord: int) -> str:
         pacts[k] = kept
     else:
         pacts.pop(k, None)
-    rebel_t, lord_t = state.tribes[vassal], state.tribes[lord]
-    # Ses guerriers venus dans l'ost du suzerain rentrent chez eux : ils ne se
-    # battront pas contre les leurs.
-    rebels = {vassal} | set(chiefdom.descendants(state, vassal))
-    for army in sorted((b for b in state.bands.values() if b.kind == "armee" and b.population > 0 and b.tribe_id not in rebels), key=lambda b: b.id):
+    leaving = {vassal} | set(chiefdom.descendants(state, vassal))
+    for army in sorted((b for b in state.bands.values() if b.kind == "armee" and b.population > 0 and b.tribe_id not in leaving), key=lambda b: b.id):
         if battle.in_battle(state, army):
             continue
         parts = ost.foreign(state, army)
         for tid in sorted(parts):
-            if tid in rebels and len(parts[tid]) < len(units.normalize(army)):
+            if tid in leaving and len(parts[tid]) < len(units.normalize(army)):
                 troupes.send_companies_home(state, army, parts[tid])
+
+
+def rebel(state, vassal: int, lord: int) -> str:
+    """vassal se revolte contre lord : le pacte tombe, le parjure coute, et
+    le pays de lord lui fait la guerre pour le soumettre a nouveau."""
+    rebel_t, lord_t = state.tribes[vassal], state.tribes[lord]
+    # Ses guerriers venus dans l'ost du suzerain rentrent chez eux : ils ne se
+    # battront pas contre les leurs.
+    _drop_oath(state, vassal, lord)
     loss = PERJURY_PRESTIGE + (HOSTAGES_PRESTIGE if tech.bonuses(lord_t).vassal_oath > 1.0 else 0)
     rebel_t.prestige = max(0, rebel_t.prestige - loss)
     diplo.add_mod(state, lord, vassal, "revolte", -25, actor=vassal)
@@ -528,4 +568,38 @@ def rebel(state, vassal: int, lord: int) -> str:
     if diplomatic(state, lord) and diplomatic(state, vassal):
         declare_war(state, lord, vassal, goal=vassal)
     return f"Vous vous révoltez contre les {lord_t.name} : leur pays vous fait la guerre."
+
+
+# --- affranchir un tributaire (le suzerain le rend libre) -------------------------------
+# Le geste inverse de la revolte : le suzerain delie son tributaire de son
+# serment. Pas de parjure ni de rupture : un bienfait, dont on se souvient
+# (FREED_RELATION, le souvenir "affranchi"). Le tribut et ses guerriers
+# s'en vont ; ses propres tributaires restent les siens.
+FREED_RELATION = 15
+
+
+def free_verdict(state, lord: int, vassal: int) -> diplo.Verdict:
+    """Affranchir son tributaire : possible ou non, et ce que cela change."""
+    if vassal_pact(state, vassal, lord) is None:
+        return diplo.Verdict(blocked="Ils ne sont pas vos tributaires")
+    under = chiefdom.descendants(state, vassal)
+    out = [
+        (f"Ils vous en sauront gré : relation +{FREED_RELATION}", FREED_RELATION),
+        ("Leur tribut cesse, leurs guerriers quittent votre ost", 0),
+    ]
+    if under:
+        out.append((f"Leurs tributaires les suivent : {len(under)}", 0))
+    return diplo.Verdict(score=1, reasons=out)
+
+
+def free(state, lord: int, vassal: int) -> str:
+    """lord affranchit vassal : le serment tombe, sans honte ni rupture."""
+    if vassal_pact(state, vassal, lord) is None:
+        return ""
+    _drop_oath(state, vassal, lord)
+    diplo.add_mod(state, lord, vassal, "affranchi", FREED_RELATION, actor=lord)
+    lord_t, vassal_t = state.tribes[lord], state.tribes[vassal]
+    note(state, LogKind.POLITIQUE, f"Les {lord_t.name} vous affranchissent : vous voilà libres, sans guerre.", to=vassal)
+    note(state, LogKind.POLITIQUE, f"Vous affranchissez les {vassal_t.name} : ils ne vous doivent plus rien, et s'en souviendront.", to=lord)
+    return f"Vous affranchissez les {vassal_t.name}."
 

@@ -1,6 +1,7 @@
 Kora - Le signe de la marche, la revolte des tributaires
 =======================================================
-Date : 2026-10-17. Statut : FAIT (version 0.22.0) ; section 4 : PROPOSE.
+Date : 2026-10-17. Statut : FAIT (version 0.22.0) ; section 4 : V4, V5, V8, V9
+FAITS (0.23.0 : 2026-10-17-faim-hostiles-affranchir.txt), le reste PROPOSE.
 
 Ses mots : "j'aimerais 2 choses, assez petites : un symbole petit quand une
 unite est en mouvement ou a un ordre de mouvement, et le fait que briser la
@@ -52,7 +53,8 @@ d'autres trucs de ce genre qui pourraient etre ameliores et dis-les moi."
   - L'IA suit la meme regle : la crise des tributaires ne nait plus pendant
     le serment, et ratee, elle donne la guerre d'independance (plus la
     liberte d'office).
-  - Le suzerain peut toujours affranchir son tributaire (Rompre le pacte).
+  - Le suzerain peut toujours affranchir son tributaire (Rompre le pacte ;
+    depuis la 0.23, le bouton Affranchir, qui donne de la relation : V9).
   - Code : guerre.vassal_pact, oath_weeks, oath_left, revolt_verdict, rebel ;
     diplo (l'action "revolte", break_pact garde le serment de qui le doit) ;
     situations.RevolteTributaires ; chiefdom._revolt retire.
@@ -85,17 +87,17 @@ d'autres trucs de ce genre qui pourraient etre ameliores et dis-les moi."
   - V3. Rompre une TREVE toute neuve (moins d'un an) : le meme parjure que
     le serment (du prestige), sinon la trêve ne protege de rien.
   Des choses que l'ecran ne dit pas (comme le signe de la marche) :
-  - V4. Un signe de FAIM sur les jetons : la bande en famine, ou dont la
+  - V4 (FAIT, 0.23.0). Un signe de FAIM sur les jetons : la bande en famine, ou dont la
     collecte ne suffit plus (aujourd'hui seulement dans sa fiche).
-  - V5. Un liseré rouge sur les unites etrangeres EN GUERRE avec vous : qui
+  - V5 (FAIT, 0.23.0). Un liseré rouge sur les unites etrangeres EN GUERRE avec vous : qui
     est hostile, qui est neutre, d'un coup d'oeil.
   - V6. Au survol d'une de vos bandes en marche : sa destination marquee
     (sans avoir a la choisir).
   - V7. Dans l'ecran Peuples : le serment qui reste (tributaire) et
     l'agitation de vos tributaires (suzerain), en clair.
   Des details :
-  - V8. Les cartes d'evenements disent "encore 0 sem." la derniere semaine :
+  - V8 (FAIT, 0.23.0). Les cartes d'evenements disent "encore 0 sem." la derniere semaine :
     "derniere semaine".
-  - V9. Chez un tributaire, "Rompre le pacte" du suzerain l'affranchit : le
+  - V9 (FAIT, 0.23.0). Chez un tributaire, "Rompre le pacte" du suzerain l'affranchit : le
     bouton devrait dire "Affranchir", et donner de la relation (aujourd'hui
     un malus de rupture).

@@ -830,6 +830,9 @@ def draw_peoples(r, state, layout, ui) -> None:
     # Leur tributaire : se revolter (une guerre d'independance), pas declarer.
     if guerre.vassal_pact(state, state.viewer, pick) is not None:
         acts = ["revolte"]
+    # Votre tributaire : l'affranchir (un bienfait, pas une rupture).
+    elif guerre.vassal_pact(state, pick, state.viewer) is not None:
+        acts = ["affranchir"]
     if not at_war and chiefdom.top_lord(state, pick) != pick:
         acts.append("guerre_pays")
     acts += ["treve", "alliance", "commerce", "tribut", "proteger", "confederer", "union", "rompre"]
@@ -839,11 +842,14 @@ def draw_peoples(r, state, layout, ui) -> None:
         if ay + ah > by + bh - 6:
             break
         verdict = diplo.evaluate(state, state.viewer, pick, action)
-        wait = diplo.on_cooldown(state, state.viewer, pick, action) if action not in ("rompre", "revolte") else 0
+        wait = diplo.on_cooldown(state, state.viewer, pick, action) if action not in diplo.NO_COOLDOWN else 0
         line, tint = _verdict_line(verdict)
         if action in ("guerre", "guerre_pays", "revolte") and not verdict.blocked:
             # Une declaration, pas une proposition : ses consequences au survol.
             line, tint = "Possible : survolez pour les conséquences", WARN
+        elif action in ("rompre", "affranchir") and not verdict.blocked and verdict.reasons:
+            # Un geste, pas une proposition : ce qu'il coute ou rapporte.
+            line, tint = verdict.reasons[0][0], (GOOD if action == "affranchir" else WARN)
         if t.is_player and not verdict.blocked and action in diplo.HUMAN_OFFERS:
             # Un autre joueur : pas de calcul, il recevra une carte et choisira.
             line, tint = "Un joueur : il décidera lui-même", GOLD
@@ -862,7 +868,7 @@ def draw_peoples(r, state, layout, ui) -> None:
             tips.append((rows, rect[0] + rect[2] + 10, rect[1] - 4, rect))
         elif _hover(rect) and verdict.reasons:
             rows = [(f"{_signed(v):>4}  {label}", GOOD if v > 0 else BAD if v < 0 else SOFT) for label, v in verdict.reasons]
-            if action != "rompre":
+            if action not in ("rompre", "affranchir"):
                 rows.append((f"Total : {_signed(verdict.score)} (il faut plus de 0)", TEXT))
             tips.append((rows, rect[0] + rect[2] + 10, rect[1] - 4, rect))
     # Clans de ce peuple qui se detachent, pres de chez vous.
@@ -912,8 +918,18 @@ def draw_event_cards(r, state, ui) -> None:
         theme.panel(r.screen, rect, "carte_survol" if _hover(rect) else "carte")
         r.screen.blit(theme.medallion(event_icon(ev), 17, MOOD_STATE.get(ev.mood, "normal")), (x + 6, y + 5))
         theme.text(r.screen, ev.title, "petit_gras", C.os, (x + 50, y + 6), 226)
-        theme.text(r.screen, f"À décider  ·  encore {left} sem.  ·  E", "mini", C.ocre_jaune if left > 4 else C.alerte, (x + 50, y + 26), 226)
+        theme.text(r.screen, f"À décider  ·  {deadline_text(left, short=True)}  ·  E", "mini", C.ocre_jaune if left > 4 else C.alerte, (x + 50, y + 26), 226)
         y += 54
+
+
+def deadline_text(left: int, short: bool = False) -> str:
+    """Le temps qu'il reste pour repondre a un evenement : a 0, le choix par
+    defaut se fait a la fin de cette semaine (events : deadline <= tick)."""
+    if left <= 0:
+        return "dernière semaine" if short else "cette semaine"
+    if short:
+        return f"encore {left} sem."
+    return f"dans {left} semaine{'s' if left > 1 else ''}"
 
 
 def event_modal_layout(width: int, height: int, n_options: int, text_lines: int = 4) -> dict:
@@ -961,7 +977,7 @@ def draw_event_modal(r, state, ui) -> None:
         yy += 22
     yy += 8
     left = max(0, inst.deadline - state.tick_count)
-    theme.text(r.screen, f"Sans réponse dans {left} semaines, le choix par défaut sera fait.", "mini", C.cendre, (bx + 134, yy))
+    theme.text(r.screen, f"Sans réponse {deadline_text(left)}, le choix par défaut sera fait.", "mini", C.ocre_jaune if left <= 0 else C.cendre, (bx + 134, yy))
     tips = []
     for i, opt in enumerate(opts):
         rect = lay["options"][i]
