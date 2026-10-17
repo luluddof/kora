@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.21.0
+A jour pour la version : 0.22.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -242,12 +242,12 @@ ETAGE 4  les savoirs, les gens
     constantes : BASE_STOCK_WEEKS, BASE_MAX_BANDS, BASE_VISION,
       BASE_REINFORCE, BASE_WINTER_PRESTIGE, BASE_FAMINE_PRESTIGE,
       BASE_MOVE_COST, BASE_CHIEF_REACH, BASE_INFLUENCE_RADIUS,
-      BASE_PROTECT_RATIO, SIEGE_FIRE, SIEGE_FOOD, SIEGE_ERODE, SIEGE_FLOOR,
-      LEARN_POP, TIER_COST, TIER_NAMES, TURNING_TIERS, BRANCHES, NEO_BRANCHES,
-      ERAS, GROUPS, START_KNOWLEDGE, PIROGUE_POP, PIROGUE_COAST_WEEKS,
-      TROUPEAU_POP, TROUPEAU_STEPPE_WEEKS, SEE_RADIUS, TECHS,
-      START_BONUS_YEARS, START_BONUS_WEEKS, START_BONUS_PICKS, START_BONUSES,
-      NO_BONUS
+      BASE_PROTECT_RATIO, VASSAL_OATH_WEEKS, SIEGE_FIRE, SIEGE_FOOD,
+      SIEGE_ERODE, SIEGE_FLOOR, LEARN_POP, TIER_COST, TIER_NAMES,
+      TURNING_TIERS, BRANCHES, NEO_BRANCHES, ERAS, GROUPS, START_KNOWLEDGE,
+      PIROGUE_POP, PIROGUE_COAST_WEEKS, TROUPEAU_POP, TROUPEAU_STEPPE_WEEKS,
+      SEE_RADIUS, TECHS, START_BONUS_YEARS, START_BONUS_WEEKS,
+      START_BONUS_PICKS, START_BONUSES, NO_BONUS
 
   units.py
     Unites : une troupe est une pile de compagnies.
@@ -364,10 +364,12 @@ ETAGE 5  LES SYSTEMES
       at_peace, at_war, may_start, set_casus, motive_against, casus_of,
       add_score, score, weariness, long_war, truce_mood, goal_of, goals_of,
       submit, goal_done, submit_verdict, fade_wars, war_allies, war_pairs,
-      war_verdict, declare_war, end_war, wars_of
+      war_verdict, declare_war, end_war, wars_of, vassal_pact, oath_weeks,
+      oath_left, revolt_verdict, rebel
     constantes : WAR, WAR_FADE_WEEKS, DECLARE_RELATION, DECLARE_PRESTIGE,
       WAR_WEEKS, WIN_SCORE, VILLAGE_SCORE, SIEGE_SCORE, SCORE_CAP,
-      SUBMIT_BASE, WEARY_SEASON, WEARY_STEP, WEARY_CAP, LEAD_PER, LEAD_CAP
+      SUBMIT_BASE, WEARY_SEASON, WEARY_STEP, WEARY_CAP, LEAD_PER, LEAD_CAP,
+      PERJURY_PRESTIGE, HOSTAGES_PRESTIGE, REBEL_MOTIVE_WEEKS
 
   goods.py
     Metiers des villages, marche du peuple, routes commerciales.
@@ -723,7 +725,7 @@ ETAGE -  l'interface (pygame)
       row_pixel_height, world_pixel_size, min_zoom_for, zoom_scale,
       max_zoom_for, focus_zoom_for, terrain_draw_mode, wrap_camera,
       offset_to_pixel, hex_to_pixel, band_radius, band_screen_positions,
-      fight_mark_screen_pos, hex_screen_positions, pixel_to_hex
+      band_heading, fight_mark_screen_pos, hex_screen_positions, pixel_to_hex
     constantes : TAB_W, TAB_H, HEX_SIZE, MIN_ZOOM, MAX_ZOOM, OVERVIEW_HEX_PX,
       HUD_HEIGHT, LABEL_DIST, JOURNAL_COLS, MENU_ITEMS, BAND_CARD_W,
       BAND_BUTTONS, BAND_ROW, BAND_HINT, MAP_MODES, MAP_BUTTON_W,
@@ -732,7 +734,7 @@ ETAGE -  l'interface (pygame)
       TREE_GUTTER, TREE_COL, TREE_ROW, TREE_NODE_W, TREE_NODE_H, TREE_COLHEAD,
       TREE_BAND, TREE_TURN_ROW, TREE_TURN_H, TREE_ZOOM_MAX, TREE_ZOOM_STEP,
       TECH_ROW_H, TECH_GUTTER, SIDE_TABS, COMMERCE_TAB, TREASURY_TAB,
-      COUNTRY_TAB, WARS_TAB, SWORD_LIFT, STACK_SHIFT
+      COUNTRY_TAB, WARS_TAB, SWORD_LIFT, STACK_SHIFT, HEADING_LOOKAHEAD
 
   look.py
     LES COULEURS DE LA CARTE (presentation, sans pygame) : un sol selon sa
@@ -995,6 +997,9 @@ ETAGE -  l'interface (pygame)
   les buts, la lassitude              guerre.declare_war, guerre.submit,
                                       guerre.weariness) ; casus.py (motifs) ;
                                       chiefdom.country (le pays)
+  La revolte d'un tributaire          guerre.rebel, guerre.revolt_verdict,
+                                      guerre.oath_left ; tech.VASSAL_OATH_WEEKS
+  Le signe de la marche (jetons)      layout.band_heading, render._draw_heading
   L'approche des chefs de l'IA        approach.PROFILES, approach.ACCEPT
   L'IA (bandes, villages, troupes)    ai.py ; quand elle attaque : ai_war.py
   Chefferie, tributaires, revoltes    chiefdom.py
@@ -1229,6 +1234,8 @@ ETAGE -  l'interface (pygame)
                               avec la carte.
   test_retreat.py             Le repli du vaincu : il perd des vivres et
                               rentre A PIED vers son groupe ou
+  test_revolte.py             Se liberer d'un suzerain n'est plus un simple
+                              clic (2026-10-17) : un
   test_saves_music.py         Les sauvegardes (une par partie, charger,
                               supprimer, copier) et la
   test_season_look.py         Les couleurs des saisons (look.py) : l'hiver
@@ -1432,6 +1439,9 @@ ETAGE -  l'interface (pygame)
     Des notes qui disent vrai, un code decoupe, un moteur du temps, un
     tutoriel
     Statut : FAIT (version 0.21.0).
+  specs/2026-10-17-signe-de-marche-revolte-des-tributaires.txt
+    Le signe de la marche, la revolte des tributaires
+    Statut : FAIT (version 0.22.0) ; section 4 : PROPOSE.
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

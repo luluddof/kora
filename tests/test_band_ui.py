@@ -1,11 +1,13 @@
 """La fiche d'une bande et la selection : boutons dans la fiche, lignes de la
-fiche, bandes empilees, Tab, nouvelles cliquables."""
+fiche, bandes empilees, Tab, nouvelles cliquables ; le signe de la marche
+(layout.band_heading : ou va une unite, et comment)."""
 
 from src.kora.partie_carte import next_player_band as _next_player_band, refresh_selection as _refresh_selection
 from src.kora.globe import FOCUS_ZOOM, look_at_hex, view_params
-from src.kora.layout import BAND_BUTTONS, band_card_hit, band_card_layout, band_screen_positions, wrap_text
+from src.kora.layout import BAND_BUTTONS, band_card_hit, band_card_layout, band_heading, band_screen_positions, wrap_text
 from src.kora.sim import band_lines, band_summary, new_game
-from src.kora.bands import split_band
+from src.kora.bands import set_goto, split_band
+from src.kora.types import Order, OrderKind
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world
 
@@ -82,3 +84,26 @@ def test_only_placed_toasts_are_clickable():
     assert toast_hit(hits, 50, 70) is placed
     assert toast_hit(hits, 50, 90) is None
     assert toast_hit([], 50, 70) is None
+
+
+def test_a_moving_unit_shows_where_it_goes():
+    st = _game()
+    band = next(b for b in st.bands.values() if b.tribe_id == 1)
+    assert band_heading(st, band) is None, "immobile : pas de signe"
+    goal = st.world.neighbors(st.world.neighbors(band.position)[0])[0]
+    set_goto(st, band.id, goal)
+    to, kind = band_heading(st, band)
+    assert kind == "marche" and to in band.path
+    # En pause, un ordre sans chemin encore : le signe vise son but.
+    band.path = []
+    band.order = Order(OrderKind.GOTO, target_hex=goal)
+    assert band_heading(st, band) == (goal, "marche")
+    band.path = [goal]
+    band.retreating = True
+    assert band_heading(st, band)[1] == "repli"
+    band.retreating = False
+    band.homebound = True
+    assert band_heading(st, band)[1] == "retour"
+    band.village = 99
+    assert band_heading(st, band) is None, "un village ne marche pas"
+

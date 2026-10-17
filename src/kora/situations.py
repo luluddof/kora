@@ -1306,7 +1306,7 @@ class RevolteTributaires(Spec):
     icon = "balance"
     about = "Un peuple qui vous paie le tribut se sent assez fort, ou assez maltraité, pour rejeter votre joug."
     goal = "Le tenir : montrer vos guerriers près de ses villages, lui faire des présents, ou le menacer. Un tributaire tenu ne gronde plus."
-    fail = "Ratée : il se révolte et ne paie plus ; il faudra le soumettre à nouveau."
+    fail = "Ratée : il se révolte et ne paie plus ; votre pays lui fait la guerre pour le soumettre à nouveau."
     stages = (("Le tribut arrive en retard", "Les porteurs viennent les mains moins pleines ; les anciens du tributaire parlent haut.", {"diplo": -5}),)
     actions = (
         Action("presents", "Faire des présents", "Des vivres au chef tributaire : il se souvient de ce que vous valez.", vivres=150, progress=30, cooldown=4 * MONTH),
@@ -1320,7 +1320,13 @@ class RevolteTributaires(Spec):
         out = []
         for lord in sorted(state.tribes):
             for vassal in chiefdom.vassals_of(state, lord):
-                if vassal in state.tribes and not state.tribes[vassal].is_player and chiefdom.unrest(state, vassal, lord) >= chiefdom.REVOLT_UNREST:
+                # Un serment encore frais tient (guerre.oath_left).
+                if (
+                    vassal in state.tribes
+                    and not state.tribes[vassal].is_player
+                    and guerre.oath_left(state, vassal, lord) == 0
+                    and chiefdom.unrest(state, vassal, lord) >= chiefdom.REVOLT_UNREST
+                ):
                     mine = _villages(state, vassal)
                     out.append((mine[0].hex if mine else None, 0, [lord], {"vassal": vassal}))
         return out
@@ -1361,7 +1367,7 @@ class RevolteTributaires(Spec):
         lord = next(iter(inst.participants), None)
         vassal = inst.data.get("vassal", 0)
         if lord is not None and vassal in state.tribes and chiefdom.overlord_of(state, vassal) == lord:
-            chiefdom._revolt(state, vassal, lord)
+            guerre.rebel(state, vassal, lord)
 
 
 def price_mult(state, tid: int, good: str) -> float:

@@ -96,7 +96,7 @@ def test_a_freed_vassal_takes_its_companies_back():
     st, a1, a2, lsite, vsite = _realm()
     a2.position = a1.position
     ost.join(st, a1, a2)
-    chiefdom._revolt(st, 2, 1)
+    guerre.rebel(st, 2, 1)
     ost.weekly(st)
     assert all(u[2] == lsite.id for u in a1.units)
     assert any(b.kind == "armee" and b.tribe_id == 2 for b in st.bands.values())

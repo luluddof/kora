@@ -638,15 +638,6 @@ def _pay_vassal(state, vassal: int, lord: int) -> float:
     return paid
 
 
-def _revolt(state, vassal: int, lord: int) -> None:
-    while diplo.has_pact(state, vassal, lord, "vassal"):
-        diplo.break_pact(state, vassal, lord, "vassal")
-    diplo.add_mod(state, lord, vassal, "revolte", -25, actor=vassal)
-    vname, lname = state.tribes[vassal].name, state.tribes[lord].name
-    _note(state, lord, LogKind.POLITIQUE, f"Les {vname} se révoltent : ils ne paient plus. À vous de les soumettre à nouveau.")
-    _note(state, vassal, LogKind.POLITIQUE, f"Vous rejetez le joug des {lname}.")
-
-
 # --- le mois ---------------------------------------------------------------------------
 
 

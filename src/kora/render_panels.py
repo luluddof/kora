@@ -827,6 +827,9 @@ def draw_peoples(r, state, layout, ui) -> None:
     # son pays (on ne sert qu'un suzerain).
     at_war = guerre.declared_war(state, state.viewer, pick)
     acts = ["soumission" if at_war else "guerre"]
+    # Leur tributaire : se revolter (une guerre d'independance), pas declarer.
+    if guerre.vassal_pact(state, state.viewer, pick) is not None:
+        acts = ["revolte"]
     if not at_war and chiefdom.top_lord(state, pick) != pick:
         acts.append("guerre_pays")
     acts += ["treve", "alliance", "commerce", "tribut", "proteger", "confederer", "union", "rompre"]
@@ -836,9 +839,9 @@ def draw_peoples(r, state, layout, ui) -> None:
         if ay + ah > by + bh - 6:
             break
         verdict = diplo.evaluate(state, state.viewer, pick, action)
-        wait = diplo.on_cooldown(state, state.viewer, pick, action) if action != "rompre" else 0
+        wait = diplo.on_cooldown(state, state.viewer, pick, action) if action not in ("rompre", "revolte") else 0
         line, tint = _verdict_line(verdict)
-        if action in ("guerre", "guerre_pays") and not verdict.blocked:
+        if action in ("guerre", "guerre_pays", "revolte") and not verdict.blocked:
             # Une declaration, pas une proposition : ses consequences au survol.
             line, tint = "Possible : survolez pour les conséquences", WARN
         if t.is_player and not verdict.blocked and action in diplo.HUMAN_OFFERS:
@@ -852,9 +855,10 @@ def draw_peoples(r, state, layout, ui) -> None:
         on = not verdict.blocked and not wait
         _button(r, rect, diplo.ACTION_LABELS[action], on=on)
         _text(r, r.tiny, r._fit(r.tiny, line, aw - 6), tint, ax + 2, ay + 26)
-        if _hover(rect) and verdict.reasons and action in ("guerre", "guerre_pays"):
-            whom = t.name if action == "guerre" else state.tribes[chiefdom.top_lord(state, pick)].name
-            rows = [("Déclarer la guerre aux " + whom, TEXT)] + [(f"  {label}", WARN) for label, _v in verdict.reasons]
+        if _hover(rect) and verdict.reasons and action in ("guerre", "guerre_pays", "revolte"):
+            whom = t.name if action != "guerre_pays" else state.tribes[chiefdom.top_lord(state, pick)].name
+            head = ("Se révolter contre les " if action == "revolte" else "Déclarer la guerre aux ") + whom
+            rows = [(head, TEXT)] + [(f"  {label}", WARN) for label, _v in verdict.reasons]
             tips.append((rows, rect[0] + rect[2] + 10, rect[1] - 4, rect))
         elif _hover(rect) and verdict.reasons:
             rows = [(f"{_signed(v):>4}  {label}", GOOD if v > 0 else BAD if v < 0 else SOFT) for label, v in verdict.reasons]

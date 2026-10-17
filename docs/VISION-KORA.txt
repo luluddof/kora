@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-10-16.
+Derniere mise a jour : 2026-10-17.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -673,6 +673,23 @@ lente, bandes dessinees petites a taille fixe.
     6. "Je prefere garder Python, mais si tu peux transformer le projet
        pour qu'avec Python et ce qui est deja fait on ait un moteur cree
        pour le jeu, pour qu'il tourne bien, je ne dis pas non." FAIT (spec 2026-10-16-notes-decoupage-moteur-tutoriel.txt).
+2026-10-17 (0.22.0)
+  - "Un symbole petit quand une unite est en mouvement ou a un ordre de
+    mouvement." FAIT (0.22.0 ; spec 2026-10-17-signe-de-marche-revolte-des-
+    tributaires.txt) : une petite pointe au bord du jeton, vers ou va
+    l'unite (ivoire : une marche ; rouge : un repli ; lin : une troupe qui
+    rentre) ; des l'ordre donne, meme en pause ; aussi sur les etrangers
+    visibles (on voit venir l'ennemi).
+  - "Que briser la vassalite ne soit pas aussi simple que maintenant." FAIT :
+    "Rompre le pacte" ne rompt plus un serment de tributaire ; il faut SE
+    REVOLTER (ecran Peuples, deux clics), pas avant la fin du serment (deux
+    ans, quatre avec Otages et serments), au prix d'un parjure (prestige
+    -10), et le pays du suzerain fait aussitot la guerre au rebelle pour le
+    soumettre a nouveau ; libre seulement s'il tient jusqu'a la paix. L'IA
+    suit la meme regle. Verifie dans SA partie de Caldere (il s'etait libere
+    des Maesen d'un clic).
+  - "Regarde d'autres trucs de ce genre et dis-les moi." PROPOSE (spec,
+    section 4) : V1 a V9.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -725,16 +742,21 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.21.0
+Version du jeu : 0.22.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
-morceaux, 2,5x plus vite), tutoriel (menu, bouton Tuto, F1). Exe reconstruit ;
-PAS encore pousse ni publie (v0.21.0 a etiqueter).
+morceaux, 2,5x plus vite), tutoriel (menu, bouton Tuto, F1).
+Fait le 2026-10-17 (0.22.0) : le signe de la marche, la revolte des
+tributaires (publiee avec la 0.21 : v0.22.0).
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   En attente de SON choix (propose, rien de code) :
+  - V1 a V9     des regles trop faciles a contourner (tribut, confederation,
+                treve) et des choses que l'ecran ne dit pas (faim, ennemis,
+                destination, serment) : 2026-10-17-signe-de-marche-revolte-
+                des-tributaires.txt, section 4.
   - S1, S2, S4   frontieres naturelles (S3 fait en 0.9.0) ; "au pire on
                  verra plus tard" (2026-10-03-frontieres-naturelles-
                  propositions.txt).

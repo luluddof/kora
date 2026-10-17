@@ -233,7 +233,7 @@ def _diplo(state, tid, target, action, amount=0.0):
         return _out("Ce peuple a disparu")
     if action not in diplo.ACTIONS:
         return _out("?")
-    if action not in ("rompre", "cadeau", "present") and diplo.on_cooldown(state, tid, target, action):
+    if action not in ("rompre", "revolte", "cadeau", "present") and diplo.on_cooldown(state, tid, target, action):
         return _out("Vous avez déjà proposé cela récemment.")
     return _out(diplo.perform(state, tid, target, action, float(amount)))
 

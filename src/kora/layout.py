@@ -15,7 +15,7 @@ import math
 from src.kora import numbers, tech, tree_graph
 from src.kora.globe import FOCUS_ZOOM, hex_to_globe_screen
 from src.kora.log import FILTER_ALL, LogKind
-from src.kora.types import Hex
+from src.kora.types import Hex, OrderKind
 from src.kora.vision import enemy_band_visible
 from src.kora.world import axial_to_offset
 
@@ -797,6 +797,32 @@ def band_screen_positions(state, yaw, pitch, gcx, gcy, focal, dist) -> dict:
         shift = max(STACK_SHIFT, radius * 1.3)
         out[band.id] = (pos[0] + k * shift, pos[1] + k * shift * 0.45, radius)
     return out
+
+
+# Le signe de la marche : il vise une case un peu plus loin sur le chemin
+# (la direction reste nette, meme de loin).
+HEADING_LOOKAHEAD = 2
+
+
+def band_heading(state, band):
+    """(la case vers laquelle la bande marche, le genre de sa marche), ou
+    None si elle ne bouge pas : un chemin en cours, ou un ordre de marche
+    (en pause, il n'a pas encore de chemin). Genre : "repli" (vaincue, elle
+    se replie a pied), "retour" (une troupe dissoute qui rentre au village),
+    "marche" sinon. Un village ne marche pas."""
+    if band.village or band.population <= 0:
+        return None
+    kind = "repli" if band.retreating else ("retour" if getattr(band, "homebound", False) else "marche")
+    if band.path:
+        return band.path[min(len(band.path) - 1, HEADING_LOOKAHEAD)], kind
+    order = band.order
+    if order.kind is OrderKind.GOTO and order.target_hex is not None and order.target_hex != band.position:
+        return order.target_hex, kind
+    if order.kind is OrderKind.MARCH_TO_BAND:
+        other = state.bands.get(order.target_band_id)
+        if other is not None and other.position != band.position:
+            return other.position, kind
+    return None
 
 
 def fight_mark_screen_pos(

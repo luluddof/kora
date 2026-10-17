@@ -53,6 +53,9 @@ BASE_INFLUENCE_RADIUS = 2
 # Combien de fois plus fort il faut etre pour prendre un peuple sous sa
 # protection (chiefdom.protect_ratio).
 BASE_PROTECT_RATIO = 2.5
+# Le serment d'un tributaire : il ne peut se revolter avant ce temps
+# (guerre.revolt_verdict ; Otages et serments : x2).
+VASSAL_OATH_WEEKS = 104
 # Le siege (siege.py) : les torches laissent cette part des murs ; un
 # village investi trouve cette part de ses vivres et perd SIEGE_ERODE de sa
 # defense par semaine, jusqu'a SIEGE_FLOOR.
@@ -623,7 +626,7 @@ TECHS: dict[str, Tech] = {
             "Les fils des chefs soumis grandissent chez vous, et chacun a juré devant les ancêtres.",
             prereqs=("ancetres",),
             conds=(Cond("vassals", 1),),
-            effects={"vassal_unrest": 0.6},
+            effects={"vassal_unrest": 0.6, "vassal_oath": 2.0},
         ),
         Tech(
             "biens_prestige", "Biens de prestige", 6, 7,
@@ -1055,6 +1058,8 @@ class Bonuses:
     vassal_cap: int = 0
     vassal_tribute: float = 1.0
     vassal_unrest: float = 1.0
+    # le serment de vos tributaires : le temps avant qu'ils puissent se revolter
+    vassal_oath: float = 1.0
     protect_ratio: float = 1.0
     feasts: bool = False
     feast_cost: float = 1.0
@@ -1071,6 +1076,7 @@ _MULT = {
     "village_defense",
     "vassal_tribute",
     "vassal_unrest",
+    "vassal_oath",
     "protect_ratio",
     "feast_cost",
     "tax",
@@ -1386,6 +1392,9 @@ def effect_lines(tech: Tech, base: "Bonuses | None" = None, known: bool = False)
         out.append(f"Prendre un peuple sous sa protection : il suffit d'être {_num(now_ratio * e['protect_ratio'])} fois plus fort" + was(_num(now_ratio)))
     if e.get("vassal_unrest"):
         out.append(f"Agitation de vos tributaires : {_pct(e['vassal_unrest'])}")
+    if e.get("vassal_oath"):
+        years = round(VASSAL_OATH_WEEKS * b.vassal_oath * e["vassal_oath"] / 52)
+        out.append(f"Le serment de vos tributaires : ils ne peuvent se révolter avant {years} ans")
     if e.get("feasts"):
         out.append("Vos voisins sont invités à la grande fête : relation +8 ; pendant un an, ils se mettent plus volontiers sous votre protection (+10)")
     if e.get("feast_cost"):

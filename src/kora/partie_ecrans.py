@@ -594,9 +594,14 @@ class ScreenClicks:
             tid = self.ui.get("people_pick")
             action = choice.split(":")[1]
             if tid is not None:
-                if diplo.on_cooldown(self.state, self.state.viewer, tid, action) and action not in ("rompre",):
+                if diplo.on_cooldown(self.state, self.state.viewer, tid, action) and action not in ("rompre", "revolte"):
                     self.toast("Vous avez déjà proposé cela récemment.")
+                elif action == "revolte" and self.ui.get("revolt_confirm") != (tid, self.state.tick_count):
+                    # Se revolter ne se defait pas : un second clic le confirme.
+                    self.ui["revolt_confirm"] = (tid, self.state.tick_count)
+                    self.toast("Cliquez encore pour vous révolter : leur pays vous fera la guerre.")
                 else:
+                    self.ui["revolt_confirm"] = None
                     self.issue(commands.make(self.me(), "diplo", tid, action))
             return True
         return choice == "panel"

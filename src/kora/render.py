@@ -123,6 +123,7 @@ from src.kora.layout import (  # noqa: F401
     _hex_corners,
     band_card_hit,
     band_card_layout,
+    band_heading,
     band_radius,
     band_screen_positions,
     cam_on,
@@ -450,6 +451,8 @@ class Renderer:
             state, globe_yaw, globe_pitch, gcx, gcy, focal, dist
         )
         tags = []
+        # Les signes de la marche : dessines en dernier, par-dessus les chemins.
+        heads = []
         for band_id, (bx, by, radius) in spots.items():
             band = state.bands[band_id]
             if bx < -40 or by < -40 or bx > w + 40 or by > h + 40:
@@ -472,6 +475,15 @@ class Renderer:
                     _ring(self.screen, (230, 70, 60), ix, iy, radius + 5, band.village)
                 elif band.loyalty < chiefs.OBEY:
                     _ring(self.screen, (235, 160, 60), ix, iy, radius + 5, band.village)
+            heading = band_heading(state, band)
+            if heading is not None:
+                # Le signe de la marche : une petite pointe au bord du jeton, vers ou va l'unite.
+                to = hex_to_globe_screen(heading[0], state.world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
+                if to is not None:
+                    base = hex_to_globe_screen(band.position, state.world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
+                    if base is not None:
+                        tone = {"repli": C.mauvais, "retour": C.lin}.get(heading[1], C.os)
+                        heads.append((ix, iy, radius + (3 if band.kind == "armee" else 0), to[0] - base[0], to[1] - base[1], tone))
             if chiefs.is_chief_band(state, band):
                 _draw_crown(self.screen, ix, iy - radius - (8 if band.village else 5))
             if selected_id == band.id:
@@ -495,6 +507,8 @@ class Renderer:
         for tag, tx, ty in tags:
             tw = self.tiny.size(tag)[0]
             self._outlined_text(self.tiny, tag, (250, 246, 232), tx + tw / 2, ty)
+        for head in heads:
+            _draw_heading(self.screen, *head)
         self.draw_hud(state)
         self._legend_state = state
         extra_y = HUD_HEIGHT + 8
@@ -1523,6 +1537,25 @@ def draw_journal(self, state, layout, log_filter, log_newest) -> None:
             # Clic sur la ligne : la camera va sur place.
             layout["items"][f"log_{entry.seq}"] = rect
         list_y += row_h
+
+
+def _draw_heading(surf: pygame.Surface, cx: int, cy: int, radius: int, dx: float, dy: float, color) -> None:
+    """Le signe de la marche (layout.band_heading) : une petite pointe au bord
+    du jeton, tournee vers ou va l'unite ; a taille fixe, comme les jetons."""
+    n = math.hypot(dx, dy)
+    if n < 0.5:
+        return
+    ux, uy = dx / n, dy / n
+    px, py = -uy, ux
+    r = radius + 3
+    tip = (cx + ux * (r + 9), cy + uy * (r + 9))
+    notch = (cx + ux * (r + 3), cy + uy * (r + 3))
+    left = (cx + ux * r + px * 6, cy + uy * r + py * 6)
+    right = (cx + ux * r - px * 6, cy + uy * r - py * 6)
+    pts = [tip, left, notch, right]
+    pygame.draw.polygon(surf, C.nuit, [(x + 1, y + 2) for x, y in pts])
+    pygame.draw.polygon(surf, color, pts)
+    pygame.draw.polygon(surf, C.nuit, pts, 2)
 
 
 def _draw_token(surf: pygame.Surface, cx: int, cy: int, color, radius: int) -> None:

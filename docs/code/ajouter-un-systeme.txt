@@ -285,6 +285,10 @@ La carte du depot (section 4) donne cet ordre en detail.
     jamais les bras des champs (goods._keeps_hands ; 0.17.0).
 
 4.6 La diplomatie et la guerre
+  - Un tributaire ne rompt pas son serment : il se revolte (guerre.rebel ;
+    l'action "revolte", guerre.revolt_verdict), pas avant guerre.oath_left,
+    et le pays de son suzerain lui fait la guerre (un but, un motif) ;
+    diplo.break_pact garde le serment de qui le doit (0.22.0).
   - Une decision de l'IA envers un autre peuple passe par l'approche de
     son chef (approach.factor ; une reponse : approach.accept ; 0.8.0).
   - Attaquer : guerre.may_start (un tributaire ne declare pas de guerre) en
@@ -363,6 +367,9 @@ La carte du depot (section 4) donne cet ordre en detail.
     terrain se dessine et se clique par globe.warp (les deux ensemble)
     (0.9.0).
   - Les modes de carte passent par le bouton "Carte" (0.11.0).
+  - Une unite qui marche (un chemin, ou un ordre de marche) porte son signe :
+    layout.band_heading dit ou et comment (marche, repli, retour),
+    render._draw_heading le dessine, par-dessus les chemins (0.22.0).
   - L'armee (lever, troupes) vit dans l'ecran des guerres
     (render_wars._draw_army) ; plus de panneau lateral Armee (0.19.0).
   - La musique et les sons sont de l'interface (music.py), jamais dans la
@@ -402,8 +409,8 @@ seulement si le decoupage rend le systeme plus simple a changer) :
 
 <<< auto : gros-modules >>>
   situations.py          ~1800 lignes
+  render.py              ~1600 lignes
   events.py              ~1600 lignes
-  render.py              ~1500 lignes
   diplo.py               ~1500 lignes
   tech.py                ~1400 lignes
   render_village.py      ~1400 lignes

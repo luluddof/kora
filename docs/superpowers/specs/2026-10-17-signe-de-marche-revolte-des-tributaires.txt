@@ -1,0 +1,101 @@
+Kora - Le signe de la marche, la revolte des tributaires
+=======================================================
+Date : 2026-10-17. Statut : FAIT (version 0.22.0) ; section 4 : PROPOSE.
+
+Ses mots : "j'aimerais 2 choses, assez petites : un symbole petit quand une
+unite est en mouvement ou a un ordre de mouvement, et le fait que briser la
+vassalite ne soit pas aussi simple que maintenant. Regarde aussi pour voir
+d'autres trucs de ce genre qui pourraient etre ameliores et dis-les moi."
+
+
+1. LE SIGNE DE LA MARCHE
+-----------------------
+  - Une petite pointe au bord du jeton (ou du bouclier d'une troupe),
+    tournee vers ou va l'unite : ivoire pour une marche, rouge pour un repli
+    (la bande vaincue qui se replie a pied), lin pour une troupe dissoute
+    qui rentre au village. A taille fixe, comme les jetons ; dessinee par-
+    dessus les chemins (elle restait cachee sous les pointilles).
+  - Des qu'il y a un ordre : en pause, un ordre de marche sans chemin encore
+    a deja son signe (il vise le but). Un village ne marche pas.
+  - Aussi sur les unites etrangeres visibles : on voit venir l'ennemi (le
+    manque note en aout : "montrer qu'une bande ennemie vient vers lui").
+  - Code : layout.band_heading (pur : la case visee et le genre de marche,
+    HEADING_LOOKAHEAD cases plus loin sur le chemin pour une direction nette),
+    render._draw_heading. Test : test_band_ui.
+
+
+2. BRISER LA VASSALITE N'EST PLUS UN CLIC
+----------------------------------------
+  CE QUI ETAIT : un tributaire joueur se liberait par "Rompre le pacte"
+  (-3 de prestige, -20 de relation), comme d'un accord de commerce ; dans SA
+  partie de Caldere (an 44), son journal dit "Vous voila tributaires des
+  Maesen", et il n'a plus de suzerain. Un tributaire de l'IA, si son
+  suzerain ratait la crise "Les tributaires grondent", etait libre d'office.
+  CE QUI EST :
+  - On ne ROMPT pas un serment : "Rompre le pacte" ne touche plus le pacte du
+    tributaire (refuse s'il n'y a que lui : "il se revolte") ; il rompt les
+    autres accords seulement.
+  - On SE REVOLTE (ecran Peuples, chez son suzerain, a la place de "Declarer
+    la guerre" ; deux clics) : pas avant la fin du SERMENT (deux ans :
+    tech.VASSAL_OATH_WEEKS ; quatre si le suzerain connait Otages et
+    serments : l'effet "vassal_oath", dit sur la fiche du savoir) ; le
+    PARJURE coute 10 de prestige (10 de plus si le suzerain tient des
+    otages) ; et le pays du suzerain - ses autres tributaires, ses
+    confederes, ses allies - lui fait aussitot la GUERRE pour le soumettre a
+    nouveau : un but de guerre et un motif ("Ils se sont revoltes" : pas de
+    honte pour lui). Ses propres tributaires suivent le rebelle.
+  - Libre pour de bon seulement s'il TIENT : une paix blanche (la lassitude y
+    pousse), ou trois ans sans combat. Son village pris, ou force a la
+    soumission (l'avantage), il redevient tributaire.
+  - La fiche au survol dit tout avant : combien de peuples entrent en guerre,
+    la force de chacun, le prix du parjure.
+  - L'IA suit la meme regle : la crise des tributaires ne nait plus pendant
+    le serment, et ratee, elle donne la guerre d'independance (plus la
+    liberte d'office).
+  - Le suzerain peut toujours affranchir son tributaire (Rompre le pacte).
+  - Code : guerre.vassal_pact, oath_weeks, oath_left, revolt_verdict, rebel ;
+    diplo (l'action "revolte", break_pact garde le serment de qui le doit) ;
+    situations.RevolteTributaires ; chiefdom._revolt retire.
+  - Verifie DANS SA PARTIE (copie, Caldere an 44) : remis tributaire des
+    Maesen : Rompre refuse ; Se revolter refuse 104 semaines ; apres : la
+    fiche (1 peuple contre lui, sa force 0,5), prestige 97 -> 87, guerre
+    declaree par les Maesen avec le but de le soumettre.
+  - Tests : test_revolte (8).
+
+
+3. VERIFICATIONS
+---------------
+  - 730 tests (test_revolte, test_band_ui, test_ost_siege : les guerriers du
+    rebelle venus dans l'ost du suzerain rentrent chez eux a la revolte - un
+    cas revele par ce test) ; notes.py check : 0 ; accents : 0.
+  - L'empreinte identique (sa partie de reference n'a pas de tributaires).
+  - L'exe en un seul fichier reconstruit a part (dist-unfichier : son
+    dist/Kora.exe etait ouvert) ; essai reseau avec l'exe : identiques.
+
+
+4. D'AUTRES PETITES CHOSES DU MEME GENRE (PROPOSEES, a son choix)
+-----------------------------------------------------------------
+  Des regles trop faciles a contourner :
+  - V1. Le TRIBUT que l'on paie se rompt d'un clic (Rompre le pacte, -3 de
+    prestige) : en faire un refus de payer, qui donne a celui qui le
+    recevait un motif de guerre (comme "Ils ont refuse votre tribut").
+  - V2. Quitter une CONFEDERATION en pleine guerre commune ne coute que la
+    rupture d'un pacte : en faire une trahison (prestige, relation de tous
+    les membres).
+  - V3. Rompre une TREVE toute neuve (moins d'un an) : le meme parjure que
+    le serment (du prestige), sinon la trêve ne protege de rien.
+  Des choses que l'ecran ne dit pas (comme le signe de la marche) :
+  - V4. Un signe de FAIM sur les jetons : la bande en famine, ou dont la
+    collecte ne suffit plus (aujourd'hui seulement dans sa fiche).
+  - V5. Un liseré rouge sur les unites etrangeres EN GUERRE avec vous : qui
+    est hostile, qui est neutre, d'un coup d'oeil.
+  - V6. Au survol d'une de vos bandes en marche : sa destination marquee
+    (sans avoir a la choisir).
+  - V7. Dans l'ecran Peuples : le serment qui reste (tributaire) et
+    l'agitation de vos tributaires (suzerain), en clair.
+  Des details :
+  - V8. Les cartes d'evenements disent "encore 0 sem." la derniere semaine :
+    "derniere semaine".
+  - V9. Chez un tributaire, "Rompre le pacte" du suzerain l'affranchit : le
+    bouton devrait dire "Affranchir", et donner de la relation (aujourd'hui
+    un malus de rupture).

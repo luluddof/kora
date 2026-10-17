@@ -85,7 +85,13 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   suzerain : soumettre un tributaire, c'est le prendre à son suzerain, et la guerre est contre tout son pays (ou
   visez son suzerain : **Guerre à tout leur pays**). Un **motif** (terres disputées, silex ou sel de leurs terres,
   succession disputée, tribut refusé) permet de déclarer la guerre sans honte. Les alliances sans ennemi commun
-  s'usent ; un accord commercial n'empêche pas la guerre.
+  s'usent ; un accord commercial n'empêche pas la guerre. Un **tributaire** ne rompt pas son serment d'un clic : il
+  doit **se révolter** (écran *Peuples*, chez son suzerain), pas avant deux ans (quatre si le suzerain garde des
+  otages), au prix de son honneur ; et le pays du suzerain lui fait aussitôt la guerre pour le soumettre à nouveau.
+  Il n'est libre pour de bon que s'il tient jusqu'à la paix.
+- Une unité qui **marche** porte une petite pointe au bord de son jeton, tournée vers où elle va (rouge : un repli ;
+  pâle : une troupe dissoute qui rentre au village) ; dès que l'ordre est donné, même en pause, et aussi sur les
+  unités étrangères que vous voyez.
 - **Clic droit maintenu** (ou molette maintenue) et glisser : tourner la planète. **Molette** : zoomer.
 - Le bouton **Carte** (en bas à gauche) déroule les modes de carte : relief, influence, suzerains, tournants,
   ressources, commerce.
