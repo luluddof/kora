@@ -19,6 +19,8 @@ from src.kora import places, systems, tech
 
 VISION_RADIUS = 8
 TOWER_SIGHT = 3
+# La vue de plus d'une tour de guet, par niveau (batiments.VALUES la relit).
+TOWER_SIGHTS = (3, 5)
 
 
 @dataclass
@@ -71,8 +73,8 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
     # Tours de guet des villages : on voit plus loin autour.
     towers: list = []
     if state.sites:
-        towers = [(t, h) for t in eyes for h in places.watch_spots(state, t)]
-    key = (id(state.world), tuple(sorted(radius.items())), tuple(spots), tuple((t, h.q, h.r) for t, h in towers))
+        towers = [(t, h, n) for t in eyes for h, n in places.watch_spots(state, t)]
+    key = (id(state.world), tuple(sorted(radius.items())), tuple(spots), tuple((t, h.q, h.r, n) for t, h, n in towers))
     if vis.key == key:
         return vis
     visible: set[Hex] = set()
@@ -80,8 +82,8 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
         if band.tribe_id not in eyes or band.population <= 0:
             continue
         visible.update(state.world.hexes_in_radius(band.position, radius[band.tribe_id]))
-    for t, h in towers:
-        visible.update(state.world.hexes_in_radius(h, radius[t] + TOWER_SIGHT))
+    for t, h, n in towers:
+        visible.update(state.world.hexes_in_radius(h, radius[t] + TOWER_SIGHTS[min(n, len(TOWER_SIGHTS)) - 1]))
     vis.visible = visible
     vis.explored |= visible
     vis.key = key

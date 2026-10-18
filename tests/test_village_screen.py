@@ -61,15 +61,20 @@ def test_a_building_costs_food_takes_weeks_then_works():
     site = villages.found(st, 1)
     assert batiments.build_block(st, 1, "grenier") == ""
     before = band.stock
+    cost = batiments.build_cost(st, site, "grenier")
     cap = stock_max(band, st)
     assert batiments.build(st, 1, "grenier")
-    assert band.stock == before - batiments.build_cost(st, site, "grenier")
+    assert band.stock == before - cost
     assert batiments.building_status(st, site, "grenier") == "chantier"
-    assert "à la fois" in batiments.build_block(st, 1, "puits")
+    # Un chantier a la fois : le suivant attend dans la file, paye a son tour.
+    assert batiments.build(st, 1, "puits") and site.data.queue == ["puits"]
+    assert band.stock == before - cost
+    assert "Attend" in batiments.queue_block(st, site, 0)
     for _ in range(batiments.BUILDINGS["grenier"].weeks):
         villages.update(st)
-    assert places.has(site, "grenier")
+    assert places.level(site, "grenier") == 1
     assert stock_max(band, st) > cap
+    assert places.works(site)[0] == "puits" and not site.data.queue, "la file avance d'elle-même"
 
 
 def test_buildings_need_knowledge_and_room():
@@ -77,9 +82,9 @@ def test_buildings_need_knowledge_and_room():
     site = villages.found(st, 1)
     assert batiments.building_status(st, site, "palissade") == "verrouille"
     assert "Palissades" in batiments.build_block(st, 1, "palissade")
-    assert batiments.slots(st, site) == batiments.BASE_SLOTS + 1
-    site.data.buildings = ["grenier", "puits", "enclos"]
-    assert "place" in batiments.build_block(st, 1, "autel")
+    assert batiments.space(st, site) == batiments.BASE_SPACE + band.population // batiments.SPACE_POP
+    site.data.buildings = {"grenier": 1, "puits": 1, "enclos": 1, "fosses": 4}
+    assert "terrain" in batiments.build_block(st, 1, "autel")
 
 
 def test_old_palisades_are_read_as_buildings():
@@ -97,7 +102,7 @@ def test_old_palisades_are_read_as_buildings():
 def test_altar_tower_and_stone_reach_beyond_the_village():
     st, band = _state(known=("huttes", "semis", "sedentarite", "guetteurs", "rites", "megalithes"))
     site = villages.found(st, 1)
-    site.data.buildings = ["autel", "tour", "pierre"]
+    site.data.buildings = {"autel": 1, "tour": 1, "pierre": 1}
     clan = Band(5, 1, offset_to_axial(33, 15), 20, 100.0)
     st.bands[5] = clan
     assert any("autel" in label for label, _v in chiefs.loyalty_parts(st, clan))
@@ -108,7 +113,7 @@ def test_altar_tower_and_stone_reach_beyond_the_village():
     far = offset_to_axial(30, 15)
     vis = recompute_vision(st)
     assert far in vis.visible
-    assert places.watch_spots(st, 1) == [site.hex]
+    assert places.watch_spots(st, 1) == [(site.hex, 1)]
     st.clock.week = 12
     st.clock.advance_week()
     if st.clock.just_finished_winter():
@@ -142,9 +147,15 @@ def test_windows_fit_on_small_and_large_screens():
         vl = village_layout(w, h, 2)
         bx, by, bw, bh = vl["box"]
         assert bx + bw <= w - 32 and by + bh <= h
-        for bid, (x, y, cw, ch) in vl["cards"].items():
-            assert y + ch <= vl["detail"][1]
-            assert village_hit(vl, x + 3, y + 3) == f"vb:{bid}"
+        assert village_hit(vl, vl["bgoto"][0] + 3, vl["bgoto"][1] + 3) == "vpage:batiments"
+        bp = village_layout(w, h, 2, "batiments")
+        for bid, rects in bp["bpage"]["cards"].items():
+            x, y, cw, ch = rects["card"]
+            assert bx <= x and x + cw <= bx + bw and y + ch <= by + bh - 8, (w, h, bid)
+            assert village_hit(bp, rects["plus"][0] + 3, rects["plus"][1] + 3) == f"bplus:{bid}"
+            assert village_hit(bp, rects["minus"][0] + 3, rects["minus"][1] + 3) == f"bminus:{bid}"
+            assert village_hit(bp, x + 3, y + ch // 2) == f"bpick:{bid}"
+        assert village_hit(bp, bp["bpage"]["build"][0] + 3, bp["bpage"]["build"][1] + 3) == "bdo"
         assert village_hit(vl, vl["raise"][0] + 3, vl["raise"][1] + 3) == "vraise"
         see = vl["armies"][1]["see"]
         assert village_hit(vl, see[0] + 3, see[1] + 3, [7, 9]) == "vsee:9"

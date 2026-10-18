@@ -40,7 +40,7 @@ from src.kora import (
     wars,
 )
 from src.kora.gamestate import log_of
-from src.kora.layout import FILTER_BY_HIT, TREE_ZOOM_STEP, zoom_at
+from src.kora.layout import FILTER_BY_HIT, TREE_ZOOM_STEP, clamp_people_top, people_thumb, zoom_at
 from src.kora.sim import player_home_hex
 from src.kora.situations import SPECS
 from src.kora.types import Hex
@@ -246,8 +246,11 @@ class ScreenClicks:
         if home is None or choice == "vclose":
             screens.close_all(self.ui)
             return
-        if choice.startswith("vb:"):
-            self.ui["village_pick"] = choice[3:]
+        if choice.startswith(("bpick:", "vb:")):
+            self.ui["village_pick"] = choice.split(":", 1)[1]
+            return
+        if choice.startswith(("bplus:", "bminus:", "bunq:")) or choice in ("bdo", "bdemo"):
+            self.building_click(site, home, choice)
             return
         if choice == "vgrain":
             why = grain.quote(self.state, home.tribe_id, site.id)["why"]
@@ -289,16 +292,7 @@ class ScreenClicks:
                 self.issue(commands.make(self.me(), "teams", site.id, cid, -1))
             return
         if choice == "vbuild":
-            pick = self.ui["village_pick"] or next(
-                (b for b in batiments.BUILD_ORDER if batiments.building_status(self.state, site, b) == "possible"), None
-            )
-            if pick is None:
-                return
-            why = batiments.build_block(self.state, home.id, pick) or ("" if chiefs.obeys(self.state, home) else orders.INDOCILE)
-            if why:
-                self.toast(why)
-            else:
-                self.issue(commands.make(self.me(), "build", home.id, pick))
+            self.building_click(site, home, "bdo")
             return
         if choice.startswith("levy:"):
             self.ui["levy"] = choice[5:]
@@ -333,6 +327,36 @@ class ScreenClicks:
                 else:
                     self.issue(commands.make(self.me(), "dissolve", bid))
             return
+
+    def building_click(self, site, home, choice) -> None:
+        """La page Les batiments (render_batiments) : batir ou mettre en file
+        un niveau (+), en abattre un (-, deux clics), retirer de la file."""
+        kind, _sep, arg = choice.partition(":")
+        if kind == "bunq":
+            self.issue(commands.make(self.me(), "unqueue", home.id, int(arg)))
+            return
+        bid = arg if kind in ("bplus", "bminus") else self.ui.get("village_pick")
+        if bid not in batiments.BUILDINGS:
+            return
+        self.ui["village_pick"] = bid
+        if kind in ("bplus", "bdo"):
+            why = batiments.build_block(self.state, home.id, bid) or ("" if chiefs.obeys(self.state, home) else orders.INDOCILE)
+            if why:
+                self.toast(why)
+            else:
+                self.issue(commands.make(self.me(), "build", home.id, bid))
+            return
+        # Abattre ne se defait pas : un second clic le confirme.
+        why = batiments.demolish_block(self.state, site, bid)
+        if why:
+            self.toast(why)
+            return
+        if self.ui.get("demolish_confirm") != (bid, self.state.tick_count):
+            self.ui["demolish_confirm"] = (bid, self.state.tick_count)
+            self.toast(f"Cliquez encore pour abattre un niveau : {batiments.building_name(site, bid)} (rien n'est rendu).")
+            return
+        self.ui["demolish_confirm"] = None
+        self.issue(commands.make(self.me(), "demolish", home.id, bid))
 
     def army_click(self, choice) -> None:
         """Clic dans le panneau Armee."""
@@ -583,6 +607,28 @@ class ScreenClicks:
             band = partie_carte.nearest_band_of(self.state, tid, home) if tid is not None else None
             if band is not None:
                 self.globe_yaw, self.globe_pitch = partie_carte.look_hex(self.state, band.position)
+                # Le conseil prend tout l'ecran : il se ferme pour montrer la carte.
+                self.side_panel = None
+            return True
+        if choice.startswith("pfilter:"):
+            self.ui["people_filter"] = choice.split(":")[1]
+            self.ui["people_scroll"] = 0
+            return True
+        if choice in ("ptrack", "pthumb"):
+            # La barre de la liste : la poignee se glisse ; un clic dans la
+            # rainure saute d'une page vers lui.
+            info = getattr(self.renderer, "people_scroll_info", None)
+            if info is None:
+                return True
+            lay, n = info
+            mx, my = pygame.mouse.get_pos()
+            top = int(self.ui.get("people_scroll", 0))
+            thumb = people_thumb(lay, n, top)
+            if choice == "pthumb" and thumb is not None:
+                self.ui["people_drag"] = my - thumb[1]
+            elif thumb is not None:
+                page = lay["visible"] - 1
+                self.ui["people_scroll"] = clamp_people_top(lay, n, top - page if my < thumb[1] else top + page)
             return True
         if choice.startswith("gift:"):
             tid = self.ui.get("people_pick")

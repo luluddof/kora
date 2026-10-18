@@ -45,6 +45,7 @@ from src.kora.layout import (
     menu_hit,
     min_zoom_for,
     pan,
+    people_top_at,
     side_hit,
     TREE_ZOOM_STEP,
     zoom_at,
@@ -86,6 +87,9 @@ def fresh_ui() -> dict:
         "tribe_pick": None,
         "people_pick": None,
         "people_scroll": 0,
+        "people_filter": "tous",
+        "demolish_confirm": None,
+        "people_drag": None,
         "event_open": None,
         # Situation (crise, conjoncture) dont la fenetre est ouverte (uid).
         "situation_open": None,
@@ -457,6 +461,7 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
             if event.button == 1:
                 self.slider_drag = None
                 self.slider_sent = None
+                self.ui["people_drag"] = None
             if event.button == 3 and self.right_press is not None:
                 press, self.right_press = self.right_press, None
                 ax, ay = press["at"]
@@ -470,6 +475,14 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
                 if self.tech_drag == 1 and not self.tech_press["moved"] and self.tech_press["pick"]:
                     self.side_click(self.tech_press["pick"])
                 self.tech_drag = 0
+        elif event.type == pygame.MOUSEMOTION and self.ui.get("people_drag") is not None:
+            # La poignee de la liste des peuples (render_peuples) suit la souris.
+            info = getattr(self.renderer, "people_scroll_info", None)
+            if info is not None and self.side_panel == "peuples":
+                lay, n = info
+                self.ui["people_scroll"] = people_top_at(lay, n, event.pos[1] - self.ui["people_drag"])
+            else:
+                self.ui["people_drag"] = None
         elif event.type == pygame.MOUSEMOTION and self.slider_drag:
             if self.renderer.treasury_hits:
                 self.set_slider(self.slider_drag, render_treasury.slider_value(self.renderer.treasury_hits, self.slider_drag, event.pos[0]))

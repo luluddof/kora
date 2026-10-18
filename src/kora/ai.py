@@ -14,7 +14,8 @@ _settler, _go_settle ; VILLAGE_SPACING), camper si elle est bien nourrie,
 vider les caches, se regrouper, se scinder (AI_SPLIT_POP), chercher la
 meilleure collecte (_pick_hex), raider (ai_war.py : jamais un combat perdu
 d'avance). Un village (_village_ai) : batir au printemps sur le surplus
-(AI_BUILD_ORDER), jamais sans marge de vivres (AI_FOOD_MARGIN :
+(batiments.ai_choice : ce qui loge, puis les niveaux d'AI_PLAN), jamais
+sans marge de vivres (AI_FOOD_MARGIN :
 villages.food_outlook), lever une troupe si une menace ou une proie est la
 (AI_THREAT), appeler l'ost. Une troupe (_army_ai) : defendre, raider en
 guerre, assieger (_besiege), rentrer avant la faim (ai_war.short_of_food).
@@ -229,8 +230,7 @@ def _camp_care(state: GameState, band: Band, weeks: float) -> bool:
     return False
 
 
-# Ordre des chantiers d'un village IA.
-AI_BUILD_ORDER = ("palissade", "grenier", "puits", "guerriers", "tour", "autel", "maison_longue", "enclos", "atelier", "place", "pierre")
+# L'ordre des chantiers d'un village IA : batiments.ai_choice (AI_PLAN).
 AI_ARMY_WHIM = 0.15
 AI_ARMY_POP = 60
 # Un voisin menacant : une bande sans pacte au moins aussi forte que la
@@ -242,6 +242,7 @@ AI_ARMY_REACH = 16
 AI_WAR_REACH = 28
 AI_WAR_RAID_WEEKS = 9
 AI_BUILD_RESERVE = 12
+AI_HOUSE_RESERVE = 4
 # La marge (semaines de vivres a la prochaine recolte) qu'un village IA veut
 # garder avant de batir ou de lever une troupe de son plein gre.
 AI_FOOD_MARGIN = 4.0
@@ -438,13 +439,23 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     margin = villages.food_outlook(state, site, band)[1] if site is not None else 0.0
     safe = margin >= AI_FOOD_MARGIN
     warm = state.world.hex_season(band.position).value in ("printemps", "ete")
-    if site is not None and warm and safe and places.works(site) is None:
+    # Entasse, un village loge ses gens des que le grenier tient jusqu'a la
+    # recolte (une hutte coute peu), et les met en file pendant un autre chantier.
+    crowded = site is not None and band.population > batiments.housing(site)
+    house_only = crowded and not safe and margin >= 0
+    if site is not None and warm and (safe or house_only) and (places.works(site) is None or (crowded and not site.data.queue)):
         # On batit au printemps et en ete, sur le surplus : pas avec les
         # vivres de l'hiver.
         # Pendant les grands travaux, le monument passe d'abord.
-        order = (("monument",) + AI_BUILD_ORDER) if batiments.monument_open(state, site) else AI_BUILD_ORDER
-        for bid in order:
-            if weeks < AI_BUILD_RESERVE + batiments.BUILDINGS[bid].cost_weeks:
+        # Ce qui loge d'abord, puis les niveaux dans l'ordre (batiments.ai_choice).
+        pop = max(1, band.population)
+        choices = batiments.ai_choice(state, site, band)
+        if places.works(site) is not None or house_only:
+            choices = [b for b in choices if b in ("huttes", "maisons")]
+        for bid in choices:
+            # Loger les siens passe avant : une petite reserve suffit.
+            reserve = AI_HOUSE_RESERVE if bid in ("huttes", "maisons") else AI_BUILD_RESERVE
+            if weeks < reserve + batiments.build_cost(state, site, bid) / pop:
                 continue
             if not batiments.build_block(state, band.id, bid):
                 batiments.build(state, band.id, bid)

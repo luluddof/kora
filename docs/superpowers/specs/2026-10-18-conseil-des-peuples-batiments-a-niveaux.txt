@@ -1,0 +1,144 @@
+Kora - Le conseil des peuples, les batiments a niveaux
+=====================================================
+Date : 2026-10-18. Statut : FAIT (version 0.24.0).
+
+Ses mots, devant les maquettes (2026-10-18-maquettes-diplomatie-
+batiments.txt) : "[la maquette A, le conseil] pour la diplomatie pour le
+moment, en ayant bien un moyen de scroller a gauche pour qu'on puisse bien
+voir tous les pays si ca ne rentre pas sur l'ecran. Et pour les batiments,
+j'aimerais un rework en profondeur avec une UI inspiree de Victoria 3 ou
+d'Europa Universalis 5 ; et le rework en profondeur, c'est qu'on peut
+batir plusieurs fois un meme batiment, qu'il y a des batiments peu couteux
+comme les logements rudimentaires etc., et des plus couteux comme les plus
+gros."
+
+
+1. LE CONSEIL DES PEUPLES (la maquette A, dans le jeu)
+-----------------------------------------------------
+  - L'onglet Peuples ouvre une fenetre sur toute la largeur (comme le
+    village). En haut : des filtres (Tous, Cordiaux, Mefiants, Hostiles,
+    En guerre, avec leur nombre) et votre force.
+  - A gauche, la liste : le nom, la relation, l'humeur, des icones d'etat
+    (leurs guerres, leurs accords, leur suzerain), leur force par rapport a
+    la votre. ELLE DEFILE : la molette, une barre dont on GLISSE la poignee,
+    un clic dans la rainure (une page) ; en haut, "4 plus haut · 2 plus
+    bas".
+  - La fiche : leur jeton (l'initiale a la couleur du pays), le chef et ses
+    traits, l'approche (son detail au survol) ; trois cartes - ENTRE VOUS
+    (relation, vos accords et motifs, ses raisons ; le detail au survol ;
+    le bouton des routes s'il y a un accord), LEUR FORCE (eux / vous), LEURS
+    LIENS (guerres, tributaires, allies, confederation, commerce) ; leurs
+    grands tournants (en or) et leurs savoirs.
+  - Les actions en quatre familles : DONNER (vivres, sicles), PROPOSER
+    (treve, echanges, alliance, confederation, union), LES SOUMETTRE
+    (affranchir, tribut, protection, soumission, inviter un clan qui se
+    detache), LA GUERRE (se revolter, declarer, a tout leur pays, rompre).
+    Ce qu'on peut faire : un bouton et la reponse attendue (le detail au
+    survol) ; le reste sous "Pas encore" (un cadenas : le savoir qu'il
+    faut ; un tiret : sans objet). "Voir sur la carte" ferme la fenetre.
+  - Code : render_peuples.py (nouveau ; l'ancien panneau est retire de
+    render_panels), layout.peoples_layout / people_rows / people_thumb /
+    people_top_at, partie_ecrans (pfilter, ptrack, pthumb), partie (la
+    poignee glissee).
+
+
+2. LES BATIMENTS A NIVEAUX (la simulation)
+-----------------------------------------
+  - Chaque batiment a un NIVEAU (VillageData.buildings : id -> niveau) et un
+    niveau le plus haut ; on le batit plusieurs fois. Le niveau 1 fait ce
+    que faisait le batiment avant (sa partie ne change pas, sinon par les
+    logements). Dix-huit batiments en cinq familles :
+      Logements : Huttes de branchages (peu couteux, 20 personnes, jusqu'a
+        30), Maisons de terre (35), Maison longue (40, et la croissance).
+      Vivres et reserves : Fosses a grain (peu couteux, +3 semaines par
+        niveau), Claies de sechage (le grain se gate moins), Grenier
+        sureleve (3 niveaux, Greniers pour les suivants), Enclos, Puits.
+      Defense : Palissade (Double palissade, puis Palissade et fosse avec
+        Enceintes et fosses ; elle ne prend pas de terrain), Tour de guet
+        (sa vue passe de 3 a 5), Maison des guerriers.
+      Le peuple et ses morts : Foyer commun (peu couteux), Autel des
+        ancetres (son niveau 2 : Culte des ancetres), Pierre levee (Deux
+        pierres, Alignement), Maison du conseil (couteuse : Chefferie),
+        Grand monument (ses etapes, pendant les grands travaux).
+      Metiers et echanges : Ateliers, Place d'echange.
+  - Trois genres de prix : peu couteux, moyen, couteux ; un niveau de plus
+    coute la moitie de plus a chaque fois (les huttes, maisons et fosses :
+    5 % seulement), et prend plus de temps.
+  - LE TERRAIN : 6, puis un de plus par 15 habitants (jamais moins que ce
+    qui est bati) ; chaque niveau en prend 0 a 3.
+  - LES LOGEMENTS : 100 personnes, puis chaque hutte, maison, maison longue.
+    Au-dela, le village S'ENTASSE : la croissance ralentit (plus aucune
+    naissance quand un quart de ses gens est sans toit),
+    la stabilite baisse ("Trop de monde (N sans toit)"), les fievres
+    montent. Une hutte loge 20 personnes et prend la place que ces 20
+    personnes donnent : batir des logements, c'est grandir. A la fondation,
+    les familles montent leurs huttes ; les villages des parties d'avant
+    recoivent les leurs a la relecture (persist : LEVELS_VERSION).
+  - LA FILE DES CHANTIERS : un chantier a la fois ; jusqu'a 4 attendent leur
+    tour, payes quand il vient (sans vivres, le suivant attend et le dit).
+    On en retire un de la file ; on DEMOLIT un niveau (deux clics ; le
+    terrain revient, rien n'est rendu ; pas le toit de ceux qui y vivent).
+  - Un pillage abat un niveau (plus un batiment entier).
+  - L'IA loge d'abord ses gens (entassee a 90 %), puis batit ses premiers
+    niveaux dans l'ordre d'avant, puis les suivants (batiments.AI_PLAN).
+  - Code : batiments.py (refait : VALUES, value, housing, space, la file),
+    places (level), villages (les effets par niveau, l'entassement),
+    troupes, goods, vision, ai, commands (unqueue, demolish), persist.
+
+
+3. L'ECRAN DES BATIMENTS (Victoria 3 / Europa Universalis 5)
+-----------------------------------------------------------
+  - Un onglet "Les batiments" dans la fenetre du village (la page Le village
+    garde un resume : les medaillons et leurs niveaux, le chantier, ce que
+    fait le village, et un bouton vers la page).
+  - En tete, trois jauges : le TERRAIN, les LOGES (vert, ambre a 90 %,
+    rouge et ce que coute l'entassement), le GRENIER.
+  - Les batiments en cartes, par familles, sur trois colonnes : le medaillon
+    et son NIVEAU, le nom du niveau, ce que donnera le suivant ("Niv. 2 :
+    defense x1,6 -> x1,9"), le prix et le temps, un point pour le genre de
+    prix ; "+" batit (ou met en file), "-" abat (deux clics) ; un chantier
+    rougeoie et sa barre avance ; le detail au survol.
+  - A droite, LES CHANTIERS : celui en cours, la file (une croix retire),
+    ce que chacun attend ; puis la FICHE du batiment choisi : son recit, ses
+    niveaux un par un (l'atteint en or, le suivant en braise, le savoir qu'il
+    faudra), Batir / Mettre en file, Demolir.
+  - Elle tient de 1024 x 640 a 1920 x 1080 (des cartes plus basses dans une
+    petite fenetre ; le prix passe au survol et dans la fiche).
+  - Sur la carte, la palissade doublee se voit (deux cadres), le fosse aussi.
+  - Code : render_batiments.py (nouveau), render_village (l'onglet, le
+    resume), partie_ecrans.building_click.
+
+
+4. VERIFICATIONS
+---------------
+  - DANS SA PARTIE (copie, Caldere an 44) : Netali (213 habitants) garde
+    ses huit batiments au niveau 1 et recoit 5 huttes (240 loges : chacun a
+    son toit) ; terrain 15 sur 20 ; ce qu'il peut batir : huttes (133
+    vivres), fosses (170), claies (127), foyer (170), maisons (255), autel
+    (426) ; la double palissade (1278), la maison du conseil (1491) attendent
+    ses vivres ; le grenier de niveau 2 attend Greniers. Le conseil des
+    peuples : ses 16 peuples, la liste qui defile, les filtres.
+  - Tests : test_batiments_niveaux (14), test_peuples_ecran (4), les tests
+    du village, des troupes, du commerce, de l'argent mis a jour ; la suite.
+  - L'empreinte re-enregistree (le jeu change volontairement : les
+    logements, l'IA) ; l'essai reseau ; les longues parties d'IA (section 5).
+
+
+5. L'EQUILIBRE (parties d'IA, aurane, graine 3, 80 ans)
+------------------------------------------------------
+                  jeu d'avant (0.23)          refonte (0.24)
+  an 20    152 habitants par village    160 ; 15 entasses ; 499 niveaux
+  an 40    216                          194 ; 10 entasses ; 1785 niveaux
+  an 60    367                          349 ;  6 entasses ; 3005 niveaux
+  an 80    431                          403 ;  1 entasse  ; 3674 niveaux
+  (le jeu d'avant comptait 92 villages "trop de monde" a l'an 80.)
+  Les villages de l'IA grandissent presque autant, en batissant : surtout
+  des maisons et des huttes, puis fosses, palissades (doublees), puits,
+  ateliers, autels. Deux reglages nes de ces essais :
+  - l'entassement arrete les naissances a 25 % de gens sans toit (a x0,2,
+    son village passait de 229 a 435 habitants en quatre ans sans rien
+    batir ; maintenant il plafonne a 300 : la pression se voit) ;
+  - l'IA loge ses gens des que son grenier tient jusqu'a la recolte (4
+    semaines de reserve, et en file pendant un autre chantier) : les
+    villages entasses de sa partie passent de 19 a 5 sur 117.
+  test_balance (4 graines) passe.

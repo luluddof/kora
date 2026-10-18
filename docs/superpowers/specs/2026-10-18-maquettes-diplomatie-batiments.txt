@@ -1,6 +1,9 @@
 Kora - Maquettes : l'ecran diplomatique et les batiments du village
 ==================================================================
-Date : 2026-10-18. Statut : PROPOSE (maquettes, rien n'est code dans le jeu).
+Date : 2026-10-18. Statut : diplomatie A CHOISIE et FAITE (0.24.0) ; B, C
+proposees. Batiments : il a demande autre chose (une refonte a niveaux,
+facon Victoria 3 / EU5), FAITE en 0.24.0 : 2026-10-18-conseil-des-peuples-
+batiments-a-niveaux.txt.
 
 Ses mots : "J'aimerais une meilleure UI pour l'interface diplomatique et
 celle des batiments dans les villes. Propose-moi plusieurs maquettes."

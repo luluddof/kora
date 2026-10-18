@@ -137,7 +137,7 @@ def test_the_ai_overlord_too_weak_alone_calls_the_ost():
 def test_torches_halve_the_walls_of_a_village_you_attack():
     st = _state()
     vb, vsite = _village(st, 3, 3)
-    vsite.data.buildings.append("palissade")
+    vsite.data.buildings["palissade"] = 1
     walls = villages.defense_mult(st, vb)
     assert abs(walls - batiments.PALISADE_DEFENSE) < 1e-6
     st.tribes[1].knowledge.add("torches")
@@ -188,7 +188,7 @@ def test_the_ai_raises_a_troop_to_besiege_a_village_it_could_not_storm():
     st = _state()
     me, msite = _village(st, 1, 1, pop=320, col=10)
     prey, psite = _village(st, 3, 3, pop=100, col=18)
-    psite.data.buildings.append("palissade")
+    psite.data.buildings["palissade"] = 1
     st.tribes[1].is_player = False
     diplo.make_contact(st, 1, 3, quiet=True)
     guerre.declare_war(st, 1, 3)

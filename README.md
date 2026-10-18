@@ -139,6 +139,13 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - En cet âge, **un peuple n'a qu'un village** : les autres villages de votre civilisation sont des frères
   indépendants, ou vos tributaires. Chacun travaille selon son sexe et son métier (chasse, cueillette, champs,
   poterie, silex…) ; un soldat retourne à son travail quand la troupe est dissoute.
+- Les **bâtiments** (écran du village, *Les bâtiments*) se bâtissent **plusieurs fois** : chaque niveau fait plus
+  (un grenier de plus, une palissade doublée puis un fossé, une tour qui voit plus loin…). Des bâtiments **peu
+  coûteux** (huttes de branchages, fosses à grain, claies de séchage, foyer commun), d'autres **coûteux** (maison
+  longue, maison du conseil, pierres levées). Le village a un **terrain** (il grandit avec ses habitants) et des
+  **logements** : au-delà, il s'entasse (il grandit moins, il gronde, les fièvres montent) ; bâtir des huttes, c'est
+  grandir. Un chantier à la fois, les suivants attendent dans la **file** (payés quand vient leur tour) ; on peut
+  aussi abattre un niveau pour reprendre son terrain.
 - Avec les villages vient la **chefferie** (écran du village, *Le chef et les familles*) : le grenier du chef (sa part
   des récoltes), les fêtes, les familles qui comptent et leurs charges ; trop prendre mène à la révolte.
 - L'**influence** d'un peuple se projette autour de ses bandes et de ses villages, loin en plaine, à peine en
@@ -148,7 +155,10 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - Les **chefs des autres peuples** ont chacun leur **approche** : conquérant, protecteur, marchand, paisible,
   méfiant, aux abois (ou, s'ils sont tributaires, soumis ou rétifs). Elle vient de leur caractère et de la situation
   de leur pays, change avec elle, et décide de leurs raids, de leurs tributs, de leurs dons, et de ce qu'ils
-  répondent à vos propositions (écran *Peuples*, au survol de leur approche).
+  répondent à vos propositions (écran *Peuples*, au survol de leur approche). L'écran *Peuples* est un **conseil** :
+  la liste de tous les peuples connus (des filtres, elle défile à la molette ou par sa barre), leur force face à la
+  vôtre, leurs guerres et leurs accords, et vos actions rangées en quatre familles (donner, proposer, les soumettre,
+  la guerre) avec la réponse attendue.
 - À la fin du néolithique, les **grandes chefferies** : enceintes, festins de prestige, biens de prestige, chef des
   chefs, otages et serments pour gagner ou tenir des tributaires ; ou l'araire, le lait et la laine pour prospérer
   sans eux.

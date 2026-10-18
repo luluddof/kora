@@ -54,9 +54,11 @@ from src.kora import (
     money as _money,
     money,
     orders,
+    places,
     render_battle,
     render_numbers,
     render_panels,
+    render_peuples,
     render_situations,
     render_tech,
     render_village,
@@ -878,13 +880,21 @@ class Renderer:
 
     def draw_village_icon(self, site, x: int, y: int, color, size: int) -> None:
         """Un village : un carre a la couleur du peuple, bord sombre ; une
-        palissade l'entoure d'un second cadre de bois."""
-        self._draw_village_box(x, y, color, size, palisade_state(site) == "built")
+        palissade l'entoure d'un cadre de bois, la palissade doublee de deux,
+        le fosse d'un trait sombre de plus (son niveau : batiments)."""
+        walls = places.level(site, "palissade") if palisade_state(site) == "built" else 0
+        self._draw_village_box(x, y, color, size, walls)
 
-    def _draw_village_box(self, x: int, y: int, color, size: int, walled: bool) -> None:
+    def _draw_village_box(self, x: int, y: int, color, size: int, walled: int) -> None:
         half = max(4, size)
         rect = pygame.Rect(x - half, y - half, 2 * half, 2 * half)
         if walled:
+            if walled >= 3:
+                pygame.draw.rect(self.screen, (24, 30, 34), rect.inflate(22, 22), 3)
+            if walled >= 2:
+                outer2 = rect.inflate(16, 16)
+                pygame.draw.rect(self.screen, (58, 42, 24), outer2)
+                pygame.draw.rect(self.screen, (168, 120, 64), outer2, 2)
             outer = rect.inflate(8, 8)
             pygame.draw.rect(self.screen, (58, 42, 24), outer)
             pygame.draw.rect(self.screen, (168, 120, 64), outer, 2)
@@ -1248,7 +1258,7 @@ class Renderer:
         if panel == "tribu":
             render_panels.draw_tribe(self, state, layout, ui)
         elif panel == "peuples":
-            render_panels.draw_peoples(self, state, layout, ui)
+            render_peuples.draw_peoples(self, state, layout, ui)
         if panel == "journal":
             draw_journal(self, state, layout, log_filter, log_newest)
         player = state.tribes.get(state.viewer)

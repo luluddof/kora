@@ -30,7 +30,7 @@ import time
 from pathlib import Path
 
 from src.kora import __version__
-from src.kora import battle, chiefs, diplo, draws, events, memory, planets, records, sites, situations, tech, turning, villages
+from src.kora import batiments, battle, chiefs, diplo, draws, events, memory, planets, records, sites, situations, tech, turning, villages
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LOG_CAP, LogEntry, LogKind
 from src.kora.gamestate import GameState, Pov
@@ -438,6 +438,20 @@ def map_id(data) -> str:
     return str(info.get("id") or planets.LEGACY)
 
 
+# La version qui a apporte les niveaux des batiments et les logements.
+LEVELS_VERSION = "0.24.0"
+
+
+def _older(version: str, than: str) -> bool:
+    """version < than ("0.23.0" < "0.24.0") ; une version illisible : oui."""
+    def parts(v):
+        try:
+            return tuple(int(x) for x in v.split("."))
+        except ValueError:
+            return (0,)
+    return parts(version) < parts(than)
+
+
 def game_from_json(data, world: World | None) -> tuple[GameState, dict] | None:
     """world : la planete proposee ; si la sauvegarde est sur une autre, on
     charge la sienne (planets.load)."""
@@ -540,6 +554,10 @@ def game_from_json(data, world: World | None) -> tuple[GameState, dict] | None:
             # Sauvegarde d'avant la scission du village (2026-09-25) : le chef
             # d'un peuple qui a deja un village vient y gouverner.
             villages.seat_chiefs(state)
+        if _older(str(data.get("game_version", "")), LEVELS_VERSION):
+            # Avant les niveaux et les logements (2026-10-18) : chaque village
+            # loge ses gens (des huttes, comme a la fondation).
+            batiments.house_old_villages(state)
         world._exhaustion = [[1.0 for _ in range(world.width)] for _ in range(world.height)]
         world._recovering = set()
         world._influence = {}

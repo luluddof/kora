@@ -15,6 +15,7 @@ import pygame
 import pygame.gfxdraw
 
 from src.kora import (
+    render_batiments,
     battle,
     chiefdom,
     diplo,
@@ -47,7 +48,6 @@ from src.kora.render_tech import (
     _check,
     _cross,
     _fit,
-    _lock,
     _tick,
     _wrap,
 )
@@ -413,7 +413,7 @@ def draw_found(r, state, ui) -> None:
 # --- l'ecran du village -----------------------------------------------------------------
 
 
-PAGES = (("village", "Le village"), ("metiers", "Métiers et échanges"), ("chef", "Le chef et les familles"))
+PAGES = (("village", "Le village"), ("batiments", "Les bâtiments"), ("metiers", "Métiers et échanges"), ("chef", "Le chef et les familles"))
 CHARGE_ORDER = ("grenier", "guerre", "echanges", "rites", "metiers")
 
 
@@ -427,7 +427,7 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     pages = {}
     px = bx + 24
     for key, _label in PAGES:
-        pw = 150 if key == "village" else 210
+        pw = 150 if key in ("village", "batiments") else 210
         pages[key] = (px, by + 60, pw, 26)
         px += pw + 8
     tiles_y = by + 94
@@ -443,20 +443,11 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
     left = (bx + 24, body_y, lw, body_h)
     mid = (left[0] + lw + 16, body_y, mw, body_h)
     right = (mid[0] + mw + 16, body_y, rw, body_h)
-    # Batiments : 4 colonnes de cartes.
-    per_row = 4
-    rows_n = -(-len(batiments.BUILD_ORDER) // per_row)
-    card_w = (mw - (per_row - 1) * 8) // per_row
-    card_h = max(58, min(78, (body_h - 24 - 190) // rows_n - 8))
-    cards = {}
-    for i, bid in enumerate(batiments.BUILD_ORDER):
-        col, row = i % per_row, i // per_row
-        cards[bid] = (mid[0] + col * (card_w + 8), body_y + 24 + row * (card_h + 8), card_w, card_h)
-    detail_y = body_y + 24 + rows_n * (card_h + 8) + 6
-    detail = (mid[0], detail_y, mw, body_y + body_h - detail_y)
-    half = (mw - 16) // 2
-    build = (mid[0] + half - 12 - 160, detail[1] + detail[3] - 12 - 30, 160, 30)
-    today = (mid[0] + half + 16, detail_y + 10, mw - half - 28, detail[3] - 20)
+    # La page du village : au milieu, ce qu'il a et ce que cela fait ; les
+    # batiments ont leur page (render_batiments : la page Les batiments).
+    today = (mid[0], body_y + 24, mw, body_h - 24 - 44)
+    bgoto = (mid[0], body_y + body_h - 34, 260, 30)
+    bpage = render_batiments.page_layout((bx + 24, body_y, inner, body_h))
     # Guerriers : la milice du village (une case par role : on ne choisit
     # pas), la taille de la levee, puis les troupes.
     type_w = (rw - 8) // 2
@@ -539,10 +530,9 @@ def village_layout(width: int, height: int, n_armies: int = 0, page: str = "vill
         "left": left,
         "mid": mid,
         "right": right,
-        "cards": cards,
-        "detail": detail,
-        "build": build,
         "today": today,
+        "bgoto": bgoto,
+        "bpage": bpage,
         "chips": chips,
         "types": types,
         "raise": raise_,
@@ -574,6 +564,11 @@ def village_hit(lay: dict, mx: int, my: int, armies: list | None = None):
                 if _hover(rect, mx, my):
                     return f"ccharge:{i}:{charge}"
         return "panel" if _hover(lay["box"], mx, my) else None
+    if lay.get("page") == "batiments":
+        hit = render_batiments.page_hit(lay["bpage"], mx, my)
+        if hit is not None:
+            return hit
+        return "panel" if _hover(lay["box"], mx, my) else None
     if lay.get("page") == "metiers":
         if _hover(lay["trade_btn"], mx, my):
             return "vtrade"
@@ -583,11 +578,8 @@ def village_hit(lay: dict, mx: int, my: int, armies: list | None = None):
             if _hover(rects["plus"], mx, my):
                 return f"vteam+:{cid}"
         return "panel" if _hover(lay["box"], mx, my) else None
-    for bid, rect in lay["cards"].items():
-        if _hover(rect, mx, my):
-            return f"vb:{bid}"
-    if _hover(lay["build"], mx, my):
-        return "vbuild"
+    if _hover(lay["bgoto"], mx, my):
+        return "vpage:batiments"
     for key, rect in lay["chips"].items():
         if _hover(rect, mx, my):
             return f"levy:{key}"
@@ -659,7 +651,7 @@ def draw_village(r, state, ui) -> None:
         else f"{weeks:.0f} semaines de vivres"
     )
     tiles = (
-        ("HABITANTS", f"{band.population}", f"places à bâtir {batiments.used_slots(site)}/{batiments.slots(state, site)}", INK),
+        ("HABITANTS", f"{band.population}", f"logés {batiments.housing(site)} · terrain {batiments.used_space(site)}/{batiments.space(state, site)}", BAD if batiments.crowding(state, site, band) else INK),
         ("GRENIER", f"{band.stock:.0f} / {cap:.0f}", store_sub, GOOD if weeks >= 8 else WARN),
         ("SEMENCES", f"{site.data.seed:.0f}", f"{step} (~{left} sem.)", INK),
         ("RÉCOLTE ATTENDUE", f"~{crop:.0f}" if site.data.fields else "-", f"{len(site.data.fields)} champs · sol {100 * villages.soil_avg(site):.0f} %", INK),
@@ -697,6 +689,14 @@ def draw_village(r, state, ui) -> None:
         return
     if page == "chef":
         _draw_chef(r, state, site, band, lay, ui, mx, my)
+        for tip in ui.pop("_vtips", []):
+            _tip(r, *tip)
+        return
+    if page == "batiments":
+        tips = []
+        render_batiments.draw_page(r, state, site, band, lay, ui, tips)
+        for rows, tx, ty, avoid in tips:
+            theme.tooltip(screen, rows, tx, ty, 380, avoid=avoid)
         for tip in ui.pop("_vtips", []):
             _tip(r, *tip)
         return
@@ -1022,82 +1022,41 @@ def _draw_lands(r, state, site, band, lay) -> None:
 
 
 def _draw_buildings(r, state, site, band, lay, ui, head_font, mx, my) -> None:
+    """La page du village, au milieu : ce qu'il a bati (medaillons et
+    niveaux), ce que cela fait, le chantier ; les batiments eux-memes ont
+    leur page (render_batiments)."""
     screen = r.screen
     x, y, w, _h = lay["mid"]
-    _section(r, x, y, w, f"BÂTIMENTS  ·  places {batiments.used_slots(site)}/{batiments.slots(state, site)} (une de plus par {batiments.SLOT_POP} habitants)")
-    pick = ui.get("village_pick") or next((b for b in batiments.BUILD_ORDER if batiments.building_status(state, site, b) == "possible"), batiments.BUILD_ORDER[0])
+    used, room = batiments.used_space(site), batiments.space(state, site)
+    _section(r, x, y, w, f"BÂTIMENTS  ·  terrain {used}/{room}  ·  logés {band.population}/{batiments.housing(site)}")
+    tx, ty, tw, th = lay["today"]
+    built = [b for b in batiments.BUILD_ORDER if places.level(site, b) > 0]
+    per = max(1, tw // 64)
+    for i, bid in enumerate(built):
+        cx = tx + (i % per) * 64 + 26
+        cy = ty + 6 + (i // per) * 62 + 22
+        screen.blit(theme.medallion(batiments.BUILDINGS[bid].icon, 20, "connu"), (cx - 22, cy - 22))
+        n = places.level(site, bid)
+        f = theme.font("mini_gras")
+        label = str(n)
+        bw_ = max(18, f.size(label)[0] + 8)
+        pygame.draw.rect(screen, C.nuit, (cx + 18 - bw_ // 2, cy + 10, bw_, 18), border_radius=9)
+        pygame.draw.rect(screen, C.ocre_jaune, (cx + 18 - bw_ // 2, cy + 10, bw_, 18), 1, border_radius=9)
+        screen.blit(f.render(label, True, C.os), (cx + 18 - f.size(label)[0] // 2, cy + 11))
+        if _hover((cx - 22, cy - 22, 44, 44), mx, my):
+            rows = [(f"{batiments.building_name(site, bid)} · niveau {n}", INK)] + [(f"  {line}", GOOD) for line in batiments.effect_lines(bid, n)]
+            ui.setdefault("_vtips", []).append((rows, mx, my))
+    rows_n = -(-len(built) // per) if built else 0
     job = places.works(site)
-    for bid, rect in lay["cards"].items():
-        b = batiments.BUILDINGS[bid]
-        st = batiments.building_status(state, site, bid)
-        top, bot, edge, text_c = CARD[st]
-        cx, cy, cw, ch = rect
-        hover = _hover(rect, mx, my)
-        screen.blit(_gradient_card(cw, ch, top, bot, 6), (cx, cy))
-        pygame.draw.rect(screen, (239, 228, 204) if bid == pick else edge, rect, 2 if bid == pick or hover else 1, border_radius=6)
-        screen.blit(medal(bid, edge, top, 14), (cx + 6, cy + ch // 2 - 15))
-        parts = _wrap(r.tiny, batiments.building_name(site, bid, short=True), cw - 48)[:2]
-        ty = cy + 10
-        for part in parts:
-            screen.blit(r.tiny.render(part, True, text_c), (cx + 40, ty))
-            ty += 13
-        if st == "chantier" and job:
-            done = 1.0 - job[1] / max(1, batiments.build_weeks(site, bid))
-            bar = (cx + 40, cy + ch - 14, cw - 50, 5)
-            pygame.draw.rect(screen, (18, 14, 11), bar, border_radius=2)
-            pygame.draw.rect(screen, edge, (bar[0], bar[1], int(bar[2] * done), 5), border_radius=2)
-            screen.blit(r.tiny.render(f"{job[1]} sem.", True, edge), (cx + 40, cy + ch - 30))
-        else:
-            screen.blit(r.tiny.render(STATUS_LABEL[st], True, edge), (cx + 40, cy + ch - 20))
-        if st == "bati":
-            _check(screen, cx + cw - 9, cy + 9, GOLD)
-        elif st == "verrouille":
-            _lock(screen, cx + cw - 11, cy + 11, edge)
-    # Fiche du batiment choisi.
-    dx, dy, dw, dh = lay["detail"]
-    screen.blit(_gradient_card(dw, dh, (42, 32, 25), (26, 20, 15), 8), (dx, dy))
-    pygame.draw.rect(screen, GOLD_DEEP, lay["detail"], 1, border_radius=8)
-    b = batiments.BUILDINGS[pick]
-    st = batiments.building_status(state, site, pick)
-    top, _bot, edge, _t = CARD[st]
-    half = lay["today"][0] - 16 - dx
-    screen.blit(medal(pick, edge, top, 17), (dx + 10, dy + 8))
-    screen.blit(head_font.render(_fit(head_font, batiments.building_name(site, pick), half - 60), True, INK), (dx + 52, dy + 8))
-    cost = batiments.build_cost(state, site, pick)
-    weeks = batiments.build_weeks(site, pick)
-    meta = f"{cost:.0f} vivres  ·  {weeks} semaines"
-    screen.blit(r.tiny.render(_fit(r.tiny, meta, half - 60), True, NOTE), (dx + 52, dy + 30))
-    yy = dy + 50
-    if b.needs:
-        known = b.needs in state.tribes[site.tribe_id].knowledge
-        need = f"Savoir : {tech.TECHS[b.needs].name}"
-        if known:
-            _tick(screen, dx + 20, yy + 7)
-        else:
-            _cross(screen, dx + 20, yy + 7, 3)
-        screen.blit(r.tiny.render(_fit(r.tiny, need, half - 40), True, GOOD if known else BAD), (dx + 30, yy))
-        yy += 17
-    for part in _wrap(r.tiny, b.text, half - 24)[:2]:
-        screen.blit(r.tiny.render(part, True, SOFT), (dx + 14, yy))
-        yy += 15
-    yy += 3
-    for eff in b.lines:
-        for k, part in enumerate(_wrap(r.tiny, eff, half - 40)[:2]):
-            if k == 0:
-                pygame.draw.polygon(screen, (178, 205, 140), [(dx + 16, yy + 3), (dx + 22, yy + 7), (dx + 16, yy + 11)])
-            screen.blit(r.tiny.render(part, True, (178, 205, 140)), (dx + 28, yy))
-            yy += 15
-    why = batiments.build_block_site(state, site, pick)
-    on = not why
-    label = {"bati": "Bâti", "chantier": "En chantier"}.get(st, "Construire")
-    _button(screen, r.small, lay["build"], label, on, on and _hover(lay["build"], mx, my))
-    if why and st != "bati":
-        by_ = lay["build"][1]
-        parts = _wrap(r.tiny, why, half - 24)[:2]
-        for k, part in enumerate(parts):
-            screen.blit(r.tiny.render(part, True, WARN), (dx + 14, by_ - 6 - 14 * (len(parts) - k)))
-    pygame.draw.line(screen, GOLD_DEEP, (lay["today"][0] - 8, dy + 12), (lay["today"][0] - 8, dy + dh - 12))
-    _today(r, state, site, band, lay["today"])
+    jy = ty + 6 + rows_n * 62 + 4
+    if job:
+        name_ = batiments.title_of(job[0], places.level(site, job[0]) + 1)
+        more = f" · {len(site.data.queue)} en file" if site.data.queue else ""
+        screen.blit(r.tiny.render(_fit(r.tiny, f"Chantier : {name_} (encore {job[1]} sem.){more}", tw), True, C.braise), (tx, jy))
+    else:
+        screen.blit(r.tiny.render("Aucun chantier en cours", True, NOTE), (tx, jy))
+    _today(r, state, site, band, (tx, jy + 26, tw, ty + th - jy - 26))
+    _button(screen, r.small, lay["bgoto"], "Les bâtiments  ›", True, _hover(lay["bgoto"], mx, my))
 
 
 def _today(r, state, site, band, rect) -> None:

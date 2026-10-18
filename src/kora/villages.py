@@ -184,8 +184,7 @@ def store_weeks(state, band) -> float:
     site = site_of(state, band)
     weeks = STORE_WEEKS + _bonus(state, band.tribe_id).granary + goods.store_weeks(state, band.tribe_id)
     if site is not None:
-        if has(site, "grenier"):
-            weeks += 8
+        weeks += batiments.value(site, "grenier", "reserve") + batiments.value(site, "fosses", "reserve")
         if oath_of(site) == "grenier":
             weeks *= 1.25
     return weeks
@@ -193,8 +192,7 @@ def store_weeks(state, band) -> float:
 
 def rot_mult(state, site) -> float:
     mult = _bonus(state, site.tribe_id).grain_rot * goods.rot_mult(state, site.tribe_id)
-    if has(site, "grenier"):
-        mult *= 0.6
+    mult *= batiments.value(site, "grenier", "gate", 1.0) * batiments.value(site, "sechoir", "gate", 1.0)
     if oath_of(site) == "grenier":
         mult *= 0.7
     return mult
@@ -270,11 +268,30 @@ def growth_mult(state, band) -> float:
     site = site_of(state, band)
     mult = GROWTH * _bonus(state, band.tribe_id).village_growth * stability_growth(state, band) * granary_growth(state, band)
     if site is not None:
-        if has(site, "maison_longue"):
-            mult *= 1.2
+        mult *= batiments.value(site, "maison_longue", "croissance", 1.0)
         if oath_of(site) == "champs":
             mult *= 1.1
+        mult *= crowd_growth(state, site, band)
     return mult
+
+
+# L'ENTASSEMENT (batiments.housing : les logements) : au-dela, les familles
+# s'entassent ; la croissance ralentit (CROWD_GROWTH par part de trop : plus
+# aucune naissance a 25 % de gens sans toit, CROWD_GROWTH_MIN), la stabilite
+# baisse (stability_parts), les fievres montent (CROWD_FEVER au plus).
+CROWD_GROWTH = 4.0
+CROWD_GROWTH_MIN = 0.0
+CROWD_FEVER = 1.5
+
+
+def crowd_share(state, site, band=None) -> float:
+    """La part de trop (0 : chacun a son toit ; 0,1 : 10 % de trop)."""
+    cap = batiments.housing(site)
+    return batiments.crowding(state, site, band) / max(1, cap)
+
+
+def crowd_growth(state, site, band=None) -> float:
+    return max(CROWD_GROWTH_MIN, 1.0 - CROWD_GROWTH * crowd_share(state, site, band))
 
 
 # Les troupeaux pres de leurs betes sauvages (0.20, C6) : chevres et
@@ -301,8 +318,7 @@ def herd_mult(state, site) -> float:
 def food_mult(state, band) -> float:
     site = site_of(state, band)
     mult = _bonus(state, band.tribe_id).village_food
-    if has(site, "enclos"):
-        mult *= 1.1
+    mult *= batiments.value(site, "enclos", "vivres", 1.0)
     if site is not None:
         mult *= herd_mult(state, site)
         mult *= goods.forage_mult(site, band)
@@ -332,9 +348,9 @@ def wall_parts(state, band) -> list[tuple[str, float]]:
         return []
     out = []
     if has(site, "palissade"):
-        out.append(("Palissade", batiments.PALISADE_DEFENSE))
+        out.append((batiments.building_name(site, "palissade"), batiments.value(site, "palissade", "defense", 1.0)))
     if has(site, "tour"):
-        out.append(("Tour de guet", batiments.TOWER_DEFENSE))
+        out.append(("Tour de guet", batiments.value(site, "tour", "defense", 1.0)))
     if oath_of(site) == "pieux":
         out.append(("Serment des pieux", 1.15))
     wall = _bonus(state, band.tribe_id).village_defense
@@ -363,10 +379,8 @@ def winter_prestige(state, tribe_id: int) -> int:
     for site in state.sites.values():
         if site.kind != "village" or site.tribe_id != tribe_id or band_of(state, site) is None:
             continue
-        if has(site, "autel"):
-            gain += 1
-        if has(site, "pierre"):
-            gain += 2
+        gain += batiments.value(site, "autel", "prestige") + batiments.value(site, "pierre", "prestige")
+        gain += batiments.value(site, "conseil", "prestige")
         if has(site, "monument"):
             # Seul le monument du vainqueur reste debout.
             gain += 2
@@ -381,9 +395,9 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
     for site in state.sites.values():
         if site.kind != "village" or site.tribe_id != band.tribe_id:
             continue
-        v = (6.0 if has(site, "autel") else 0.0) + (8.0 if oath_of(site) == "feu" else 0.0)
+        v = float(batiments.value(site, "autel", "attachement") + batiments.value(site, "conseil", "attachement")) + (8.0 if oath_of(site) == "feu" else 0.0)
         if v and state.world.distance(site.hex, band.position) <= NEAR:
-            out.append((f"Près de {name(site)} (autel, feu)", v))
+            out.append((f"Près de {name(site)} (autel, conseil, feu)", v))
     return out[:2]
 
 
@@ -408,7 +422,6 @@ STABILITY_BASE = 50.0
 UNREST = 30.0
 UNREST_SHARE = 0.15
 UNREST_MIN_POP = 40
-CROWD_POP = 150
 # Civilisation au complet : les familles d'un village agite rejoignent un
 # village de leur civilisation a UNREST_JOIN_RANGE cases au plus.
 UNREST_JOIN_RANGE = 40
@@ -423,15 +436,10 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
     know = _bonus(state, band.tribe_id).stability
     if know:
         parts.append(("Savoirs du néolithique", float(know)))
-    for bid, v, label in (
-        ("autel", 8.0, "Autel des ancêtres"),
-        ("pierre", 10.0, "Pierre levée"),
-        ("puits", 4.0, "Puits"),
-        ("grenier", 4.0, "Grenier"),
-        ("maison_longue", 4.0, "Maison longue"),
-    ):
-        if has(site, bid):
-            parts.append((label, v))
+    for bid in ("autel", "pierre", "puits", "grenier", "maison_longue", "foyer", "conseil"):
+        v = batiments.value(site, bid, "stabilite")
+        if v:
+            parts.append((batiments.building_name(site, bid), float(v)))
     if oath_of(site) == "feu":
         parts.append(("Serment du feu", 10.0))
     # Ce que chaque systeme fait a la stabilite (systems.STABILITY).
@@ -451,9 +459,9 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
         parts.append(("Famine récente", -20.0))
     if site.data.burned:
         parts.append(("Champs brûlés", -10.0))
-    crowd = band.population - CROWD_POP - (40 if has(site, "maison_longue") else 0)
+    crowd = batiments.crowding(state, site, band)
     if crowd > 0:
-        parts.append(("Trop de monde", -min(20.0, crowd / 10.0)))
+        parts.append((f"Trop de monde ({crowd} sans toit)", -min(20.0, crowd / 10.0)))
     return [(label, round(v, 1)) for label, v in parts]
 
 
@@ -796,7 +804,7 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
     data = camp.data
     data.band = band.id
     data.fields, data.soil, data.seed, data.sown_ratio = [], {}, 0.0, 0.0
-    data.buildings, data.build, data.history = [], None, []
+    data.buildings, data.build, data.queue, data.history = {}, None, [], []
     data.oath = oath if oath in OATHS else ""
     # Les reserves du campement et une part du stock deviennent semences.
     band.stock = min(stock_max(band, state), band.stock + camp.store)
@@ -816,6 +824,8 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
         gain_prestige(state, tribe, FIRST_VILLAGE_PRESTIGE)
     if tribe.settled_at < 0:
         tribe.settled_at = state.tick_count
+    # Les familles montent leurs huttes : chacun a un toit (batiments.housing).
+    batiments.house_everyone(state, camp)
     if first:
         _chief_takes_the_village(state, tribe, band)
     if tribe.is_player:
@@ -1018,7 +1028,8 @@ def update(state) -> None:
         if state.tick_count % 4 == 0:
             _unrest(state, site, band)
         if state.tick_count % 4 == 0 and band.population >= DISEASE_POP:
-            risk = 0.012 * band.population / 100.0 * bonus.disease * (0.6 if has(site, "puits") else 1.0)
+            risk = 0.012 * band.population / 100.0 * bonus.disease * batiments.value(site, "puits", "fievres", 1.0)
+            risk *= 1.0 + (CROWD_FEVER - 1.0) * min(1.0, 4.0 * crowd_share(state, site, band))
             if state.story_rng.random() < risk:
                 events.hook(state, "fievre_village", tribe_id=band.tribe_id, band_id=band.id)
         _alert(state, site, band)
@@ -1044,11 +1055,12 @@ def pillaged(state, band, rng=None) -> str:
         return ""
     site.data.burned = True
     rng = rng or state.story_rng
-    lost = [b for b in built(site) if b != "palissade"]
+    lost = [b for b in built(site) if b not in ("palissade", "monument")]
     if lost and rng.random() < LOSE_BUILDING:
         gone = lost[int(rng.random() * len(lost)) % len(lost)]
-        site.data.buildings.remove(gone)
-        return batiments.BUILDINGS[gone].name
+        named = batiments.building_name(site, gone)
+        batiments.lose_level(site, gone)
+        return named
     return ""
 
 
@@ -1106,7 +1118,8 @@ def lines(state, band) -> list[str]:
         return []
     fields = site.data.fields
     seed = site.data.seed
-    out = [f"Village de {name(site)}  ·  champs {len(fields)}  ·  semences {seed:.0f}  ·  bâtiments {len(built(site))}"]
+    levels = sum(n for b, n in site.data.buildings.items() if b != "monument")
+    out = [f"Village de {name(site)}  ·  champs {len(fields)}  ·  semences {seed:.0f}  ·  bâtiments {levels}  ·  logés {band.population}/{batiments.housing(site)}"]
     season = state.world.hex_season(site.hex)
     crop = expected_harvest(state, site, band)
     if fields:
@@ -1116,9 +1129,12 @@ def lines(state, band) -> list[str]:
         out.append(f"Dernière récolte : {last}  ·  semailles au printemps" if last is not None else "Semailles au printemps")
     job = works(site)
     if job:
-        out.append(f"Chantier : {batiments.BUILDINGS[job[0]].name} (encore {job[1]} sem.)  ·  [V] pour gérer le village")
+        more = f" (+{len(site.data.queue)} en file)" if site.data.queue else ""
+        out.append(f"Chantier : {batiments.BUILDINGS[job[0]].name} (encore {job[1]} sem.){more}  ·  [V] pour gérer le village")
     elif batiments.palisade_state(site) == "built":
-        out.append("Palissade : debout (défense x1,6)  ·  [V] pour gérer le village")
+        wall = batiments.building_name(site, "palissade")
+        mult = f"{batiments.value(site, 'palissade', 'defense', 1.0):.1f}".replace(".", ",")
+        out.append(f"{wall} : défense x{mult}  ·  [V] pour gérer le village")
     else:
         out.append("[V] pour gérer le village : bâtiments, troupes")
     return out

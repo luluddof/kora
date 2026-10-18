@@ -719,6 +719,22 @@ lente, bandes dessinees petites a taille fixe.
     choix possibles) ; batiments, sur une page a part : A le plan du
     village (les places autour du feu), B les familles (cartes par usage,
     effets ecrits), C ce qu'on batit ensuite (le chantier en grand).
+2026-10-18 (0.24.0)
+  - "[La maquette A, le conseil] pour la diplomatie pour le moment, en ayant
+    bien un moyen de scroller a gauche pour voir tous les pays." FAIT
+    (0.24.0 ; spec 2026-10-18-conseil-des-peuples-batiments-a-niveaux.txt) :
+    l'onglet Peuples en grande fenetre, des filtres, la liste qui defile
+    (molette, poignee a glisser, rainure), trois cartes (entre vous, leur
+    force, leurs liens), les actions en quatre familles.
+  - "Pour les batiments, un rework en profondeur avec une UI inspiree de
+    Victoria 3 ou d'Europa Universalis 5 : batir plusieurs fois un meme
+    batiment, des batiments peu couteux comme les logements rudimentaires,
+    et des plus couteux comme les plus gros." FAIT : des NIVEAUX (dix-huit
+    batiments, trois genres de prix), le TERRAIN du village, les LOGEMENTS
+    (au-dela, le village s'entasse), une FILE de chantiers, demolir ; une
+    page "Les batiments" (jauges, cartes par familles avec + et -, la file,
+    la fiche des niveaux) ; l'IA loge ses gens d'abord. Verifie dans SA
+    partie (Netali garde ses batiments et recoit ses huttes).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -771,7 +787,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.23.0
+Version du jeu : 0.24.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -780,13 +796,16 @@ Fait le 2026-10-17 (0.22.0) : le signe de la marche, la revolte des
 tributaires (publiee avec la 0.21 : v0.22.0).
 Fait le 2026-10-17 (0.23.0) : la faim et les hostiles sur la carte (V4,
 V5), "derniere semaine" (V8), Affranchir (V9).
+Fait le 2026-10-18 (0.24.0) : le conseil des peuples (la maquette A), les
+batiments a niveaux, les logements, le terrain, la file des chantiers, la
+page des batiments (Victoria 3 / EU5).
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   En attente de SON choix (propose, rien de code) :
-  - Ecrans      diplomatie (A, B, C) et batiments (A, B, C) : les maquettes
-                de 2026-10-18-maquettes-diplomatie-batiments.txt
-                (docs/maquettes/diplomatie, docs/maquettes/batiments).
+  - Ecrans      la diplomatie : A faite (0.24.0) ; B (la toile des
+                peuples) et C (l'audience) restent possibles, "pour le
+                moment" A (2026-10-18-maquettes-diplomatie-batiments.txt).
   - J1 a J12    la "flavor" et le "juice" : chiffres qui sautent, choc des
                 batailles, fumees, traces, surnoms, lieux nommes, chronique
                 de l'an, epitaphes, rumeurs, sons :

@@ -455,7 +455,7 @@ def test_paid_builders_finish_sooner():
         tribe = st.tribes[1]
         tribe.money = 500.0
         band.stock = 50000.0
-        bid = next(b for b in batiments.BUILD_ORDER if not batiments.build_block(st, band.id, b))
+        bid = next(b for b in batiments.BUILD_ORDER if batiments.BUILDINGS[b].weeks >= 6 and not batiments.build_block(st, band.id, b))
         batiments.build(st, band.id, bid)
         money.set_budget(st, 1, "chantiers", level)
         money.monthly(st)

@@ -882,7 +882,7 @@ class GrandsTravaux(Spec):
                 score += places.monument_stages(site)
                 job = places.works(site)
                 if job and job[0] == "monument":
-                    total = max(1, batiments.build_weeks(site, "monument"))
+                    total = max(1, batiments.build_weeks(site, "monument", places.monument_stages(site) + 1))
                     score += 1.0 - job[1] / total
             inst.participants[tid]["score"] = round(score, 3)
 

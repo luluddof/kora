@@ -154,7 +154,7 @@ def test_a_palisade_makes_the_village_hold():
         sites.make_camp(st, 1)
         site = villages.found(st, 1)
         if with_palisade:
-            site.data.buildings.append("palissade")
+            site.data.buildings["palissade"] = 1
         # Une troupe levee par un village de la meme taille : une part de ses hommes.
         raider = Band(2, 2, site.hex, 28, 0.0, kind="armee")
         st.bands[2] = raider

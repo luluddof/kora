@@ -44,7 +44,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.kora import chiefdom, diplo, money, places, population, situations, systems, tech, villages
+from src.kora import batiments, chiefdom, diplo, money, places, population, situations, systems, tech, villages
 from src.kora.log import LogKind
 from src.kora.resources import LABELS, NAMES, PRESENT
 from src.kora.types import TradeRoute
@@ -440,7 +440,7 @@ def output(state, site, cid: str) -> float:
         return n * money.wage_mult(state, site.tribe_id, "calcul")
     _count, best = deposits(state, site, cid)
     rich = 0.5 + best
-    shop = WORKSHOP if places.has(site, "atelier") else 1.0
+    shop = batiments.value(site, "atelier", "metiers", 1.0)
     # Le savoir-faire, la chefferie, les gages... (systems.CRAFT_OUTPUT).
     shop = systems.apply_mult(shop, systems.CRAFT_OUTPUT, state, site, craft)
     if craft.special == "argent":
@@ -724,7 +724,7 @@ def trade_load(state, a: int, b: int) -> float:
 
 def trading_places(state, tribe_id: int) -> int:
     """Combien de villages du peuple ont une Place d'echange."""
-    return sum(1 for s in _village_sites(state, tribe_id) if places.has(s, "place"))
+    return sum(places.level(s, "place") for s in _village_sites(state, tribe_id))
 
 
 def convoys(state, tribe_id: int) -> int:

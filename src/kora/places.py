@@ -36,10 +36,12 @@ class VillageData:
     seed: float = 0.0
     sown_ratio: float = 0.0
     burned: bool = False
-    # Les batiments, le chantier en cours [batiment, semaines restantes],
-    # les etapes du grand monument.
-    buildings: list[str] = field(default_factory=list)
+    # Les batiments et leur niveau (batiments.py ; le grand monument compte
+    # ses etapes a part : monument), le chantier en cours [batiment,
+    # semaines restantes], les chantiers qui attendent leur tour.
+    buildings: dict[str, int] = field(default_factory=dict)
     build: Optional[list] = None
+    queue: list[str] = field(default_factory=list)
     # Le travail en plus des batisseurs payes (money.build_speed), en semaines.
     build_extra: float = 0.0
     monument: int = 0
@@ -62,14 +64,19 @@ class VillageData:
 
 
 def _village_data(raw) -> VillageData:
-    """Relire les donnees d'un lieu (vieilles parties : la palissade etait
-    un compteur a part, "palisade" : -1 batie, n en cours)."""
+    """Relire les donnees d'un lieu. Les vieilles parties : la palissade
+    etait un compteur a part ("palisade" : -1 batie, n en cours) ; avant les
+    niveaux (2026-10-18), les batiments etaient une liste (chacun au niveau
+    1 ; le monument compte ses etapes a part)."""
     raw = dict(raw or {})
     p = raw.pop("palisade", None)
+    old = raw.get("buildings")
+    if isinstance(old, list):
+        raw["buildings"] = {str(b): 1 for b in old if b != "monument"}
     data = records.from_json(VillageData, {k: v for k, v in raw.items() if k in VillageData.__dataclass_fields__})
     if p is not None:
         if p < 0 and "palissade" not in data.buildings:
-            data.buildings.append("palissade")
+            data.buildings["palissade"] = 1
         elif p > 0 and not data.build:
             data.build = ["palissade", int(p)]
     return data
@@ -128,14 +135,28 @@ def oath_of(site) -> str:
 
 
 def built(site) -> list:
+    """Les batiments du village (au moins au niveau 1), dans l'ordre ou ils
+    sont ecrits ; le grand monument s'il a une etape."""
     # (Les vieilles palissades sont relues a la relecture : places._village_data.)
     if site is None:
         return []
-    return site.data.buildings
+    out = [b for b, n in site.data.buildings.items() if n > 0 and b != "monument"]
+    if site.data.monument > 0:
+        out.append("monument")
+    return out
+
+
+def level(site, bid: str) -> int:
+    """Le niveau d'un batiment (0 : pas bati) ; le monument : ses etapes."""
+    if site is None:
+        return 0
+    if bid == "monument":
+        return int(site.data.monument)
+    return int(site.data.buildings.get(bid, 0))
 
 
 def has(site, bid: str) -> bool:
-    return site is not None and bid in built(site)
+    return level(site, bid) > 0
 
 
 def monument_stages(site) -> int:
@@ -151,9 +172,10 @@ def works(site):
 
 
 def watch_spots(state, tribe_id: int) -> list:
-    """Villages a tour de guet (vision.py : +3 de vue autour)."""
+    """[(case, niveau)] : les villages a tour de guet (vision.py : la vue
+    de plus, par niveau)."""
     return [
-        s.hex
+        (s.hex, level(s, "tour"))
         for s in sorted(state.sites.values(), key=lambda s: s.id)
         if s.kind == "village" and s.tribe_id == tribe_id and has(s, "tour")
     ]

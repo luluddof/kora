@@ -56,7 +56,7 @@ def test_raising_needs_people_and_one_troop_at_a_time():
     assert second is not None and second is not first
     second.position = offset_to_axial(20, 15)
     assert "troupes" in troupes.army_block(st2, 1, troupes.LEVY_SHARE["poignee"])
-    s2.data.buildings.append("guerriers")
+    s2.data.buildings["guerriers"] = 1
     assert troupes.army_block(st2, 1, troupes.LEVY_SHARE["poignee"]) == ""
 
 

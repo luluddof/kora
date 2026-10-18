@@ -1,14 +1,23 @@
-## Nouveau dans la 0.23
+## Nouveau dans la 0.24
 
-- **La faim se voit sur la carte** : une pastille (un bol vide) au pied de vos unités qui ont faim, rouge si
-  elles meurent de faim, ocre si la collecte ne suffit plus et que la réserve baisse (un village : sa disette en
-  vue, quand le grenier ne tiendra pas jusqu'à la récolte).
-- **Les ennemis aussi** : un liseré rouge autour des unités des peuples en guerre avec vous (guerre déclarée, ou un
-  raid depuis moins d'un an) ; les neutres n'en ont pas. Le survol le dit en mots.
-- **Affranchir** : chez votre tributaire, l'écran *Peuples* propose de l'affranchir. Il part libre, sans guerre,
-  et vous en sait gré (relation +15) ; plus de malus de rupture. La crise « Les tributaires grondent » peut finir
-  ainsi, et un suzerain de l'IA affranchit plutôt que de perdre la guerre d'indépendance.
-- Les cartes d'événements disent « dernière semaine » au lieu de « encore 0 sem. ».
+- **Les bâtiments se bâtissent plusieurs fois** : chaque niveau fait plus (un grenier de plus, une palissade doublée
+  puis un fossé, une tour qui voit plus loin...). Des bâtiments **peu coûteux** (huttes de branchages, fosses à grain,
+  claies de séchage, foyer commun) et des **coûteux** (maison longue, maison du conseil, pierres levées) : dix-huit en
+  tout, en cinq familles.
+- **Les logements** : un village loge un certain nombre de gens ; au-delà, il s'entasse (il grandit moins, il gronde,
+  les fièvres montent). Bâtir des huttes, c'est grandir. Le village a aussi un **terrain**, qui grandit avec lui.
+- **Une file de chantiers** : un chantier à la fois, quatre autres attendent leur tour (payés quand il vient) ; on
+  peut abattre un niveau pour reprendre son terrain.
+- **Une nouvelle page « Les bâtiments »**, inspirée de Victoria 3 et d'Europa Universalis : le terrain, les logés et
+  le grenier en jauges ; les bâtiments en cartes avec leur niveau, « + » pour bâtir, « − » pour abattre ; la file des
+  chantiers ; la fiche de chaque bâtiment, niveau par niveau.
+- **Le conseil des peuples** : l'écran *Peuples* en grand. Tous les peuples connus dans une liste qui défile (molette
+  ou barre), des filtres (cordiaux, méfiants, hostiles, en guerre), leur force face à la vôtre, leurs guerres et
+  leurs accords, et vos actions rangées en quatre familles avec la réponse attendue.
+- Vos parties continuent : vos bâtiments passent au niveau 1, et chaque village reçoit les huttes qu'il faut pour
+  loger ses gens.
+
+Et dans la 0.23 : la faim et les ennemis sur les jetons, Affranchir un tributaire, « dernière semaine ».
 
 Et dans les 0.21 et 0.22 :
 

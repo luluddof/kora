@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.23.0
+A jour pour la version : 0.24.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -223,7 +223,7 @@ ETAGE 3  ce qui s'y pose
   places.py
     LES LIEUX et ce qu'on y lit.
     classes : VillageData, Site
-    fonctions : site_of, band_of, name, rank_name, oath_of, built, has,
+    fonctions : site_of, band_of, name, rank_name, oath_of, built, level, has,
       monument_stages, works, watch_spots, influence_radius
     constantes : RANKS, NEAR
 
@@ -262,7 +262,7 @@ ETAGE 4  les savoirs, les gens
     classes : PlayerVision
     fonctions : vision_of, sharers, recompute_vision, is_visible, is_explored,
       enemy_band_visible, note_seen
-    constantes : VISION_RADIUS, TOWER_SIGHT
+    constantes : VISION_RADIUS, TOWER_SIGHT, TOWER_SIGHTS
 
   population.py
     Qui sont les gens d'une bande : enfants, hommes, femmes, anciens, blesses.
@@ -479,35 +479,41 @@ ETAGE 5  LES SYSTEMES
     Villages : une bande qui s'installe.
     classes : Oath
     fonctions : stock_weeks, store_weeks, rot_mult, weeks_to_harvest,
-      note_forage, food_outlook, granary_growth, growth_mult, herd_mult,
-      food_mult, winter_famine_mult, yield_mult, wall_parts, defense_parts,
-      defense_mult, winter_prestige, loyalty_parts, nearest_village,
-      stability_parts, stability, stability_word, stability_growth, fertility,
-      land_profile, choose_fields, hands_mult, field_hands_mult,
-      expected_harvest, sow, harvest, found_block, propose_name, found,
-      seat_chiefs, ai_oath, found_preview, leave_block, leave, update,
-      eat_seed, pillaged, lost, field_site, soil_avg, next_step, lines,
-      occupations, free_for_craft, occupation_lines
+      note_forage, food_outlook, granary_growth, growth_mult, crowd_share,
+      crowd_growth, herd_mult, food_mult, winter_famine_mult, yield_mult,
+      wall_parts, defense_parts, defense_mult, winter_prestige, loyalty_parts,
+      nearest_village, stability_parts, stability, stability_word,
+      stability_growth, fertility, land_profile, choose_fields, hands_mult,
+      field_hands_mult, expected_harvest, sow, harvest, found_block,
+      propose_name, found, seat_chiefs, ai_oath, found_preview, leave_block,
+      leave, update, eat_seed, pillaged, lost, field_site, soil_avg,
+      next_step, lines, occupations, free_for_craft, occupation_lines
     constantes : FIELD_WORKERS, MAX_FIELDS, FIELD_RADIUS, FIELD_FOOD, SEED,
       LATE_SOW, STORE_WEEKS, GROWTH, SOIL_LOSS, SOIL_REST, GRAIN_ROT, BURNED,
       DISEASE_POP, FLOOD_CHANCE, MIN_FOUND_POP, FIELD_HANDS, HISTORY,
       FIRST_VILLAGE_PRESTIGE, LOSE_BUILDING, ALERT_RANGE, ALERT_EVERY,
       FERTILITY, OATHS, OATH_ORDER, AI_OATH, FOOD_SAFE_WEEKS, FOOD_LOW_GROWTH,
-      FORAGE_MEMORY, WILD_HERD, RIVER_FIELDS, RIVER_IRRIGATION,
-      STABILITY_BASE, UNREST, UNREST_SHARE, UNREST_MIN_POP, CROWD_POP,
-      UNREST_JOIN_RANGE, SOW_KEEP_WEEKS
+      FORAGE_MEMORY, CROWD_GROWTH, CROWD_GROWTH_MIN, CROWD_FEVER, WILD_HERD,
+      RIVER_FIELDS, RIVER_IRRIGATION, STABILITY_BASE, UNREST, UNREST_SHARE,
+      UNREST_MIN_POP, UNREST_JOIN_RANGE, SOW_KEEP_WEEKS
 
   batiments.py
-    LES BATIMENTS D'UN VILLAGE : ce qu'on y bati, les chantiers, le grand
-    monument, la palissade.
+    LES BATIMENTS D'UN VILLAGE, A PLUSIEURS NIVEAUX (refonte du 2026-10-18,
+    la demande du joueur : "on peut batir plusieurs fois un meme batiment ; des
+    batiments peu couteux comme les logements rudimentaires, et des plus
+    couteux, les plus gros").
     classes : Building
-    fonctions : monument_open, building_name, pull_down_monument, slots,
-      used_slots, build_weeks, build_cost, building_status, build_block_site,
-      build_block, build, advance_works, palisade_state, palisade_block,
-      build_palisade
-    constantes : PALISADE_WEEKS, PALISADE_COST_WEEKS, PALISADE_DEFENSE,
-      TOWER_DEFENSE, BASE_SLOTS, SLOT_POP, BUILDINGS, BUILD_ORDER,
-      MONUMENT_STAGES
+    fonctions : value, value_at, effect_lines, title_of, monument_open,
+      building_name, pull_down_monument, used_space, space, housing, crowding,
+      house_everyone, house_old_villages, build_weeks, build_cost, needs_for,
+      building_status, build_block_site, build_block, build, unqueue,
+      demolish_block, demolish, lose_level, start_next, queue_block,
+      advance_works, palisade_state, palisade_block, build_palisade, ai_choice
+    constantes : PALISADE_WEEKS, PALISADE_COST_WEEKS, BASE_SPACE, SPACE_POP,
+      BASE_HOUSING, LEVEL_COST, LEVEL_WEEKS, CHEAP_LEVEL_COST, QUEUE_MAX,
+      BUILDINGS, BUILD_ORDER, FAMILIES, TIER_NAMES, VALUES, PER_LEVEL,
+      MONUMENT_STAGES, PALISADE_DEFENSE, TOWER_DEFENSE, LINES, AI_HOUSE_AT,
+      AI_PLAN
 
   troupes.py
     LES TROUPES DU VILLAGE : la levee, la milice, la marche, le retour.
@@ -632,9 +638,9 @@ ETAGE 7  l'IA
     fonctions : find_new_land, good_land, settle_spacing, head_for_new_land,
       decide_ai
     constantes : AI_SPLIT_POP, AI_REFINE, AI_SPLIT_AWAY, AI_RAID_WHIM,
-      AI_CONTENT, AI_BUILD_ORDER, AI_ARMY_WHIM, AI_ARMY_POP, AI_THREAT,
-      AI_THREAT_RANGE, AI_ARMY_REACH, AI_WAR_REACH, AI_WAR_RAID_WEEKS,
-      AI_BUILD_RESERVE, AI_FOOD_MARGIN, AI_SETTLE_POP, VILLAGE_SPACING,
+      AI_CONTENT, AI_ARMY_WHIM, AI_ARMY_POP, AI_THREAT, AI_THREAT_RANGE,
+      AI_ARMY_REACH, AI_WAR_REACH, AI_WAR_RAID_WEEKS, AI_BUILD_RESERVE,
+      AI_HOUSE_RESERVE, AI_FOOD_MARGIN, AI_SETTLE_POP, VILLAGE_SPACING,
       FOREIGN_VILLAGE_ROOM, NEW_LAND_RADIUS, NEW_LAND_FAR, COLONY_RADIUS,
       CROWDED_SPACING, SETTLE_PATIENCE_YEARS, FOUND_GOOD, FOUND_GOOD_HEXES,
       AI_SIEGE_REACH, AI_SIEGE_FOOD_WEEKS, AI_SIEGE_EDGE, AI_CACHE_SEEK
@@ -675,7 +681,7 @@ ETAGE 10  la sauvegarde, le reseau, les essais
       trash_save, set_aside_save, save_game, dumps_game, loads_game,
       game_to_json, load_game, map_id, game_from_json, peek_save
     constantes : SAVE_VERSION, KEEP_ASIDE, NOT_SAVES, CORBEILLE,
-      CORBEILLE_KEEP
+      CORBEILLE_KEEP, LEVELS_VERSION
 
   session.py
     Une partie a plusieurs (lockstep).
@@ -719,25 +725,27 @@ ETAGE -  l'interface (pygame)
 
   layout.py
     LES MISES EN PAGE de l'interface : ou est chaque chose a l'ecran.
-    fonctions : page_layout, numbers_items, panel_box, split_hint, wrap_text,
-      hud_layout, hud_hit, menu_layout, menu_hit, fight_panel_layout,
-      fight_panel_hit, band_card_layout, map_mode_layout, map_mode_hit,
-      toast_box, toast_hit, band_card_hit, set_tree_hidden, tech_world,
-      tree_zoom_min, clamp_cam, cam_on, zoom_at, pan, to_screen,
+    fonctions : page_layout, numbers_items, panel_box, peoples_layout,
+      people_rows, clamp_people_top, people_thumb, people_top_at, split_hint,
+      wrap_text, hud_layout, hud_hit, menu_layout, menu_hit,
+      fight_panel_layout, fight_panel_hit, band_card_layout, map_mode_layout,
+      map_mode_hit, toast_box, toast_hit, band_card_hit, set_tree_hidden,
+      tech_world, tree_zoom_min, clamp_cam, cam_on, zoom_at, pan, to_screen,
       tech_panel_layout, side_tabs, side_layout, side_hit, col_pixel_width,
       row_pixel_height, world_pixel_size, min_zoom_for, zoom_scale,
       max_zoom_for, focus_zoom_for, terrain_draw_mode, wrap_camera,
       offset_to_pixel, hex_to_pixel, band_radius, band_screen_positions,
       band_heading, fight_mark_screen_pos, hex_screen_positions, pixel_to_hex
-    constantes : TAB_W, TAB_H, HEX_SIZE, MIN_ZOOM, MAX_ZOOM, OVERVIEW_HEX_PX,
-      HUD_HEIGHT, LABEL_DIST, JOURNAL_COLS, MENU_ITEMS, BAND_CARD_W,
-      BAND_BUTTONS, BAND_ROW, BAND_HINT, MAP_MODES, MAP_BUTTON_W,
-      MAP_BUTTON_H, MAP_ITEM_H, MAP_LEGEND_W, TOAST_W, FILTER_CHIPS,
-      SORT_CHIPS, FILTER_BY_HIT, TECH_HEADER_H, TECH_DETAIL_H, TREE_PAD,
-      TREE_GUTTER, TREE_COL, TREE_ROW, TREE_NODE_W, TREE_NODE_H, TREE_COLHEAD,
-      TREE_BAND, TREE_TURN_ROW, TREE_TURN_H, TREE_ZOOM_MAX, TREE_ZOOM_STEP,
-      TECH_ROW_H, TECH_GUTTER, SIDE_TABS, COMMERCE_TAB, TREASURY_TAB,
-      COUNTRY_TAB, WARS_TAB, SWORD_LIFT, STACK_SHIFT, HEADING_LOOKAHEAD
+    constantes : PEOPLE_FILTERS, PEOPLE_ROW, TAB_W, TAB_H, HEX_SIZE, MIN_ZOOM,
+      MAX_ZOOM, OVERVIEW_HEX_PX, HUD_HEIGHT, LABEL_DIST, JOURNAL_COLS,
+      MENU_ITEMS, BAND_CARD_W, BAND_BUTTONS, BAND_ROW, BAND_HINT, MAP_MODES,
+      MAP_BUTTON_W, MAP_BUTTON_H, MAP_ITEM_H, MAP_LEGEND_W, TOAST_W,
+      FILTER_CHIPS, SORT_CHIPS, FILTER_BY_HIT, TECH_HEADER_H, TECH_DETAIL_H,
+      TREE_PAD, TREE_GUTTER, TREE_COL, TREE_ROW, TREE_NODE_W, TREE_NODE_H,
+      TREE_COLHEAD, TREE_BAND, TREE_TURN_ROW, TREE_TURN_H, TREE_ZOOM_MAX,
+      TREE_ZOOM_STEP, TECH_ROW_H, TECH_GUTTER, SIDE_TABS, COMMERCE_TAB,
+      TREASURY_TAB, COUNTRY_TAB, WARS_TAB, SWORD_LIFT, STACK_SHIFT,
+      HEADING_LOOKAHEAD
 
   look.py
     LES COULEURS DE LA CARTE (presentation, sans pygame) : un sol selon sa
@@ -783,6 +791,14 @@ ETAGE -  l'interface (pygame)
     fonctions : draw_journal
     constantes : TAB_ICONS, SEASON_ICONS, KIND_ICONS, BAND_ICONS,
       MAP_MODE_ICONS, SEASON_FR, INSPECT_MAX_W
+
+  render_batiments.py
+    LA PAGE "LES BATIMENTS" de la fenetre du village (2026-10-18 : la
+    refonte demandee par le joueur, "une interface inspiree de Victoria 3 ou
+    d'Europa Universalis 5").
+    fonctions : page_layout, page_hit, gain_text, next_level, why_short,
+      draw_page, tech_name
+    constantes : COLUMNS, TIER_COLORS, STATE_RING, SHORT
 
   render_battle.py
     Les batailles EN COURS a l'ecran (battle.py), charte « Feu et ocre ».
@@ -835,12 +851,18 @@ ETAGE -  l'interface (pygame)
     Panneaux Tribu (chef, clans, attachement) et Peuples (diplomatie),
     cartes d'evenements.
     fonctions : event_icon, tribe_alert, has_nomads, tribe_tab_label,
-      start_bonus_text, draw_tribe, draw_villages, known_peoples,
-      draw_peoples, draw_event_cards, deadline_text, event_modal_layout,
-      draw_event_modal, commerce_ready, treasury_alert, commerce_alert,
-      wars_ready, wars_alert, army_ready
+      start_bonus_text, draw_tribe, draw_villages, draw_event_cards,
+      deadline_text, event_modal_layout, draw_event_modal, commerce_ready,
+      treasury_alert, commerce_alert, wars_ready, wars_alert, army_ready
     constantes : EVENT_WORDS, MOOD_ICONS, MOOD_STATE, BG, EDGE, TEXT, SOFT,
-      NOTE, GOLD, GOOD, BAD, WARN, APPROACH_COLORS, WAR_NEWS
+      NOTE, GOLD, GOOD, BAD, WARN, WAR_NEWS
+
+  render_peuples.py
+    LE CONSEIL DES PEUPLES (onglet Peuples ; 2026-10-18, la maquette A
+    choisie par le joueur : docs/maquettes/diplomatie/A_conseil.png).
+    fonctions : known_peoples, in_filter, rel_color, signed, ties_of,
+      tie_rows, power_text, token, meter, verdict_line, draw_peoples
+    constantes : APPROACH_COLORS, FAMILIES, TIES, TIE_COLORS, ROW_FILL
 
   render_situations.py
     Les situations a l'ecran (situations.py), dans la charte « Feu et ocre ».
@@ -988,8 +1010,13 @@ ETAGE -  l'interface (pygame)
   Villages : champs, serments,        villages.py (villages.FIELD_FOOD,
   stabilite, recoltes                 villages.OATHS, villages.stability_parts) ;
                                       places.VillageData
-  Batiments, chantiers, monument,     batiments.py (batiments.BUILDINGS,
-  palissade                           batiments.build, batiments.slots)
+  Batiments, niveaux, chantiers,      batiments.py (BUILDINGS, VALUES : ce
+  file, monument, palissade           que fait chaque niveau, build, la file,
+                                      demolish, ai_choice) ; places.level
+  Logements, terrain, entassement     batiments.housing, space, crowding ;
+                                      villages.crowd_growth, stability_parts
+  L'ecran des batiments               render_batiments.py (page_layout,
+                                      draw_page) ; partie_ecrans.ScreenClicks.building_click
   Metiers, biens, routes              goods.py (CRAFTS, price, open_route)
   Troupes, levee, milice, retour     troupes.militia, troupes.levy_plan,
                                       units.UNITS ; l'ost : ost.py
@@ -997,6 +1024,7 @@ ETAGE -  l'interface (pygame)
   Rapport de force avant l'attaque    orders.attack_preview, ai_war.odds_at
   Diplomatie : contacts, relations,   diplo.py (diplo.evaluate, diplo.perform,
   pactes, propositions                diplo.add_pact) ; confed.py
+  L'ecran des peuples (le conseil)    render_peuples.py ; layout.peoples_layout
   La guerre declaree, la paix,        guerre.py (guerre.at_peace,
   les buts, la lassitude              guerre.declare_war, guerre.submit,
                                       guerre.weariness) ; casus.py (motifs) ;
@@ -1156,6 +1184,8 @@ ETAGE -  l'interface (pygame)
                               dans la fiche, lignes de la
   test_bands.py               Scinder, reunir, rejoindre (bands.py) : partage
                               des gens et des vivres,
+  test_batiments_niveaux.py   Les batiments a plusieurs niveaux (2026-10-18,
+                              la refonte demandee par le
   test_battle.py              Batailles simulees : passes d'armes, moral,
                               poursuite, aneantissement.
   test_cabotage.py            Le cabotage (la pirogue) : ses conditions
@@ -1230,6 +1260,8 @@ ETAGE -  l'interface (pygame)
                               petits peuples.
   test_persist.py             La sauvegarde (persist.py) : aller-retour
                               (horloge, bandes, brouillard,
+  test_peuples_ecran.py       Le conseil des peuples (render_peuples.py,
+                              2026-10-18 : la maquette A
   test_planets.py             0.20 : les nouvelles planetes (planets.py) :
                               registre, sauvegarde, departs
   test_population.py          La croissance des bandes : une bande nourrie
@@ -1461,9 +1493,12 @@ ETAGE -  l'interface (pygame)
   specs/2026-10-17-signe-de-marche-revolte-des-tributaires.txt
     Le signe de la marche, la revolte des tributaires
     Statut : FAIT (version 0.22.0) ; section 4 : V4, V5, V8, V9
+  specs/2026-10-18-conseil-des-peuples-batiments-a-niveaux.txt
+    Le conseil des peuples, les batiments a niveaux
+    Statut : FAIT (version 0.24.0).
   specs/2026-10-18-maquettes-diplomatie-batiments.txt
     Maquettes : l'ecran diplomatique et les batiments du village
-    Statut : PROPOSE (maquettes, rien n'est code dans le jeu).
+    Statut : diplomatie A CHOISIE et FAITE (0.24.0) ; B, C
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

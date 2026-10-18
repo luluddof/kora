@@ -306,7 +306,7 @@ def test_a_trade_place_and_workshops():
     before = goods.convoys(st, 1)
     goods.set_teams(st, site, "potiers", 1)
     made = goods.output(st, site, "potiers")
-    site.data.buildings = ["place", "atelier"]
+    site.data.buildings = {"place": 1, "atelier": 1}
     assert goods.convoys(st, 1) == before + goods.CONVOYS_PLACE
     assert abs(goods.output(st, site, "potiers") - made * goods.WORKSHOP) < 1e-9
 
@@ -454,7 +454,7 @@ def test_the_crafts_page_draws():
         assert r.village_hits["page"] == "metiers"
         r.draw_side(st, "tribu", ui={})
         r.draw_side(st, "peuples", ui={"people_pick": 2})
-        assert "diplo:commerce" in r.side_hits["items"]
+        assert "trade_with" in r.side_hits["items"], "un accord : le bouton des routes"
     finally:
         pygame.quit()
 

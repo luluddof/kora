@@ -23,7 +23,7 @@ N'importe pas pygame.
 
 from __future__ import annotations
 
-from src.kora import chiefdom, chiefs, goods, population, systems, units, villages
+from src.kora import batiments, chiefdom, chiefs, goods, population, systems, units, villages
 from src.kora.bands import (
     _absorb,
     _ai_caches_changed,
@@ -94,7 +94,7 @@ def companies_of(state, site) -> int:
 
 def army_cap(state, site) -> int:
     """Compagnies qu'un village peut avoir sous les armes en meme temps."""
-    return 2 + (1 if has(site, "guerriers") else 0)
+    return 2 + batiments.value(site, "guerriers", "compagnies")
 
 
 def _village_alive(state, site_id: int):
@@ -160,7 +160,18 @@ def _warrior_share(state, band) -> float:
 
 
 def army_quality(state, band) -> float:
-    return (1.0 + (WARRIORS_QUALITY - 1.0) * _warrior_share(state, band)) * goods.army_mult(state, band.tribe_id)
+    return (1.0 + _warrior_bonus(state, band)) * goods.army_mult(state, band.tribe_id)
+
+
+def _warrior_bonus(state, band) -> float:
+    """La force de plus des guerriers formes (la maison des guerriers, a son
+    niveau : batiments.VALUES), au prorata de la troupe."""
+    comps = _companies(band)
+    total = sum(u[1] for u in comps)
+    if total <= 0:
+        return 0.0
+    extra = sum(u[1] * (batiments.value(_village_alive(state, u[2]), "guerriers", "qualite", 1.0) - 1.0) for u in comps)
+    return extra / total
 
 
 def army_morale(state, band) -> float:

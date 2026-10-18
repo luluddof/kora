@@ -40,7 +40,7 @@ from src.kora import guerre
 
 KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
-    "teams", "diplo", "invite", "build", "raise", "reequip", "dissolve",
+    "teams", "diplo", "invite", "build", "unqueue", "demolish", "raise", "reequip", "dissolve",
     "honor", "promote", "heir", "learn", "event", "situation",
     "battle_retreat", "levy_rate", "feast", "charge", "base", "budget", "law", "grain",
 )
@@ -256,6 +256,33 @@ def _build(state, tid, band_id, building):
     return _out()
 
 
+def _unqueue(state, tid, band_id, index):
+    """Retirer un chantier de la file du village (rien n'etait paye)."""
+    band, why = _own_band(state, tid, band_id)
+    if band is None:
+        return _out(why)
+    site = places.site_of(state, band)
+    if site is None or not batiments.unqueue(state, site, int(index)):
+        return _out("Ce chantier n'attend plus")
+    return _out()
+
+
+def _demolish(state, tid, band_id, building):
+    """Abattre un niveau d'un batiment (le terrain revient, rien n'est rendu)."""
+    band, why = _own_band(state, tid, band_id)
+    if band is None:
+        return _out(why)
+    site = places.site_of(state, band)
+    if site is None:
+        return _out("Seul un village a des bâtiments")
+    why = batiments.demolish_block(state, site, str(building)) or ("" if chiefs.obeys(state, band) else orders.INDOCILE)
+    if why:
+        return _out(why)
+    name = batiments.building_name(site, str(building))
+    batiments.demolish(state, site, str(building))
+    return _out(f"{name} : un niveau abattu.")
+
+
 def _raise(state, tid, band_id, size, type_id):
     band, why = _own_band(state, tid, band_id)
     if band is None:
@@ -401,6 +428,8 @@ _HANDLERS = {
     "diplo": _diplo,
     "invite": _invite,
     "build": _build,
+    "unqueue": _unqueue,
+    "demolish": _demolish,
     "raise": _raise,
     "reequip": _reequip,
     "dissolve": _dissolve,

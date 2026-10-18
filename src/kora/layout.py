@@ -53,12 +53,80 @@ def numbers_items(lay: dict) -> dict:
 
 def panel_box(width: int, height: int, panel: str, tab_w: int = 66) -> tuple:
     top = HUD_HEIGHT + 12
+    if panel == "peuples":
+        # Le conseil des peuples (2026-10-18) : toute la largeur, comme le village.
+        return (12, top, max(760, width - tab_w - 8 - 12), max(420, height - top - 14))
     if panel == "tribu":
         bw = max(540, min(680, width - tab_w - 24))
     else:
         bw = max(600, min(880, width - tab_w - 24))
     bh = max(420, min(660, height - top - 14))
     return (width - tab_w - bw - 8, top, bw, bh)
+
+
+# LE CONSEIL DES PEUPLES (render_peuples.py) : des filtres, la liste qui
+# defile (molette, barre a glisser, clic dans sa rainure), la fiche (un
+# en-tete, trois cartes, les savoirs) et les actions en quatre familles.
+PEOPLE_FILTERS = (("tous", "Tous"), ("cordiaux", "Cordiaux"), ("mefiants", "Méfiants"), ("hostiles", "Hostiles"), ("guerre", "En guerre"))
+PEOPLE_ROW = 54
+
+
+def peoples_layout(box: tuple) -> dict:
+    bx, by, bw, bh = box
+    filters = {key: (bx + 200 + i * 112, by + 22, 104, 26) for i, (key, _l) in enumerate(PEOPLE_FILTERS)}
+    lw = 300 if bw >= 1300 else 262
+    lx, ly = bx + 16, by + 66
+    lh = by + bh - 14 - ly
+    visible = max(1, (lh + 4) // PEOPLE_ROW)
+    track = (lx + lw + 4, ly, 8, visible * PEOPLE_ROW - 4)
+    fx = lx + lw + 22
+    fw = bx + bw - 16 - fx
+    short = bh < 700
+    head = (fx, ly, fw, 92 if short else 100)
+    cards_y = head[1] + head[3] + 12
+    card_h = 118 if short else 150
+    cw3 = (fw - 24) // 3
+    cards = [(fx + i * (cw3 + 12), cards_y, cw3, card_h) for i in range(3)]
+    know_y = cards_y + card_h + 10
+    acts_y = know_y + 32
+    gw = (fw - 36) // 4
+    cols = [(fx + i * (gw + 12), acts_y, gw, by + bh - 14 - acts_y) for i in range(4)]
+    return {
+        "box": box, "filters": filters, "list": (lx, ly, lw, lh), "visible": visible, "track": track,
+        "head": head, "cards": cards, "know": (fx, know_y, fw, 26), "cols": cols,
+    }
+
+
+def people_rows(lay: dict, n: int, top: int) -> list:
+    """[(index, rectangle)] : les lignes de la liste qu'on voit, a partir de top."""
+    lx, ly, lw, _lh = lay["list"]
+    top = clamp_people_top(lay, n, top)
+    return [(i, (lx, ly + (i - top) * PEOPLE_ROW, lw, PEOPLE_ROW - 4)) for i in range(top, min(n, top + lay["visible"]))]
+
+
+def clamp_people_top(lay: dict, n: int, top: int) -> int:
+    return max(0, min(int(top), n - lay["visible"]))
+
+
+def people_thumb(lay: dict, n: int, top: int):
+    """La poignee de la barre de defilement (None : tout tient)."""
+    if n <= lay["visible"]:
+        return None
+    x, y, w, h = lay["track"]
+    th = max(24, int(h * lay["visible"] / n))
+    span = max(1, n - lay["visible"])
+    ty = y + int((h - th) * clamp_people_top(lay, n, top) / span)
+    return (x - 2, ty, w + 4, th)
+
+
+def people_top_at(lay: dict, n: int, thumb_y: float) -> int:
+    """La premiere ligne pour une poignee tiree jusqu'a thumb_y (son haut)."""
+    thumb = people_thumb(lay, n, 0)
+    if thumb is None:
+        return 0
+    _x, y, _w, h = lay["track"]
+    room = max(1, h - thumb[3])
+    return clamp_people_top(lay, n, round((thumb_y - y) / room * (n - lay["visible"])))
 
 
 # Le rail des onglets (a droite) : une pastille par onglet, icone et nom.
