@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-10-17.
+Derniere mise a jour : 2026-10-18.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -708,6 +708,17 @@ lente, bandes dessinees petites a taille fixe.
     dans SA partie.
   - "Propose d'autres choses comme ca : la 'flavor', ce qui rend un jeu
     'juicy'." PROPOSE (spec, section 5) : J1 a J12.
+2026-10-18
+  - "J'aimerais une meilleure UI pour l'interface diplomatique et celle des
+    batiments dans les villes. Propose-moi plusieurs maquettes." PROPOSE
+    (spec 2026-10-18-maquettes-diplomatie-batiments.txt) : six maquettes
+    dessinees par le jeu sur SA partie (docs/maquettes/diplomatie et
+    batiments) - diplomatie : A le conseil (la fiche rangee, actions par
+    familles), B la toile des peuples (tous les liens autour de vous),
+    C l'audience (le chef, ce que son peuple pense en recit, les seuls
+    choix possibles) ; batiments, sur une page a part : A le plan du
+    village (les places autour du feu), B les familles (cartes par usage,
+    effets ecrits), C ce qu'on batit ensuite (le chantier en grand).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -773,6 +784,9 @@ V5), "derniere semaine" (V8), Affranchir (V9).
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   En attente de SON choix (propose, rien de code) :
+  - Ecrans      diplomatie (A, B, C) et batiments (A, B, C) : les maquettes
+                de 2026-10-18-maquettes-diplomatie-batiments.txt
+                (docs/maquettes/diplomatie, docs/maquettes/batiments).
   - J1 a J12    la "flavor" et le "juice" : chiffres qui sautent, choc des
                 batailles, fumees, traces, surnoms, lieux nommes, chronique
                 de l'an, epitaphes, rumeurs, sons :

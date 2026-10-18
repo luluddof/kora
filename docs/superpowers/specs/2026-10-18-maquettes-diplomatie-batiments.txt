@@ -1,0 +1,131 @@
+Kora - Maquettes : l'ecran diplomatique et les batiments du village
+==================================================================
+Date : 2026-10-18. Statut : PROPOSE (maquettes, rien n'est code dans le jeu).
+
+Ses mots : "J'aimerais une meilleure UI pour l'interface diplomatique et
+celle des batiments dans les villes. Propose-moi plusieurs maquettes."
+
+Maquettes dessinees PAR LE JEU LUI-MEME (theme.py, ses polices, ses icones),
+sur SA partie (copie de partie-20261016-180620 : Utopie, Caldere, an 44,
+16 peuples connus, son village Netali), comme celles des frontieres
+(docs/maquettes/frontieres) :
+  docs/maquettes/diplomatie/ : jeu_aujourdhui, A_conseil, B_toile, C_audience
+  docs/maquettes/batiments/  : jeu_aujourdhui, A_plan, B_familles, C_ensuite
+  docs/maquettes/source_ecrans/ : les scripts qui les dessinent (a lancer
+    depuis ce dossier : le .venv du projet, la racine, une sauvegarde, un
+    dossier de sortie) ; leur code sert de depart a celle qu'il choisira.
+
+
+1. CE QUI NE VA PAS AUJOURD'HUI (constate sur sa partie)
+-------------------------------------------------------
+  Diplomatie (ecran Peuples, un panneau lateral) :
+  - Dix boutons d'action identiques en deux colonnes, dont huit grises
+    ("Il faut connaitre ...") : on cherche ce qu'on PEUT faire.
+  - Rien ne dit d'un coup d'oeil l'etat des choses : les accords entre vous,
+    leurs guerres, leurs tributaires, leur force face a la votre.
+  - La liste repete "proto-pays, 1 village" sur chaque ligne ; aucune icone
+    d'etat (guerre, commerce, tributaire).
+  - Leurs liens avec les autres sont une phrase coupee ("Avec les autres :
+    commercent avec les Lirali, ...").
+  Batiments (page "Le village") :
+  - Douze petites cartes presque toutes "Bati" : l'effet n'est lisible que
+    dans la fiche du dessous, une carte a la fois.
+  - "Pas encore" ne dit pas pourquoi : a Netali, plus aucune place (8 sur 8)
+    et il faut 280 habitants pour la suivante (encore 67) ; rien ne le
+    montre.
+  - Les places, le chantier et sa progression sont caches dans les tuiles.
+
+
+2. DIPLOMATIE : TROIS MAQUETTES
+------------------------------
+  A. LE CONSEIL (docs/maquettes/diplomatie/A_conseil.png) - la fiche
+     d'aujourd'hui, rangee ; un grand ecran comme celui du village.
+     - En haut : des filtres (Tous 16, Cordiaux 3, Mefiants 12, Hostiles 1,
+       En guerre 0) et votre force.
+     - La liste : le nom, la relation, l'humeur, des icones d'etat (guerre,
+       commerce, tributaire) et leur force par rapport a la votre (x0,5).
+     - La fiche : un en-tete (jeton, chef et ses traits, approche) ; trois
+       cartes - ENTRE VOUS (relation, ses raisons en pastilles, vos
+       accords), LEUR FORCE (eux 43 / vous 91 : "vous etes 2,1 fois plus
+       forts"), LEURS LIENS (en guerre contre les Senur ; commercent avec
+       les Ean, les Lirali, les Maesen) ; leurs savoirs en pastilles.
+     - Les actions par familles : DONNER, PROPOSER, LES SOUMETTRE, LA
+       GUERRE ; ce qu'on peut faire en boutons avec la reponse attendue ;
+       le reste replie sous "Pas encore" (un cadenas : le savoir qu'il
+       faut ; un tiret : sans objet). Le survol de la guerre dit ses
+       consequences.
+  B. LA TOILE DES PEUPLES (B_toile.png) - une vue d'ensemble.
+     - Vous au centre, les peuples autour, dans l'ordre de leur direction
+       reelle ; plus pres du centre, meilleure est la relation (anneaux
+       teintes : cordiaux, mefiants, hostiles).
+     - Leurs liens dessines : guerre (trait rouge), commerce (pointilles
+       ocre), alliance (trait vert), tributaire -> suzerain (fleche) ; le
+       peuple choisi allume les siens.
+     - A droite, sa carte : relation, force, liens, et seulement ce que vous
+       pouvez faire. "Toute la fiche" ouvre A ou C. Un bouton : placer par
+       relation ou par distance reelle.
+     - Dans sa partie, cela montre ce que l'ecran d'aujourd'hui cache : les
+       Maelita commercent avec trois peuples et sont en guerre contre les
+       Senur ; les Ursen sont tributaires des Ean.
+  C. L'AUDIENCE (C_audience.png) - la "flavor" : on rend visite.
+     - Les peuples en jetons en haut (le choisi brille).
+     - Une dalle de pierre : leur chef en grand medaillon (traits,
+       approche), et ce que son peuple pense de vous, ecrit en recit, tire
+       du jeu : "Les Maelita vous regardent avec mefiance ; on ecoute vos
+       envoyes sans les faire asseoir. Ce qu'ils retiennent de vous : chef
+       genereux. Vos guerriers sont deux fois plus nombreux que les leurs,
+       et ils le savent. Ils sont en guerre contre les Senur, et commercent
+       avec les Ean, les Lirali et les Maesen. Leur chef, Urne, est un
+       protecteur..."
+     - "Que leur dire ?" : seulement les choix possibles, numerotes comme
+       les evenements (1. Leur offrir 150 vivres - relation +16 ; 2. Exiger
+       un tribut - ils refuseraient ; 3. Leur declarer la guerre) ; les
+       paroles a venir en une ligne (le savoir qu'il faut).
+     - En bas : leur force, leurs liens, leurs savoirs.
+  Ce qui va avec chacune (a decider) : les jetons a initiale a la couleur
+  du pays (les tetes de totem, petites, faisaient des cranes) ; A et C
+  peuvent coexister (C en "audience", A en "dossier").
+
+
+3. BATIMENTS : TROIS MAQUETTES (une page "Les batiments" a part)
+---------------------------------------------------------------
+  Dans les trois, la fenetre du village gagne un onglet "Les batiments"
+  (toute la largeur) ; la page "Le village" garde champs, recoltes et
+  guerriers.
+  A. LE PLAN DU VILLAGE (docs/maquettes/batiments/A_plan.png)
+     - Le village vu d'en haut : le feu au centre, les places en cercle,
+       chaque batiment dans sa place (medaillon dore : bati), les places a
+       venir en pointilles avec le nombre d'habitants qu'il faut (a 280,
+       320, 360, 400) ; la palissade dessinee en pieux tout autour quand
+       elle est batie ; des huttes et des sentiers.
+     - A droite, "Batir" : les places (8 sur 8, une de plus a 280 habitants,
+       la barre 213/280), le chantier, ce qu'on batira des qu'une place
+       s'ouvre (Autel des ancetres : cout, effets, "Plus de place"), ce qui
+       demande un savoir (Pierre levee : Pierres levees ; Place d'echange :
+       Echanges lointains ; le monument : les grands travaux), et la place
+       choisie sur le plan.
+  B. LES FAMILLES (B_familles.png)
+     - Quatre colonnes par usage : DEFENSE (palissade, tour, maison des
+       guerriers), VIVRES (grenier, enclos, puits), LE PEUPLE ET SES MORTS
+       (maison longue, autel, pierre levee), METIERS ET ECHANGES (ateliers,
+       place d'echange) et le grand monument (ses six etapes).
+     - Chaque carte dit tout : son etat (bati, plus de place, le savoir qui
+       manque), son recit, ses effets, son cout.
+     - En haut : les places en encoches (8 pleines, les suivantes vides) et
+       le chantier.
+  C. CE QU'ON BATIT ENSUITE (C_ensuite.png ; un exemple : 290 habitants,
+     l'autel en chantier)
+     - A gauche, ce que le village a (ses medaillons) et ce que cela fait,
+       additionne (defense x1,84 : palissade x1,60, tour x1,15 ; grenier
+       +8 semaines ; croissance x1,2...).
+     - Au centre, le chantier en grand : un anneau qui se remplit, "encore
+       4 semaines sur 6", ce qu'il fera ; payer des batisseurs (l'argent).
+     - A droite, la suite : ce que chacun changera ICI, ce qui manque.
+
+
+4. SON CHOIX (a venir)
+---------------------
+  Il choisit une maquette par ecran (ou un melange : par exemple la toile B
+  en vue d'ensemble et la fiche A, ou le plan A avec les cartes de B) ; le
+  chantier suivant la code en entier : l'ecran, ses clics, le survol, le
+  tutoriel (l'etape des peuples), les tests de mise en page, l'exe.

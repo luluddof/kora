@@ -1033,6 +1033,9 @@ ETAGE -  l'interface (pygame)
                                       Renderer.draw_side / render_panels.py
   Un mode de carte                    layout.MAP_MODES, Renderer.draw_map_modes
   Une couleur, une police, un bouton  theme.py (docs/charte-graphique.txt)
+  Une maquette d'ecran (avant de      docs/maquettes/<sujet>/ (images, sur sa
+  coder)                              partie) ; docs/maquettes/source_ecrans
+                                      (dessinees par theme.py, a reprendre)
   La couleur d'un pays                look.country_color
   Le brouillard et sa memoire         vision.py, memory.py
   La fiche d'une case                 sim.hex_inspect, sim.inspect_lines,
@@ -1458,6 +1461,9 @@ ETAGE -  l'interface (pygame)
   specs/2026-10-17-signe-de-marche-revolte-des-tributaires.txt
     Le signe de la marche, la revolte des tributaires
     Statut : FAIT (version 0.22.0) ; section 4 : V4, V5, V8, V9
+  specs/2026-10-18-maquettes-diplomatie-batiments.txt
+    Maquettes : l'ecran diplomatique et les batiments du village
+    Statut : PROPOSE (maquettes, rien n'est code dans le jeu).
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt
