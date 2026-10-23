@@ -1571,3 +1571,8 @@ ETAGE -  l'interface (pygame)
   - Mesurer un ralentissement sur une copie du code (git worktree) : les
     sondes importent le code vivant ; une sonde de robot change avec le
     robot, pas avec le jeu.
+  - Deux etiquettes de version trop rapprochees : itch.io refuse la seconde
+    tant qu'il traite la premiere ("latest build is still processing") ;
+    la Release GitHub, elle, est faite. Relancer le job echoue un peu plus
+    tard (gh run rerun <id> --failed, en luluddof) : la publication GitHub
+    est rejouable (upload --clobber).
