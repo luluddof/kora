@@ -1501,6 +1501,9 @@ ETAGE -  l'interface (pygame)
   specs/2026-10-18-maquettes-diplomatie-batiments.txt
     Maquettes : l'ecran diplomatique et les batiments du village
     Statut : diplomatie A CHOISIE et FAITE (0.24.0) ; B, C
+  specs/2026-10-23-age-du-bronze-propositions.txt
+    L'age du bronze : les parts de gameplay a implementer (propositions)
+    Statut : PROPOSE (rien n'est code ; a son choix).
   specs/2026-10-23-etude-age-des-metaux-et-des-cites.txt
     Etude : l'age suivant, celui des metaux et des premieres cites
     Statut : ETUDE (rien n'est code ; a son choix).

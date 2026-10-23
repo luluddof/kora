@@ -750,6 +750,19 @@ lente, bandes dessinees petites a taille fixe.
     effondrement de la fin du bronze) ; comment chacun se brancherait sur
     Kora (cinq grands tournants, la cite et sa campagne...) ; sept
     chantiers E1-E7 ; six questions Q1-Q6 qui sont a lui.
+  - Ses reponses : l'age s'appellera L'AGE DU BRONZE ; il veut une
+    EXPLOSION DEMOGRAPHIQUE avec le passage des villages aux villes ; un
+    POINT DE CONTROLE, etabli dans la zone de controle d'un village dont il
+    depend, qui projette une zone reduite ; l'ECRITURE et tout ce qui est
+    PROTO-DYNASTIE ; les CLASSES SOCIALES ("pourquoi pas") ; pour les
+    steppes, des "CHEMINS DE GAMEPLAY" (suivre le chemin actuel par les
+    savoirs, ou un autre par un embranchement) ; "le reste, on verra plus
+    tard". PROPOSE (spec 2026-10-23-age-du-bronze-propositions.txt) : six
+    parts B1-B6 (la charpente et les voies ; les villes et l'explosion ;
+    les points de controle ; l'ecriture et les proto-dynasties ; les
+    classes ; la voie des steppes), un ordre, trois questions QB1-QB3 ;
+    maquettes du point de controle sur SA partie
+    (docs/maquettes/age_du_bronze).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -818,9 +831,9 @@ page des batiments (Victoria 3 / EU5).
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   En attente de SON choix (propose, rien de code) :
-  - E1-E7, Q1-Q6 l'age suivant (metaux et premieres cites) : une etude,
-                ses questions d'abord (2026-10-23-etude-age-des-metaux-et-
-                des-cites.txt).
+  - B1-B6       L'AGE DU BRONZE, les parts a implementer (il a repondu a
+                Q1-Q6 : 2026-10-23-age-du-bronze-propositions.txt) ; ses
+                questions QB1-QB3 ; l'ordre propose : B1, B3, B2, B4, B5, B6.
   - Ecrans      la diplomatie : A faite (0.24.0) ; B (la toile des
                 peuples) et C (l'audience) restent possibles, "pour le
                 moment" A (2026-10-18-maquettes-diplomatie-batiments.txt).

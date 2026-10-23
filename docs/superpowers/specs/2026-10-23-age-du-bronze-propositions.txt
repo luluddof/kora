@@ -1,0 +1,312 @@
+Kora - L'age du bronze : les parts de gameplay a implementer (propositions)
+=========================================================================
+Date : 2026-10-23. Statut : PROPOSE (rien n'est code ; a son choix).
+Suite de l'etude 2026-10-23-etude-age-des-metaux-et-des-cites.txt.
+
+Ses mots : "Propose-moi des parts a implementer de gameplay pour cette
+epoque, sachant que je veux : une EXPLOSION DEMOGRAPHIQUE avec le passage
+des villages aux villes ; un moyen de creer, sur la zone de controle d'un
+village, un POINT DE CONTROLE coherent qui genere une zone de controle
+reduite a partir de la ou il est construit, et qui doit etre construit sur
+une zone de controle du village dont il depend ; l'ECRITURE, tout ce qui
+est PROTO-DYNASTIE. Pour l'age, le nom sera L'AGE DU BRONZE. Organisation
+en CLASSES SOCIALES : oui, pourquoi pas. Pour le peuple des steppes : des
+'CHEMINS DE GAMEPLAY', qui permettent de suivre le chemin actuel via les
+techs ou d'en suivre un autre via un embranchement dans les techs. Pour le
+reste, on verra plus tard."
+
+Six parts (B1 a B6), chacune livree entiere quand il la prend
+(simulation, ecran, IA, carte, evenements, situations, equilibre,
+sauvegarde, multijoueur), avec des chiffres de depart pour qu'il puisse
+reagir. La maquette du point de controle, sur SA partie :
+docs/maquettes/age_du_bronze/point_de_controle_placement.png et _etabli.png
+(le script : docs/maquettes/source_ecrans/maq_point_de_controle.py).
+
+
+B1. L'AGE DU BRONZE ET LES CHEMINS DE GAMEPLAY (la charpente)
+=============================================================
+  L'idee : un troisieme age dans l'arbre, et une MECANIQUE GENERALE de
+  "chemins" (des voies) : a l'entree de l'age, l'arbre se SEPARE ; un
+  peuple suit la voie qu'il choisit, et les savoirs de l'autre voie lui
+  sont fermes. La premiere fourche : LA VOIE DES CITES (le chemin actuel,
+  vers les villes) et LA VOIE DES STEPPES (les cavaliers). Plus tard, la
+  meme mecanique peut porter d'autres voies (la mer, la foret...).
+
+  Dans l'arbre :
+  - L'age du bronze : trois paliers (7 "Premieres villes", 8 "Cites et
+    rois", 9 "Royaumes du bronze"), plus chers que le neolithique (P10).
+  - Un savoir a une VOIE (commune, cites, steppes). Les savoirs communs
+    restent ouverts a tous (le bronze lui-meme, la roue, l'ecriture que
+    l'on peut emprunter a ses voisins...).
+  - L'ENTREE dans une voie est un GRAND TOURNANT (comme la sedentarite) :
+      LA CITE : nait chez un peuple qui a un gros village (400 habitants),
+        des champs irrigues (Rigoles d'irrigation) ou l'Araire, un grand
+        batiment (pierre levee, maison du conseil, monument) ;
+      LA STEPPE : nait chez un peuple qui a Le cheval monte, Lait et laine,
+        des troupeaux, et vit pres de la steppe.
+    Comme les autres tournants, il nait quelque part et se REPAND ; on ne
+    l'adopte que quand il est arrive. Adopter l'un FERME l'autre, pour
+    l'age (un choix de civilisation, comme la base des nombres ; changer de
+    voie serait une crise, plus tard).
+  - L'arbre MONTRE les deux branches : celle que l'on n'a pas prise reste
+    visible, grisee ("Vous avez pris la voie des cites") ; au survol de la
+    fourche, ce que chaque voie change.
+  - Le MARQUEUR D'AGE du peuple (barre du haut : "Age du bronze") et celui
+    du monde (combien de peuples y sont, dans chaque voie).
+  Pour le code : Tech.voie, Tribe.voie, tech.ERAS (un troisieme age), la
+  fourche dans turning.py (deux tournants exclusifs PAR PEUPLE : un
+  mecanisme nouveau, a cote des groupes exclusifs du monde de draws.py).
+
+
+B2. LES VILLES ET L'EXPLOSION DEMOGRAPHIQUE (voie des cites)
+============================================================
+  L'idee : avec l'irrigation, l'araire et le grain du temple, le surplus
+  explose et les villages deviennent des VILLES ; la population double en
+  une generation. Mais une ville a faim, a soif, s'entasse et tombe malade :
+  la croissance a un prix.
+
+  Les rangs (places.RANKS, qui existe) :
+      Hameau < 50, Village < 150, Gros village < 400 (comme aujourd'hui),
+      puis BOURG (400), VILLE (1 000), CITE (2 500 ; le palais du roi).
+    Chaque rang ouvre des batiments, des points de controle (B3), des
+    classes (B5), et change l'icone de la carte (des murs, un temple).
+
+  L'explosion :
+  - Les savoirs du bronze relevent la croissance des villes (Canaux :
+    recoltes x1,3 ; Grenier du temple : la croissance ne s'effondre plus
+    a la moindre disette ; Fours et pain ; Briques crues...).
+  - L'EXODE RURAL : les villages du meme peuple ou des freres envoient
+    des familles vers la ville prospere (stable, nourrie, logee) ; la
+    ville aspire sa campagne.
+  - L'IMMIGRATION : des familles d'autres peuples viennent vivre dans une
+    ville riche et en paix (elles gardent leur culture : un probleme de
+    plus pour les classes et la stabilite).
+  - Ordre de grandeur vise : un gros village de 400 habitants devient une
+    ville de 1 000 en 20 a 30 ans s'il est loge et nourri ; une cite de
+    2 500 en 50 ans (a mesurer : le moteur a de la marge depuis la 0.21).
+
+  Les freins (ce qui rend le jeu interessant) :
+  - LA NOURRITURE : une ville mange ce que produit sa CAMPAGNE (ses champs,
+    ceux de ses points de controle B3, le grain de ses villages et de ses
+    tributaires) ; une mauvaise annee ou un siege, et elle a faim.
+  - LES LOGEMENTS (0.24) prennent toute leur place : des logements de
+    ville (Maisons de briques : 50 personnes ; Quartier : 150 ; plus
+    tard, des maisons a etage) ; une ville entassee ne grandit plus.
+  - L'EAU : puits, citernes, canaux (des niveaux) ; sans eau, les fievres.
+  - LES MALADIES : plus la ville est grande et entassee, plus les
+    epidemies (une crise : "La fievre des villes").
+  - LA STABILITE : une ville est plus dure a tenir (les classes, B5).
+
+  A l'ecran : la fenetre du village devient celle de la ville (rang, icone,
+  une page "La campagne" : les villages et les points de controle qui la
+  nourrissent, les familles qui arrivent et qui partent, la courbe de la
+  population).
+
+
+B3. LES POINTS DE CONTROLE
+==========================
+  L'idee (sa demande exacte) : sur la zone de controle d'un village, on
+  ETABLIT un point de controle ; il projette une zone REDUITE autour de lui
+  ; il doit etre construit DANS la zone du village dont il depend.
+  Historiquement : les hameaux satellites, les fortins des frontieres et
+  des gues (l'Egypte en Nubie), les camps des mines (le cuivre du Timna, du
+  Sinai), les comptoirs (Uruk en Syrie, Kanesh en Anatolie).
+
+  La regle de placement :
+  - Sur une case de la ZONE DU VILLAGE PARENT : la zone que le village
+    projette lui-meme (son rayon, 5, use par le terrain comme aujourd'hui),
+    pas celle d'un autre point de controle (pas de chaine qui s'etire a
+    travers le continent) ; pas dans le coeur d'une zone etrangere ; a 2
+    cases au moins du village et d'un autre point.
+  - Combien : selon le rang du village (gros village 1, bourg 2, ville 3,
+    cite 5) et les savoirs.
+  - A l'ecran, un MODE DE PLACEMENT (comme dans Europa Universalis) : les
+    cases ou l'on peut l'etablir s'eclairent en vert, les autres en rouge
+    (la raison au survol : "hors de la zone de Netali", "trop pres") ; au
+    survol d'une case, la zone qu'il aurait se dessine en pointilles.
+
+  Ce qu'il fait :
+  - Il ANCRE la zone d'influence (comme un village, en plus faible) sur un
+    rayon REDUIT : 3 (le village : 5 ; +1 avec certains savoirs) ; la zone
+    du peuple s'etend donc au-dela de celle du village.
+  - Il donne des TERRES (2 cases autour) : des champs pour nourrir la
+    ville, un gisement a exploiter (le cuivre, l'etain : B2 et le bronze),
+    des paturages.
+  - Il voit un peu plus loin (+2), il defend sa zone (la defense "chez
+    soi"), il marque la frontiere.
+
+  Quatre genres, choisis a l'etablissement (comme le serment d'un village) :
+  - HAMEAU : des champs de plus pour le village parent (sa recolte monte),
+    et des logements (les familles du hameau).
+  - FORTIN : une garnison (prise sur la levee), la defense de sa zone, un
+    gue ou un col tenus ; les raids ennemis dans sa zone se battent contre
+    lui d'abord.
+  - CAMP D'EXPLOITATION : sur un gisement ou une ressource (cuivre, etain,
+    argent, sel, silex, argile, bois d'oeuvre, chevaux sauvages) : le
+    village parent l'exploite comme s'il etait sur ses terres (les mineurs,
+    les metiers existent) ; c'est LE moyen d'avoir du metal loin de chez
+    soi. (Dans sa partie : Netali n'a ni cuivre ni etain autour de lui,
+    mais de l'argile et du bois a 6-7 cases, hors de sa zone, et des
+    chevaux sauvages a 5 : la maquette l'y montre.)
+  - COMPTOIR : sur une route, une cote, un fleuve : un convoi de plus, un
+    peage (les droits de passage existent), des echanges plus surs.
+
+  Son prix et sa vie : un CHANTIER du village parent (vivres, semaines ;
+  dans la file des chantiers de la 0.24), des gens pris au village (une
+  garnison, des colons), un entretien. Il a des NIVEAUX (comme les
+  batiments : un fortin devient un fort, un camp une mine). Si le village
+  parent tombe, ses points de controle sont perdus ; en guerre, l'ennemi
+  peut les prendre (ils passent a lui s'ils sont dans sa zone) ou les
+  bruler.
+
+  L'IA : des camps de mineurs sur les gisements utiles, des hameaux quand
+  la ville a faim, des fortins aux gues et sur la frontiere d'un voisin
+  menacant.
+
+
+B4. L'ECRITURE ET LES PROTO-DYNASTIES
+=====================================
+  L'idee : l'ecriture nait des COMPTES (les jetons d'argile existent) ; le
+  chef devient ROI, sa famille une DYNASTIE, et les scribes en tiennent la
+  liste. Historiquement : la "dynastie 0" d'Egypte, les dynasties
+  archaiques de Sumer, la liste royale sumerienne, les premiers sceaux et
+  les premieres steles.
+
+  L'ecriture, en quatre pas (des savoirs ; le tournant L'ECRITURE au
+  milieu) :
+  - Bulles et sceaux : les comptes scelles, la propriete, les contrats
+    (le commerce et le tribut plus surs).
+  - Les tablettes : l'ADMINISTRATION ; le village tient de plus loin
+    (la stabilite perd deux fois moins avec la distance et le nombre de
+    villages et de points de controle ; un point de controle de plus).
+  - L'ecriture des mots : les LOIS ECRITES (des lois nouvelles : un code
+    de justice, la remise des dettes, la loi de succession), les TRAITES
+    ecrits (un pacte ecrit dure plus, le rompre coute plus), les LETTRES
+    entre rois.
+  - La numeration de position (deja promise : l'onglet des nombres la
+    montre grisee).
+  - Les SCRIBES : un metier (comme les calculateurs), une "maison des
+    tablettes" (un batiment a niveaux) ; sans scribes, l'ecriture ne sert
+    a rien.
+  - LA CHRONIQUE (l'idee J9) : chaque nouvel an, les scribes ecrivent
+    l'annee (la recolte, les guerres, le roi) ; un onglet du journal la
+    garde : l'histoire de SA partie. Sans l'ecriture, seuls les anciens
+    s'en souviennent, et ils oublient (les dix dernieres annees).
+
+  Les proto-dynasties :
+  - LA LIGNEE : la famille du chef devient une DYNASTIE (un nom : "la
+    maison d'Urne") ; son RENOM monte avec les regnes longs, les
+    victoires, les monuments, les tombes royales ; il fait la LEGITIMITE.
+  - LE ROI : le titre suit le rang (chef d'un village, roi d'une ville,
+    grand roi de plusieurs) ; le palais, la tombe royale (les Tumulus
+    existent), les insignes.
+  - LA SUCCESSION (l'heritier existe) : une LOI de succession (le fils
+    aine, le choix des anciens, le plus fort) ; la REGENCE si l'heritier
+    est un enfant ; l'USURPATION par une grande famille (les familles de la
+    chefferie et leur faveur existent) quand la legitimite est basse ; une
+    crise "La succession disputee" (deux pretendants : un compromis, ou
+    le peuple se dechire et un clan part).
+  - LA LISTE ROYALE (avec l'ecriture) : un ecran ou s'alignent vos rois,
+    leurs annees, ce qu'ils ont fait (comme la liste royale sumerienne) ;
+    sans l'ecriture, on ne garde que le fondateur et les trois derniers.
+  - LES MARIAGES ROYAUX entre dynasties (le souvenir "mariage" existe) :
+    des alliances, et des PRETENTIONS (un motif de guerre sur le trone d'un
+    voisin quand sa lignee s'eteint).
+  - Des evenements : la legende du fondateur, la reine regente, les
+    jumeaux heritiers, le frere qui conteste, la tombe royale.
+
+
+B5. LES CLASSES SOCIALES (voie des cites ; facon Victoria 3, plus simple)
+=========================================================================
+  L'idee : dans un bourg ou une ville, la population se divise en
+  classes ; chacune a un ROLE, des BESOINS et un CONTENTEMENT, et la
+  stabilite de la ville est la leur.
+
+  Les classes (des parts de la population de la ville) :
+  - PAYSANS (les champs ; la levee) ;
+  - ARTISANS (les metiers existants : potiers, tisserands, fondeurs...) ;
+  - MARCHANDS (les convois, le marche, les comptoirs) ;
+  - PRETRES ET SCRIBES (le temple, l'administration, la legitimite) ;
+  - GUERRIERS (la garde du roi, la qualite des troupes) ;
+  - NOTABLES (les grandes familles de la chefferie : les gouverneurs des
+    villages et des points de controle).
+  (Les dependants et les esclaves : plus tard, a son choix.)
+
+  Ce qui les fait vivre :
+  - Leur PART bouge avec les batiments et les metiers (une maison des
+    tablettes forme des scribes, un marche des marchands, une caserne des
+    guerriers) et avec le rang de la ville.
+  - Leurs BESOINS : des vivres pour tous ; des tissus, des poteries, du
+    bronze pour les classes du haut ; un logement a la mesure (les
+    logements de la 0.24).
+  - Leur CONTENTEMENT (0 a 100) : besoins remplis, impots (le tresor
+    existe : un impot par classe), lois, guerres ; il fait la stabilite
+    de la ville, et sous un seuil, une classe gronde : "La colere des
+    paysans", les artisans qui refusent la corvee, les notables qui
+    complotent (B4 : l'usurpation).
+  - La LEVEE prend aux paysans et aux guerriers (la milice d'aujourd'hui
+    se range dans les classes).
+  A l'ecran : une page "Le peuple" dans la fenetre de la ville : une barre
+  des classes, leur contentement, ce qu'il leur manque (comme les POPs de
+  Victoria 3, en plus lisible).
+
+
+B6. LA VOIE DES STEPPES (le chemin de gameplay alternatif)
+==========================================================
+  L'idee : le peuple qui prend LA STEPPE ne construit pas de ville : il
+  repart, mais autrement qu'a l'age tribal - avec des CHARIOTS, des
+  CHEVAUX et des TROUPEAUX. Il est mobile, fort a la guerre, et depend
+  des cites pour le metal et le grain : le face-a-face des deux voies
+  fait l'histoire de l'age. Historiquement : Yamnaya, la culture des
+  tombes a fosse, Sintashta et ses chars, les kourganes.
+
+  Ce qui change pour lui :
+  - LE CAMP ROYAL : son village devient un camp de chariots MOBILE (la
+    capitale suit les saisons : la TRANSHUMANCE entre paturages d'ete et
+    d'hiver) ; ses points de controle sont des CAMPEMENTS SAISONNIERS
+    (les paturages d'une saison).
+  - LE BETAIL est sa richesse (le betail existe : il devient la monnaie du
+    peuple) ; les troupeaux grandissent vite sur la steppe et meurent dans
+    les grands hivers (la crise "Le grand hiver" existe).
+  - LE CHEVAL ET LE CHAR : des cavaliers des le debut, le char leger a
+    rayons (palier 8), l'arc composite ; une marche plus rapide en steppe
+    et en plaine.
+  - LES KOURGANES : les tombes de ses chefs, placees sur la carte, font son
+    prestige et marquent sa terre.
+  - LA HORDE : la confederation des clans sous un grand chef (la
+    confederation existe) ; les raids et le TRIBUT pris aux cites, le
+    commerce des chevaux et de la laine contre le metal et le grain.
+  - LA GRANDE MIGRATION : une decision rare qui met tout le peuple en
+    marche vers des terres lointaines (la crise "Le grand passage des
+    steppes", vue des cites).
+  - Ses savoirs (paliers 7 a 9) : Chariots a quatre roues, Transhumance,
+    Feutre, Lait fermente, Char leger, Arc composite, Kourganes du roi,
+    Metal des steppes (le bronze par le commerce), La grande migration.
+  - L'IA : l'approche "cavalier des steppes" (raids et tributs, puis
+    alliances avec les cites qui paient).
+
+
+L'ORDRE QUE JE PROPOSE
+======================
+  1. B1 LA CHARPENTE : l'age du bronze dans l'arbre et la mecanique des
+     voies (la fourche visible, la voie des steppes en place avec ses
+     premiers savoirs) - sans elle, rien du reste ne tient.
+  2. B3 LES POINTS DE CONTROLE : spatial, jouable tout de suite, et la
+     base de la nourriture des villes et du metal.
+  3. B2 LES VILLES ET L'EXPLOSION DEMOGRAPHIQUE.
+  4. B4 L'ECRITURE ET LES PROTO-DYNASTIES.
+  5. B5 LES CLASSES SOCIALES (une fois les villes la).
+  6. B6 LA VOIE DES STEPPES, en entier.
+  Chacune avec sa crise (la fievre des villes, la succession disputee, la
+  colere des paysans, le grand passage des steppes...).
+
+
+LES QUESTIONS QUI RESTENT (courtes)
+===================================
+  QB1. Points de controle : avant l'age du bronze aussi (un hameau ou un
+       fortin des la fin du neolithique), ou seulement a l'age du bronze ?
+  QB2. Un point de controle peut-il etre etabli dans la zone d'un AUTRE
+       point (une chaine), ou seulement dans celle du village (ma
+       proposition, pour qu'un village ne s'etire pas sans fin) ?
+  QB3. Le choix de la voie : definitif pour l'age (ma proposition), ou
+       peut-on changer de voie au prix d'une crise ?
