@@ -17,6 +17,10 @@ pas n'importe ou :
     toujours (CRADLE, des effets comme un savoir : systems.EFFECT_FIELDS
     "berceau:") ; la nouvelle court (le journal). Adopte, il ouvre son pan.
 Une carte (« Voyageurs ») propose au joueur d'accelerer sa venue.
+Les tournants d'une FOURCHE (tech.VOIES : la cite, la steppe) s'excluent
+par peuple : celui d'une voie fermee ne nait ni ne se repand plus chez lui ;
+la fourche en vue, le conseil se dispute (la carte « Les deux chemins »,
+_fork) ; l'entree dans une voie a son evenement (crochet "voie_prise").
 Les vieilles parties : migrate (au chargement) donne le tournant a qui sait
 deja les savoirs de son pan.
 N'importe pas pygame.
@@ -50,6 +54,8 @@ CRADLE = {
     "domestication": {"village_food": 1.05, "winter_famine": 0.95},
     "terre_ancetres": {"stability": 4, "prestige_gain": 1.1},
     "don": {"diplo": 10, "trade_price": 1.05},
+    "cite": {"village_growth": 1.05, "prestige_gain": 1.05},
+    "steppe": {"combat": 1.05, "winter_famine": 0.95},
 }
 # La carte des voyageurs : quand la presence est entre ces bornes.
 VISIT_RANGE = (15.0, 80.0)
@@ -97,6 +103,9 @@ def sources(state, tribe_id: int, tid: str) -> list[tuple[str, float, int]]:
     tribe = state.tribes[tribe_id]
     t = tech.TECHS[tid]
     out: list = []
+    if tech.closed(tribe, t):
+        # Le tournant d'une autre voie : il ne vient plus chez ce peuple.
+        return out
     if own_conditions(state, tribe, t):
         out.append(("Vous en remplissez les conditions" if is_human(state, tribe_id) else "Ses conditions", BIRTH, 0))
     if not born(state, tid):
@@ -152,7 +161,7 @@ def monthly(state) -> None:
         if tribe is None:
             continue
         for t in turns:
-            if t.id in tribe.knowledge or presence(tribe, t.id) >= 100.0:
+            if t.id in tribe.knowledge or presence(tribe, t.id) >= 100.0 or tech.closed(tribe, t):
                 continue
             gain = monthly_gain(state, tribe_id, t.id)
             if gain > 0:
@@ -166,6 +175,9 @@ def monthly(state) -> None:
             _arrived(state, tribe, tid)
         elif is_human(state, tribe_id):
             _visitors(state, tribe, tid)
+    for tribe_id in sorted(alive):
+        if is_human(state, tribe_id) and tribe_id in state.tribes:
+            _fork(state, state.tribes[tribe_id])
 
 
 def _arrived(state, tribe, tid: str) -> None:
@@ -193,6 +205,13 @@ def on_adopted(state, tribe, tid: str) -> None:
     """La recherche d'un tournant est terminee chez ce peuple : il l'a
     decouvert. Le premier du monde en est le berceau."""
     t = tech.TECHS[tid]
+    if t.voie and is_human(state, tribe.id):
+        others = ", ".join(v.name.lower() for v in tech.VOIES.values() if v.id != t.voie)
+        note(state, LogKind.DECOUVERTE, f"Vous prenez {tech.VOIES[t.voie].name.lower()} : {others} vous est fermée pour tout l'âge du bronze.", to=tribe.id)
+    if t.voie:
+        # L'entree dans une voie : son evenement (events_data, "voie_prise").
+        band = chiefs.chief_band(state, tribe.id)
+        events.hook(state, "voie_prise", tribe_id=tribe.id, band_id=band.id if band else 0)
     if born(state, tid):
         if is_human(state, tribe.id):
             note(state, LogKind.DECOUVERTE, f"Votre peuple a adopté le grand tournant {t.name} : tout un pan de savoirs s'ouvre.", to=tribe.id)
@@ -237,6 +256,22 @@ def _visitors(state, tribe, tid: str) -> None:
     t = tech.TECHS[tid]
     if events.hook(state, "tournant_voyageurs", tribe_id=tribe.id, band_id=band.id if band else 0, other=src,
                    data={"tournant_id": tid, "tournant": t.name}):
+        told.append(key)
+
+
+def _fork(state, tribe) -> None:
+    """Une fois par peuple : la fourche des voies en vue (on a ce qu'il faut
+    pour l'un de leurs tournants), le conseil se dispute (une carte)."""
+    if tech.voie_of(tribe):
+        return
+    if not any(not tech.missing_prereqs(tribe, tech.TECHS[v.tournant]) for v in tech.VOIES.values()):
+        return
+    told = state.research.setdefault("told", [])
+    key = f"{tribe.id}:fourche"
+    if key in told:
+        return
+    band = chiefs.chief_band(state, tribe.id)
+    if events.hook(state, "fourche", tribe_id=tribe.id, band_id=band.id if band else 0):
         told.append(key)
 
 
@@ -368,5 +403,19 @@ def _ev_tournant(state, inst, tribe, band, amount) -> None:
             _arrived(state, tribe, tid)
 
 
-EVENT_EFFECTS = {"tournant": _ev_tournant}
-EVENT_TEXTS = {"tournant": lambda a: f"le grand tournant arrive plus vite (+{a[0]:g} %)"}
+def _ev_voie(state, inst, tribe, band, vid, amount) -> None:
+    """Le tournant d'une voie arrive plus vite chez ce peuple (la fourche)."""
+    v = tech.VOIES.get(vid)
+    if v is None or v.tournant in tribe.knowledge or tech.closed(tribe, tech.TECHS[v.tournant]):
+        return
+    value = min(100.0, presence(tribe, v.tournant) + amount)
+    tribe.tournants[v.tournant] = value
+    if value >= 100.0:
+        _arrived(state, tribe, v.tournant)
+
+
+EVENT_EFFECTS = {"tournant": _ev_tournant, "voie": _ev_voie}
+EVENT_TEXTS = {
+    "tournant": lambda a: f"le grand tournant arrive plus vite (+{a[0]:g} %)",
+    "voie": lambda a: f"{tech.TECHS[tech.VOIES[a[0]].tournant].name} arrive plus vite chez vous (+{a[1]:g} %)",
+}

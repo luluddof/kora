@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.24.1
+A jour pour la version : 0.25.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -232,22 +232,22 @@ ETAGE 4  les savoirs, les gens
 
   tech.py
     Savoirs : l'arbre, les conditions, l'apprentissage, les effets.
-    classes : Cond, Tech, StartBonus, Bonuses
-    fonctions : era_of, branches_of, pan_of, descendants, turnings,
-      spec_effect, start_bonus_ids, start_bonus_lines, start_bonus_lines_for,
-      set_start_bonuses, update_start_bonuses, bonuses_of, begin_tick,
-      invalidate, end_tick, bonuses, bonuses_without, has_effect, lines_for,
-      move_costs, effect_lines, missing_prereqs, grant, start_knowledge,
-      summary
+    classes : Voie, Cond, Tech, StartBonus, Bonuses
+    fonctions : era_of, age_of, voie_of, closed, branches_of, pan_of,
+      descendants, turnings, spec_effect, start_bonus_ids, start_bonus_lines,
+      start_bonus_lines_for, set_start_bonuses, update_start_bonuses,
+      bonuses_of, begin_tick, invalidate, end_tick, bonuses, bonuses_without,
+      has_effect, lines_for, move_costs, effect_lines, missing_prereqs, grant,
+      start_knowledge, summary
     constantes : BASE_STOCK_WEEKS, BASE_MAX_BANDS, BASE_VISION,
       BASE_REINFORCE, BASE_WINTER_PRESTIGE, BASE_FAMINE_PRESTIGE,
       BASE_MOVE_COST, BASE_CHIEF_REACH, BASE_INFLUENCE_RADIUS,
       BASE_PROTECT_RATIO, VASSAL_OATH_WEEKS, SIEGE_FIRE, SIEGE_FOOD,
       SIEGE_ERODE, SIEGE_FLOOR, LEARN_POP, TIER_COST, TIER_NAMES,
-      TURNING_TIERS, BRANCHES, NEO_BRANCHES, ERAS, GROUPS, START_KNOWLEDGE,
-      PIROGUE_POP, PIROGUE_COAST_WEEKS, TROUPEAU_POP, TROUPEAU_STEPPE_WEEKS,
-      SEE_RADIUS, TECHS, START_BONUS_YEARS, START_BONUS_WEEKS,
-      START_BONUS_PICKS, START_BONUSES, NO_BONUS
+      TURNING_TIERS, BRANCHES, NEO_BRANCHES, BRONZE_BRANCHES, ERAS, VOIES,
+      GROUPS, START_KNOWLEDGE, PIROGUE_POP, PIROGUE_COAST_WEEKS, TROUPEAU_POP,
+      TROUPEAU_STEPPE_WEEKS, SEE_RADIUS, TECHS, START_BONUS_YEARS,
+      START_BONUS_WEEKS, START_BONUS_PICKS, START_BONUSES, NO_BONUS
 
   units.py
     Unites : une troupe est une pile de compagnies.
@@ -280,8 +280,9 @@ ETAGE 5  LES SYSTEMES
     COMMENT UN PEUPLE APPREND : les conditions d'un savoir, son etat, le rythme.
     fonctions : missing_lines, cond_progress, conditions_met, status,
       kept_points, available, base_rate, diffusion_bonus, learn_rate,
-      weeks_left, choose, auto_choose, update_practice, trade_goods_for,
-      count_winter, update_learning, detail_lines
+      weeks_left, choose, auto_choose, town_pop, preferred_voie,
+      update_practice, trade_goods_for, count_winter, update_learning,
+      voie_lines, world_ages, age_lines, detail_lines
 
   bands.py
     LES BANDES ET LEURS PEUPLES : les outils que tous les systemes partagent.
@@ -788,7 +789,7 @@ ETAGE -  l'interface (pygame)
     LE DESSIN DE LA PARTIE (pygame) : Renderer, la planete et tout ce qui
     se pose dessus, la barre du haut, les onglets lateraux, les fiches.
     classes : Renderer
-    fonctions : draw_journal
+    fonctions : draw_age_tip, draw_journal
     constantes : TAB_ICONS, SEASON_ICONS, KIND_ICONS, BAND_ICONS,
       MAP_MODE_ICONS, SEASON_FR, INSPECT_MAX_W
 
@@ -874,7 +875,8 @@ ETAGE -  l'interface (pygame)
     Ecran des savoirs, dans l'esprit de Victoria 3.
     fonctions : SMALL_FONTS, medallion, focus_cam, draw, missing_first
     constantes : GOLD, GOLD_DIM, GOLD_DEEP, INK, SOFT, NOTE, GOOD, BAD, STYLE,
-      STATE_LABEL, ERA_STYLE, BRANCH_ICONS, MEDAL_STATE, TURN_GOLD, ROMAN
+      STATE_LABEL, VOIE_COLORS, ERA_STYLE, BRANCH_ICONS, MEDAL_STATE,
+      TURN_GOLD, ROMAN
 
   render_trade.py
     L'ecran Commerce (dans le style de l'ecran du village) :
@@ -971,7 +973,7 @@ ETAGE -  l'interface (pygame)
     LE PLACEMENT DE L'ARBRE DES SAVOIRS, comme un graphe (a la Victoria 3).
     fonctions : build, crossings, geometry
     constantes : CARD_W, CARD_H, TURN_W, TURN_H, DUMMY_W, GAP, DUMMY_GAP,
-      CHANNEL, SWEEPS, POS_PASSES
+      FORK_GAP, CHANNEL, SWEEPS, POS_PASSES
 
   tutoriel.py
     LE TUTORIEL : les premieres minutes guidees, une fiche a la fois.
@@ -1009,6 +1011,10 @@ ETAGE -  l'interface (pygame)
                                       tournants : turning.py ; tirages : draws.py ;
                                       placer l'arbre : tree_graph.py ;
                                       python tools/arbre_savoirs.py --spec
+  Ages, chemins de gameplay (voies)   tech.ERAS, tech.VOIES (Tech.voie),
+                                      tech.closed / voie_of / age_of ; l'IA :
+                                      learning.preferred_voie ; le marqueur
+                                      d'age : learning.age_lines, render._draw_age
   Villages : champs, serments,        villages.py (villages.FIELD_FOOD,
   stabilite, recoltes                 villages.OATHS, villages.stability_parts) ;
                                       places.VillageData
@@ -1322,6 +1328,8 @@ ETAGE -  l'interface (pygame)
                               sur plusieurs cases.
   test_vision.py              Le brouillard (vision.py) : une bande ennemie
                               hors de vue ne se voit pas.
+  test_voies.py               L'age du bronze et les VOIES (2026-10-23) : un
+                              troisieme age dans l'arbre,
   test_war.py                 La guerre declaree (diplo.py) : entre peuples
                               qui ont la diplomatie, on
   test_war_chiefdom.py        La population (enfants, hommes, femmes, anciens,
@@ -1504,6 +1512,9 @@ ETAGE -  l'interface (pygame)
   specs/2026-10-23-age-du-bronze-propositions.txt
     L'age du bronze : les parts de gameplay a implementer (propositions)
     Statut : PROPOSE (rien n'est code ; a son choix).
+  specs/2026-10-23-age-du-bronze-voies.txt
+    L'age du bronze dans l'arbre, et les chemins de gameplay (B1)
+    Statut : FAIT (version 0.25.0).
   specs/2026-10-23-etude-age-des-metaux-et-des-cites.txt
     Etude : l'age suivant, celui des metaux et des premieres cites
     Statut : ETUDE (rien n'est code ; a son choix).

@@ -1,23 +1,19 @@
-## Nouveau dans la 0.24
+## Nouveau dans la 0.25 : l'âge du bronze
 
-- (0.24.1) Le **tutoriel** se lance de l'écran titre ; plus de bouton *Tuto* dans la partie (il cachait le bas des écrans) : **F1** rouvre sa fiche.
+- **Un troisième âge dans l'arbre des savoirs**, l'âge du bronze : dix-huit savoirs, plus chers que ceux du
+  néolithique (la fonte du cuivre, la roue, le bronze, les routes de l'étain...).
+- **Les chemins de gameplay** : à l'entrée de l'âge, l'arbre se sépare. **La cité** (canaux, briques crues, temple,
+  grenier du temple, sceaux, palais) ou **la steppe** (chariots à quatre roues, transhumance, feutre, char léger, arc
+  composite, horde) : deux grands tournants qui naissent et se répandent comme les autres, mais adopter l'un **ferme
+  l'autre pour tout l'âge**. L'arbre montre les deux branches côte à côte, avec un « ou » ; celle que vous n'avez pas
+  prise reste visible, éteinte.
+- **Le marqueur d'âge**, à côté de la saison : votre âge (à la couleur de votre voie) ; au survol, celui du monde ;
+  un clic ouvre l'arbre.
+- **Des événements** : « Les deux chemins » (le conseil se dispute : bâtir ou suivre les bêtes), « Le fondeur
+  étranger », « Les premières rues », « Le premier grand départ ».
+- Les autres peuples choisissent la voie qui va à leur façon de vivre. Vos parties continuent telles quelles.
 
-- **Les bâtiments se bâtissent plusieurs fois** : chaque niveau fait plus (un grenier de plus, une palissade doublée
-  puis un fossé, une tour qui voit plus loin...). Des bâtiments **peu coûteux** (huttes de branchages, fosses à grain,
-  claies de séchage, foyer commun) et des **coûteux** (maison longue, maison du conseil, pierres levées) : dix-huit en
-  tout, en cinq familles.
-- **Les logements** : un village loge un certain nombre de gens ; au-delà, il s'entasse (il grandit moins, il gronde,
-  les fièvres montent). Bâtir des huttes, c'est grandir. Le village a aussi un **terrain**, qui grandit avec lui.
-- **Une file de chantiers** : un chantier à la fois, quatre autres attendent leur tour (payés quand il vient) ; on
-  peut abattre un niveau pour reprendre son terrain.
-- **Une nouvelle page « Les bâtiments »**, inspirée de Victoria 3 et d'Europa Universalis : le terrain, les logés et
-  le grenier en jauges ; les bâtiments en cartes avec leur niveau, « + » pour bâtir, « − » pour abattre ; la file des
-  chantiers ; la fiche de chaque bâtiment, niveau par niveau.
-- **Le conseil des peuples** : l'écran *Peuples* en grand. Tous les peuples connus dans une liste qui défile (molette
-  ou barre), des filtres (cordiaux, méfiants, hostiles, en guerre), leur force face à la vôtre, leurs guerres et
-  leurs accords, et vos actions rangées en quatre familles avec la réponse attendue.
-- Vos parties continuent : vos bâtiments passent au niveau 1, et chaque village reçoit les huttes qu'il faut pour
-  loger ses gens.
+Et dans la 0.24 : les bâtiments à niveaux (les logements, le terrain, la file des chantiers, la page des bâtiments), le conseil des peuples ; le tutoriel à l'écran titre (0.24.1).
 
 Et dans la 0.23 : la faim et les ennemis sur les jetons, Affranchir un tributaire, « dernière semaine ».
 

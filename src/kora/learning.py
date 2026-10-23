@@ -4,15 +4,19 @@ tech.py porte l'arbre (les savoirs, leurs effets, les bonus) ; ici, ce qui
 le fait avancer : ce qu'un peuple a vecu (update_practice : terrains,
 ressources, hivers), ce qu'il remplit (cond_progress), l'etat de chaque
 savoir (status, available), le rythme (learn_rate : population a l'ecoute,
-chef, voisins qui savent), et la semaine (update_learning).
+chef, voisins qui savent), et la semaine (update_learning). Les VOIES de
+l'age du bronze : la voie qui va a un peuple (preferred_voie : l'IA, le
+conseil de la fiche) ; le MARQUEUR D'AGE (world_ages, age_lines).
 Etage des systemes (tools/dependances.py). N'importe pas pygame.
 """
 
 from __future__ import annotations
 from src.kora.gamestate import note
 from src.kora.log import LogKind
-from src.kora.peoples import children_alive, culture_of
+from src.kora.peoples import children_alive, culture_of, living_tribe_ids
 from src.kora.tech import (
+    ERAS,
+    VOIES,
     Cond,
     LEARN_POP,
     PIROGUE_COAST_WEEKS,
@@ -22,13 +26,16 @@ from src.kora.tech import (
     Tech,
     _TICK_MEMO,
     _plural,
+    age_of,
     bonuses,
     effect_lines,
     lines_for,
     grant,
     missing_prereqs,
+    closed,
     pan_of,
     summary,
+    voie_of,
 )
 from src.kora.types import Season, Terrain
 from src.kora.world import is_inshore
@@ -143,6 +150,8 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
         return n, cond.need, f"{_plural(cond.need, 'tributaire')}"
     if kind == "kin_villages":
         return chiefdom.kin_villages(state, tribe.id), cond.need, f"{_plural(cond.need, 'village frère')} (de votre civilisation, ou tributaire)"
+    if kind == "town":
+        return town_pop(state, tribe.id), cond.need, f"Un village de {cond.need} habitants"
     if kind in ("villages", "village_years"):
         if kind == "villages":
             return sites.village_count(state, tribe.id), cond.need, _plural(cond.need, "village")
@@ -176,12 +185,15 @@ def conditions_met(state, tribe, tech: Tech) -> bool:
 def status(state, tribe_id: int, tech_id: str) -> str:
     """"connu", "en_cours", "disponible", "attente" (prerequis OK, pas les
     conditions ; un grand tournant : pas encore arrive chez lui),
-    "verrouille" (prerequis manquants) ou "absent" (un tirage : il ne
-    viendra pas, draws.py)."""
+    "verrouille" (prerequis manquants), "absent" (un tirage : il ne
+    viendra pas, draws.py) ou "ferme" (d'une autre voie que celle du
+    peuple : tech.closed)."""
     tribe = state.tribes[tribe_id]
     tech = TECHS[tech_id]
     if tech_id in tribe.knowledge:
         return "connu"
+    if closed(tribe, tech):
+        return "ferme"
     # Les PREREQUIS d'abord, toujours : des points deja la (un peuple
     # absorbe, un evenement, un arbre d'une autre version) ne les
     # remplacent pas ; ils sont gardes pour plus tard (kept_points).
@@ -266,10 +278,40 @@ def auto_choose(state, tribe_id: int) -> str | None:
     if not ready:
         return None
     taste = culture_of(tribe).taste
+    # Les voies : l'IA prend celle qui lui va (preferred_voie) et l'attend ;
+    # l'autre, seulement s'il n'y a plus rien d'autre a apprendre.
+    entries = [tid for tid in ready if TECHS[tid].turning and TECHS[tid].voie]
+    if entries:
+        keep = VOIES[preferred_voie(state, tribe)].tournant
+        ready = [tid for tid in ready if tid not in entries or tid == keep] or ready
     # Un grand tournant arrive chez soi passe avant tout : il ouvre un pan.
     ready.sort(key=lambda tid: (not TECHS[tid].turning, taste.index(tid) if tid in taste else 99, TECHS[tid].cost, tid))
     choose(state, tribe_id, ready[0])
     return ready[0]
+
+
+def town_pop(state, tribe_id: int) -> int:
+    """Les habitants du plus gros village d'un peuple (la condition "town")."""
+    return max((b.population for b in state.bands.values() if b.tribe_id == tribe_id and b.village), default=0)
+
+
+def preferred_voie(state, tribe) -> str:
+    """La voie qui va a un peuple (l'IA, et le conseil de la fourche) : la
+    steppe a qui a vecu en steppe et en plaine avec ses betes, la cite a qui
+    a un gros village, ses champs et sa vallee. On compte la PART de sa vie
+    passee sur chaque sol (Tribe.practice), pas les semaines : un vieux
+    peuple n'est pas plus nomade qu'un jeune."""
+    known = tribe.knowledge
+    lived = sum(tribe.practice.get(_key(t), 0) for t in Terrain) or 1
+
+    def share(key: str) -> float:
+        return tribe.practice.get(key, 0) / lived
+
+    steppe = 3.0 * (share("steppe") + 0.6 * share("plaine") + 0.3 * share("savane"))
+    steppe += 0.4 * sum(1 for k in ("cheval", "troupeau", "lait", "bovins") if k in known)
+    cite = town_pop(state, tribe.id) / 250.0 + 1.5 * share("vallee")
+    cite += 0.4 * sum(1 for k in ("irrigation", "araire", "champs", "maisons") if k in known)
+    return "steppe" if steppe > cite else "cite"
 
 
 def update_practice(state, count: bool = True) -> None:
@@ -393,7 +435,8 @@ def _update_learning(state) -> None:
         tid = tribe.learning
         if not tid:
             continue
-        if tid in tribe.knowledge or tid not in TECHS:
+        if tid in tribe.knowledge or tid not in TECHS or closed(tribe, TECHS[tid]):
+            # Su, inconnu, ou d'une voie fermee : on n'etudie plus.
             tribe.learning = None
             continue
         missing = missing_prereqs(tribe, TECHS[tid])
@@ -416,6 +459,63 @@ def _update_learning(state) -> None:
                 note(state, LogKind.DECOUVERTE, f"Nouveau savoir : {tech.name}. {summary(tech)}", to=tribe.id)
 
 
+def voie_lines(state, tribe, tech: Tech) -> list[tuple[str, str]]:
+    """Ce que la fiche dit de la voie d'un savoir : la voie, et pour son
+    grand tournant, le choix (ce qu'il ferme, ce qui va au peuple, qui l'a
+    pris dans le monde)."""
+    if not tech.voie:
+        return []
+    v = VOIES[tech.voie]
+    out = [(f"{v.name} : {v.about}", "info")]
+    if tech.turning and tech.id not in tribe.knowledge and not closed(tribe, tech):
+        others = ", ".join(o.name.lower() for o in VOIES.values() if o.id != v.id)
+        out.append((f"Un choix pour tout l'âge du bronze : l'adopter vous ferme {others}.", "info"))
+        if preferred_voie(state, tribe) == v.id:
+            out.append(("Vos anciens penchent pour celle-ci : elle va à votre façon de vivre.", "ok"))
+    if tech.turning:
+        taken = world_ages(state)[1].get(v.id, 0)
+        out.append((f"Dans le monde : {taken} peuple{'s' if taken > 1 else ''} {'ont' if taken > 1 else 'a'} pris cette voie.", "info"))
+    return out
+
+
+def world_ages(state) -> tuple[list[int], dict]:
+    """Le MARQUEUR D'AGE du monde : combien de peuples vivants dans chaque
+    age (tech.ERAS), et dans chaque voie (tech.VOIES)."""
+    ages = [0] * len(ERAS)
+    voies = {v: 0 for v in VOIES}
+    for tid in sorted(living_tribe_ids(state)):
+        tribe = state.tribes.get(tid)
+        if tribe is None:
+            continue
+        ages[age_of(tribe)] += 1
+        mine = voie_of(tribe)
+        if mine:
+            voies[mine] += 1
+    return ages, voies
+
+
+def age_lines(state, tribe_id: int) -> list[tuple[str, str]]:
+    """L'infobulle du marqueur d'age (la barre du haut) : l'age du peuple,
+    sa voie, puis le monde. (texte, style) : "titre", "texte", "note"."""
+    tribe = state.tribes[tribe_id]
+    age = age_of(tribe)
+    mine = voie_of(tribe)
+    out = [(f"Votre peuple : {ERAS[age][0]}" + (f", {VOIES[mine].name.lower()}" if mine else ""), "titre")]
+    if age + 1 < len(ERAS):
+        out.append((f"L'âge suivant, {ERAS[age + 1][0].lower()}, s'ouvre avec ses premiers savoirs (l'arbre, touche T).", "note"))
+    if age == 2 and not mine:
+        out.append(("Aucune voie prise : la cité ou la steppe, deux grands tournants exclusifs.", "note"))
+    ages, voies = world_ages(state)
+    out.append(("Dans le monde :", "texte"))
+    for i, (name, _tiers, _b) in enumerate(ERAS):
+        if ages[i]:
+            out.append((f"  {name} : {ages[i]} peuple{'s' if ages[i] > 1 else ''}", "texte"))
+    for vid, n in voies.items():
+        if n:
+            out.append((f"  dont {VOIES[vid].name.lower()} : {n}", "note"))
+    return out
+
+
 def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
     """Fiche d'un savoir pour le panneau : (texte, style) ; style parmi
     "titre", "texte", "effet", "ok", "manque", "note"."""
@@ -432,8 +532,12 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
         after = pan_of(tech_id)
         if after:
             out.append(("  Mène à : " + ", ".join(t.name for t in after), "effet"))
+    out.extend(voie_lines(state, tribe, tech))
     if st == "connu":
         out.append(("Savoir connu.", "ok"))
+        return out
+    if st == "ferme":
+        out.append((f"Fermé : vous avez pris {VOIES[voie_of(tribe)].name.lower()}, pour tout l'âge du bronze.", "manque"))
         return out
     if st == "absent":
         out.append(("Il ne viendra pas :", "note"))

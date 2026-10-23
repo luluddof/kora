@@ -591,6 +591,74 @@ EVENTS: dict[str, Event] = {
                 Option("Les renvoyer", effects=(), text="Les voyageurs repartent. Les choses nouvelles attendront."),
             ),
         ),
+        # --- l'age du bronze : les voies (tech.VOIES, turning.py) ---------------
+        Event(
+            "fourche",
+            "Les deux chemins",
+            "Au conseil, les anciens se disputent jusqu'à la nuit. « Nos bêtes et nos chevaux nous porteront plus loin "
+            "que n'importe quel mur », disent les uns. « Restons : des canaux, des greniers, des murs, et la plaine nous "
+            "nourrira tous », répondent les autres. Tout le peuple attend que {chief} tranche. "
+            "Le vrai choix viendra avec les grands tournants : adopter l'un fermera l'autre pour tout l'âge du bronze.",
+            scope="tribe",
+            trigger="fourche",
+            player_only=True,
+            mood="peuple",
+            deadline=20,
+            options=(
+                Option("Écouter ceux qui veulent bâtir", effects=(("voie", "cite", 25),), text="Les bâtisseurs l'emportent : on ne parle plus que de canaux et de murs. La cité viendra plus vite.", ai=1.0),
+                Option("Écouter ceux qui suivent les bêtes", effects=(("voie", "steppe", 25),), text="Les gens des troupeaux l'emportent : on dresse les chevaux, on taille des roues. La steppe viendra plus vite.", ai=1.0),
+                Option("Ne pas trancher encore", effects=(("loyalty_all", 3),), text="{chief} laisse chacun à son idée : personne n'a perdu la face.", ai=1.2),
+            ),
+        ),
+        Event(
+            "fondeur",
+            "Le fondeur étranger",
+            "Un homme arrive au village avec un sac de pierres vertes et un soufflet de peau. Il dit savoir faire couler "
+            "la pierre comme de l'eau, dans un four plus chaud que ceux des potiers. Il demande à manger, et une place près du feu.",
+            conds=(("village",), ("knows", "haches"), ("knows", "poterie"), ("not_knows", "fonte")),
+            weight=0.02,
+            once=True,
+            mood="chance",
+            options=(
+                Option("Le garder tout l'hiver", effects=(("stock", -1), ("tech_progress_id", "fonte", 0.35)),
+                       text="Il chauffe le four des potiers jusqu'au rouge : le cuivre coule. La fonte du cuivre avance.", ai=1.3),
+                Option("Lui échanger une hache de cuivre", effects=(("stock", -0.5), ("prestige", 4)),
+                       text="{chief} porte une hache qui brille comme le soleil ; on vient la voir de loin."),
+                Option("Le renvoyer", effects=(), text="Le fondeur reprend la route ; d'autres villages l'accueilleront."),
+            ),
+        ),
+        Event(
+            "voie_cite",
+            "Les premières rues",
+            "Les maisons se serrent autour du grenier et de l'autel ; il n'y a plus de place entre elles. Il faut des rues, "
+            "une place, et quelqu'un pour dire où l'on bâtit.",
+            scope="tribe",
+            trigger="voie_prise",
+            conds=(("knows", "cite"),),
+            mood="peuple",
+            options=(
+                Option("Une grande place pour le dieu", effects=(("prestige", 5), ("loyalty_all", 3)),
+                       text="Une place de terre battue, un autel au milieu : voilà le cœur de la cité.", ai=1.2),
+                Option("Bâtir serré, loger tout le monde", effects=(("pop_pct", 0.04),),
+                       text="Des maisons contre des maisons : des familles de la campagne viennent s'y installer."),
+            ),
+        ),
+        Event(
+            "voie_steppe",
+            "Le premier grand départ",
+            "Les chariots sont chargés, les troupeaux rassemblés : pour la première fois, tout le peuple part avec ses "
+            "maisons. Derrière, l'herbe repoussera ; devant, la steppe n'a pas de fin.",
+            scope="tribe",
+            trigger="voie_prise",
+            conds=(("knows", "steppe"),),
+            mood="chance",
+            options=(
+                Option("Une course de chevaux pour le départ", effects=(("prestige", 5), ("loyalty_all", 3)),
+                       text="Les jeunes cavaliers volent sur l'herbe : on en parlera dans tous les camps.", ai=1.2),
+                Option("Remplir les chariots", effects=(("stock_all", 1),),
+                       text="Lait caillé, viande séchée, grain : les chariots plient sous les vivres."),
+            ),
+        ),
         # --- la conquete (battle.py, chiefdom.py) ------------------------------
         Event(
             "conquete",

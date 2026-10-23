@@ -16,7 +16,10 @@ a la recherche en cours.
   - les GRANDS TOURNANTS (turning.py) : de larges cartes sur leur rangee,
     avec leur presence chez vous (une barre) et leur berceau ;
   - les savoirs TIRES (draws.py) : une pastille (leur chance, "?" avant le
-    tirage du peuple) ; ABSENTS (ils ne viendront pas) : eteints et barres.
+    tirage du peuple) ; ABSENTS (ils ne viendront pas) : eteints et barres ;
+  - les VOIES de l'age du bronze (tech.VOIES) : une pastille a la couleur
+    de la voie (VOIE_COLORS), un "ou" entre les tournants de la fourche
+    (_fork) ; l'autre voie FERMEE : eteinte, son etat le dit.
 Aucune image : tout est dessine avec pygame (surfaces mises en cache).
 """
 
@@ -53,6 +56,8 @@ STYLE = {
     "attente": {"top": (44, 34, 26), "bot": (31, 24, 19), "edge": C.bois_clair, "text": C.lin, "icon": C.cendre},
     "verrouille": {"top": (28, 22, 18), "bot": (21, 17, 13), "edge": (58, 46, 36), "text": C.cendre, "icon": (92, 80, 68)},
     "absent": {"top": (22, 18, 16), "bot": (17, 14, 12), "edge": (74, 48, 44), "text": (112, 96, 88), "icon": (80, 64, 58)},
+    # D'une autre voie que la sienne (l'age du bronze : tech.VOIES).
+    "ferme": {"top": (25, 21, 18), "bot": (18, 15, 13), "edge": (86, 72, 58), "text": (118, 104, 90), "icon": (86, 74, 62)},
 }
 STATE_LABEL = {
     "connu": "Connu",
@@ -61,19 +66,25 @@ STATE_LABEL = {
     "attente": "Pas encore",
     "verrouille": "Verrouillé",
     "absent": "Ne viendra pas",
+    "ferme": "Autre voie",
 }
+# La couleur de chaque voie (les cartes de l'age du bronze).
+VOIE_COLORS = {"cite": C.terre_cuite, "steppe": C.ocre_jaune}
 # (fond des rangees, haut et bas de la banniere, couleur de l'age) : l'ocre
 # du feu pour l'age tribal, la terre cuite pour l'age des villages.
 ERA_STYLE = (
     ((22, 17, 13), (66, 44, 26), (34, 25, 18), C.ocre_jaune),
     ((24, 16, 13), (80, 40, 28), (40, 22, 16), (226, 132, 96)),
+    # L'age du bronze : le metal.
+    ((21, 18, 14), (86, 62, 32), (42, 31, 19), (214, 156, 88)),
 )
 # Une icone par branche de l'arbre (game-icons, theme.ICON_FILES).
 BRANCH_ICONS = (
     ("chasse", "baies", "cache", "peche", "froid", "camp", "feu", "gens", "tablette"),
     ("palissade", "ble", "grenier", "pieces", "boeuf", "hutte", "menhir", "commerce", "abaque"),
+    ("hache", "riviere", "grenier", "mine", "troupeau", "village", "couronne", "route", "tablette"),
 )
-MEDAL_STATE = {"connu": "connu", "en_cours": "actif", "disponible": "normal", "attente": "normal", "verrouille": "eteint", "absent": "eteint"}
+MEDAL_STATE = {"connu": "connu", "en_cours": "actif", "disponible": "normal", "attente": "normal", "verrouille": "eteint", "absent": "eteint", "ferme": "eteint"}
 # Les grands tournants : leur or.
 TURN_GOLD = (236, 196, 110)
 
@@ -300,6 +311,8 @@ def _status_line(state, tribe, tid: str, st: str) -> tuple[str, tuple]:
     t = tech.TECHS[tid]
     if st == "absent":
         return draws.short_why(state, state.viewer, tid), STYLE["absent"]["text"]
+    if st == "ferme":
+        return f"Fermé : vous avez pris {tech.VOIES[tech.voie_of(tribe)].name.lower()}", STYLE["ferme"]["text"]
     if t.turning and st == "connu":
         return "Adopté", STYLE["connu"]["edge"]
     if t.turning and st == "attente":
@@ -427,7 +440,10 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
                 continue
             font = r.small if z >= 1.0 else r.tiny
             label = _wrap(font, tech.TIER_NAMES[tier], int(gutter) - 18)[:2]
-            if tier in tech.TURNING_TIERS:
+            if tier in tech.TURNING_TIERS and any(t.voie for t in tech.TECHS.values() if t.tier == tier):
+                mine = tech.voie_of(state.tribes[state.viewer]) if state.viewer in state.tribes else ""
+                cost = f"vous : {tech.VOIES[mine].short.lower()}" if mine else "une voie à choisir"
+            elif tier in tech.TURNING_TIERS:
                 cost = "se répandent, s'adoptent"
             else:
                 cost = f"{tech.TIER_COST[tier]} pts" if tech.TIER_COST[tier] else "au départ"
@@ -461,7 +477,9 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
         pygame.draw.rect(screen, edge, (x, y, w, h), 2 if (tid == pick or hover) else 1, border_radius=6)
         if t.turning:
             _turning_card(r, state, tribe, t, st, (x, y, w, h), z, pick, hover, head_font)
+            _voie_mark(r, t, st, (x, y, w, h), z)
             continue
+        _voie_mark(r, t, st, (x, y, w, h), z)
         # Le medaillon a la taille de la carte (rien de loin : la place au nom) ;
         # a droite, la place de la coche ou du cadenas.
         icon = max(6, int(13 * min(1.2, z)))
@@ -508,6 +526,7 @@ def draw(r, state, lay: dict, pick: str | None, ui: dict | None = None) -> None:
         if t.drawn and st != "connu":
             # En bas a droite : le nom reste lisible.
             _chance_pill(r, state, tribe, t, st, x + w, y + h - 20, z)
+    _fork(r, nodes, lay["visible"], z)
     screen.set_clip(None)
     pygame.draw.rect(screen, GOLD_DEEP, view, 1)
     _controls(r, lay, mx, my)
@@ -542,7 +561,7 @@ def _links(screen, world, states, cam, view, z) -> None:
             rank, color, width = 1, (190, 156, 88), 2
         elif known and child in ("disponible", "en_cours"):
             rank, color, width = 1, STYLE[child]["edge"], 2
-        elif child == "absent":
+        elif child in ("absent", "ferme"):
             rank, color, width = 0, (72, 52, 46), 1
         else:
             rank, color, width = 0, (104, 84, 62), 1
@@ -584,12 +603,46 @@ def _chance_pill(r, state, tribe, t, st, right: int, top: int, z: float) -> None
     r.screen.blit(surf, (px + 5, top + 3))
 
 
+def _voie_mark(r, t, st, rect, z) -> None:
+    """La voie d'un savoir de l'age du bronze : une pastille a sa couleur, en
+    bas a droite de la carte."""
+    if not t.voie or z < 0.7:
+        return
+    x, y, w, h = rect
+    col = VOIE_COLORS.get(t.voie, C.lin)
+    if st == "ferme":
+        col = _lerp(col, (40, 34, 28), 0.6)
+    text = tech.VOIES[t.voie].short
+    surf = r.tiny.render(text, True, col)
+    pw = surf.get_width() + 12
+    px, py = x + w - pw - 6, y + h - 19
+    pygame.draw.rect(r.screen, (22, 18, 14), (px, py, pw, 15), border_radius=7)
+    pygame.draw.rect(r.screen, col, (px, py, pw, 15), 1, border_radius=7)
+    r.screen.blit(surf, (px + 6, py))
+
+
+def _fork(r, nodes, visible, z) -> None:
+    """La fourche de l'age du bronze : un "ou" entre les tournants des voies."""
+    entries = [v.tournant for v in tech.VOIES.values() if v.tournant in nodes and v.tournant in visible]
+    if len(entries) < 2:
+        return
+    rects = sorted((nodes[e] for e in entries), key=lambda rc: rc[0])
+    for a, b in zip(rects, rects[1:]):
+        cx = int((a[0] + a[2] + b[0]) / 2)
+        cy = int(a[1] + a[3] / 2)
+        rad = max(9, int(16 * min(1.2, z)))
+        _aacircle(r.screen, cx, cy, rad, TURN_GOLD, fill=(48, 34, 18))
+        font = r.small if z >= 0.8 else r.tiny
+        surf = font.render("ou", True, TURN_GOLD)
+        r.screen.blit(surf, (cx - surf.get_width() // 2, cy - surf.get_height() // 2 - 1))
+
+
 def _turning_card(r, state, tribe, t, st, rect, z, pick, hover, head_font) -> None:
     """Une carte de grand tournant : un cadre double, son nom en grand, son
     etat, sa presence chez vous, son berceau, ce qu'il ouvre."""
     screen = r.screen
     x, y, w, h = rect
-    gold = TURN_GOLD if st != "verrouille" else (120, 100, 70)
+    gold = TURN_GOLD if st not in ("verrouille", "ferme") else (120, 100, 70)
     pygame.draw.rect(screen, _lerp(gold, (0, 0, 0), 0.45), (x + 3, y + 3, w - 6, h - 6), 1, border_radius=5)
     for cx_, cy_ in ((x + 6, y + 6), (x + w - 7, y + 6), (x + 6, y + h - 7), (x + w - 7, y + h - 7)):
         pygame.draw.circle(screen, gold, (cx_, cy_), max(2, int(3 * min(1.2, z))))
@@ -619,7 +672,7 @@ def _turning_card(r, state, tribe, t, st, rect, z, pick, hover, head_font) -> No
     big_fonts = [f for f in (head_font, r.small, r.tiny) if _line_h(f) * 2 <= h * 0.6 or f is r.tiny] + SMALL_FONTS()
     room = h - bar_h - 4 - sum(row[3] for row in head + tail)
     big, parts = _name_block(big_fonts, t.name, tw, max(_line_h(big_fonts[-1]), room))
-    name_color = INK if st != "verrouille" else STYLE["verrouille"]["text"]
+    name_color = INK if st not in ("verrouille", "ferme") else STYLE[st]["text"]
     rows = head + [(p_, big, name_color, _line_h(big)) for p_ in parts] + tail
     yy = y + max(2, (h - bar_h - sum(row[3] for row in rows)) // 2)
     for text, font, color, lh in rows:
@@ -657,12 +710,15 @@ def _header(r, state, tribe, lay, states, title_font, head_font) -> None:
     rate = learning.learn_rate(state, state.viewer)
     pop = learning._learning_pop(state, state.viewer)
     pace = f"Recherche : {rate:.1f} pts par semaine  ·  {pop} personnes à l'écoute des anciens".replace(".", ",", 1)
-    turns = tech.turnings()
+    turns = [t for t in tech.turnings() if not tech.closed(tribe, t)]
     pace += f"  ·  grands tournants adoptés : {sum(1 for t in turns if t.id in tribe.knowledge)} / {len(turns)}"
+    voie = tech.voie_of(tribe)
+    if voie:
+        pace += f"  ·  {tech.VOIES[voie].name}"
     screen.blit(r.tiny.render(pace, True, NOTE), (bx + 22, by + 42))
     # Legende.
     lx = bx + 140
-    for key in ("connu", "en_cours", "disponible", "attente", "verrouille", "absent"):
+    for key in ("connu", "en_cours", "disponible", "attente", "verrouille", "absent", "ferme"):
         st = STYLE[key]
         screen.blit(_gradient_card(14, 12, st["top"], st["bot"], 3), (lx, by + 18))
         pygame.draw.rect(screen, st["edge"], (lx, by + 18, 14, 12), 1, border_radius=3)
@@ -747,6 +803,8 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
         _column(r, right, "SAVOIR ACQUIS", [(done, "ok")])
     elif st == "absent":
         _column(r, right, "IL NE VIENDRA PAS", need)
+    elif st == "ferme":
+        _column(r, right, "UNE AUTRE VOIE", need)
     else:
         _column(r, right, "CE QU'IL DEMANDE", missing_first(need))
     if st != "connu":
@@ -754,7 +812,7 @@ def _detail(r, state, tribe, lay, pick, states, head_font) -> None:
         rect = lay["learn"]
         on = st == "disponible"
         hover = on and rect[0] <= mx <= rect[0] + rect[2] and rect[1] <= my <= rect[1] + rect[3]
-        label = {"disponible": "Adopter" if t.turning else "Apprendre", "en_cours": "En cours"}.get(st, "Jamais" if st == "absent" else "Pas encore")
+        label = {"disponible": "Adopter" if t.turning else "Apprendre", "en_cours": "En cours", "ferme": "Autre voie"}.get(st, "Jamais" if st == "absent" else "Pas encore")
         _button(screen, head_font, rect, label, on, hover)
 
 
@@ -819,8 +877,9 @@ def _more(r, x: int, yy: int, left: int) -> None:
 
 def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
     t = tech.TECHS[tid]
+    tribe = state.tribes.get(state.viewer)
     lines = [(t.name, INK), (STATE_LABEL[st], STYLE[st]["edge"])]
-    lines += [("+ " + line, (178, 205, 140)) for line in tech.lines_for(state.tribes.get(state.viewer), t)[:3]]
+    lines += [("+ " + line, (178, 205, 140)) for line in tech.lines_for(tribe, t)[:3]]
     if t.prereqs:
         lines.append(("Il faut : " + ", ".join(tech.TECHS[p].name for p in t.prereqs), SOFT))
     gone = draws.hidden(state)
@@ -833,6 +892,11 @@ def _hover_tip(r, state, tid: str, st: str, mx: int, my: int) -> None:
         lines.append((draws.chance_text(state, state.viewer, tid), (220, 190, 120)))
         if st == "absent":
             lines.append((draws.why_absent(state, state.viewer, tid), STYLE["absent"]["text"]))
+    if st == "ferme":
+        lines.append((f"Fermé : vous avez pris {tech.VOIES[tech.voie_of(tribe)].name.lower()}, pour tout l'âge du bronze", STYLE["ferme"]["text"]))
+    if t.voie and t.turning and st != "ferme" and tribe is not None and t.id not in tribe.knowledge:
+        others = ", ".join(v.name.lower() for v in tech.VOIES.values() if v.id != t.voie)
+        lines.append((f"Un choix pour tout l'âge : l'adopter vous ferme {others}", C.alerte))
     if st in ("attente", "verrouille"):
         # Ce qui manque, tout de suite (sans cliquer).
         missing = learning.missing_lines(state, state.viewer, tid)

@@ -50,7 +50,7 @@ def banner_items(state) -> list:
 def banner_layout(width: int, n: int) -> dict:
     """Les medaillons, dans la barre du haut, entre la date (a gauche) et les
     boutons du temps ; s'il y en a trop, la suite passe juste dessous."""
-    left = 236
+    left = 258
     right = hud_layout(width)["pause"][0] - 12
     per_row = max(1, (right - left + 6) // (CARD_W + 6))
     out = {}

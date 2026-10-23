@@ -10,7 +10,12 @@ Un savoir connu d'un voisin s'apprend plus vite (diffusion, diplo.py).
 Les effets sont des donnees (Tech.effects) ; le texte affiche au joueur
 en est tire (effect_lines) : ce qui est ecrit est ce qui est simule.
 Au depart, tout le monde connait le feu et les outils de pierre.
-Un seul arbre : l'age tribal (paliers 0 a 3) puis le neolithique (4 a 6).
+Un seul arbre : l'age tribal (paliers 0 a 3), le neolithique (4 a 6), puis
+L'AGE DU BRONZE (6,5 a 9 ; 2026-10-23), ou l'arbre se SEPARE en VOIES (les
+"chemins de gameplay" : VOIES, Tech.voie). Un peuple entre dans une voie
+en adoptant son grand tournant (la cite, la steppe) ; l'autre voie lui est
+alors FERMEE pour l'age (closed : learning.status "ferme"). Les savoirs
+sans voie restent ouverts a tous.
 
 Deux sortes de savoirs :
   - les GRANDS TOURNANTS (kind="tournant", turning.py) : de grosses
@@ -66,7 +71,7 @@ SIEGE_FLOOR = 0.6
 # Apprentissage : points par semaine = 1 + peuple / LEARN_POP.
 LEARN_POP = 120
 # Une partie longue : chaque palier demande deux fois plus qu'au debut du proto.
-TIER_COST = {0: 0, 1: 40, 2: 90, 3: 160, 4: 240, 5: 360, 6: 500}
+TIER_COST = {0: 0, 1: 40, 2: 90, 3: 160, 4: 240, 5: 360, 6: 500, 7: 650, 8: 850, 9: 1100}
 TIER_NAMES = {
     0: "Connu",
     1: "Premiers savoirs",
@@ -77,9 +82,13 @@ TIER_NAMES = {
     3.5: "Grands tournants",
     5: "Villages prospères",
     6: "Grandes chefferies",
+    6.5: "Les deux voies",
+    7: "Le premier bronze",
+    8: "Villes et chariots",
+    9: "Royaumes et hordes",
 }
 # Les rangees des grands tournants (turning.py) dans l'arbre.
-TURNING_TIERS = (1.5, 3.5)
+TURNING_TIERS = (1.5, 3.5, 6.5)
 BRANCHES = (
     "Chasse et guerre",
     "Terre et cueillette",
@@ -105,11 +114,53 @@ NEO_BRANCHES = (
     "Échanges",
     "Nombres et métal",
 )
+# L'age du bronze : les colonnes prennent encore un nouveau nom.
+BRONZE_BRANCHES = (
+    "Armes de bronze",
+    "Canaux et champs",
+    "Greniers et réserves",
+    "Le métal",
+    "Chevaux et troupeaux",
+    "Villes et camps",
+    "Dieux et rois",
+    "Routes lointaines",
+    "Signes et nombres",
+)
 # (nom de l'age, paliers, noms des colonnes)
 ERAS = (
     ("Âge tribal", (0, 1, 1.5, 2, 3), BRANCHES),
     ("Néolithique", (3.5, 4, 5, 6), NEO_BRANCHES),
+    ("Âge du bronze", (6.5, 7, 8, 9), BRONZE_BRANCHES),
 )
+
+
+# LES VOIES (les "chemins de gameplay", sa demande du 2026-10-23) : a
+# l'entree de l'age du bronze, l'arbre se separe. Une voie s'ouvre par son
+# grand tournant ; l'adopter ferme les autres voies, pour l'age.
+@dataclass(frozen=True)
+class Voie:
+    id: str
+    name: str
+    short: str
+    tournant: str
+    about: str
+
+
+VOIES = {
+    v.id: v
+    for v in (
+        Voie(
+            "cite", "La voie des cités", "Cités", "cite",
+            "Des villages qui deviennent des villes : les canaux, le temple, le palais, les sceaux. "
+            "Un peuple qui reste, qui nourrit beaucoup de monde, et qui doit le tenir.",
+        ),
+        Voie(
+            "steppe", "La voie des steppes", "Steppes", "steppe",
+            "Des chariots, des chevaux, des troupeaux : un peuple qui bouge avec ses bêtes, fort à la guerre, "
+            "qui vit de la steppe et de ce que lui donnent les cités.",
+        ),
+    )
+}
 # Les groupes EXCLUSIFS (draws.py) : un seul de leurs savoirs nait dans le
 # monde ; (nom, chance qu'aucun ne naisse).
 GROUPS = {
@@ -149,7 +200,8 @@ class Cond:
     kind : "pop", "weeks" (terrains), "res" (ressources, dans terrains),
     "winters", "prestige", "bands", "seen", "flag" (label = drapeau d'un
     evenement), "camp_years", "contacts", "friends", "allies",
-    "villages", "village_years", "kin_villages", "vassals" (tributaires)."""
+    "villages", "village_years", "kin_villages", "vassals" (tributaires),
+    "town" (le plus gros de ses villages, en habitants)."""
 
     kind: str
     need: int = 0
@@ -180,6 +232,8 @@ class Tech:
     chance: float = 1.0
     world: float = 1.0
     group: str = ""
+    # La voie (VOIES) a laquelle il appartient ("" : commun a tous).
+    voie: str = ""
 
     @property
     def cost(self) -> int:
@@ -200,7 +254,29 @@ def _weeks(need: int, *terrains, label: str) -> Cond:
 
 
 def era_of(tech: Tech) -> int:
-    return 0 if tech.tier <= 3 else 1
+    return 0 if tech.tier <= 3 else (1 if tech.tier <= 6 else 2)
+
+
+def age_of(tribe) -> int:
+    """L'AGE d'un peuple (l'index dans ERAS) : celui de son savoir le plus
+    avance (un seul savoir de l'age du bronze, et il y est entre)."""
+    return max((era_of(TECHS[k]) for k in tribe.knowledge if k in TECHS), default=0)
+
+
+def voie_of(tribe) -> str:
+    """La voie d'un peuple : celle dont il a adopte le grand tournant ("" :
+    aucune encore). Rien a sauver : elle se lit dans ses savoirs."""
+    known = getattr(tribe, "knowledge", None) or ()
+    return next((v.id for v in VOIES.values() if v.tournant in known), "")
+
+
+def closed(tribe, t: "Tech") -> bool:
+    """Ce savoir est-il d'une autre voie que celle du peuple (fermee pour
+    l'age) ?"""
+    if not t.voie:
+        return False
+    mine = voie_of(tribe)
+    return bool(mine) and mine != t.voie
 
 
 def branches_of(tech: Tech) -> tuple:
@@ -674,6 +750,155 @@ TECHS: dict[str, Tech] = {
             conds=(Cond("villages", 1), Cond("winters", 10)),
             effects={"stability": 2},
             kind="tournant", span=2, price=240,
+        ),
+        Tech(
+            "cite", "La cité", 6.5, 5,
+            "Des milliers de gens derrière les mêmes murs, nourris par les champs de toute une plaine : le village devient une ville. "
+            "Choisir cette voie ferme celle des steppes pour tout l'âge du bronze.",
+            prereqs=("maisons", "araire"),
+            conds=(Cond("town", 400), Cond("village_years", 10), Cond("prestige", 50)),
+            effects={"village_growth": 1.1, "stability": 2},
+            kind="tournant", span=2, price=420, voie="cite",
+        ),
+        Tech(
+            "steppe", "La steppe", 6.5, 3,
+            "Les bêtes, les chariots et les chevaux emportent tout le peuple d'un pâturage à l'autre : la steppe devient un pays. "
+            "Choisir cette voie ferme celle des cités pour tout l'âge du bronze.",
+            prereqs=("lait", "bovins"),
+            conds=(
+                Cond("res", 30, ("chevaux",), "près des chevaux sauvages"),
+                _weeks(52, _T.STEPPE, _T.PLAINE, label="steppe ou plaine"),
+                Cond("pop", 150),
+            ),
+            effects={"food": {_T.STEPPE: 1.1}, "move": {_T.STEPPE: 9}},
+            kind="tournant", span=2, price=420, voie="steppe",
+        ),
+        # --- L'AGE DU BRONZE (2026-10-23) : les savoirs communs ----------------
+        Tech(
+            "fonte", "La fonte du cuivre", 7, 3,
+            "Le minerai fond dans un four plus chaud que celui des potiers : le cuivre se coule dans des moules.",
+            prereqs=("haches", "poterie"),
+            conds=(Cond("village_years", 8), Cond("pop", 250)),
+            effects={"combat": 1.08, "prestige_gain": 1.05, "trade_price": 1.03},
+        ),
+        Tech(
+            "roue", "La roue", 7, 7,
+            "Un disque de planches sur un essieu, des bœufs devant : les récoltes et les biens roulent.",
+            prereqs=("bovins", "araire"),
+            conds=(Cond("village_years", 6),),
+            effects={"trade_price": 1.05, "move": {_T.PLAINE: 9, _T.STEPPE: 9, _T.VALLEE: 9}},
+        ),
+        Tech(
+            "bronze", "Le bronze", 8, 3,
+            "Un peu d'étain venu de loin dans le cuivre : un métal dur, des haches, des lances et des poignards qui ne plient pas.",
+            prereqs=("fonte", "echanges"),
+            conds=(Cond("contacts", 4), Cond("pop", 300)),
+            effects={"combat": 1.15, "village_defense": 1.1, "prestige_gain": 1.05},
+        ),
+        Tech(
+            "etain", "Les routes de l'étain", 9, 7,
+            "L'étain vient de très loin, de main en main : qui tient ses routes tient le bronze.",
+            prereqs=("bronze", "routes"),
+            conds=(Cond("contacts", 6),),
+            effects={"trade_price": 1.08, "diplo": 5},
+        ),
+        # La voie des cites.
+        Tech(
+            "canaux", "Canaux", 7, 1,
+            "De grands canaux partagent l'eau du fleuve entre tous les champs : des récoltes qui ne dépendent plus de la pluie.",
+            prereqs=("cite", "champs"),
+            conds=(_weeks(26, _T.VALLEE, label="vallée"), Cond("village_years", 4)),
+            effects={"field_yield": 1.15, "soil_loss": 0.85},
+            voie="cite",
+        ),
+        Tech(
+            "briques", "Briques crues", 7, 5,
+            "De la boue et de la paille moulées, séchées au soleil : des maisons serrées, des quartiers, des murs.",
+            prereqs=("cite", "maisons"),
+            conds=(Cond("pop", 400),),
+            effects={"village_growth": 1.1, "disease": 0.9},
+            voie="cite",
+        ),
+        Tech(
+            "temple", "Le temple", 7, 6,
+            "La maison du dieu de la cité : on y apporte une part des récoltes, elle nourrit ceux qui la servent.",
+            prereqs=("cite", "ancetres"),
+            conds=(Cond("prestige", 60),),
+            effects={"stability": 4, "tax": 1.05, "prestige_gain": 1.05},
+            voie="cite",
+        ),
+        Tech(
+            "sceaux", "Bulles et sceaux", 8, 8,
+            "Les comptes enfermés dans une boule d'argile, un sceau roulé dessus : ce qui est dû est dû.",
+            prereqs=("cite", "nombres"),
+            conds=(Cond("village_years", 10),),
+            effects={"tax": 1.1, "trade_price": 1.03},
+            voie="cite",
+        ),
+        Tech(
+            "grenier_temple", "Le grenier du temple", 8, 2,
+            "Le temple garde le grain de toute la cité et le rend en rations : la disette ne tue plus comme avant.",
+            prereqs=("temple", "greniers"),
+            conds=(Cond("pop", 500),),
+            effects={"granary": 4, "grain_rot": 0.9, "stability": 2},
+            voie="cite",
+        ),
+        Tech(
+            "palais", "Le palais", 9, 6,
+            "Le chef ne vit plus parmi les siens : un palais, des serviteurs, des gouverneurs. Il règne.",
+            prereqs=("temple", "sceaux"),
+            conds=(Cond("prestige", 80),),
+            effects={"stability": 3, "vassal_tribute": 1.2, "vassal_cap": 1},
+            voie="cite",
+        ),
+        # La voie des steppes.
+        Tech(
+            "chariots", "Chariots à quatre roues", 7, 5,
+            "Des maisons de feutre sur des chariots tirés par des bœufs : le camp entier part avec ses vivres.",
+            prereqs=("steppe", "bovins"),
+            conds=(_weeks(20, _T.STEPPE, _T.PLAINE, label="steppe ou plaine"),),
+            effects={"move": {_T.STEPPE: 8, _T.PLAINE: 9}, "stock_weeks": 4},
+            slot=1, voie="steppe",
+        ),
+        Tech(
+            "transhumance", "Transhumance", 7, 4,
+            "L'été aux pâturages d'en haut, l'hiver aux abris d'en bas : les troupeaux ne manquent jamais d'herbe.",
+            prereqs=("steppe", "troupeau"),
+            conds=(_weeks(40, _T.STEPPE, _T.PLAINE, _T.SAVANE, label="steppe, plaine ou savane"),),
+            effects={"food": {_T.STEPPE: 1.15, _T.PLAINE: 1.08, _T.SAVANE: 1.08}, "winter_famine": 0.9},
+            voie="steppe",
+        ),
+        Tech(
+            "feutre", "Le feutre", 7, 2,
+            "La laine foulée et battue : des tentes, des bottes et des manteaux qui tiennent le vent de la steppe.",
+            prereqs=("steppe", "lait"),
+            conds=(Cond("winters", 3),),
+            effects={"winter_famine": 0.85, "winter_hills": 1.2},
+            voie="steppe",
+        ),
+        Tech(
+            "char", "Le char léger", 8, 0,
+            "Deux roues à rayons, deux chevaux, un archer : la guerre va à la vitesse du galop.",
+            prereqs=("chariots",),
+            conds=(Cond("res", 20, ("chevaux",), "près des chevaux sauvages"),),
+            effects={"combat": 1.15, "move": {_T.STEPPE: 6, _T.PLAINE: 7}, "vision": 1},
+            voie="steppe",
+        ),
+        Tech(
+            "arc_composite", "L'arc composite", 8, 0,
+            "Du bois, de la corne et du tendon collés : un arc court qui tire loin, même à cheval.",
+            prereqs=("steppe", "arc"),
+            conds=(Cond("pop", 200),),
+            effects={"combat": 1.12},
+            slot=1, voie="steppe",
+        ),
+        Tech(
+            "horde", "La horde", 9, 6,
+            "Les clans des steppes sous un seul grand chef : quand la horde se met en marche, les cités paient.",
+            prereqs=("char", "confederation"),
+            conds=(Cond("prestige", 60),),
+            effects={"vassal_cap": 1, "loyalty": 5, "protect_ratio": 0.85, "combat": 1.05},
+            slot=1, voie="steppe",
         ),
         Tech(
             "don", "Le don et l'échange", 3.5, 7,

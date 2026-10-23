@@ -763,6 +763,19 @@ lente, bandes dessinees petites a taille fixe.
     classes ; la voie des steppes), un ordre, trois questions QB1-QB3 ;
     maquettes du point de controle sur SA partie
     (docs/maquettes/age_du_bronze).
+2026-10-23 (0.25.0)
+  - "Oui, commence par B1 : l'age du bronze dans l'arbre et les chemins de
+    gameplay." FAIT (0.25.0 ; spec 2026-10-23-age-du-bronze-voies.txt) :
+    un troisieme age dans l'arbre (paliers 6,5 a 9, dix-huit savoirs) ;
+    les VOIES, une mecanique generale de chemins : a la fourche, deux
+    grands tournants exclusifs PAR PEUPLE, La cite et La steppe ; adopter
+    l'un ferme l'autre et ses savoirs pour tout l'age (QB3 : la reponse
+    proposee) ; l'arbre montre les deux, l'autre eteinte ("Ferme : vous
+    avez pris..."), un "ou" entre les deux tournants ; le MARQUEUR D'AGE
+    dans la barre du haut (le peuple, et le monde au survol) ; l'IA prend
+    la voie qui lui va ; les evenements "Les deux chemins", "Le fondeur
+    etranger", "Les premieres rues", "Le premier grand depart". Verifie
+    dans SA partie (la fourche, la steppe adoptee : il en est le berceau).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -815,7 +828,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.24.1
+Version du jeu : 0.25.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -827,13 +840,17 @@ V5), "derniere semaine" (V8), Affranchir (V9).
 Fait le 2026-10-18 (0.24.0) : le conseil des peuples (la maquette A), les
 batiments a niveaux, les logements, le terrain, la file des chantiers, la
 page des batiments (Victoria 3 / EU5).
+Fait le 2026-10-23 (0.25.0) : B1, l'age du bronze dans l'arbre et les
+chemins de gameplay (les voies : la cite ou la steppe), le marqueur d'age.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   En attente de SON choix (propose, rien de code) :
-  - B1-B6       L'AGE DU BRONZE, les parts a implementer (il a repondu a
-                Q1-Q6 : 2026-10-23-age-du-bronze-propositions.txt) ; ses
-                questions QB1-QB3 ; l'ordre propose : B1, B3, B2, B4, B5, B6.
+  - B2-B6       L'AGE DU BRONZE, les parts suivantes (B1 fait en 0.25.0 :
+                2026-10-23-age-du-bronze-voies.txt) : 2026-10-23-age-du-
+                bronze-propositions.txt ; ses questions QB1, QB2 (QB3 :
+                la reponse proposee, a confirmer) ; l'ordre propose : B3,
+                B2, B4, B5, B6.
   - Ecrans      la diplomatie : A faite (0.24.0) ; B (la toile des
                 peuples) et C (l'audience) restent possibles, "pour le
                 moment" A (2026-10-18-maquettes-diplomatie-batiments.txt).
@@ -862,7 +879,8 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                  (2026-10-09-arbre-tire-terrain-echanges.txt, section 4).
   Plus tard (sa demande) :
   - la numeration de position, a un age suivant (l'onglet la montre grisee) ;
-  - des savoirs pour ces ages (l'arbre s'epuise vers l'an 50 : G8) ;
+  - des savoirs pour ces ages (l'arbre s'epuisait vers l'an 50 : G8 ; l'age
+    du bronze en ajoute dix-huit en 0.25.0, B2-B6 en apporteront d'autres) ;
   - les renforts pendant les jours de bataille ("pas si grave") ;
   - la domination d'une cite puis d'un pays sur d'autres villages ; les
     ages suivants (seulement si l'histoire l'exige), leurs tournants

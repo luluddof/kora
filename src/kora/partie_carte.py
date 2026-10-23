@@ -418,6 +418,11 @@ class MapInput:
             if sit_uid is not None:
                 self.open_situation(sit_uid)
                 return None
+            if ui_hit == "age":
+                # Le marqueur d'age : l'arbre des savoirs.
+                self.side_panel = "savoirs"
+                screens.close_all(self.ui)
+                return None
             if ui_hit == "bar":
                 return None
             # Le tutoriel : sa fiche (par-dessus les ecrans).

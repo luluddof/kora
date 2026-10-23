@@ -16,6 +16,8 @@ pour que le graphe se lise.
      dans le couloir entre les deux ; a travers une rangee, la verticale de
      leur point de passage. Ils ne passent jamais sur une carte, et chacun
      garde sa trace (pas de cables partages).
+  6. La FOURCHE d'un age (les grands tournants des voies, tech.VOIES) : ses
+     tournants cote a cote, un ecart pour le "ou" entre eux.
 Les savoirs que le sort a ecartes d'un groupe exclusif ne sont pas places
 (draws.hidden). Tout est calcule une fois par monde (layout.tech_world le
 garde). Deterministe.
@@ -34,6 +36,8 @@ DUMMY_W = 16
 # L'espace entre deux cartes d'une rangee, entre deux points de passage.
 GAP = 34
 DUMMY_GAP = 8
+# Entre les deux tournants d'une fourche : la place du "ou".
+FORK_GAP = 76
 # Une rangee : sa plus haute carte, puis le couloir des liens dessous.
 CHANNEL = 74
 SWEEPS = 24
@@ -91,6 +95,8 @@ def build(hidden: frozenset = frozenset()) -> dict:
     for k in range(1, len(order)):
         _sort_by(order[k], order[k - 1], up, keep_ties=True)
     order = _min_crossings(order, up, down)
+    for layer in order:
+        _pair_forks(layer)
     x = _positions(order, up, down)
     return {"order": order, "x": x, "layer_of": layer_of, "edges": edges, "layers": layers}
 
@@ -144,8 +150,26 @@ def _min_crossings(order: list, up: dict, down: dict) -> list:
     return best
 
 
+def _fork(nid) -> bool:
+    return not isinstance(nid, tuple) and tech.TECHS[nid].turning and bool(tech.TECHS[nid].voie)
+
+
+def _pair_forks(layer: list) -> None:
+    """Les tournants des voies d'une rangee, cote a cote (a leur place
+    moyenne, leur ordre garde) : la fourche se lit d'un coup d'oeil."""
+    forks = [n for n in layer if _fork(n)]
+    if len(forks) < 2:
+        return
+    mid = sum(layer.index(f) for f in forks) / len(forks)
+    rest = [n for n in layer if not _fork(n)]
+    at = sum(1 for i, n in enumerate(layer) if not _fork(n) and i < mid)
+    layer[:] = rest[:at] + forks + rest[at:]
+
+
 def _sep(a, b) -> float:
     """L'ecart minimal entre les centres de deux voisins d'une rangee."""
+    if _fork(a) and _fork(b):
+        return (_width(a) + _width(b)) / 2 + FORK_GAP
     gap = DUMMY_GAP if isinstance(a, tuple) or isinstance(b, tuple) else GAP
     return (_width(a) + _width(b)) / 2 + gap
 

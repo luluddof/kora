@@ -209,6 +209,8 @@ def _contains(rect: tuple[int, int, int, int], mx: int, my: int) -> bool:
 def hud_hit(layout: dict, mx: int, my: int):
     if _contains(layout["pause"], mx, my):
         return "pause"
+    if "age" in layout and _contains(layout["age"], mx, my):
+        return "age"
     for n, rect in layout["speeds"].items():
         if _contains(rect, mx, my):
             return ("speed", n)
@@ -490,7 +492,7 @@ def tech_world() -> dict:
     hit = _TREES.get(_HIDDEN)
     if hit is not None:
         return hit
-    geo = tree_graph.geometry(TREE_PAD + TREE_GUTTER, TREE_PAD, {0: TREE_COLHEAD, 1: TREE_BAND}, _HIDDEN)
+    geo = tree_graph.geometry(TREE_PAD + TREE_GUTTER, TREE_PAD, {0: TREE_COLHEAD, **{era: TREE_BAND for era in range(1, len(tech.ERAS))}}, _HIDDEN)
     width, height = geo["size"]
     tree: dict = {} if _HIDDEN else _TREE
     _TREES[_HIDDEN] = tree

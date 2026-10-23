@@ -1,0 +1,148 @@
+Kora - L'age du bronze dans l'arbre, et les chemins de gameplay (B1)
+====================================================================
+Date : 2026-10-23. Statut : FAIT (version 0.25.0).
+
+Ses mots : "Oui, commence par B1 : l'age du bronze dans l'arbre et les
+chemins de gameplay." (la part B1 de 2026-10-23-age-du-bronze-
+propositions.txt). Avant : "pour le peuple des steppes, ce serait avec ce
+que je veux implementer en jeu : des 'chemins de gameplay' qui permettent
+donc de suivre le chemin actuel via les techs, ou d'en suivre un autre via
+un embranchement dans les techs."
+
+
+1. UN TROISIEME AGE DANS L'ARBRE
+-------------------------------
+  - tech.ERAS : Age tribal, Neolithique, AGE DU BRONZE (paliers 6,5 "Les
+    deux voies", 7 "Le premier bronze", 8 "Villes et chariots", 9 "Royaumes
+    et hordes" ; 650, 850, 1 100 points). L'arbre lui donne sa banniere
+    (couleur du metal), ses icones de branches, ses rangees.
+  - Les noms des paliers ne sont pas ceux de la proposition ("Premieres
+    villes", "Cites et rois"...) : chaque palier porte les deux voies, il
+    fallait des noms pour les deux.
+  - Dix-huit savoirs :
+      La fourche (6,5), deux GRANDS TOURNANTS exclusifs :
+        La cite : Maisons de terre et Araire ; nait chez un peuple qui a
+          UN village de 400 habitants (condition nouvelle "town"), tenu
+          10 ans, et 50 de prestige. Stabilite +2, naissances +10 %.
+        La steppe : Lait et laine, Boeufs et vaches (les chariots) ; nait
+          pres des chevaux sauvages (30 sem.), apres un an en steppe ou
+          plaine, a 150 personnes. Nourriture en steppe +10 %, on y marche
+          plus vite.
+        (Le cheval monte est un savoir TIRE : il ne peut pas etre un
+        prerequis d'un tournant ; la condition des chevaux le remplace.)
+      Communs a tous : La fonte du cuivre (Haches polies, Poterie), La roue
+        (Boeufs et vaches, Araire), Le bronze (la fonte, les echanges ; 4
+        contacts : l'etain vient de loin), Les routes de l'etain.
+      La voie des cites : Canaux, Briques crues, Le temple, Le grenier du
+        temple, Bulles et sceaux, Le palais.
+      La voie des steppes : Chariots a quatre roues, Transhumance, Le
+        feutre, Le char leger, L'arc composite, La horde.
+    Leurs effets sont des effets connus du jeu (recoltes, naissances,
+    stabilite, impot, combat, marche, vue, tributaires...) : ils
+    s'affichent et se calculent comme les autres. Les villes, les points
+    de controle, l'ecriture, les classes viendront avec B2-B5.
+
+
+2. LES VOIES (la mecanique generale)
+-----------------------------------
+  - tech.VOIES : une voie (son nom, son nom court, son grand tournant, ce
+    qu'elle est) ; Tech.voie : la voie d'un savoir ("" : commun).
+  - La voie d'un peuple, c'est le tournant de voie qu'il a adopte
+    (tech.voie_of : rien de nouveau dans la sauvegarde, les vieilles
+    parties se chargent telles quelles).
+  - tech.closed(peuple, savoir) : un savoir d'une autre voie que la sienne.
+    Il est FERME (learning.status "ferme") : on ne l'etudie pas, une etude
+    commencee s'arrete, son tournant ne nait plus et ne se repand plus chez
+    ce peuple (turning.sources, turning.monthly).
+  - Un choix pour TOUT L'AGE (sa question QB3 restee ouverte : la reponse
+    de la proposition). Changer de voie serait une crise, plus tard.
+  - Pour une voie de plus (la mer, la foret...) : une entree dans VOIES, un
+    tournant avec voie=..., des savoirs avec voie=... ; l'arbre, l'IA, les
+    fiches et le marqueur suivent seuls.
+  - A cote des groupes exclusifs de draws.py (un seul savoir NAIT dans le
+    monde) : ici, c'est chaque PEUPLE qui choisit.
+
+
+3. A L'ECRAN
+------------
+  - L'arbre (T) : les deux tournants de la fourche COTE A COTE, un "ou"
+    entre eux (tree_graph._pair_forks) ; la rangee dit "une voie a
+    choisir", puis "vous : steppes" ; chaque savoir d'une voie porte sa
+    pastille (Cites en terre cuite, Steppes en ocre). L'autre voie reste
+    visible, eteinte : "Ferme : vous avez pris la voie des steppes" ; ses
+    liens s'eteignent ; la legende a "autre voie".
+  - Au survol d'un tournant de la fourche : "Un choix pour tout l'age :
+    l'adopter vous ferme la voie des cites" ; sa fiche dit la voie, ce
+    qu'elle est, si vos anciens penchent pour elle, combien de peuples
+    l'ont prise dans le monde.
+  - L'en-tete de l'arbre : la voie prise ; les grands tournants comptes
+    sans celui de la voie fermee (5 / 6).
+  - LE MARQUEUR D'AGE, dans la barre du haut a cote de la saison : l'age
+    du peuple (le savoir le plus avance : tech.age_of), a la couleur de sa
+    voie et un point s'il en a pris une. Au survol : votre age, votre
+    voie, le suivant, et LE MONDE (combien de peuples dans chaque age, et
+    dans chaque voie : learning.world_ages). Un clic ouvre l'arbre.
+  - Le journal : "Vous prenez la voie des steppes : la voie des cites vous
+    est fermee pour tout l'age du bronze."
+
+
+4. L'IA
+-------
+  - learning.preferred_voie : la PART de sa vie passee en steppe (et un
+    peu en plaine, en savane) et ses betes (troupeaux, lait, boeufs,
+    cheval) pour la steppe ; son plus gros village, sa vallee et ses champs
+    (irrigation, araire, maisons) pour la cite. L'IA attend SA voie ;
+    l'autre, seulement s'il n'y a plus rien d'autre a apprendre. Les
+    tournants fermes ne viennent plus a elle.
+  - Corrige en cours de route : un premier calcul comptait les SEMAINES
+    passees en steppe et pres des chevaux (le compteur des chevaux est au
+    plus haut meme chez des peuples de jungle) ; et la steppe ne demandait
+    que des savoirs du palier 5, bien avant la cite (l'araire) : sur SA
+    partie, 29 peuples prenaient la steppe pour 2 la cite. Avec la part de
+    la vie, les boeufs pour la steppe, et l'IA qui attend sa voie :
+    94 peuples penchent pour la cite, 26 pour la steppe.
+
+
+5. LES EVENEMENTS
+-----------------
+  - "Les deux chemins" (une fois, quand la fourche est en vue : on a ce
+    qu'il faut pour l'un des deux tournants) : le conseil se dispute ;
+    ecouter ceux qui veulent batir (la cite arrive plus vite, +25 %), ceux
+    qui suivent les betes (la steppe, +25 %), ou ne pas trancher (les clans
+    plus attaches ; le choix par defaut). L'effet "voie" (turning).
+  - "Le fondeur etranger" (un village qui sait les haches et la poterie,
+    pas la fonte) : le garder l'hiver (la fonte du cuivre avance de 35 %),
+    lui echanger une hache de cuivre (prestige), le renvoyer.
+  - L'entree dans une voie (crochet "voie_prise") : "Les premieres rues"
+    (la cite) et "Le premier grand depart" (la steppe), pour tous les
+    peuples.
+
+
+6. VERIFIE
+----------
+  - Dans SA partie (copie, Utopie an 44) : la carte "Les deux chemins"
+    vient au bout de 4 semaines ; ecouter les gens des betes : la steppe
+    passe de 12 a 37 % ; elle arrive a 100 % en 24 semaines ; adoptee, le
+    peuple en est le BERCEAU (les premiers au monde), la cite et les
+    Canaux sont fermes, le feutre disponible ; "Le premier grand depart"
+    vient ; l'arbre et le marqueur captures (1600x900, 1280x720).
+  - Ses vivres baissent de 919 a 155 en 6 semaines de printemps : la meme
+    chose avec la 0.24.1 (la saison d'avant la recolte), pas l'age du
+    bronze.
+  - tests/test_voies.py (9 tests) ; toute la suite ; l'empreinte est
+    IDENTIQUE (le monde des essais n'atteint pas la fourche en 417
+    semaines) ; SA partie (copie) continuee 25 ans par l'IA (le robot
+    joue son peuple) : les premiers peuples entrent dans l'age du bronze
+    l'an 48 ; l'an 69, 75 peuples sur 120 y sont, 38 dans la voie des
+    cites, 26 dans celle des steppes, 11 par la fonte du cuivre seule ;
+    les savoirs des voies se repandent (Briques crues 17, Canaux 14, Le
+    temple 6, Bulles et sceaux 4, Chariots 3, Le feutre 2 ; La fonte 23,
+    Le bronze 10). 12 secondes par annee de jeu.
+
+
+7. CE QUI RESTE (B2 a B6, dans l'ordre propose)
+-----------------------------------------------
+  B3 les points de controle, B2 les villes et l'explosion demographique,
+  B4 l'ecriture et les proto-dynasties, B5 les classes, B6 la voie des
+  steppes en entier (le camp mobile, les razzias, le tribut des cites) :
+  2026-10-23-age-du-bronze-propositions.txt. QB1 et QB2 restent a lui.

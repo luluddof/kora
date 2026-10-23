@@ -18,7 +18,9 @@ def _villages_state(tids=(1, 2)):
     st = new_game(_world())
     st.story = True
     for tid in tids:
-        for t in (t for t in tech.TECHS if not tech.TECHS[t].drawn):
+        # Les savoirs surs des deux premiers ages (pas ceux du bronze : ses
+        # deux voies s'excluent).
+        for t in (t for t in tech.TECHS if not tech.TECHS[t].drawn and tech.era_of(tech.TECHS[t]) < 2):
             tech.grant(st.tribes[tid], t)
         band = next(b for b in st.bands.values() if b.tribe_id == tid)
         band.population, band.stock = 130, 3000.0

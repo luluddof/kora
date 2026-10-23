@@ -585,6 +585,7 @@ class Renderer:
             render_panels.draw_event_modal(self, state, ui)
         # La liste des modes de carte, ouverte : par-dessus la carte et ses fiches.
         self.draw_map_menu()
+        draw_age_tip(self, state)
         if menu_open:
             self.draw_menu()
 
@@ -1475,6 +1476,7 @@ class Renderer:
         season = clock.season()
         self.screen.blit(theme.medallion(SEASON_ICONS.get(season, "printemps"), 18, "normal", C.froid if season is Season.HIVER else None), (8, (HUD_HEIGHT - 40) // 2))
         theme.text(self.screen, SEASON_FR[season], "h2", C.os, (56, 4), shadow=True)
+        _draw_age(self, state, layout, 56 + theme.font("h2").size(SEASON_FR[season])[0] + 10)
         day = getattr(state, "day", 0)
         if _battle.slow(state):
             # Une bataille : le temps passe en jours.
@@ -1526,6 +1528,38 @@ class Renderer:
             extra_y += 26
         if state.last_error:
             theme.text(self.screen, state.last_error, "petit", C.alerte, (16, extra_y))
+
+
+def _draw_age(self, state, layout, x: int) -> None:
+    """Le MARQUEUR D'AGE, a cote de la saison : l'age du peuple (a la
+    couleur de sa voie s'il en a pris une) ; son infobulle : draw_age_tip."""
+    tribe = state.tribes.get(state.viewer)
+    if tribe is None:
+        return
+    age = tech.age_of(tribe)
+    voie = tech.voie_of(tribe)
+    col = render_tech.VOIE_COLORS.get(voie) or render_tech.ERA_STYLE[age % len(render_tech.ERA_STYLE)][3]
+    name = tech.ERAS[age][0]
+    w = theme.font("mini_gras").size(name)[0]
+    theme.text(self.screen, name, "mini_gras", col, (x, 9))
+    if voie:
+        pygame.draw.circle(self.screen, col, (x + w + 6, 17), 3)
+        w += 10
+    layout["age"] = (x - 4, 4, w + 8, 22)
+
+
+def draw_age_tip(self, state) -> None:
+    """Au survol du marqueur d'age : l'age du peuple, sa voie, le monde."""
+    rect = (self.hud_hits or {}).get("age")
+    if not rect or state.viewer not in state.tribes:
+        return
+    mx, my = pygame.mouse.get_pos()
+    if not _contains(rect, mx, my):
+        return
+    colors = {"titre": (C.os, "petit_gras"), "texte": (C.lin, "mini"), "note": (C.cendre, "mini")}
+    rows = [(text, colors[kind][0], colors[kind][1]) for text, kind in learning.age_lines(state, state.viewer)]
+    rows.append(("Clic : l'arbre des savoirs", C.braise, "mini"))
+    theme.tooltip(self.screen, rows, rect[0], HUD_HEIGHT + 6, 380, avoid=rect)
 
 
 def draw_journal(self, state, layout, log_filter, log_newest) -> None:

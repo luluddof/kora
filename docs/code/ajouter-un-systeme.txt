@@ -129,10 +129,11 @@ bas au plus haut :
 
   g) Les savoirs qui l'ouvrent : tech.py (Tech, branche, palier, slot ;
      le palier d'un prerequis toujours plus bas ; ages : 0-3 tribal, 4-6
-     neolithique). Ce qui fait avancer un savoir : learning.py. Un pan
-     entier : un GRAND TOURNANT (kind="tournant", turning.py). Un savoir
-     qui peut ne pas venir : chance / world / group (draws.py) - jamais le
-     prerequis d'un savoir sur (test_tech).
+     neolithique, 6,5-9 age du bronze). Ce qui fait avancer un savoir :
+     learning.py. Un pan entier : un GRAND TOURNANT (kind="tournant",
+     turning.py). Un savoir qui peut ne pas venir : chance / world / group
+     (draws.py) - jamais le prerequis d'un savoir sur (test_tech). Un
+     savoir d'un CHEMIN de gameplay : voie=... (tech.VOIES).
 
   h) L'IA : une fonction _ai pour les peuples qui ne sont pas des joueurs
      (gamestate.is_human ; le peuple 1 est toujours traite en joueur). Une
@@ -266,6 +267,20 @@ La carte du depot (section 4) donne cet ordre en detail.
     seulement si l'histoire l'exige (0.8.0).
   - Un texte d'effet montre les chiffres du peuple (tech.lines_for ;
     0.12.0).
+  - Un CHEMIN de gameplay est une VOIE (tech.VOIES) : son entree est un
+    grand tournant (voie=..., sur la rangee de la fourche), ses savoirs
+    portent voie=... et descendent de ce tournant, jamais d'une autre voie
+    (test_voies). La voie d'un peuple se LIT dans ses savoirs
+    (tech.voie_of : rien dans la sauvegarde) ; tout ce qui juge un savoir
+    demande d'abord tech.closed (le statut "ferme", la naissance et la
+    propagation des tournants, l'etude en cours). C'est un choix PAR
+    PEUPLE, a cote des groupes exclusifs de draws.py (un choix du monde).
+    Les deux tournants d'une fourche sont places cote a cote
+    (tree_graph._pair_forks) (0.25.0).
+  - L'AGE d'un peuple est celui de son savoir le plus avance (tech.age_of) ;
+    un age de plus : une entree dans tech.ERAS (ses paliers, ses branches),
+    un style dans render_tech (ERA_STYLE, BRANCH_ICONS) ; la banniere et
+    le marqueur suivent seuls (0.25.0).
 
 4.5 Les gens, les villages, les troupes
   - La population d'une classe change par population.py (grow, take_men,
@@ -451,14 +466,14 @@ seulement si le decoupage rend le systeme plus simple a changer) :
 
 <<< auto : gros-modules >>>
   situations.py          ~1800 lignes
-  render.py              ~1600 lignes
+  tech.py                ~1700 lignes
+  render.py              ~1700 lignes
   events.py              ~1600 lignes
   diplo.py               ~1500 lignes
-  tech.py                ~1400 lignes
   render_village.py      ~1400 lignes
+  events_data.py         ~1400 lignes
   battle.py              ~1300 lignes
   sim.py                 ~1300 lignes
-  events_data.py         ~1300 lignes
   goods.py               ~1200 lignes
   world.py               ~1200 lignes
   villages.py            ~1200 lignes

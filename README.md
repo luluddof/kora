@@ -171,6 +171,12 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   permet de fonder un village. La **carte des tournants** (**I**) montre où ils sont nés et où ils arrivent.
   Un savoir ne s'étudie **jamais sans tous ses prérequis**, même si des points y sont déjà acquis (un peuple absorbé,
   un événement) : ces points sont gardés pour plus tard.
+- **L'âge du bronze** : après le néolithique, l'arbre se **sépare**. Deux grands tournants s'excluent : **la cité**
+  (un village de 400 habitants, l'araire : canaux, briques, temple, grenier du temple, sceaux, palais) ou **la
+  steppe** (le lait, les bœufs, les chevaux sauvages : chariots, transhumance, feutre, char léger, arc composite,
+  horde). Adopter l'un **ferme l'autre** et ses savoirs pour tout l'âge ; l'arbre montre les deux, l'autre éteinte.
+  La fonte du cuivre, la roue, le bronze et les routes de l'étain restent communs à tous. Votre **âge** s'affiche à
+  côté de la saison : au survol, où en est le monde (combien de peuples dans chaque âge, dans chaque voie).
 - D'autres savoirs sont **tirés au sort**, une fois par partie : certains ne viennent pas à tous les peuples (le
   vôtre compris), d'autres ne naissent pas dans tous les mondes, et dans certains groupes un seul naît (les croyances,
   les tombes des morts, le calendrier) : les autres disparaissent alors de l'arbre. L'arbre dit leur chance et ce
