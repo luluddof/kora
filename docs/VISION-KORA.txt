@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-10-18.
+Derniere mise a jour : 2026-10-23.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -735,6 +735,21 @@ lente, bandes dessinees petites a taille fixe.
     page "Les batiments" (jauges, cartes par familles avec + et -, la file,
     la fiche des niveaux) ; l'IA loge ses gens d'abord. Verifie dans SA
     partie (Netali garde ses batiments et recoit ses huttes).
+2026-10-23 (0.24.1)
+  - "Le bouton du tuto doit etre dans l'ecran titre et pas dans le jeu."
+    FAIT (0.24.1) : plus de bouton Tuto dans la partie (il cachait le bas
+    des ecrans) ; l'ecran titre a son Tutoriel (avec sa boussole) ; F1
+    rouvre la fiche dans une partie guidee.
+  - "Etudie l'ajout de la prochaine ere, avec les changements majeurs que
+    ca a apportes historiquement et les grands evenements, sans coder."
+    ETUDE (spec 2026-10-23-etude-age-des-metaux-et-des-cites.txt) : le
+    chalcolithique et l'age du bronze (metal et etain, produits secondaires,
+    roue et cheval, irrigation, ville, temple et palais, ecriture, rois et
+    Etat, guerre des cites, grands rois, steppes) ; les grands evenements
+    (5900 et 4200 ans, deluges, Thera, peste des steppes, dette,
+    effondrement de la fin du bronze) ; comment chacun se brancherait sur
+    Kora (cinq grands tournants, la cite et sa campagne...) ; sept
+    chantiers E1-E7 ; six questions Q1-Q6 qui sont a lui.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -787,7 +802,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.24.0
+Version du jeu : 0.24.1
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -803,6 +818,9 @@ page des batiments (Victoria 3 / EU5).
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   En attente de SON choix (propose, rien de code) :
+  - E1-E7, Q1-Q6 l'age suivant (metaux et premieres cites) : une etude,
+                ses questions d'abord (2026-10-23-etude-age-des-metaux-et-
+                des-cites.txt).
   - Ecrans      la diplomatie : A faite (0.24.0) ; B (la toile des
                 peuples) et C (l'audience) restent possibles, "pour le
                 moment" A (2026-10-18-maquettes-diplomatie-batiments.txt).

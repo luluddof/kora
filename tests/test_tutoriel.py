@@ -2,7 +2,7 @@
 la fiche avance d'elle-meme quand le geste demande est fait ; une etape a
 lire attend Suivant ; dans la vraie boucle (sans fenetre) : la partie guidee
 ouvre la fiche, ses boutons repondent, le bouton Tuto et F1 la ferment et la
-rouvrent ou on l'avait laissee. Le tutoriel ne change pas la partie."""
+rouvrent ou on l'avait laissee (le bouton est a l'ecran titre, 2026-10-23). Le tutoriel ne change pas la partie."""
 
 import os
 from types import SimpleNamespace
@@ -17,7 +17,7 @@ from src.kora.sim import new_game, tick
 from src.kora.types import Terrain
 from src.kora.world import make_filled_world
 
-TARGETS = {"", "hud:pause", "carte", "tuto", "tab:savoirs", "tab:peuples", "tab:journal", "tab:tribu"}
+TARGETS = {"", "hud:pause", "carte", "tab:savoirs", "tab:peuples", "tab:journal", "tab:tribu"}
 
 
 def test_every_step_is_well_formed():
@@ -136,8 +136,8 @@ def test_the_guided_game_opens_the_card_and_its_buttons_answer(monkeypatch, tmp_
         lambda r: need(r.tuto_hits.get("box"), "la partie guidee ouvre la fiche") or _click(_center(r.tuto_hits["next"])),
         # "Passer" : l'etape suivante (Vos gens).
         lambda r: seen.update(card=r.tuto_hits["box"]) or [],
-        lambda r: _click(_center(r.tuto_button)),
-        lambda r: need(not r.tuto_hits, "le bouton Tuto ferme la fiche") or _key(pygame.K_F1),
+        lambda r: need(not hasattr(r, "tuto_button"), "plus de bouton Tuto dans la partie") or _key(pygame.K_F1),
+        lambda r: need(not r.tuto_hits, "F1 ferme la fiche") or _key(pygame.K_F1),
         lambda r: need(r.tuto_hits.get("box"), "F1 la rouvre") or _click(_center(r.tuto_hits["close"])),
         lambda r: need(not r.tuto_hits, "Fermer") or [],
     ]
@@ -173,5 +173,5 @@ def test_the_card_layout_is_pure():
     assert render_tutoriel.tuto_hit(lay, *_center(lay["close"])) == "close"
     assert render_tutoriel.tuto_hit(lay, lay["box"][0] + 5, lay["box"][1] + 60) == "card"
     assert render_tutoriel.tuto_hit(lay, 900, 600) is None
-    b = render_tutoriel.button_rect(1280, 720)
-    assert b[0] > 270 and b[1] + b[3] <= 720
+    from src.kora import render_menu
+    assert "tutoriel" in render_menu.title_layout(1280, 720)["buttons"], "le tutoriel se lance de l'écran titre"

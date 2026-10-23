@@ -1,0 +1,417 @@
+Kora - Etude : l'age suivant, celui des metaux et des premieres cites
+====================================================================
+Date : 2026-10-23. Statut : ETUDE (rien n'est code ; a son choix).
+
+Ses mots : "Etudie l'ajout de la prochaine ere, avec les changements majeurs
+que ca a apportes historiquement et les grands evenements historiques, sans
+coder de ce cote-la."
+
+Ce document dit (1) ou en est le jeu, (2) ce que l'histoire a vraiment
+change a l'age suivant, (3) ses grands evenements, (4) comment chaque
+changement se brancherait sur Kora, (5) un decoupage en chantiers et (6)
+les questions qui sont a lui. Les dates sont celles du Proche-Orient (le
+plus ancien) ; l'Europe, l'Inde et la Chine suivent avec des siecles
+d'ecart, ce qui convient a Kora (chaque peuple entre dans l'age a son
+heure). "vers" = une date approchee ; les hypotheses discutees sont dites
+comme telles.
+
+
+1. OU EN EST KORA
+-----------------
+  - Deux ages (tech.ERAS) : l'age tribal (paliers 0 a 3, grand tournant
+    1,5) et le neolithique (paliers 3,5 a 6 : "Premiers villages",
+    "Villages prosperes", "Grandes chefferies"). Cinq grands tournants (le
+    clan, la domestication, la sedentarite, la terre des ancetres, le don
+    et l'echange) ; des tirages (savoirs qui peuvent ne pas naitre) et des
+    groupes exclusifs (croyances, tombes, calendriers).
+  - Ce qui annonce deja l'age suivant, au palier 6 : Le cuivre martele, Le
+    cheval monte, Araire, Lait et laine, Chef des chefs, Biens de prestige,
+    Enceintes et fosses, L'art du siege, Tumulus des chefs, Calendriers ;
+    au palier 5 : Jetons d'argile, Argent pese, Routes du sel et du silex,
+    Rigoles d'irrigation. Sur les planetes : cuivre et ETAIN caches.
+  - Ce qui a ete repousse "a l'age suivant" (VISION, section 5) : la
+    numeration de position ; la domination d'une cite puis d'un pays sur
+    d'autres villages (P3 : "en cet age, un peuple = un village") ; les
+    tournants de l'ecriture et du metal ; beliers, echelles et tours de
+    siege ; d'autres groupes exclusifs ; des tirages dans les evenements.
+  - Deja la pour s'y brancher : les batiments a NIVEAUX (0.24), la chefferie
+    et les familles, les tributaires et les pays, la diplomatie (le
+    conseil), le tresor et l'argent pese, les metiers et le commerce, les
+    situations (crises et conjonctures), l'ost et le siege, les savoir-faire.
+  - Son principe : un age suivant "seulement si l'histoire l'exige" ; des
+    problemes REALISTES de l'epoque, pas seulement des bonus (sa demande du
+    2026-10-02 sur les situations).
+
+
+2. CE QUE L'HISTOIRE A CHANGE (vers 4500 - 1200 av. J.-C.)
+----------------------------------------------------------
+  L'age qui suit le neolithique est double : le CHALCOLITHIQUE (l'age du
+  cuivre, vers 4500-3300) puis l'AGE DU BRONZE (vers 3300-1200). C'est le
+  temps des premieres villes, des premiers Etats, de l'ecriture. Dix
+  bouleversements, du plus "materiel" au plus "social" :
+
+  2.1 LE METAL
+    - Le cuivre natif martele est ancien ; le cuivre FONDU depuis le
+      minerai apparait vers 5000 (Balkans, Iran : Belovode, Plocnik) ; le
+      moulage dans des moules suit. La necropole de Varna (vers 4500) a
+      le plus ancien or travaille du monde : le metal devient RICHESSE et
+      RANG avant d'etre un outil.
+    - Le BRONZE (cuivre + etain, vers 3000 ; d'abord un bronze a
+      l'arsenic) est plus dur et se coule mieux. Mais l'etain est RARE et
+      LOIN des centres (Anatolie, Afghanistan, Erzgebirge, Cornouailles) :
+      le bronze OBLIGE au commerce lointain, et qui tient les routes de
+      l'etain tient la puissance.
+    - Les armes changent : poignards, haches, pointes de lance en bronze,
+      puis l'EPEE (vers 1600) ; casques, cuirasses ; le metal fait le
+      guerrier d'elite. Les outils gagnent moins qu'on ne croit (la pierre
+      reste longtemps aux champs).
+
+  2.2 LA REVOLUTION DES PRODUITS SECONDAIRES (vers 4000-3000 ; A. Sherratt)
+    - On ne tue plus seulement les betes : on les TRAIT, on les TOND, on
+      les ATTELLE. Le lait, la laine (les tissus deviennent un grand
+      commerce), l'ARAIRE tire par des boeufs (plus de terre par
+      laboureur), la ROUE (vers 3500 : chariots a quatre roues pleines,
+      partout en Eurasie en quelques siecles).
+    - Le CHEVAL : monte peut-etre des Botai (vers 3500, debattu), le cheval
+      moderne vient des steppes du Don et de la Volga (vers 2200) ; le
+      CHAR leger a rayons nait dans les steppes (Sintashta, vers 2000) et
+      fait la guerre des grands royaumes (vers 1600-1200).
+
+  2.3 L'IRRIGATION ET LE SURPLUS
+    - Dans les grandes vallees (Tigre et Euphrate, Nil, Indus, plus tard le
+      fleuve Jaune), les canaux et les crues apportent des recoltes bien
+      plus grandes ; le surplus nourrit des gens qui ne cultivent pas :
+      pretres, scribes, artisans, soldats. Mais les canaux exigent une
+      AUTORITE qui les creuse et les partage - et les fleuves changent de
+      lit, les sols se salent.
+
+  2.4 LA VILLE
+    - Uruk (vers 3500-3100) : peut-etre 40 000 habitants, des temples
+      monumentaux, des ateliers, des remparts (attribues plus tard a
+      Gilgamesh). V. G. Childe a appele cela la "revolution urbaine" : une
+      ville n'est pas un gros village, c'est un lieu ou vivent des gens
+      qui ne produisent pas leur nourriture, nourris par la campagne
+      alentour qu'elle DOMINE.
+    - L'"expansion d'Uruk" (vers 3600-3100) : des comptoirs urukeens
+      jusqu'en Syrie et en Anatolie, pour les metaux, le bois, la pierre.
+
+  2.5 LE TEMPLE ET LE PALAIS
+    - Le temple de la cite est un grand domaine : il recoit, stocke et
+      REDISTRIBUE (rations d'orge aux travailleurs), emploie des centaines
+      de gens ; puis le PALAIS du roi prend le relais. La CORVEE batit
+      canaux, murs, ziggourats, pyramides (vers 2600 pour Gizeh).
+
+  2.6 L'ECRITURE
+    - Elle nait de la COMPTABILITE : des jetons d'argile (deja au
+      neolithique), enfermes dans des bulles, puis imprimes sur des
+      tablettes (Uruk IV, vers 3300-3200). Les hieroglyphes egyptiens
+      sont presque aussi anciens (vers 3200). D'abord des listes (orge,
+      moutons, ouvriers), puis des contrats, des lettres, des lois, des
+      recits.
+    - Les SCRIBES (ecoles, "maisons des tablettes"), les sceaux-cylindres
+      (la propriete, les contrats), les poids et mesures, les lois ecrites
+      (Ur-Nammu vers 2100, Hammurabi vers 1754), la NUMERATION DE POSITION
+      en base 60 (fin du IIIe millenaire, epanouie vers 1800 : les
+      tablettes de calcul babyloniennes).
+
+  2.7 LES ROIS ET L'ETAT
+    - Les cites-Etats sumeriennes (vers 2900-2350), l'Egypte unifiee (vers
+      3100, Narmer), le premier EMPIRE (Akkad, Sargon, vers 2334), une
+      administration enorme (Ur III, vers 2100-2000 : des dizaines de
+      milliers de tablettes). Le chef devient ROI : une dynastie, des
+      gouverneurs, des impots, une justice, une legitimite divine.
+    - La SOCIETE se stratifie : rois, nobles, pretres, scribes, artisans,
+      paysans libres, DEPENDANTS, esclaves (captifs de guerre, dettes). Les
+      tombes royales d'Ur (vers 2600) disent l'ecart des fortunes.
+    - La DETTE devient un fleau : des paysans s'endettent, perdent leur
+      terre, leurs enfants ; les rois proclament des remises de dettes
+      (les edits "misharum" babyloniens) ; Uruinimgina de Lagash (vers
+      2350) fait la premiere "reforme" connue contre les abus.
+
+  2.8 LA GUERRE DES CITES
+    - Des guerres de frontiere pour l'eau et la terre : Lagash contre Umma
+      pour la plaine du Gu'edena (la Stele des Vautours, vers 2450) - la
+      premiere guerre racontee.
+    - Des armees permanentes, des murs de ville, des SIEGES : beliers et
+      echelles des le IIIe millenaire (un relief egyptien, vers 2400) ;
+      les tours de siege viendront avec les Assyriens.
+    - Les chars, les archers composites ; la bataille de Qadesh (1274,
+      Egyptiens et Hittites) et le premier traite de paix conserve (vers
+      1259).
+
+  2.9 LE CERCLE DES GRANDS ROIS
+    - Vers 1400-1200, les grands royaumes (Egypte, Hatti, Babylone, Mitanni,
+      Assyrie) s'ecrivent en "freres" (les lettres d'Amarna, vers 1350) :
+      cadeaux royaux (or contre chevaux, lapis), mariages, traites. Les
+      petits rois sont des vassaux. C'est deja une "diplomatie" au sens
+      moderne.
+    - Les marchands lointains : les Assyriens de Kanesh (vers 1950-1750)
+      echangent etain et tissus contre argent ; l'epave d'Uluburun (vers
+      1300) porte dix tonnes de cuivre, une tonne d'etain, du verre.
+
+  2.10 LES STEPPES ET LES GRANDS PASSAGES
+    - Des pasteurs des steppes (Yamnaya, vers 3300-2600), avec chariots,
+      chevaux et troupeaux, se repandent jusqu'en Europe et en Asie
+      centrale ; l'ADN ancien montre un grand renouvellement des
+      populations europeennes vers 2500 et la diffusion probable des
+      langues indo-europeennes. Avec eux, peut-etre, la PESTE (Yersinia
+      pestis est trouvee chez des gens des steppes vers 2800 ; l'hypothese
+      d'une peste dans le "declin neolithique" vers 3400-2900 est
+      discutee).
+
+
+3. LES GRANDS EVENEMENTS (des situations toutes trouvees)
+---------------------------------------------------------
+  Les crises :
+  - L'EVENEMENT DE 5900 ANS (vers 3900) : une aridification ; le Sahara
+    vert se desseche peu a peu ; on se serre pres des fleuves - un des
+    moteurs des premieres villes (Nil, Mesopotamie).
+  - L'EVENEMENT DE 4200 ANS (vers 2200) : une secheresse de deux siecles
+    en bien des regions ; l'empire d'Akkad s'effondre, l'Ancien Empire
+    egyptien aussi (premiere periode intermediaire), les villes de l'Indus
+    s'etiolent plus tard (vers 1900, avec d'autres causes).
+  - LE DELUGE : les crues violentes de Mesopotamie (une couche de limon a
+    Shuruppak, vers 2900) et le recit du deluge (Ziusudra, Atrahasis,
+    Gilgamesh) ; en Chine, Liangzhu (vers 2300) disparait apres des
+    inondations.
+  - L'ERUPTION DE THERA (Santorin, vers 1600) : un des plus grands
+    volcans de l'histoire, au coeur des routes egeennes.
+  - LA PESTE DES STEPPES (vers 2800, hypothese) et les MALADIES DES VILLES
+    (la promiscuite, l'eau des canaux).
+  - LA DETTE ET LES DEPENDANTS : les crises d'endettement, les remises de
+    dettes, la fuite des paysans (les "habiru" des textes du IIe
+    millenaire, des gens sortis de la societe).
+  - L'EFFONDREMENT DE LA FIN DE L'AGE DU BRONZE (vers 1200-1150) : en
+    quelques decennies, Hatti, Ugarit, les palais myceniens tombent ;
+    l'Egypte repousse a peine les "Peuples de la mer" (Medinet Habou,
+    vers 1177) ; secheresses, seismes, migrations, routes de l'etain
+    coupees, palais trop dependants les uns des autres : un effondrement
+    de SYSTEME. En Grece, l'ecriture se perd pour quatre siecles.
+  Les conjonctures :
+  - LA ROUTE DE L'ETAIN : qui tient les routes tient le bronze.
+  - L'EXPANSION DES COMPTOIRS (Uruk, Kanesh) : des colonies marchandes chez
+    les autres.
+  - LES GRANDS TRAVAUX DES ROIS : ziggourats, pyramides, murs ; la corvee.
+  - L'ECRITURE SE REPAND, LA ROUE SE REPAND : des inventions qui courent
+    d'un peuple a l'autre en quelques siecles.
+  - LE CERCLE DES GRANDS ROIS : etre reconnu "frere" des grands, ou rester
+    un petit roi vassal.
+  - LE PREMIER EMPIRE : un roi qui soumet toutes les cites d'une region
+    (Sargon) - et l'empire qui se defait a la mort du fondateur.
+
+
+4. COMMENT CELA SE BRANCHERAIT SUR KORA
+---------------------------------------
+  Le principe : comme les deux premiers ages, l'age suivant ne tombe pas
+  d'un coup sur le monde. Chaque peuple y entre a son heure, par de NOUVEAUX
+  GRANDS TOURNANTS (ils naissent quelque part, se repandent, on les adopte
+  quand ils sont arrives) ; le monde garde des peuples nomades, des villages
+  neolithiques et des cites cote a cote, comme en vrai. Les paliers 7 a 9
+  (aussi chers que le veut une partie longue : P10).
+
+  4.1 LES GRANDS TOURNANTS DE L'AGE (les "institutions")
+    - LA CITE (le tournant d'entree) : nait chez un peuple qui a un gros
+      village (vers 600 habitants ?), irrigue (Rigoles d'irrigation), un
+      grand monument ou un temple, et une chefferie forte. Ouvre la
+      ville, le temple, le palais, la corvee.
+    - LE METAL (le bronze) : nait chez qui fond le cuivre (Le cuivre
+      martele) ET touche de l'etain (une mine ou une route). Ouvre la
+      fonderie, les armes et outils de bronze, la route de l'etain.
+    - L'ECRITURE : nait de la comptabilite (Jetons d'argile, Nombres
+      additifs, des scribes-calculateurs) dans une cite. Ouvre les
+      scribes, les lois ecrites, la chronique (l'idee J9 : l'histoire de
+      SA partie), la numeration de position (deja promise), les traites.
+    - LA ROYAUTE : nait d'une cite qui domine d'autres villages (Chef des
+      chefs, des tributaires). Ouvre le roi et sa dynastie, les
+      gouverneurs, l'impot, la justice.
+    - LA ROUE (un tournant leger ou un savoir) : nait chez des eleveurs de
+      boeufs (Boeufs et vaches, Araire) ; ouvre chariots (convois plus
+      lourds, marche plus rapide sur les routes), puis le char (avec Le
+      cheval monte).
+
+  4.2 LA CITE (la vraie nouveaute : P3, "la domination d'une cite")
+    - Un village qui devient CITE ne gouverne plus seulement sa bande : il
+      possede une CAMPAGNE, les villages de son peuple a quelques jours
+      (des "provinces" : leurs recoltes et leurs bras lui reviennent en
+      partie, il les defend). La regle "un peuple = un village" devient
+      "un peuple = une cite et ses villages" ; les autres restent
+      tributaires ou freres.
+    - Ses batiments (les NIVEAUX existent deja) : le TEMPLE (sanctuaire,
+      temple, ziggourat), le PALAIS, l'ENCEINTE de la ville (au-dela de la
+      palissade), le grenier du temple (la redistribution), la maison des
+      tablettes, la fonderie, le marche, le port (sur une cote ou un
+      fleuve), les canaux (niveaux d'irrigation), la citerne.
+    - Ses habitants : des CLASSES (paysans, artisans, pretres et scribes,
+      guerriers, dependants) ; la population des villages ne suffit plus
+      a dire qui fait quoi. Les metiers existants s'y rangent.
+    - Ses problemes : la NOURRITURE (une ville mange ce que sa campagne
+      produit : une mauvaise recolte ou un siege la tue), les MALADIES (la
+      promiscuite : les logements de la 0.24 y prennent tout leur sens),
+      la DETTE des paysans, les REVOLTES.
+    - A l'ecran : la fenetre du village devient celle de la cite (une page
+      "La campagne" pour ses villages, une page "Le temple"), une icone de
+      ville sur la carte (murs, temple) ; les villages qu'elle tient se
+      relient a elle.
+
+  4.3 LE METAL ET L'ETAIN
+    - Le cuivre et l'etain (deja sur les cartes, caches) : des MINES
+      (les mineurs existent), une FONDERIE (un batiment a niveaux), un
+      bien nouveau, le BRONZE, qu'il faut fabriquer (cuivre + etain : deux
+      matieres, souvent de deux pays).
+    - Ce qu'il change : les ARMES (des unites de bronze : lanciers a pointe
+      de bronze, haches, puis l'epee ; casques et boucliers ; P6 : les
+      unites changent avec les ages), un peu les OUTILS, et surtout le RANG
+      (le bronze, l'or, les biens de prestige : du prestige, des alliances).
+    - Ce qui en decoule : une ROUTE DE L'ETAIN (une conjoncture), des
+      guerres pour les mines, des pays riches sans etain qui dependent
+      d'un autre, des marchands lointains.
+
+  4.4 L'ECRITURE ET L'ADMINISTRATION
+    - Des SCRIBES (un metier de la cite, comme les calculateurs) ; une
+      "maison des tablettes" (batiment).
+    - Ce qu'elle change : un pays plus GRAND sans se defaire (la stabilite
+      perd moins avec la distance et le nombre de villages), des LOIS
+      ECRITES (le systeme des lois existe : une loi ecrite est plus dure a
+      changer mais plus stable), des TRAITES (un pacte ecrit dure plus,
+      sa rupture coute plus : l'idee V1-V3 de la 0.22 y trouve sa place),
+      les comptes (le tresor plus juste), la NUMERATION DE POSITION (deja
+      demandee : l'onglet des nombres la montre grisee).
+    - Le plaisir : la CHRONIQUE (J9) - a chaque nouvel an, les scribes
+      ecrivent l'annee ; un onglet garde l'histoire de sa partie. Avant
+      l'ecriture, seuls les recits oraux (les anciens) s'en souviennent,
+      et ils oublient.
+
+  4.5 LE TEMPLE, LE PALAIS, LA CORVEE
+    - Une economie de REDISTRIBUTION : le grenier du temple ou du palais
+      (la "part du chef" de la chefferie, en grand) nourrit les
+      travailleurs de la corvee, les scribes, les soldats.
+    - La CORVEE : des bras pris aux champs pour les grands chantiers (les
+      niveaux couteux, les murs, les canaux, le monument) : plus vite,
+      mais la recolte souffre et le peuple gronde.
+    - Les DIEUX DE LA CITE : un temple a son dieu ; la religion d'Etat
+      (les croyances, groupe exclusif, existent deja) donne la legitimite
+      du roi ; une mauvaise annee, c'est aussi la colere du dieu.
+
+  4.6 LE ROI, SA DYNASTIE, SES GENS
+    - Le chef devient ROI (la chefferie, les familles et leurs charges
+      existent) : une DYNASTIE, une succession (heritier, regence,
+      usurpation), des GOUVERNEURS pour les villages de la campagne (des
+      familles nobles, plus ou moins fideles), une justice.
+    - Les DEPENDANTS et les ESCLAVES : les captifs de guerre (les
+      prisonniers n'existent pas encore : une piste 2C "les captifs"), les
+      endettes ; ils travaillent sans vivre libres - un probleme moral et
+      politique que l'epoque connait (revoltes, fuites).
+    - LA DETTE (une situation) : les paysans s'endettent dans les
+      mauvaises annees ; le roi peut proclamer une REMISE DES DETTES
+      (stabilite, mais les riches familles grondent).
+
+  4.7 LA GUERRE DES CITES
+    - Des MURS de ville (niveaux), un SIEGE plus long : beliers, echelles,
+      tours (deja annonces), la famine dans la ville.
+    - Une ARMEE PERMANENTE (la garde du roi, payee en grain ou en argent :
+      la solde existe) a cote de la levee ; le CHAR (avec la roue et le
+      cheval), les archers.
+    - Des buts de guerre nouveaux : une MINE, un canal, une route (la
+      guerre de Lagash et d'Umma pour une plaine), l'empire (soumettre
+      toutes les cites d'une region).
+
+  4.8 LES GRANDS ROIS ET LES MARCHANDS
+    - Le conseil des peuples (0.24) s'enrichit : les TITRES (petit roi,
+      grand roi, "frere"), les CADEAUX ROYAUX (or contre chevaux), les
+      MARIAGES ROYAUX (le souvenir "mariage" existe), les TRAITES ecrits.
+    - Les COMPTOIRS : un quartier marchand chez un peuple ami (les routes
+      commerciales existent : un comptoir les rend plus riches et plus
+      sures), la mer (des bateaux a voile, des ports) pour les cotes.
+
+  4.9 LES STEPPES ET LES PASSAGES
+    - Les peuples de la steppe (Lait et laine, Le cheval monte : "l'autre
+      voie" du palier 6 existe deja) restent nomades MAIS forts : chariots,
+      chevaux, troupeaux ; un grand PASSAGE des steppes (une situation qui
+      les met en marche vers les terres des cites), la peste qu'ils
+      portent peut-etre. L'age suivant n'est pas que celui des cites : il
+      est aussi celui des cavaliers.
+
+  4.10 LES SITUATIONS DE L'AGE (des crises et conjonctures nouvelles)
+    Crises : La grande secheresse (4.2 : plusieurs annees, une region,
+    les cites qui n'ont pas de reserves tombent, des peuples se
+    deplacent) ; Le deluge (la crue des fleuves, un village emporte, le
+    lit qui change) ; La dette des paysans ; La revolte des dependants ;
+    La succession disputee ; La peste des villes ; L'effondrement des
+    palais (la grande crise de fin d'age : des secheresses + des raids
+    venus de la mer + les routes coupees ; un monde trop lie tombe ensemble).
+    Conjonctures : La route de l'etain ; Les comptoirs ; Les grands
+    travaux des rois (le monument en plus grand) ; Le cercle des grands
+    rois ; Le premier empire ; La roue se repand ; L'ecriture se repand.
+
+  4.11 LES EVENEMENTS (des chaines, P7)
+    La premiere tablette ; le scribe qui triche sur les comptes ; le
+    marchand d'etain venu de loin ; la premiere epee ; la loi gravee sur
+    une stele ; le mariage d'une princesse etrangere ; le fleuve qui
+    change de lit ; le dieu de la cite en colere (un presage, une
+    eclipse : les calendriers existent) ; le captif qui devient
+    intendant ; la remise des dettes ; le traite rompu ; le tresor d'une
+    tombe royale pille ; les gens venus de la mer.
+
+  4.12 CE QUE CELA DEMANDE AU MOTEUR ET A L'ECRAN
+    - L'ARBRE : une troisieme colonne d'age (paliers 7 a 9), des
+      branches renommees (comme au neolithique), cinq grands tournants.
+    - LES DONNEES : la cite (un genre de lieu, ou un rang du village), ses
+      provinces, des classes de population, des biens (bronze, etain, or,
+      tissus), des titres, des traites ; la sauvegarde typee (records.py)
+      s'en charge.
+    - L'IA : batir et tenir une cite, la campagne, la corvee, la route de
+      l'etain, les grands rois (approach.py : l'approche "imperial" ou
+      "marchand" en grand).
+    - L'ECRAN : la fenetre de la cite, l'arbre a trois ages, la chronique,
+      les titres dans le conseil des peuples, la carte (villes, routes,
+      mines, campagnes).
+    - L'EQUILIBRE : des villes plus grosses, plus de peuples a tenir, des
+      parties plus longues : le moteur (0.21) a de la marge ; a mesurer.
+
+
+5. UN DECOUPAGE EN CHANTIERS (chacun livre entier, comme d'habitude)
+--------------------------------------------------------------------
+  E1. LA CHARPENTE DE L'AGE : l'age dans l'arbre (paliers 7-9), les
+      tournants La cite et Le metal, les premiers savoirs (fonte du cuivre,
+      bronze, temple, palais) ; le marqueur d'age du peuple et du monde.
+  E2. LA CITE ET SA CAMPAGNE : le rang de cite, les villages qu'elle tient,
+      ses batiments (temple, palais, enceinte, grenier du temple), la
+      redistribution et la corvee ; la fenetre de la cite, la carte.
+  E3. LE BRONZE ET L'ETAIN : mines, fonderie, le bien bronze, les unites de
+      bronze, la route de l'etain (conjoncture), les guerres pour les
+      mines.
+  E4. L'ECRITURE : les scribes, la maison des tablettes, les lois ecrites,
+      les traites, la chronique, la numeration de position.
+  E5. LE ROI ET SON PEUPLE : la royaute, la dynastie et la succession, les
+      gouverneurs, les classes, la dette et sa remise, les dependants.
+  E6. LES GRANDS ROIS : titres, cadeaux et mariages royaux, comptoirs,
+      ports et bateaux, le premier empire.
+  E7. LES CRISES DE L'AGE : la grande secheresse, le deluge, la peste des
+      villes, les passages des steppes, l'effondrement des palais.
+  Ma recommandation : E1 + E2 d'abord (la cite est ce que le jeu prepare
+  depuis le debut : P3), puis E3 (le metal donne a la guerre et au
+  commerce un enjeu neuf), puis E4 (l'ecriture paie la promesse de la
+  chronique et des nombres). E7 vient par morceaux avec chaque chantier
+  (une crise par systeme : la secheresse avec la cite, la route de
+  l'etain avec le bronze...).
+
+
+6. LES QUESTIONS QUI SONT A LUI
+-------------------------------
+  Q1. Jusqu'ou ? Le chalcolithique et le debut du bronze (les premieres
+      cites, vers 3000), ou tout l'age du bronze jusqu'a son effondrement
+      (vers 1200) - et faut-il que cet effondrement puisse vraiment
+      arriver (une crise mondiale, possible mais rare) ?
+  Q2. Le nom de l'age : "L'age des metaux", "L'age du bronze", "Les
+      premieres cites" ?
+  Q3. LA CITE : un peuple peut-il gouverner directement plusieurs villages
+      (sa campagne), en levant la regle "un peuple = un village" pour ceux
+      qui entrent dans l'age ? Ou garder le village unique et ne faire que
+      des tributaires plus serres ?
+  Q4. Les classes de population (paysans, artisans, pretres, guerriers,
+      dependants) : un vrai systeme (comme les POPs de Victoria 3), ou
+      rester sur les metiers et les familles qui existent ?
+  Q5. Les dependants et l'esclavage : les representer (c'est historique,
+      et un vrai probleme de l'epoque), et jusqu'ou ?
+  Q6. Les peuples de la steppe : une voie a part entiere (des cavaliers
+      nomades forts, sans cite) ou des voisins geres par l'IA ?

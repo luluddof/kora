@@ -294,9 +294,8 @@ class Renderer:
         self.turning_hits: dict = {}
         self.panel_hits: dict = {}
         self.event_hits: dict = {}
-        # Le tutoriel (render_tutoriel.py) : sa fiche, son bouton.
+        # Le tutoriel (render_tutoriel.py) : sa fiche (le bouton est a l'ecran titre).
         self.tuto_hits: dict = {}
-        self.tuto_button = None
         # Le bandeau des situations (uid -> dalle) et leur fenetre.
         self.situation_hits: dict = {}
         self.situation_window: dict = {}
@@ -572,7 +571,6 @@ class Renderer:
         # Le grand ecran ouvert : village, commerce ou tresor (screens.py).
         screens.draw(self, state, ui)
         # Le tutoriel : le bouton Tuto (a cote du bouton Carte), puis sa fiche.
-        render_tutoriel.draw_button(self, ui)
         render_tutoriel.draw(self, state, ui)
         if ui.get("found") is not None:
             render_village.draw_found(self, state, ui)

@@ -420,13 +420,10 @@ class MapInput:
                 return None
             if ui_hit == "bar":
                 return None
-            # Le tutoriel : sa fiche (par-dessus les ecrans), son bouton Tuto.
+            # Le tutoriel : sa fiche (par-dessus les ecrans).
             th = render_tutoriel.tuto_hit(self.renderer.tuto_hits, mx, my) if tutoriel.is_open(self.ui) else None
             if th is not None:
                 self.tuto_click(th)
-                return None
-            if self.renderer.tuto_button is not None and in_rect(self.renderer.tuto_button, mx, my):
-                tutoriel.guide_toggle(self)
                 return None
             scr, schoice = screens.hit(self.renderer, self.ui, mx, my)
             if scr is not None:

@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.24.0
+A jour pour la version : 0.24.1
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -910,11 +910,13 @@ ETAGE -  l'interface (pygame)
 
   render_tutoriel.py
     LE DESSIN DU TUTORIEL (tutoriel.py) : sa fiche en haut a gauche, sous la
-    barre du haut (les cartes d'evenements passent dessous), et le bouton Tuto,
-    a cote du bouton Carte ; ce que l'etape concerne s'eclaire (un onglet, le
-    bouton du temps, celui des cartes).
-    fonctions : button_rect, tuto_layout, tuto_hit, draw_button, draw
-    constantes : CARD_W, PAD, HEAD, FOOT, BUTTON_W
+    barre du haut (les cartes d'evenements passent dessous) ; ce que l'etape
+    concerne s'eclaire (un onglet, le bouton du temps, celui des cartes). Le
+    tutoriel se lance de l'ecran titre (render_menu : Tutoriel) ; dans la
+    partie, plus de bouton (2026-10-23 : "il doit etre dans l'ecran titre et
+    pas dans le jeu", il cachait le bas des ecrans) : F1 rouvre la fiche.
+    fonctions : tuto_layout, tuto_hit, draw
+    constantes : CARD_W, PAD, HEAD, FOOT
 
   render_village.py
     Fenetres du village et des batailles, dans le style de l'ecran des
@@ -1499,6 +1501,9 @@ ETAGE -  l'interface (pygame)
   specs/2026-10-18-maquettes-diplomatie-batiments.txt
     Maquettes : l'ecran diplomatique et les batiments du village
     Statut : diplomatie A CHOISIE et FAITE (0.24.0) ; B, C
+  specs/2026-10-23-etude-age-des-metaux-et-des-cites.txt
+    Etude : l'age suivant, celui des metaux et des premieres cites
+    Statut : ETUDE (rien n'est code ; a son choix).
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

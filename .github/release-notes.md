@@ -1,5 +1,7 @@
 ## Nouveau dans la 0.24
 
+- (0.24.1) Le **tutoriel** se lance de l'écran titre ; plus de bouton *Tuto* dans la partie (il cachait le bas des écrans) : **F1** rouvre sa fiche.
+
 - **Les bâtiments se bâtissent plusieurs fois** : chaque niveau fait plus (un grenier de plus, une palissade doublée
   puis un fossé, une tour qui voit plus loin...). Des bâtiments **peu coûteux** (huttes de branchages, fosses à grain,
   claies de séchage, foyer commun) et des **coûteux** (maison longue, maison du conseil, pierres levées) : dix-huit en
@@ -31,7 +33,7 @@ Et dans les 0.21 et 0.22 :
 - **Un tutoriel** : au menu, *Tutoriel* lance une partie guidée, en quatorze petites étapes (tourner la planète,
   choisir sa bande, la faire marcher, lancer le temps, manger, l'hiver, les savoirs, les clans, les autres
   peuples...). La fiche avance d'elle-même quand vous avez fait le geste demandé. Dans toute partie, le bouton
-  **Tuto** (en bas à gauche, à côté de *Carte*) ou **F1** l'ouvre et le ferme.
+  **F1** rouvre sa fiche.
 - **Le jeu ne se fige plus** dans les parties avancées : la semaine se calcule par petits morceaux, entre deux
   images. Les parties avancées tournent aussi **jusqu'à 2,5 fois plus vite**, sans que rien ne change au jeu
   (la même partie, les mêmes résultats). **F3** montre ce que coûtent l'image et la semaine, et la vitesse tenue.

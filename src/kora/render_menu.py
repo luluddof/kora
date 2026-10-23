@@ -172,6 +172,9 @@ def draw_title(r, scene, save_info: dict | None, t: float, message: str = "", sa
             theme.button(screen, rect, label, "discret", True, hover, role="h3")
         elif key_ == "charger" and saves:
             theme.button(screen, rect, f"{label} ({saves})", "second", on, hover, role="h3")
+        elif key_ == "tutoriel":
+            # Le tutoriel se lance d'ici (dans la partie, plus de bouton : F1).
+            theme.button(screen, rect, label, "second", on, hover, icon_key="boussole", role="h3")
         else:
             theme.button(screen, rect, label, "second", on, hover, role="h3")
     if message:

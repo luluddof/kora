@@ -205,11 +205,11 @@ STEPS = (
     ),
     Step(
         "fin", "À vous",
-        "Le tutoriel est fini. Le bouton Tuto (ou F1) le rouvre ; Échap ouvre le menu ; F5 sauvegarde "
-        "(le jeu sauvegarde aussi tout seul). Bonne chasse !",
+        "Le tutoriel est fini. F1 rouvre cette fiche ; l'écran titre le relance (Tutoriel) ; Échap ouvre "
+        "le menu ; F5 sauvegarde (le jeu sauvegarde aussi tout seul). Bonne chasse !",
         "",
         None,
-        "tuto",
+        "",
     ),
 )
 BY_KEY = {s.key: s for s in STEPS}

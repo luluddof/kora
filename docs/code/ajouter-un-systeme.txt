@@ -422,6 +422,9 @@ La carte du depot (section 4) donne cet ordre en detail.
     partie, jamais ne les change ; ce qui s'eclaire : target). Une
     fonctionnalite que le joueur doit decouvrir tot y prend sa place. Son
     etat est celui de l'ecran (Play.ui["tuto"]) : ni sauve, ni ordre.
+    Il se LANCE de l'ecran titre ; dans la partie, pas de bouton (F1 rouvre
+    sa fiche) : un bouton permanent ne couvre jamais le bas des ecrans
+    (0.24.1).
   - Combats : jamais de pause ni de saut de camera (P5) ; ce qui
     "interrompt" le joueur passe par les nouvelles et le journal cliquable.
 

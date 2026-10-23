@@ -54,7 +54,7 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - **Première fois ?** Le menu propose un **Tutoriel** : une partie guidée, en quatorze petites étapes (tourner la
   planète, choisir sa bande, la faire marcher, lancer le temps, manger, passer l'hiver, les savoirs, les clans, les
   autres peuples...). La fiche avance d'elle-même quand vous avez fait le geste demandé. Dans toute partie, le bouton
-  **Tuto** (en bas à gauche, à côté de *Carte*) ou **F1** l'ouvre et le ferme ; il reprend où vous l'aviez laissé.
+  **F1** rouvre sa fiche, là où vous l'aviez laissée (le tutoriel se lance de l'écran titre).
 - Au lancement, le **menu** : *Continuer* votre partie, *Nouvelle partie*, *Tutoriel*, *Multijoueur*.
 - Une nouvelle partie commence par **votre peuple** : son nom (ou *Au hasard*), sa couleur, et **2 bonus de départ**
   à choisir parmi 12 (chasseurs d'aurochs, enfants du froid, conteurs, guerriers…). Ils durent **5 ans**, puis
@@ -230,7 +230,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
 | **Z** / **U** / **I** / **R** / **X** | Modes de carte : influence / suzerains / tournants / ressources / commerce |
-| **F1** | Le tutoriel (l'ouvrir, le fermer ; aussi le bouton **Tuto**, en bas à gauche) |
+| **F1** | La fiche du tutoriel (l'ouvrir, la fermer ; le tutoriel se lance de l'écran titre) |
 | **F3** | La fiche du moteur : ce que coûtent l'image et la semaine, la vitesse vraiment tenue |
 | **F5** | Sauvegarder (le jeu sauvegarde aussi tout seul) |
 | **Entrée** | À plusieurs : écrire aux autres joueurs |

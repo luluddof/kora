@@ -1,11 +1,13 @@
 """LE DESSIN DU TUTORIEL (tutoriel.py) : sa fiche en haut a gauche, sous la
-barre du haut (les cartes d'evenements passent dessous), et le bouton Tuto,
-a cote du bouton Carte ; ce que l'etape concerne s'eclaire (un onglet, le
-bouton du temps, celui des cartes).
+barre du haut (les cartes d'evenements passent dessous) ; ce que l'etape
+concerne s'eclaire (un onglet, le bouton du temps, celui des cartes). Le
+tutoriel se lance de l'ecran titre (render_menu : Tutoriel) ; dans la
+partie, plus de bouton (2026-10-23 : "il doit etre dans l'ecran titre et
+pas dans le jeu", il cachait le bas des ecrans) : F1 rouvre la fiche.
 
-tuto_layout / tuto_hit et button_rect sont purs (testables sans fenetre) ;
-draw et draw_button dessinent avec la charte (theme.py). Les rectangles
-dessines restent sur le renderer : r.tuto_hits (la fiche), r.tuto_button.
+tuto_layout / tuto_hit sont purs (testables sans fenetre) ; draw dessine
+avec la charte (theme.py). La fiche dessinee reste sur le renderer :
+r.tuto_hits.
 """
 
 from __future__ import annotations
@@ -13,19 +15,13 @@ from __future__ import annotations
 import pygame
 
 from src.kora import theme, tutoriel
-from src.kora.layout import HUD_HEIGHT, MAP_BUTTON_H, MAP_BUTTON_W
+from src.kora.layout import HUD_HEIGHT
 from src.kora.theme import C
 
 CARD_W = 410
 PAD = 14
 HEAD = 46
 FOOT = 48
-BUTTON_W = 104
-
-
-def button_rect(width: int, height: int) -> tuple:
-    """Le bouton Tuto : a droite du bouton Carte, en bas a gauche."""
-    return (12 + MAP_BUTTON_W + 8, height - MAP_BUTTON_H - 12, BUTTON_W, MAP_BUTTON_H)
 
 
 def tuto_layout(width: int, height: int, body_h: int, first: bool) -> dict:
@@ -64,8 +60,6 @@ def _target_rect(r, target: str):
         return (getattr(r, "hud_hits", {}) or {}).get("pause")
     if target == "carte":
         return (getattr(r, "mode_hits", {}) or {}).get("button")
-    if target == "tuto":
-        return getattr(r, "tuto_button", None)
     return None
 
 
@@ -76,14 +70,6 @@ def _light(screen, rect, beat: float) -> None:
     ring = pygame.Surface((w + 12, h + 12), pygame.SRCALPHA)
     pygame.draw.rect(ring, (*C.braise, int(120 + 135 * beat)), (0, 0, w + 12, h + 12), 3, border_radius=8)
     screen.blit(ring, (x - 6, y - 6))
-
-
-def draw_button(r, ui) -> None:
-    w, h = r.screen.get_size()
-    rect = button_rect(w, h)
-    r.tuto_button = rect
-    mx, my = pygame.mouse.get_pos()
-    theme.button(r.screen, rect, "Tuto", "second", hover=_inside(rect, mx, my), icon_key="boussole", key_hint="F1", active=tutoriel.is_open(ui))
 
 
 def draw(r, state, ui) -> None:
