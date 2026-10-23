@@ -12,6 +12,7 @@
 - **Des événements** : « Les deux chemins » (le conseil se dispute : bâtir ou suivre les bêtes), « Le fondeur
   étranger », « Les premières rues », « Le premier grand départ ».
 - Les autres peuples choisissent la voie qui va à leur façon de vivre. Vos parties continuent telles quelles.
+- (0.25.1) L'onglet de la voie passe sur le bord haut des cartes de l'arbre : il ne cache plus la fin des noms.
 
 Et dans la 0.24 : les bâtiments à niveaux (les logements, le terrain, la file des chantiers, la page des bâtiments), le conseil des peuples ; le tutoriel à l'écran titre (0.24.1).
 

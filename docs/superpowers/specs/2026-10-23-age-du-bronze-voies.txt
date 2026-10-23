@@ -1,6 +1,6 @@
 Kora - L'age du bronze dans l'arbre, et les chemins de gameplay (B1)
 ====================================================================
-Date : 2026-10-23. Statut : FAIT (version 0.25.0).
+Date : 2026-10-23. Statut : FAIT (version 0.25.0 ; retouche 0.25.1).
 
 Ses mots : "Oui, commence par B1 : l'age du bronze dans l'arbre et les
 chemins de gameplay." (la part B1 de 2026-10-23-age-du-bronze-
@@ -67,8 +67,9 @@ un embranchement dans les techs."
 ------------
   - L'arbre (T) : les deux tournants de la fourche COTE A COTE, un "ou"
     entre eux (tree_graph._pair_forks) ; la rangee dit "une voie a
-    choisir", puis "vous : steppes" ; chaque savoir d'une voie porte sa
-    pastille (Cites en terre cuite, Steppes en ocre). L'autre voie reste
+    choisir", puis "vous : steppes" ; chaque savoir d'une voie porte son
+    onglet, sur le bord haut de la carte (Cites en terre cuite, Steppes en
+    ocre ; 0.25.1 : en bas, il cachait la fin des noms sur deux lignes). L'autre voie reste
     visible, eteinte : "Ferme : vous avez pris la voie des steppes" ; ses
     liens s'eteignent ; la legende a "autre voie".
   - Au survol d'un tournant de la fourche : "Un choix pour tout l'age :

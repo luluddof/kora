@@ -776,6 +776,8 @@ lente, bandes dessinees petites a taille fixe.
     la voie qui lui va ; les evenements "Les deux chemins", "Le fondeur
     etranger", "Les premieres rues", "Le premier grand depart". Verifie
     dans SA partie (la fourche, la steppe adoptee : il en est le berceau).
+    (0.25.1 : l'onglet de la voie passe sur le bord haut des cartes ; en
+    bas, il cachait la fin des noms sur deux lignes.)
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -828,7 +830,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.25.0
+Version du jeu : 0.25.1
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en

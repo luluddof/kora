@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.25.0
+A jour pour la version : 0.25.1
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -1514,7 +1514,7 @@ ETAGE -  l'interface (pygame)
     Statut : PROPOSE (rien n'est code ; a son choix).
   specs/2026-10-23-age-du-bronze-voies.txt
     L'age du bronze dans l'arbre, et les chemins de gameplay (B1)
-    Statut : FAIT (version 0.25.0).
+    Statut : FAIT (version 0.25.0 ; retouche 0.25.1).
   specs/2026-10-23-etude-age-des-metaux-et-des-cites.txt
     Etude : l'age suivant, celui des metaux et des premieres cites
     Statut : ETUDE (rien n'est code ; a son choix).

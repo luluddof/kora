@@ -17,7 +17,7 @@ a la recherche en cours.
     avec leur presence chez vous (une barre) et leur berceau ;
   - les savoirs TIRES (draws.py) : une pastille (leur chance, "?" avant le
     tirage du peuple) ; ABSENTS (ils ne viendront pas) : eteints et barres ;
-  - les VOIES de l'age du bronze (tech.VOIES) : une pastille a la couleur
+  - les VOIES de l'age du bronze (tech.VOIES) : un onglet a la couleur
     de la voie (VOIE_COLORS), un "ou" entre les tournants de la fourche
     (_fork) ; l'autre voie FERMEE : eteinte, son etat le dit.
 Aucune image : tout est dessine avec pygame (surfaces mises en cache).
@@ -604,8 +604,8 @@ def _chance_pill(r, state, tribe, t, st, right: int, top: int, z: float) -> None
 
 
 def _voie_mark(r, t, st, rect, z) -> None:
-    """La voie d'un savoir de l'age du bronze : une pastille a sa couleur, en
-    bas a droite de la carte."""
+    """La voie d'un savoir de l'age du bronze : un onglet a sa couleur, sur
+    le bord haut de la carte (a gauche du cadenas : il ne cache aucun texte)."""
     if not t.voie or z < 0.7:
         return
     x, y, w, h = rect
@@ -615,7 +615,7 @@ def _voie_mark(r, t, st, rect, z) -> None:
     text = tech.VOIES[t.voie].short
     surf = r.tiny.render(text, True, col)
     pw = surf.get_width() + 12
-    px, py = x + w - pw - 6, y + h - 19
+    px, py = x + w - pw - 26, y - 8
     pygame.draw.rect(r.screen, (22, 18, 14), (px, py, pw, 15), border_radius=7)
     pygame.draw.rect(r.screen, col, (px, py, pw, 15), 1, border_radius=7)
     r.screen.blit(surf, (px + 6, py))
