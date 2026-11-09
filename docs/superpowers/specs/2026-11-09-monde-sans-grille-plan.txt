@@ -1,0 +1,130 @@
+Kora - Le monde sans grille : la nouvelle base, l'essai, les chantiers
+====================================================================
+Date : 2026-11-09. Statut : DECIDE par lui, a commencer (un essai fait hors
+du jeu, sur SA partie ; rien n'a change dans le jeu).
+
+Ses mots, apres l'etude du meme jour (2026-11-09-sans-cases-etude.txt, ses
+trois facons : cacher les cases a l'ecran ; les enlever des calculs ;
+n'avoir plus aucune grille, meme cachee) : "J'aimerais le 3, pour repartir
+sur de bonnes bases."
+Je deconseillais cette troisieme facon (la plus longue : il faut refaire
+la fabrication et le dessin des planetes) ; il la choisit pour la base du
+jeu. L'essai ci-dessous montre qu'elle est faisable en Python, et vite.
+
+
+1. CE QUE VEUT DIRE "SANS GRILLE"
+--------------------------------
+  Le monde n'est plus un damier de cases : il est DECRIT PAR DES FORMES.
+    - les SOLS : des regions aux bords courbes (une foret, une plaine, une
+      vallee, la mer, un lac), comme sur une carte dessinee ;
+    - les COTES : le bord des regions d'eau ;
+    - les RIVIERES : des lignes, avec leur taille (ruisseau, riviere,
+      fleuve) et le sens du courant ;
+    - les RESSOURCES : des gisements (un point : silex, cuivre, sel...) et
+      des aires (une tache : gibier, poisson, cereales sauvages) ;
+    - tout ce qui est pose dessus (une bande, un village, un camp, un point
+      de controle) est a un POINT, n'importe ou.
+  Les distances sont les vraies (a vol d'oiseau, ou le cout du chemin) ; une
+  portee, une vue, une zone sont des cercles qui suivent le sol.
+  En coulisse, des index servent a repondre vite ("quel sol ici ?") : ils
+  sont tires des formes et ne sont jamais une regle du jeu.
+
+
+2. L'ESSAI SUR SA PARTIE (copie : Utopie, an 48, autour de son village)
+---------------------------------------------------------------------
+  docs/maquettes/sans_cases/sans_grille_*.png (script :
+  docs/maquettes/source_ecrans/maq_sans_grille.py), une fenetre de 141 x
+  89 cases d'aujourd'hui (12 549 cases) :
+  - LES FORMES : 89 regions de sol, 6 904 points de contour, 18 rivieres
+    en lignes ; calculees en une demi-seconde. Les regions sont les courbes
+    de niveau d'un champ lisse tire du sol de sa planete, simplifiees,
+    lissees, avec la meme dentelure douce que le dessin d'aujourd'hui.
+  - "QUEL SOL SOUS CE POINT ?" sans case : 19 microsecondes par question
+    (une tuile tout entiere dans une region repond tout de suite ; pres
+    d'un bord, on cherche le bord le plus proche et son cote). La reponse
+    est celle de la case d'aujourd'hui dans 96,8 % des points (les autres
+    sont au bord, la ou la forme a ete adoucie).
+  - UN CHEMIN SANS CASE : un nuage de 4 879 points de passage tires au
+    hasard (pas un damier), 18 769 liens a leurs voisins (le cout du sol le
+    long) ; un A* en moins d'une milliseconde, puis le chemin redresse. Le
+    chemin du jeu fait un "L" en escalier (20 pas) ; le chemin sans case va
+    droit (18,3 cases), et contourne ce qui coute (voir aussi
+    contournement_*.png : le long d'une baie).
+  - LE DESSIN : la carte en formes se dessine en moins d'un dixieme de
+    seconde a ce zoom, nette ; le brouillard de sa partie reste (ce qu'il
+    n'a jamais vu reste noir ; l'assombrissement de ce qu'on ne voit plus
+    n'est pas refait dans l'essai).
+  Pour toute la planete (94 fois la fenetre) : ~650 000 points de contour,
+  ~8 000 regions, ~320 000 points de passage et ~1,2 million de liens ;
+  quelques minutes a la CUISSON (une fois, comme aujourd'hui), quelques
+  dizaines de Mo en memoire. Le jeu charge, il ne calcule pas.
+
+
+3. LA NOUVELLE BASE, PIECE PAR PIECE
+-----------------------------------
+  - LES POINTS : longitude et latitude en ENTIERS fins (le meme calcul sur
+    chaque machine : le multijoueur, l'empreinte) ; la distance sur la
+    sphere en entiers aussi.
+  - LES FORMES DE LA PLANETE : cuites avec elle (data/planetes), chargees
+    au lancement, avec leurs index.
+  - LA MARCHE : chaque JOUR, la bande avance le long de son chemin de ce que
+    lui permet le sol sous ses pieds ; l'ecran la fait glisser entre deux
+    jours.
+  - LES CHEMINS : le nuage de points de passage, cuit avec la planete ; un
+    A*, puis redresse : droit quand ca ne coute pas plus, sinon il
+    contourne. Le cout : le sol, le courant et les gues des rivieres, plus
+    tard les routes et les dangers.
+  - LES RENCONTRES : etre a moins de quelques pas l'un de l'autre ; deux
+    troupes qui se croisent entre deux jours se rencontrent.
+  - LES ZONES D'INFLUENCE : une valeur par point de passage (pas par case),
+    qui rayonne selon le cout du sol ; dessinees en courbes, frontiere
+    commune entre deux peuples.
+  - LE BROUILLARD : ce qu'on a vu (les points de passage vus), dessine
+    doux.
+  - LES VILLAGES, CAMPS, POINTS DE CONTROLE : a un point ; leurs terres
+    (champs, epuisement du sol, recoltes) autour d'eux, en surface, plus en
+    cases.
+  - LE DESSIN DU GLOBE : de loin, une image cuite depuis les formes ; de
+    pres, les formes elles-memes (nettes a tous les zooms).
+  - LA FABRICATION DES PLANETES : le generateur garde ses calculs (plaques,
+    relief, climat, rivieres, biomes) ; sa SORTIE devient des formes. Les
+    trois planetes livrees (Aurane, Caldere, Ondesie) sont recuites en
+    formes : la meme geographie.
+  - SES PARTIES : une partie d'avant se charge (chaque case devient le point
+    en son centre ; ce qui etait par case passe aux points voisins).
+
+
+4. LES CHANTIERS (dans l'ordre ; chacun est une version jouable, verifiee
+   dans SA partie, l'exe livre)
+-------------------------------------------------------------------------
+  1. LES FORMES DE LA PLANETE : la cuisson en formes (sols, cotes, lacs,
+     rivieres, ressources), leur chargement, "quel sol ici ?", le dessin
+     du globe en formes (de loin et de pres). La partie tourne encore sur
+     ses cases en dessous ; on voit deja une carte sans cases.
+  2. LES POINTS ET LA MARCHE : les bandes, villages et camps a un point ; la
+     marche par jour et le glissement ; le nuage de points de passage et
+     les chemins redresses ; les ordres vers un point ; la sauvegarde
+     (nouveau format, ses parties d'avant converties).
+  3. LES DISTANCES : vue, portees, rayons et rencontres en vraie distance ;
+     poursuites, replis, batailles, siege ; l'IA de guerre.
+  4. LES SURFACES : zones d'influence, brouillard, terres des villages,
+     ressources, points de controle (B3 de l'age du bronze s'y fera).
+  5. LA FIN DE LA GRILLE : plus rien ne parle de case (le code, les 70
+     fichiers de tests qui en posent) ; l'equilibrage (parties d'IA de 30
+     ans sur ses parties), la vitesse, le multijoueur.
+
+
+5. LES RISQUES, ET LEURS PARADES
+-------------------------------
+  - LA VITESSE (Python) : tout ce qui est lourd se fait a la cuisson ; des
+    index par tuiles ; des mesures a chaque chantier (comme l'essai).
+  - LE DETERMINISME (multijoueur) : des entiers, jamais de virgule
+    flottante dans la simulation ; l'empreinte re-enregistree a chaque
+    changement voulu.
+  - LES TESTS : 70 fichiers posent des cases ; ils sont reecrits au fur et a
+    mesure (chaque chantier garde la suite verte).
+  - L'EQUILIBRE : les trajets en biais raccourcissent (jusqu'a 15 %), les
+    zones rondes s'elargissent (~20 %) : la marche et les rayons a
+    reregler, verifies sur des parties d'IA.
+  - SES PARTIES : la conversion est testee sur ses sauvegardes (copies) a
+    chaque chantier.

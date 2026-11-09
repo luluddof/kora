@@ -793,6 +793,16 @@ lente, bandes dessinees petites a taille fixe.
     N2 la simulation sans cases en points entiers fins, marche par jour,
     chemins redresses, distances vraies, N3 sans aucune grille : non) ;
     recommandation N2 par etapes E1-E4, avant B3 ; questions QS1-QS4.
+  - "J'aimerais le 3, pour repartir sur de bonnes bases" (plus aucune
+    grille, meme cachee). DECIDE (spec 2026-11-09-monde-sans-grille-plan.txt) :
+    le monde decrit par des FORMES (sols en regions courbes, cotes, rivieres
+    en lignes, ressources en points et en taches), tout ce qui est pose
+    dessus a un POINT, les vraies distances. Un ESSAI sur SA partie (an 48)
+    : 89 regions pour 12 549 cases, "quel sol ici ?" en 19 microsecondes
+    (meme reponse que la case dans 96,8 % des points), un chemin sans case
+    en moins d'une milliseconde ; cinq chantiers dans l'ordre (les formes
+    de la planete ; les points et la marche ; les distances ; les surfaces ;
+    la fin de la grille). A COMMENCER.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -862,10 +872,14 @@ chemins de gameplay (les voies : la cite ou la steppe), le marqueur d'age.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
+  DECIDE, A FAIRE EN PREMIER :
+  - SANS GRILLE  le monde en formes, en cinq chantiers (1 les formes de la
+                planete, 2 les points et la marche, 3 les distances, 4 les
+                surfaces, 5 la fin de la grille) :
+                2026-11-09-monde-sans-grille-plan.txt. B3 (points de
+                controle) se fera au chantier 4.
+
   En attente de SON choix (propose, rien de code) :
-  - SANS CASES  N1 (on ne voit plus les cases) ou N2 (la simulation sans
-                cases, etapes E1-E4), questions QS1-QS4 :
-                2026-11-09-sans-cases-etude.txt ; a trancher avant B3.
   - B2-B6       L'AGE DU BRONZE, les parts suivantes (B1 fait en 0.25.0 :
                 2026-10-23-age-du-bronze-voies.txt) : 2026-10-23-age-du-
                 bronze-propositions.txt ; ses questions QB1, QB2 (QB3 :

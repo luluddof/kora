@@ -1,7 +1,8 @@
 Kora - Sans cases : distances et mouvements hors de l'hexagone (ETUDE)
 =====================================================================
-Date : 2026-11-09. Statut : ETUDIE, en attente de son choix (rien de code
-dans le jeu ; une maquette sur SA partie).
+Date : 2026-11-09. Statut : ETUDIE ; IL A CHOISI la troisieme facon (N3,
+plus aucune grille) "pour repartir sur de bonnes bases" : la suite est
+dans 2026-11-09-monde-sans-grille-plan.txt.
 
 Ses mots : "Je suis en train de reflechir a virer le cote hexagonal et le
 remplacer par l'absence de case, ou les calculs de distance et autres
