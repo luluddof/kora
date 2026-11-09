@@ -197,6 +197,15 @@ ETAGE 3  ce qui s'y pose
     constantes : PLANET_WIDTH, PLANET_HEIGHT, LAND_SHARE, RIVER_SHARE,
       RIVER_MID_SHARE, RIVER_BIG_SHARE, DEPOSITS, FISH_COVER, LIVING
 
+  formes.py
+    LE MONDE EN FORMES (le monde sans grille, premier chantier ; 2026-11-09).
+    classes : Shapes
+    fonctions : blur, marching, link, chaikin, simplify, simplify_loop, area,
+      bilinear, wobble, build
+    constantes : TERR, CODE, WATER, COAST, SIGMA, MIN_ISLAND, BEACH_WIDTH,
+      BEACH_MIN, WOBBLE_SCALES, WOBBLE_WAVES, WOBBLE_MAX, TILE, MOUTH_REACH,
+      PIN, PIN_WATER
+
   planets.py
     LES PLANETES (0.20) : celles qui sont livrees avec le jeu.
     fonctions : catalog, ids, info, name_of, thumbnail_path, default_id,
@@ -1011,6 +1020,10 @@ ETAGE -  l'interface (pygame)
                                       tournants : turning.py ; tirages : draws.py ;
                                       placer l'arbre : tree_graph.py ;
                                       python tools/arbre_savoirs.py --spec
+  Le monde en formes (sans grille)    formes.py : build (le rivage, les sols,
+                                      les plages, les rivieres), Shapes.soil_at,
+                                      Shapes.check (la coherence) ; l'essai :
+                                      docs/maquettes/source_ecrans/maq_sans_grille.py
   Ages, chemins de gameplay (voies)   tech.ERAS, tech.VOIES (Tech.voie),
                                       tech.closed / voie_of / age_of ; l'IA :
                                       learning.preferred_voie ; le marqueur
@@ -1218,6 +1231,8 @@ ETAGE -  l'interface (pygame)
                               suivis (ou pas).
   test_food.py                La collecte (rayon 2 : 19 cases) et la faim :
                               une petite bande de vallee au
+  test_formes.py              Le monde en formes (formes.py, le monde sans
+                              grille) : des formes
   test_globe.py               La sphere (globe.py) : voisins de part et
                               d'autre de la ligne de changement
   test_goods.py               Metiers, biens du peuple, accords commerciaux ;

@@ -28,7 +28,7 @@ bas au plus haut :
   2  la planete
        world
   3  ce qui s'y pose
-       path, atlas, mapgen, planets, gamestate, peoples, places
+       path, atlas, mapgen, formes, planets, gamestate, peoples, places
   4  les savoirs, les gens
        tech, units, vision, population
   5  LES SYSTEMES
@@ -390,6 +390,16 @@ La carte du depot (section 4) donne cet ordre en detail.
   - La propagation de l'influence (influence.projection) suit le courant
     comme la marche (world.river_pct) ; une recuisson des planetes garde
     plusieurs types de rivieres (ruisseau, riviere, fleuve) (0.20.1).
+  - LE MONDE SANS GRILLE (sa decision du 2026-11-09) : un systeme nouveau se
+    pense en POINTS et en FORMES (formes.py), jamais en cases ; la grille
+    d'aujourd'hui s'en va chantier apres chantier
+    (2026-11-09-monde-sans-grille-plan.txt).
+  - Des formes COHERENTES, dans l'ordre : le rivage d'abord (la terre et
+    l'eau), les sols seulement dans les terres (l'eau passe par-dessus), la
+    plage comme une bande collee au rivage (jamais une region : elle
+    flottait dans la mer), les rivieres jusqu'a l'eau ; chaque case garde
+    sa nature en son centre (un etang d'une case reste un etang). Shapes.
+    check le mesure : un changement de formes.py garde test_formes vert.
 
 4.10 L'interface, le dessin, les textes, le son
   - Tout dessin passe par theme.py (couleurs C, theme.font(role),

@@ -114,7 +114,44 @@ jeu. L'essai ci-dessous montre qu'elle est faisable en Python, et vite.
      ans sur ses parties), la vitesse, le multijoueur.
 
 
-5. LES RISQUES, ET LEURS PARADES
+6. UNE GENERATION COHERENTE (sa remarque du meme jour)
+------------------------------------------------------
+  Ses mots, devant le premier essai : "Genere mieux le monde, tu vois bien
+  qu'il y a des trucs incoherents, comme la plage de l'image 2."
+  La cause : la COTE etait traitee comme un sol parmi les autres. Or c'est
+  une bande d'une case le long du rivage ; adoucie, elle se morcelait et
+  des bouts de plage flottaient dans la mer, detaches de la terre. Il y
+  avait aussi des etangs d'une case qui disparaissaient (des rivieres s'y
+  jetaient dans le vide) et des rivieres qui s'arretaient a deux ou trois
+  cases de la mer.
+  La generation refaite, dans la piece du jeu src/kora/formes.py (la base
+  du premier chantier), dans cet ordre :
+    1. le RIVAGE d'abord (la terre et l'eau, les lacs) ; les ilots d'une ou
+       deux cases au large disparaissent ;
+    2. les SOLS seulement dans les terres ; la case de cote prend le sol de
+       l'interieur voisin ; l'eau passe par-dessus, un sol ne traverse
+       jamais la cote ;
+    3. la PLAGE : une bande de 0,9 case collee au rivage, cote terre, la ou
+       la planete avait de la cote (autour des iles et des lacs aussi) ;
+    4. les RIVIERES de la source a l'eau ; un delta qui s'arrete a moins de
+       4 cases de la mer va jusqu'au rivage ; un affluent s'arrete sur sa
+       riviere ; une riviere peut se perdre dans un marais ;
+    5. chaque case garde sa nature en son centre (le lissage ne change que
+       la forme entre les centres) : un etang d'une case reste un etang.
+  Verifie automatiquement (Shapes.check, tests/test_formes.py) et sur
+  quatre regions de sa planete (sans_grille_village, _montagnes, _deltas,
+  _iles.png ; les mesures : sans_grille_mesures.json) :
+                       plages en mer  rivieres perdues  terre/eau  sols
+    son village              0              0             98,8 %   98,2 %
+    montagnes                0              0             99,5 %   98,1 %
+    marais et deltas         0              0             99,7 %   96,8 %
+    iles                     0              0             99,0 %   93,5 %
+  ("terre/eau" et "sols" : la meme reponse que la case d'aujourd'hui ; le
+  reste est au bord, la ou la forme est adoucie.) "Quel sol ici ?" : 7 a 19
+  microsecondes ; une fenetre de 141 x 89 cases en formes : 0,2 seconde.
+
+
+7. LES RISQUES, ET LEURS PARADES
 -------------------------------
   - LA VITESSE (Python) : tout ce qui est lourd se fait a la cuisson ; des
     index par tuiles ; des mesures a chaque chantier (comme l'essai).

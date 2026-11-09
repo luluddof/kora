@@ -803,6 +803,13 @@ lente, bandes dessinees petites a taille fixe.
     en moins d'une milliseconde ; cinq chantiers dans l'ordre (les formes
     de la planete ; les points et la marche ; les distances ; les surfaces ;
     la fin de la grille). A COMMENCER.
+  - "Genere mieux le monde, tu vois bien qu'il y a des trucs incoherents,
+    comme la plage de l'image 2." FAIT (dans la piece du jeu formes.py,
+    base du premier chantier ; spec 2026-11-09-monde-sans-grille-plan.txt,
+    section 6) : le rivage d'abord, les sols dans les terres, la plage en
+    bande collee au rivage (elle flottait dans la mer), les rivieres jusqu'a
+    l'eau, les etangs gardes ; verifie automatiquement et sur quatre
+    regions de sa planete (aucune plage en mer, aucune riviere perdue).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
