@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-10-23.
+Derniere mise a jour : 2026-11-09.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -778,6 +778,21 @@ lente, bandes dessinees petites a taille fixe.
     dans SA partie (la fourche, la steppe adoptee : il en est le berceau).
     (0.25.1 : l'onglet de la voie passe sur le bord haut des cartes ; en
     bas, il cachait la fin des noms sur deux lignes.)
+2026-11-09
+  - "Je reflechis a virer le cote hexagonal et le remplacer par l'absence de
+    case, ou les calculs de distance et autres seraient faits autrement
+    qu'en passant par des cases (et donc le mouvement glisserait au lieu
+    d'aller de case en case)." Puis : "elle glisse en tenant compte de la
+    proximite, pas forcement en ligne droite ?" (oui : le chemin suit le
+    sol, il ne va droit que si ca ne coute pas plus). ETUDIE (spec
+    2026-11-09-sans-cases-etude.txt ; maquette animee sur SA partie :
+    docs/maquettes/sans_cases/glissement.html) : ce qui fait sentir les
+    cases (les sauts d'une semaine, l'escalier des chemins, les distances
+    hexagonales, les zones, le "meme case") ; ce qui en depend (45 modules
+    sur 87, 70 fichiers de tests) ; trois niveaux (N1 on ne les voit plus,
+    N2 la simulation sans cases en points entiers fins, marche par jour,
+    chemins redresses, distances vraies, N3 sans aucune grille : non) ;
+    recommandation N2 par etapes E1-E4, avant B3 ; questions QS1-QS4.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -848,6 +863,9 @@ chemins de gameplay (les voies : la cite ou la steppe), le marqueur d'age.
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   En attente de SON choix (propose, rien de code) :
+  - SANS CASES  N1 (on ne voit plus les cases) ou N2 (la simulation sans
+                cases, etapes E1-E4), questions QS1-QS4 :
+                2026-11-09-sans-cases-etude.txt ; a trancher avant B3.
   - B2-B6       L'AGE DU BRONZE, les parts suivantes (B1 fait en 0.25.0 :
                 2026-10-23-age-du-bronze-voies.txt) : 2026-10-23-age-du-
                 bronze-propositions.txt ; ses questions QB1, QB2 (QB3 :

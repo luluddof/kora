@@ -1518,6 +1518,9 @@ ETAGE -  l'interface (pygame)
   specs/2026-10-23-etude-age-des-metaux-et-des-cites.txt
     Etude : l'age suivant, celui des metaux et des premieres cites
     Statut : ETUDE (rien n'est code ; a son choix).
+  specs/2026-11-09-sans-cases-etude.txt
+    Sans cases : distances et mouvements hors de l'hexagone (ETUDE)
+    Statut : ETUDIE, en attente de son choix (rien de code
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

@@ -1,0 +1,179 @@
+Kora - Sans cases : distances et mouvements hors de l'hexagone (ETUDE)
+=====================================================================
+Date : 2026-11-09. Statut : ETUDIE, en attente de son choix (rien de code
+dans le jeu ; une maquette sur SA partie).
+
+Ses mots : "Je suis en train de reflechir a virer le cote hexagonal et le
+remplacer par l'absence de case, ou les calculs de distance et autres
+seraient faits autrement qu'en passant par des cases (et donc le mouvement
+glisserait au lieu d'aller de case en case)." Puis : "Apres, elle glisse en
+tenant compte de la proximite, et pas en ligne droite, n'est-ce pas (pas
+forcement en ligne droite) ?"
+
+Reponse a la seconde : OUI. Sans cases, la bande ne va pas tout droit : son
+chemin suit le sol. Il va droit seulement quand la ligne droite ne coute
+pas plus ; sinon il contourne (l'eau, le relief, la foret epaisse, un
+courant), en courbe ; et la bande ralentit la ou le sol coute. Le cout peut
+aussi tenir compte de ce qui est proche : une riviere et ses gues, un
+peuple hostile a eviter (l'IA le fait deja : avoid), plus tard des routes.
+
+Maquette (sur SA partie, copies ; dessinee par le jeu) :
+docs/maquettes/sans_cases/
+  glissement.html          la page animee : les deux facons de bouger cote a
+                           cote, au rythme du jeu (vitesses 1 a 5) ;
+  glissement_*.png         1. en terrain egal (sa partie du 24 octobre, an 1,
+                           sa bande nomade) : le chemin du jeu fait un
+                           escalier (8 virages en 12 pas), la bande saute 3
+                           fois ; sans cases, elle va droit et glisse ;
+  contournement_*.png      2. un obstacle (sa partie Utopie, an 48 : une
+                           troupe le long d'une baie) : la ligne droite
+                           traverserait l'eau ; le chemin du jeu fait des
+                           angles droits, le trajet sans cases longe la cote
+                           en courbe.
+  (script : docs/maquettes/source_ecrans/maq_glissement.py)
+
+
+1. CE QUI FAIT SENTIR LES CASES AUJOURD'HUI
+------------------------------------------
+  Le monde est une grille FINE (1 536 x 768 cases sur la planete ; une
+  bande fait 4 cases de plaine par semaine) : les cases elles-memes ne se
+  voient presque plus (le terrain est deforme depuis la 0.9). Ce qu'on
+  sent, ce sont six choses :
+  a) LES SAUTS : la simulation deplace une bande une fois par semaine, de
+     2 a 4 cases d'un coup ; a la vitesse 1 (deux semaines par seconde), le
+     jeton saute toutes les demi-secondes. Rien ne l'anime entre deux.
+  b) L'ESCALIER DES CHEMINS : six directions seulement ; une ligne droite
+     "en biais" devient un escalier (dans la maquette : 8 virages en 12
+     pas), et le trace en pointilles le montre.
+  c) LES DISTANCES HEXAGONALES : un rayon de N cases est un hexagone geant
+     (zones, vue, influence, portees) ; en biais, la distance ment jusqu'a
+     15 %.
+  d) LES ZONES EN ESCALIER : les frontieres sont dessinees case par case
+     (les propositions S1 et S2 du 2026-10-03, en attente).
+  e) LE "MEME CASE" : se rencontrer, combattre, rejoindre, se tenir dans
+     un village, c'est etre sur la meme case ou sur la voisine.
+  f) LES ORDRES vers une case (invisible a ce zoom : on ne le sent pas).
+
+  Ce qui en depend dans le code (mesure le 2026-11-09, 0.25.1) :
+    - 45 modules sur 87 manipulent une position, une distance ou un rayon
+      de cases : band.position (338 fois dans 30 modules), world.distance
+      (125 fois, 27 modules), hexes_in_radius (40, 16 modules), le type Hex
+      (22 modules), les voisins (6), le A* (path.py) ;
+    - les plus touches : ai.py (47), situations (40), villages (37),
+      battle (35), troupes (28), ai_war (23), sim (22), sites (19), events
+      (18), render (17), chiefs (17), diplo, bands (16) ;
+    - 70 fichiers de tests sur 87 posent des cases ;
+    - la sauvegarde ecrit des cases ([q, r]) ; le multijoueur envoie des
+      cases dans les ordres ; l'empreinte (determinisme) les compte.
+  Le SOL (terrain, ressources, rivieres, fertilite, influence, brouillard)
+  est une IMAGE posee sur la grille : une valeur par case.
+
+
+2. TROIS NIVEAUX DE "SANS CASES"
+--------------------------------
+  N1  ON NE VOIT PLUS LES CASES (le dessin ; la partie ne change pas)
+      - La bande GLISSE a l'ecran entre deux semaines : le jeu garde le
+        trajet de la semaine et anime le jeton dessus, au rythme de
+        l'horloge (a chaque image) ; il s'arrete ou la simulation l'a
+        pose. C'est ce que montre la page animee.
+      - Le chemin est DESSINE redresse et lisse (comme la maquette) au
+        lieu de l'escalier des cases.
+      - Les frontieres en courbes (S1), le brouillard au bord doux.
+      Limite : la simulation pense toujours en cases. Le jeton glisse sur
+      une ligne qui s'ecarte au plus d'une case du vrai chemin ; les zones
+      restent des hexagones geants (sauf S2), les rencontres "sur la meme
+      case".
+      Effort : un chantier moyen (render, layout, partie). Risque : nul
+      (sauvegardes, multijoueur, empreinte inchanges).
+
+  N2  LA SIMULATION SANS CASES (ce qu'il decrit ; recommande, par etapes)
+      Le sol reste une image (une valeur par "pixel" du monde, comme toute
+      carte de jeu, meme sans cases visibles) ; mais PLUS RIEN de ce qui
+      bouge ou se mesure ne passe par les cases :
+      - POSITIONS CONTINUES : une bande, un village, un camp, un point de
+        controle sont a un POINT (x, y) du monde, pas sur une case. En
+        nombres entiers fins (1/256 de l'ancienne case) : le meme calcul sur
+        chaque machine (le multijoueur, l'empreinte), pas de virgule
+        flottante dans la simulation.
+      - LE MOUVEMENT : la bande avance chaque JOUR (au lieu d'une fois par
+        semaine) le long de son chemin, de la distance que lui permet le
+        sol sous elle (plaine vite, foret lentement, contre le courant plus
+        lentement) ; l'ecran l'anime entre deux jours (N1, toujours utile).
+      - LES CHEMINS : le A* garde la grille du sol comme carte des couts
+        (c'est rapide), puis le chemin est REDRESSE (on vise le plus loin
+        possible en ligne droite tant que ca ne coute pas plus) et lisse.
+        Il contourne ce qui coute : PAS en ligne droite quand le sol ne le
+        permet pas. Les ordres visent un point, plus une case.
+      - LES DISTANCES : la vraie distance entre deux points (ronde), en
+        entiers (racine carree entiere). Les rayons (vue, zone, portee,
+        influence) deviennent des DISQUES. Les recherches "qui est pres de
+        moi" passent par un petit index de voisinage (des seaux), pour
+        rester rapides.
+      - LES RENCONTRES : se croiser, se battre, rejoindre un allie, c'est
+        etre a moins de quelques "pas" l'un de l'autre ; deux troupes qui se
+        croisent entre deux jours se rencontrent quand meme (on teste les
+        deux segments parcourus, pas seulement les points d'arrivee).
+      - LES ZONES : l'influence reste un champ sur l'image du sol, mais
+        rayonne en distance vraie (S2, les zones rondes qui suivent le sol)
+        et se dessine en courbes (S1).
+      - LA SAUVEGARDE : une vieille partie se charge (chaque case devient le
+        point en son centre) ; nouvelle version du format.
+      Ce que le joueur gagne : plus aucun escalier ni saut ; des trajets et
+      des formes naturelles ; des distances justes ; des rencontres et des
+      poursuites qui se jouent au jour pres.
+      Ce qui change dans la partie (voulu, a reequilibrer) : les trajets
+      en biais raccourcissent (jusqu'a 15 %) -> la marche par semaine a
+      revoir ; les zones rondes couvrent ~20 % de plus a rayon egal -> les
+      rayons ; l'IA (ses choix de lieux se font sur l'image du sol : elle
+      garde ses calculs, elle bouge autrement) ; les batailles.
+      Effort : GROS (45 modules, 70 fichiers de tests) : trois a quatre
+      chantiers, chacun livre jouable (voir 4). Risques : la vitesse (le
+      Python : mesures a chaque etape), le determinisme (les entiers),
+      l'IA et les batailles (a reverifier sur ses parties).
+
+  N3  PLUS AUCUNE GRILLE, MEME CACHEE (le sol en polygones, un "maillage" de
+      marche) : NON RECOMMANDE. Il faudrait refaire la fabrication des
+      planetes (elle cuit une grille), leur dessin (des textures) et
+      l'influence, pour rien de visible en plus de N2 : sans cases visibles
+      ni calculs en cases, le joueur ne fait plus la difference.
+
+
+3. CE QUE JE RECOMMANDE
+-----------------------
+  N2, par etapes, en commencant par N1 (qui en est la premiere marche et
+  sert dans tous les cas : meme une simulation sans cases avance par
+  jours, l'ecran doit glisser entre deux). Chaque etape est une version
+  jouable, verifiee dans SA partie, l'empreinte re-enregistree quand la
+  partie change.
+  Avant B3 (les points de controle) : un point de controle "dans la zone
+  du village" se placera a un POINT ; mieux vaut le faire une fois, sans
+  cases.
+
+
+4. LES ETAPES (si N2)
+---------------------
+  E1  LE GLISSEMENT (dessin seul) : le jeton anime sur le trajet de la
+      semaine ; le chemin dessine redresse et lisse ; S1 (frontieres en
+      courbes). Aucune partie ne change.
+  E2  LES POSITIONS ET LE MOUVEMENT : positions en points (entiers fins),
+      marche par jour, chemins redresses, ordres vers un point, sauvegarde
+      (format + vieilles parties), multijoueur (les ordres) ; les
+      distances vraies partout ou l'on compte en cases (vue, portees,
+      rayons) ; l'index de voisinage. La plus grosse etape.
+  E3  LES RENCONTRES ET LES BATAILLES : contact a distance, croisements en
+      route, poursuites, replis, siege ; l'IA de guerre (ai_war, ost).
+  E4  LES ZONES : S2 (rondes, qui suivent le sol), les villages et leurs
+      terres en disques, les points de controle (B3) a un point ; puis
+      l'equilibrage (essais d'IA de 30 ans sur ses parties).
+
+
+5. SES QUESTIONS
+----------------
+  QS1  Jusqu'ou : N1 seulement (on ne voit plus les cases), ou N2 (la
+       simulation sans cases, par etapes) ?
+  QS2  Si N2 : la bande avance chaque JOUR (proposition) ; d'accord ?
+  QS3  Les zones rondes qui suivent le sol (S2), et les frontieres en
+       courbes (S1), qu'il avait mises de cote le 2026-10-03 : on les prend
+       avec (E1, E4) ?
+  QS4  L'ordre : sans cases AVANT les points de controle (B3), comme
+       propose, ou B3 d'abord ?
