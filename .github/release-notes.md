@@ -1,5 +1,8 @@
 ## Nouveau dans la 0.25 : l'âge du bronze
 
+- (0.25.3) **Des savoirs qui n'arrivaient jamais arrivent** : les chiens de chasse (aussi après deux ans près du
+  gibier, pas seulement par l'événement des louveteaux), les routes du sel (un peuple ami suffit, plus besoin d'un
+  allié), les bœufs (150 personnes), les torches (100) et l'art du siège (200).
 - (0.25.2) **Les peuples sans village en fondent enfin un** : leurs clans trouvaient une terre mais jamais le
   chemin pour y aller, et erraient des années. Le monde recommence à grandir. **Le jeu calcule plus vite** (environ
   15 % en fin de partie). Une erreur de calcul est maintenant écrite dans *kora_erreur.txt*, pour qu'on la corrige.

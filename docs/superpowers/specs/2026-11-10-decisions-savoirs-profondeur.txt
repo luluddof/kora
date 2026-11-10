@@ -1,0 +1,151 @@
+Kora - Les decisions, des savoirs qui servent tous, la profondeur expliquee
+=========================================================================
+Date : 2026-11-10. Statut : FAIT pour les savoirs (version 0.25.3) ;
+PROPOSE pour l'onglet Decisions (deux maquettes, en attente de son choix) ;
+EXPLIQUE pour la soudure, les personnages, la guerre qui se voit.
+
+Ses reponses aux huit pistes (2026-11-10-corrections-optimisation-
+profondeur.txt, section 4) :
+  1) le monde qui grandit : "plus tard" ;
+  2) la soudure : "developpe, je ne comprends pas" ;
+  3) des evenements qui viennent au joueur : "ca a l'air bien, mais en plus
+     j'aimerais un onglet Decisions ou on peut prendre des decisions selon
+     des prerequis, comme dans CK3, EU5, Victoria 3, qui peuvent remplacer
+     certains evenements ou maintenant on choisit quand il arrive" ;
+  4) les personnages : "developpe ton propos" ;
+  6) des savoirs qui servent tous : "pas mal de les mettre en place (sauf si
+     les probabilites sont contre eux), et a terme assouplir leurs
+     prerequis ou faciliter leur obtention" ;
+  8) la guerre qui se voit : "developpe".
+  (5 et 7 : pas de reponse.)
+
+
+1. DES SAVOIRS QUI SERVENT TOUS (FAIT, 0.25.3)
+---------------------------------------------
+  Dans sa partie (an 48, 120 peuples), 13 savoirs des deux premiers ages
+  n'etaient connus de personne. Un par un :
+  - LE HASARD DU MONDE (on n'y touche pas, sa regle) : les chamanes, le
+    tumulus des chefs, le calendrier des pierres levees (un seul savoir de
+    leur groupe nait dans le monde, et ce n'est pas eux) ; les jetons
+    d'argile, le cheval monte (le tirage du monde les a ecartes de cette
+    partie).
+  - JUSTE LENTS (deja disponibles pour 11 a 16 peuples) : le cuivre
+    martele, les fromages, chef des chefs, otages et serments.
+  - VRAIMENT BLOQUES, corriges :
+      Chiens de chasse : un seul chemin, un evenement (les louveteaux) que
+        personne n'avait eu. Maintenant : les louveteaux (tout de suite),
+        OU deux ans pres du gibier (une condition "l'un ou l'autre",
+        learning : "tame").
+      Routes du sel et du silex : il fallait un ALLIE (3 peuples sur 48) ;
+        maintenant un peuple CORDIAL.
+      Boeufs et vaches : 150 personnes au lieu de 200 (ils ouvrent
+        l'araire, et l'araire la cite).
+      Torches et brandons : 100 personnes au lieu de 150 (ils ouvrent l'art
+        du siege) ; l'art du siege : 200 au lieu de 300.
+  Verifie sur sa partie (6 ans, l'ancienne et la nouvelle version) :
+    chiens 0 -> 93 peuples, routes du sel 0 -> 22, torches 17 -> 20.
+    Revers : l'araire avance un peu moins vite (12 peuples au lieu de 18),
+    les peuples passant d'abord par les chiens. L'art du siege reste a 0 :
+    rien ne le bloque plus, l'IA ne le choisit pas (aucune culture ne le
+    vise) ; a revoir avec l'IA de guerre.
+
+
+2. L'ONGLET DECISIONS (PROPOSE : deux maquettes)
+-----------------------------------------------
+  docs/maquettes/decisions/ (script : source_ecrans/maq_decisions.py), sur
+  SA partie : les conditions sont celles de son peuple (printemps, 7
+  semaines de grenier, prestige 99, trois peuples cordiaux, aucun
+  tributaire, un seul clan).
+    A  LE REGISTRE (a la Victoria 3 / EU5) : la liste par familles a
+       gauche (chaque decision : son etat, "Possible", "Il manque 2", "En
+       repos : 3 ans"), la fiche a droite : ce qu'il faut (coche ou croix,
+       avec les chiffres de son peuple), ce que ca coute, ce que ca fait, le
+       bouton Decider.
+    B  LES CARTES (a la CK3) : toutes les decisions en cartes, une pastille
+       par condition (verte, rouge), la fiche au survol.
+  Ce que serait une decision :
+    - un NOM, une famille (les vivres, le peuple et ses chefs, le sacre, les
+      voisins, les grands desseins), un texte ;
+    - des CONDITIONS lisibles (le vocabulaire des evenements existe deja :
+      saison, grenier, prestige, savoirs, peuples cordiaux, tributaires...) ;
+    - un COUT et des EFFETS (le vocabulaire des effets des evenements) ;
+    - un REPOS (on ne la reprend pas avant N ans) ;
+    - l'IA la prend aussi, quand elle lui va (le meme moteur) ;
+    - parfois une SUITE : un evenement qui raconte ce qui arrive ensuite.
+  Les evenements qui deviendraient des decisions (aujourd'hui ils tombent
+  au hasard ; demain on choisit le moment) : le grand rassemblement (la
+  fete), la grande chasse (le grand troupeau), envoyer les jeunes explorer,
+  la fete des moissons (la bonne recolte), le mariage, recueillir les
+  recits des anciens, faire d'une source ou d'une grotte un lieu sacre,
+  ouvrir une mine (la pierre blanche). Les evenements qui RESTENT des
+  evenements : ce qui arrive sans qu'on le veuille (la fievre, l'orage, les
+  loups, les etrangers, la crue, le rival).
+  Et des decisions NOUVELLES : rationner jusqu'a la recolte (la soudure),
+  reunir le conseil des clans, designer un heritier, la fete des morts,
+  envoyer un present au loin, devenir le chef des chefs (un grand dessein).
+  Avec la piste 3 : les evenements qui restent viennent plus souvent au
+  joueur, et surtout PARCE QUE quelque chose arrive.
+
+
+3. LA SOUDURE, EXPLIQUEE (piste 2)
+---------------------------------
+  La "soudure" est le vieux nom des semaines avant la moisson, quand le
+  grain de l'an passe est mange et que le nouveau n'est pas mur. Dans Kora
+  aujourd'hui : la recolte (semaine 33) remplit le grenier pour 24 semaines ;
+  le reste de l'annee, la cueillette ne couvre que la moitie de ce qu'on
+  mange ; des la semaine 26, le grenier est vide, et le jeu tue des gens
+  tout seul, chaque annee, sans que le joueur ait rien a decider.
+  L'idee : que ce moment devienne un CHOIX. Au printemps, quand le jeu voit
+  que le grenier ne tiendra pas (il le sait deja : "disette en vue"), le
+  joueur choisit, par exemple :
+    - rationner (chacun mange les trois quarts : moins de naissances, un
+      peu de grogne, mais personne ne meurt) ;
+    - envoyer les jeunes chasser loin (de la viande, des absents, des
+      blesses) ;
+    - acheter du grain (cela existe : plus cher en disette) ;
+    - aller le prendre chez un voisin (une razzia) ;
+    - manger les semences (pas de famine, mais une recolte moindre).
+  Avec l'onglet Decisions, c'est la decision "Rationner jusqu'a la recolte"
+  des maquettes, et les autres choix y trouvent leur place.
+
+
+4. LES PERSONNAGES, DEVELOPPES (piste 4)
+---------------------------------------
+  Ce qui existe : un chef (un nom, une renommee, des traits : prudent,
+  guerrier, genereux...), un heritier, des chefs de clan qui peuvent
+  devenir rivaux et partir. Ce qui manque, pour qu'on s'y attache :
+    - LE TEMPS : un age ; le chef vieillit, s'affaiblit, meurt ; un jeune
+      chef n'a pas la renommee de son pere.
+    - LA FAMILLE : une epouse ou un epoux (souvent d'un autre peuple : le
+      mariage est une alliance), des enfants qui grandissent, un heritier
+      qu'on choisit parmi eux (ou le plus renomme des chefs de clan : deux
+      lois de succession).
+    - L'AMBITION : chaque personnage veut quelque chose (le pouvoir, la
+      gloire a la guerre, la paix, la richesse) ; un chef de clan ambitieux
+      complote, un genereux nourrit, un guerrier pousse a la guerre.
+    - LA MEMOIRE : la lignee (les chefs passes, ce qu'ils ont fait, leurs
+      surnoms : "Lidi la Prudente"), les vieilles rancunes entre familles.
+  Ce que ca donne en jeu : des successions disputees, des mariages qui
+  font les alliances, des fils qui se revoltent, l'envie de jouer "encore
+  une generation". C'est la proto-dynastie de l'age du bronze (sa part
+  B4), et beaucoup de decisions s'y rattachent (designer un heritier,
+  proposer un mariage).
+
+
+5. LA GUERRE QUI SE VOIT, DEVELOPPEE (piste 8)
+---------------------------------------------
+  Dans sa partie, en trois ans : 14 guerres differentes, 22 puis 26
+  tributaires. Le monde se bat, mais le joueur ne le sent presque pas (une
+  ligne de journal, parfois). Ce qui manque :
+    - DES NOUVELLES qui comptent : "Les Akor ont pris le village de Telo",
+      "Les Maelita sont devenus tributaires des Akor" (seulement les peuples
+      qu'on connait, et en grand quand c'est pres de chez soi).
+    - UNE CARTE DES GUERRES qui raconte : qui se bat contre qui, depuis
+      quand, le front, les villages pris (le mode de carte existe pour les
+      suzerains, pas pour les guerres).
+    - LES CONSEQUENCES chez le joueur : des refugies qui arrivent (des
+      bras, des bouches), un voisin qui grossit et devient menacant, un
+      allie qui appelle a l'aide, des prix qui montent quand une route est
+      coupee.
+    - DES OCCASIONS : une guerre entre deux voisins, c'est le moment de
+      prendre parti, de vendre du grain, de s'emparer d'un village affaibli.

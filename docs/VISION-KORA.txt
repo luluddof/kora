@@ -827,6 +827,16 @@ lente, bandes dessinees petites a taille fixe.
     soudure, des evenements qui viennent au joueur, les personnages, des
     ambitions, des savoirs qui servent tous, des peuples differents, la
     guerre qui se voit).
+  - Ses reponses : 1 "plus tard" ; 2 "developpe" ; 3 "ca a l'air bien, et
+    en plus un onglet Decisions avec des prerequis, comme CK3, EU5,
+    Victoria 3, qui remplace certains evenements : on choisit quand" ; 4
+    "developpe" ; 6 "a mettre en place (sauf si les probabilites sont
+    contre), assouplir leurs prerequis" ; 8 "developpe". FAIT pour 6
+    (0.25.3 ; spec 2026-11-10-decisions-savoirs-profondeur.txt) : les
+    savoirs vraiment bloques debloques (chiens : 0 -> 93 peuples en 6 ans
+    dans sa partie ; routes du sel : 0 -> 22), le hasard du monde garde ;
+    PROPOSE pour 3 : deux maquettes de l'onglet Decisions sur SA partie
+    (A le registre, B les cartes) ; EXPLIQUE 2, 4, 8 (meme spec).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -879,7 +889,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.25.2
+Version du jeu : 0.25.3
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -907,6 +917,10 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 controle) se fera au chantier 4.
 
   En attente de SON choix (propose, rien de code) :
+  - DECISIONS   l'onglet Decisions (maquettes A le registre, B les cartes)
+                et les evenements qui viennent au joueur ; puis la soudure,
+                les personnages, la guerre qui se voit :
+                2026-11-10-decisions-savoirs-profondeur.txt.
   - P1-P8       la profondeur du jeu (le monde qui grandit, la soudure, des
                 evenements qui viennent au joueur, les personnages, des
                 ambitions, des savoirs qui servent tous, des peuples

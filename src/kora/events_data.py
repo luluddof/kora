@@ -103,7 +103,7 @@ EVENTS: dict[str, Event] = {
                 Option(
                     "Les garder",
                     effects=(("flag", "louveteaux"),),
-                    text="Les jeunes loups grandiront au village. Un savoir devient possible : Chiens de chasse.",
+                    text="Les jeunes loups grandiront au village. Un savoir devient possible tout de suite : Chiens de chasse.",
                     ai=1.5,
                 ),
                 Option("Les laisser", text="On laisse les louveteaux à la neige."),

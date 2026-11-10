@@ -255,6 +255,11 @@ La carte du depot (section 4) donne cet ordre en detail.
     (0.7.0).
 
 4.4 Les savoirs
+  - Un savoir qui ne vient que d'un evenement ne vient a personne : lui
+    donner aussi un chemin par la vie du peuple (la condition "tame" : le
+    drapeau de l'evenement OU des semaines pres d'une ressource) ; verifier
+    sur une partie longue qu'il est connu de quelqu'un, sauf si le hasard
+    du monde l'a ecarte (draws) (0.25.3).
   - Chaque savoir dit ce qu'il fait ; un savoir ou un batiment commence se
     finit ; un peuple ne doit JAMAIS se retrouver sans savoir possible
     parce qu'il s'est fixe (P2).

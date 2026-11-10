@@ -201,7 +201,8 @@ class Cond:
     "winters", "prestige", "bands", "seen", "flag" (label = drapeau d'un
     evenement), "camp_years", "contacts", "friends", "allies",
     "villages", "village_years", "kin_villages", "vassals" (tributaires),
-    "town" (le plus gros de ses villages, en habitants)."""
+    "town" (le plus gros de ses villages, en habitants), "tame" (le
+    drapeau `label` d'un evenement, OU need semaines pres de ces ressources)."""
 
     kind: str
     need: int = 0
@@ -462,7 +463,9 @@ TECHS: dict[str, Tech] = {
             "chiens", "Chiens de chasse", 3, 4,
             "Les louveteaux d'autrefois sont devenus des chiens : ils rabattent le gibier et veillent la nuit.",
             prereqs=("domestication",),
-            conds=(Cond("flag", 1, label="louveteaux"),),
+            # Les louveteaux d'un evenement, ou deux ans pres du gibier (0.25.3 :
+            # l'evenement seul ne venait a personne).
+            conds=(Cond("tame", 104, ("aurochs", "chevaux", "chevres", "rennes"), "louveteaux"),),
             effects={"food": {_T.FORET: 1.06, _T.PLAINE: 1.06, _T.STEPPE: 1.06, _T.SAVANE: 1.06, _T.TOUNDRA: 1.06}, "vision": 2},
         ),
         Tech(
@@ -570,7 +573,7 @@ TECHS: dict[str, Tech] = {
             "bovins", "Bœufs et vaches", 5, 4,
             "L'aurochs dompté : de la viande, du lait, et le fumier qui engraisse les champs.",
             prereqs=("chevres",),
-            conds=(Cond("res", 30, ("aurochs",), "près des aurochs"), Cond("pop", 200)),
+            conds=(Cond("res", 30, ("aurochs",), "près des aurochs"), Cond("pop", 150)),
             effects={
                 "food": {_T.PLAINE: 1.12, _T.VALLEE: 1.08, _T.SAVANE: 1.1},
                 "village_food": 1.15,
@@ -603,7 +606,7 @@ TECHS: dict[str, Tech] = {
             "routes", "Routes du sel et du silex", 5, 7,
             "Des sentiers de peuple en peuple, jalonnés de haltes : on se connaît, on commerce.",
             prereqs=("echanges",),
-            conds=(Cond("allies", 1), Cond("contacts", 4)),
+            conds=(Cond("friends", 1), Cond("contacts", 4)),
             effects={"diffusion": 0.15, "trade": True},
         ),
         # --- les nombres et l'argent (numbers.py, money.py) --------------------
@@ -646,7 +649,7 @@ TECHS: dict[str, Tech] = {
             "torches", "Torches et brandons", 5, 0,
             "Des flèches enflammées, des fagots poussés contre les pieux : le bois des palissades brûle.",
             prereqs=("palissade", "arc"),
-            conds=(Cond("village_years", 3), Cond("pop", 150)),
+            conds=(Cond("village_years", 3), Cond("pop", 100)),
             effects={"siege_fire": True},
             slot=1,
         ),
@@ -664,7 +667,7 @@ TECHS: dict[str, Tech] = {
             "siege", "L'art du siège", 6, 0,
             "On ne prend plus d'assaut : on encercle, on coupe les champs et les sentiers, et l'on attend que la faim ouvre les portes.",
             prereqs=("torches",),
-            conds=(Cond("village_years", 6), Cond("pop", 300)),
+            conds=(Cond("village_years", 6), Cond("pop", 200)),
             effects={"siege": True},
             slot=1,
         ),

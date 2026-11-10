@@ -150,6 +150,12 @@ def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, i
         return n, cond.need, f"{_plural(cond.need, 'tributaire')}"
     if kind == "kin_villages":
         return chiefdom.kin_villages(state, tribe.id), cond.need, f"{_plural(cond.need, 'village frère')} (de votre civilisation, ou tributaire)"
+    if kind == "tame":
+        # Un evenement (le drapeau), ou le temps passe pres du gibier.
+        flags = getattr(tribe, "flags", {}) or {}
+        weeks = sum(tribe.practice.get("res:" + _key(t), 0) for t in cond.terrains)
+        have = cond.need if cond.label in flags else min(weeks, cond.need)
+        return have, cond.need, f"Apprivoiser des louveteaux (événement), ou {cond.need} sem. près du gibier"
     if kind == "town":
         return town_pop(state, tribe.id), cond.need, f"Un village de {cond.need} habitants"
     if kind in ("villages", "village_years"):
