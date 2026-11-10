@@ -295,6 +295,22 @@ def find_new_land(state: GameState, band: Band):
     """Une terre ou fonder un village, loin de tout village (pour un clan qui
     part). Pays plein : on cherche plus loin, puis on se contente de moins
     de place (jamais au pied d'un village : CROWDED_SPACING)."""
+    # La reponse ne depend que de l'endroit, du defrichage et des villages
+    # du monde : un clan qui campe et redemande chaque mois (pays plein) ne
+    # refait pas la recherche (memo de la carte, vide quand un village nait
+    # ou disparait).
+    world = state.world
+    memo = getattr(world, "_lands", None)
+    if memo is None:
+        memo = world._lands = {}
+    homes = tuple(sorted(world._index(v) for v in _village_hexes(state)))
+    known = memo.get("new_land")
+    if known is None or known[0] != homes:
+        known = memo["new_land"] = (homes, {})
+    key = (world._index(band.position), bool(bonus_of(state, band.tribe_id).clearing))
+    if key in known[1]:
+        return known[1][key]
+    found = None
     for radius, step, spacing in (
         (NEW_LAND_RADIUS, 3, VILLAGE_SPACING + 2),
         (NEW_LAND_FAR, 6, VILLAGE_SPACING),
@@ -302,8 +318,10 @@ def find_new_land(state: GameState, band: Band):
     ):
         spot = _new_land(state, band, radius, spacing, step)
         if spot is not None:
-            return spot
-    return None
+            found = spot
+            break
+    known[1][key] = found
+    return found
 
 
 FOUND_GOOD = 0.6
@@ -351,7 +369,9 @@ def good_land(state: GameState, tribe_id: int, h, spacing: int, homes: list | No
 
 def _new_land(state: GameState, band: Band, radius: int, spacing: int, step: int = 3):
     world = state.world
-    homes = _village_hexes(state)
+    # Un village plus loin que radius + spacing ne gene aucune case du disque.
+    reach = radius + spacing
+    homes = [v for v in _village_hexes(state) if world.distance(v, band.position) < reach]
     best, best_v = None, -1.0
     for h in world.hexes_in_radius(band.position, radius)[::step]:
         good = good_land(state, band.tribe_id, h, spacing, homes)
@@ -400,7 +420,10 @@ def _go_settle(state: GameState, band: Band, weeks: float) -> bool:
 def head_for_new_land(state: GameState, band: Band) -> None:
     spot = find_new_land(state, band)
     if spot is not None:
-        set_goto(state, band.id, spot, max_nodes=1200, max_cost=3000)
+        # Une terre a 20-40 cases demande plus de 1 200 noeuds de recherche :
+        # avec ce plafond le chemin echouait toujours et le clan errait des
+        # annees sans jamais fonder (sa partie, an 48 : 6 clans bloques).
+        set_goto(state, band.id, spot, max_nodes=6000, max_cost=3000)
 
 
 def _settle_ai(state: GameState, band: Band) -> bool:

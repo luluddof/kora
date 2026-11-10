@@ -53,6 +53,25 @@ def default_save_path() -> Path:
     return root / "saves" / "kora.json"
 
 
+def error_path() -> Path:
+    """Le fichier des erreurs, a cote du dossier des sauvegardes
+    (kora_erreur.txt, dans le dossier Kora de APPDATA pour l'exe)."""
+    return default_save_path().parent.parent / "kora_erreur.txt"
+
+
+def write_error(text: str) -> bool:
+    """Ecrit une erreur (sa trace) dans error_path ; False si le disque refuse."""
+    from src.kora import __version__
+
+    path = error_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"Kora {__version__}\n\n{text}", encoding="utf-8")
+    except OSError:
+        return False
+    return True
+
+
 def multi_save_path() -> Path:
     """La partie multijoueur de l'hote (a cote de la partie solo)."""
     return default_save_path().with_name("kora-multi.json")

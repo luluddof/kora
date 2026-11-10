@@ -430,8 +430,9 @@ def _cond_foreign_near(state, inst, tribe, band, *args) -> bool:
         for b in state.bands.values()
         if b.tribe_id != tribe.id
         and b.population > 0
-        and not guerre.at_peace(state, b.tribe_id, tribe.id)
+        # La distance d'abord (elle ecarte presque tout le monde), la paix ensuite.
         and world.distance(b.position, band.position) <= args[0]
+        and not guerre.at_peace(state, b.tribe_id, tribe.id)
     ]
     if not near:
         return False
@@ -515,8 +516,11 @@ def _rival_band(state, tid: int):
     chief = chiefs.chief_of(state, tid)
     if chief is None:
         return None
-    for b in sorted(state.bands.values(), key=lambda b: b.id):
-        if b.tribe_id != tid or b.leader is None or chiefs.is_chief_band(state, b):
+    # Les bandes du peuple d'abord, puis le tri (le meme ordre : par id) :
+    # trier toutes les bandes du monde a chaque question coutait cher.
+    mine = [b for b in state.bands.values() if b.tribe_id == tid and b.leader is not None]
+    for b in sorted(mine, key=lambda b: b.id):
+        if chiefs.is_chief_band(state, b):
             continue
         if b.leader.renown >= chief.renown + 10 and "fidele" not in b.leader.traits:
             return b

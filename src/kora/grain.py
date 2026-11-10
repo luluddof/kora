@@ -77,14 +77,15 @@ def _knows_money(state, tid: int) -> bool:
 def sellers(state, tid: int) -> list[int]:
     """Les peuples qui pourraient lui vendre du grain."""
     country = chiefdom.country(state, tid)
+    settled = goods.village_tribes(state)
     out = []
     for other in sorted(state.tribes):
-        if other == tid or not goods.has_village(state, other) or not _knows_money(state, other):
+        if other == tid or other not in settled or not _knows_money(state, other):
+            continue
+        linked = other in country or diplo.has_pact(state, tid, other, "commerce") or diplo.allied(state, tid, other)
+        if not linked:
             continue
         if siege.at_war(state, tid, other) or guerre.declared_war(state, tid, other):
-            continue
-        linked = diplo.has_pact(state, tid, other, "commerce") or diplo.allied(state, tid, other) or other in country
-        if not linked:
             continue
         if diplo.relation(state, other, tid) < SELL_RELATION:
             continue

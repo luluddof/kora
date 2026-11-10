@@ -34,6 +34,7 @@ import math
 import random
 import sys
 import time
+import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -494,6 +495,9 @@ def collect_food(state: GameState) -> None:
     gained: dict[int, float] = {bid: 0.0 for bid in state.bands}
     pressure: dict[Hex, float] = {}
     world = state.world
+    # Les savoirs et le troupeau de chaque peuple : une fois (ils ne changent
+    # pas pendant la collecte), pas une fois par case et par bande.
+    info: dict[int, tuple] = {}
     for h, bands in claimants.items():
         season = world.hex_season(h)
         total_pop = sum(b.population for b in bands)
@@ -501,12 +505,15 @@ def collect_food(state: GameState) -> None:
         if total_pop <= 0:
             continue
         for b in bands:
-            know = bonus_of(state, b.tribe_id)
+            got = info.get(b.tribe_id)
+            if got is None:
+                got = info[b.tribe_id] = (bonus_of(state, b.tribe_id), _herd_ok(state, b.tribe_id))
+            know = got[0]
             prod = food_production(
                 world,
                 h,
                 season,
-                herd=_herd_ok(state, b.tribe_id),
+                herd=got[1],
                 bonus=know,
             )
             if prod <= 0:
@@ -1121,7 +1128,8 @@ def tick_steps(state: GameState):
     except Exception as exc:
         _restore(state, saved)
         state.clock.paused = True
-        state.last_error = str(exc)
+        state.last_error = f"Erreur dans la simulation ({type(exc).__name__} : {exc}). Le détail est dans kora_erreur.txt."
+        state.last_trace = traceback.format_exc()
     finally:
         tech.end_tick()
 

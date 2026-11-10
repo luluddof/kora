@@ -33,6 +33,9 @@ class GameState:
     tick_count: int = 0
     rng: random.Random = field(default_factory=lambda: random.Random(1))
     last_error: str | None = None
+    # La trace de cette erreur (sim.tick_steps) ; l'interface l'ecrit dans
+    # kora_erreur.txt (partie.Play) puis la vide. Jamais sauvee.
+    last_trace: str | None = None
     player_dead: bool = False
     last_pressure: dict[Hex, float] = field(default_factory=dict)
     vision: object | None = None

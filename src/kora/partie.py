@@ -58,6 +58,7 @@ from src.kora.persist import (
     new_save_path,
     save_game,
     save_prefs,
+    write_error,
 )
 from src.kora.render_situations import window_hit
 from src.kora.render_village import found_hit
@@ -513,6 +514,11 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         ce que survole la souris, le dessin ; rend ("menu", message) pour
         quitter la partie, sinon None."""
         frame_start = time.perf_counter()
+        if self.state.last_trace:
+            # Une erreur de la simulation (sim.tick_steps) : sa trace va dans
+            # kora_erreur.txt, pour qu'on sache ou elle est nee.
+            write_error(f"an {self.state.clock.year}, semaine {self.state.clock.week}\n\n{self.state.last_trace}")
+            self.state.last_trace = None
         if self.mp is not None:
             # Le temps est a l'hote : il annonce les semaines, chacun les calcule.
             self.mp.pump(dt)

@@ -608,6 +608,12 @@ def _village_hexes(state, tribe_id: int) -> list:
     return [s.hex for s in _village_sites(state, tribe_id)]
 
 
+def village_tribes(state) -> set:
+    """Les peuples qui ont un village habite (un seul parcours des lieux :
+    pour qui pose la question a tous les peuples, grain.sellers)."""
+    return {s.tribe_id for s in state.sites.values() if s.kind == "village" and places.band_of(state, s) is not None}
+
+
 def has_village(state, tribe_id: int) -> bool:
     return any(
         s.kind == "village" and s.tribe_id == tribe_id and places.band_of(state, s) is not None for s in state.sites.values()

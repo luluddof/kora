@@ -24,7 +24,6 @@ from src.kora.tech import (
     TECHS,
     TROUPEAU_STEPPE_WEEKS,
     Tech,
-    _TICK_MEMO,
     _plural,
     age_of,
     bonuses,
@@ -35,6 +34,7 @@ from src.kora.tech import (
     closed,
     pan_of,
     summary,
+    tick_memo,
     voie_of,
 )
 from src.kora.types import Season, Terrain
@@ -72,7 +72,7 @@ def _lineage_all(state) -> dict:
 
 
 def _lineage_pop(state, tribe_id: int) -> int:
-    memo = _TICK_MEMO
+    memo = tick_memo()
     if memo is None:
         return _lineage_all(state).get(tribe_id, 0)
     pops = memo.get("lineage")

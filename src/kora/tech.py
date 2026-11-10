@@ -1379,6 +1379,13 @@ def invalidate() -> None:
         _TICK_MEMO.clear()
 
 
+def tick_memo() -> dict | None:
+    """Le memo de la semaine en cours (None hors d'un pas). A DEMANDER ICI a
+    chaque fois : begin_tick le remplace, un `from tech import _TICK_MEMO`
+    garderait pour toujours celui de l'import (None)."""
+    return _TICK_MEMO
+
+
 def end_tick() -> None:
     global _TICK_MEMO
     _TICK_MEMO = None
