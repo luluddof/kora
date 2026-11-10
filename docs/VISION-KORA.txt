@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-11-09.
+Derniere mise a jour : 2026-11-10.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -810,6 +810,23 @@ lente, bandes dessinees petites a taille fixe.
     bande collee au rivage (elle flottait dans la mer), les rivieres jusqu'a
     l'eau, les etangs gardes ; verifie automatiquement et sur quatre
     regions de sa planete (aucune plage en mer, aucune riviere perdue).
+2026-11-10 (0.25.2)
+  - "Fais-moi une review du projet" (deux fois, la seconde "sans tenir
+    compte des autres") : rendue en conversation (le code solide et teste ;
+    un cache inoperant, une erreur de simulation sans trace, l'achat de
+    grain trop lent ; l'interface fragile ; le monde qui ne change plus ;
+    presque aucun joueur).
+  - "Deja corrige les erreurs, puis optimise, et enfin propose des choses
+    pour ameliorer le jeu et le rendre plus profond." FAIT (0.25.2 ; spec
+    2026-11-10-corrections-optimisation-profondeur.txt) : les trois erreurs
+    corrigees, et une quatrieme trouvee en verifiant (les clans de l'IA
+    trouvaient une terre mais jamais le chemin : 6 clans erraient sans
+    fonder dans sa partie ; 4 villages naissent en deux ans) ; la
+    simulation 14 % plus legere, la meme partie a l'empreinte pres ;
+    PROPOSE : huit pistes de profondeur P1-P8 (le monde qui grandit, la
+    soudure, des evenements qui viennent au joueur, les personnages, des
+    ambitions, des savoirs qui servent tous, des peuples differents, la
+    guerre qui se voit).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -862,7 +879,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.25.1
+Version du jeu : 0.25.2
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -876,6 +893,9 @@ batiments a niveaux, les logements, le terrain, la file des chantiers, la
 page des batiments (Victoria 3 / EU5).
 Fait le 2026-10-23 (0.25.0) : B1, l'age du bronze dans l'arbre et les
 chemins de gameplay (les voies : la cite ou la steppe), le marqueur d'age.
+Fait le 2026-11-10 (0.25.2) : les erreurs de la review corrigees (memo,
+trace d'erreur, grain, clans qui ne fondaient jamais), la simulation
+allegee.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
@@ -887,6 +907,12 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 controle) se fera au chantier 4.
 
   En attente de SON choix (propose, rien de code) :
+  - P1-P8       la profondeur du jeu (le monde qui grandit, la soudure, des
+                evenements qui viennent au joueur, les personnages, des
+                ambitions, des savoirs qui servent tous, des peuples
+                differents, la guerre qui se voit) :
+                2026-11-10-corrections-optimisation-profondeur.txt ;
+                ordre propose : P2, P3, puis P1 avec l'age du bronze.
   - B2-B6       L'AGE DU BRONZE, les parts suivantes (B1 fait en 0.25.0 :
                 2026-10-23-age-du-bronze-voies.txt) : 2026-10-23-age-du-
                 bronze-propositions.txt ; ses questions QB1, QB2 (QB3 :

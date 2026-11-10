@@ -61,8 +61,6 @@ def error_path() -> Path:
 
 def write_error(text: str) -> bool:
     """Ecrit une erreur (sa trace) dans error_path ; False si le disque refuse."""
-    from src.kora import __version__
-
     path = error_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)

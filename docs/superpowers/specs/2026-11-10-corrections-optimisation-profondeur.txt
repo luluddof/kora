@@ -1,0 +1,130 @@
+Kora - Corrections, optimisation, et ce qui rendrait le jeu plus profond
+=====================================================================
+Date : 2026-11-10. Statut : FAIT (version 0.25.2) pour les corrections et
+l'optimisation ; PROPOSE pour la profondeur (section 4, en attente de son
+choix).
+
+Ses mots, apres la review du projet : "Deja corrige les erreurs, puis
+optimise, et enfin propose des choses a faire pour ameliorer le jeu et le
+rendre plus profond."
+
+
+1. LES ERREURS CORRIGEES
+-----------------------
+  - LE MEMO DE LA SEMAINE ne servait jamais a learning.py : il en gardait
+    une copie prise au chargement (vide pour toujours). Les lignees de
+    peuples etaient recalculees 2 281 fois par an au lieu de 52. Corrige :
+    tech.tick_memo() (a demander a chaque fois).
+  - UNE ERREUR DE SIMULATION perdait sa trace : la partie revenait a la
+    semaine d'avant et se mettait en pause, mais seul le message restait
+    (une ligne a l'ecran), et rejouer retombait sur la meme erreur sans
+    qu'on sache ou elle etait nee. Corrige : la trace (state.last_trace)
+    est ecrite dans kora_erreur.txt, a cote des sauvegardes, avec l'annee
+    et la semaine ; le message a l'ecran le dit.
+  - L'ACHAT DE GRAIN de l'IA reparcourait tous les lieux du monde pour
+    chaque peuple, a chaque village en disette (92 000 fois par an).
+    Corrige : goods.village_tribes, une fois par question.
+  - LES CLANS QUI NE FONDAIENT JAMAIS (trouve en verifiant) : un clan de
+    l'IA qui veut fonder son village trouvait une bonne terre a 20-40 cases,
+    mais le chemin pour y aller depassait le plafond de recherche (1 200
+    noeuds) et echouait toujours : dans sa partie (an 48), 6 clans erraient
+    depuis des annees, affames, sans jamais fonder. Plafond porte a 6 000 :
+    sur sa partie, 4 villages naissent en deux ans (112 -> 116) et la
+    population du monde monte a 32 900 en six ans (au lieu de 30 900).
+
+
+2. L'OPTIMISATION
+-----------------
+  Chaque changement rend EXACTEMENT la meme partie : l'empreinte d'une copie
+  de sa partie (an 48), prise tous les trois mois sur quatre ans, est la
+  meme avant et apres (sauf le point des clans, qui change la partie
+  volontairement).
+  - le rival du chef (events) : on ne trie plus toutes les bandes du monde,
+    seulement celles du peuple ;
+  - la terre ou fonder (ai.find_new_land) : seuls les villages a portee
+    comptent, et une recherche deja faite du meme endroit (memes villages)
+    est gardee ;
+  - la collecte (sim.collect_food) : les savoirs et le troupeau de chaque
+    peuple une fois, plus une fois par case et par bande ;
+  - les vendeurs de grain : le lien (pays, commerce, alliance) teste avant
+    la guerre et la relation ;
+  - la condition "un etranger tout pres" des evenements : la distance avant
+    la paix.
+  Mesure (temps de calcul, l'ancienne et la nouvelle version cote a cote sur
+  la meme machine, trois ans de sa partie, deux fois) : 13,0 -> 11,2
+  secondes par an (-14 %) ; la semaine mediane 172-188 -> 141 ms. Avec
+  les corrections : la vitesse 3 (6 semaines par seconde) tient, les
+  vitesses 4 et 5 pas encore en fin de partie (l'IA des bandes reste le plus
+  gros poste, 22 %).
+
+
+3. CE QUI RESTE A OPTIMISER (mesure, pas fait)
+---------------------------------------------
+  - l'IA des bandes (ai._decide) : 22 % ; la recherche d'une case ou aller
+    (_pick_hex) et les disques de cases ;
+  - la relation entre peuples (diplo.relation, _common_enemy) : 7 % ;
+  - la copie de securite de chaque semaine : 5 ms, dont 3 pour les peuples
+    (leur historique d'argent).
+  La refonte sans grille changera la plupart de ces calculs : mieux vaut
+  les reprendre a ce moment-la.
+
+
+4. CE QUI RENDRAIT LE JEU PLUS PROFOND (PROPOSE)
+-----------------------------------------------
+  Tire de ce que montrent ses parties, pas d'une liste generale.
+
+  P1  LE MONDE QUI GRANDIT. Aujourd'hui un peuple = un village, pour
+      toujours : en six ans, la carte ne change pas. Laisser un peuple
+      essaimer (un village fille qui reste lie au sien : tribut, entraide,
+      ou envie d'independance), les villages qui depassent 600 habitants
+      se scinder ou bien grossir en bourg. C'est le coeur de l'age du
+      bronze (les villes, l'explosion demographique, les points de
+      controle) : a faire avec lui.
+
+  P2  LA SOUDURE. Chaque annee, les villages vident leur grenier quelques
+      semaines avant la recolte. Au lieu d'une famine qui tombe seule : un
+      vrai choix au printemps, quand le grenier ne tiendra pas (rationner :
+      moins de naissances mais personne ne meurt ; envoyer les jeunes
+      chasser loin ; acheter ; piller un voisin ; manger les semences et
+      recolter moins). Une carte qui arrive tous les ans, differente selon
+      la situation.
+
+  P3  DES EVENEMENTS QUI VIENNENT AU JOUEUR. 65 evenements sont ecrits, le
+      joueur en voit 12 en vingt ans (1 les cinq premieres annees). Les
+      faire venir plus souvent, et surtout PARCE QUE quelque chose arrive
+      (une famine, un chef qui vieillit, un voisin qui grandit, une guerre
+      qui dure) : des suites qui font des histoires.
+
+  P4  LES PERSONNAGES. Le chef, son heritier, les chefs de clan existent deja
+      (renommee, traits, rivaux) : leur donner une vie (age, mariage avec un
+      autre peuple, ambition, mort ; une lignee qui se souvient). C'est la
+      proto-dynastie de l'age du bronze (sa part B4), et ce qui donne envie
+      de jouer "encore une generation".
+
+  P5  DES AMBITIONS. Pas de fin de partie (sa demande), mais un but a choisir
+      tous les dix ou vingt ans (soumettre un voisin, elever une pierre
+      levee, nourrir 500 personnes, ouvrir une route du sel...) : une
+      recompense en prestige, et l'IA qui en a aussi (on voit ce que veut
+      chaque peuple, a l'ecran du conseil).
+
+  P6  DES SAVOIRS QUI SERVENT TOUS. Dans sa partie, 13 savoirs des deux
+      premiers ages ne sont connus d'AUCUN des 120 peuples (les chiens,
+      l'araire, les routes, l'art du siege, chef des chefs, otages et
+      serments...) : leurs conditions sont trop rares ou l'IA ne les vise
+      pas. Les regarder un par un : soit les rendre atteignables, soit en
+      faire de vraies rarete (un tirage dit, une quete).
+
+  P7  DES PEUPLES DIFFERENTS. Les cultures (vallee, steppe, foret, cote)
+      ont des gouts ; leur donner des manieres de jouer : la steppe razzie
+      et commerce les chevaux, la cote vit de la peche et du cabotage, la
+      foret se defend chez elle. Les voies de l'age du bronze (la cite, la
+      steppe) en sont la suite.
+
+  P8  LA GUERRE QUI SE VOIT. Les guerres de l'IA sont nombreuses (14 en
+      trois ans dans sa partie) mais le joueur ne les sent pas : des
+      nouvelles (un village pris, un peuple soumis), une carte des guerres
+      qui raconte, des refugies qui arrivent chez lui.
+
+  Ordre propose : P2 et P3 d'abord (vite faits, ils changent chaque annee
+  de jeu), puis P1 avec l'age du bronze et le monde sans grille, P4 et P5
+  ensuite.

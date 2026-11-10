@@ -1,5 +1,9 @@
 ## Nouveau dans la 0.25 : l'âge du bronze
 
+- (0.25.2) **Les peuples sans village en fondent enfin un** : leurs clans trouvaient une terre mais jamais le
+  chemin pour y aller, et erraient des années. Le monde recommence à grandir. **Le jeu calcule plus vite** (environ
+  15 % en fin de partie). Une erreur de calcul est maintenant écrite dans *kora_erreur.txt*, pour qu'on la corrige.
+
 - **Un troisième âge dans l'arbre des savoirs**, l'âge du bronze : dix-huit savoirs, plus chers que ceux du
   néolithique (la fonte du cuivre, la roue, le bronze, les routes de l'étain...).
 - **Les chemins de gameplay** : à l'entrée de l'âge, l'arbre se sépare. **La cité** (canaux, briques crues, temple,

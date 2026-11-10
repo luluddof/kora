@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.25.1
+A jour pour la version : 0.25.2
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -245,9 +245,9 @@ ETAGE 4  les savoirs, les gens
     fonctions : era_of, age_of, voie_of, closed, branches_of, pan_of,
       descendants, turnings, spec_effect, start_bonus_ids, start_bonus_lines,
       start_bonus_lines_for, set_start_bonuses, update_start_bonuses,
-      bonuses_of, begin_tick, invalidate, end_tick, bonuses, bonuses_without,
-      has_effect, lines_for, move_costs, effect_lines, missing_prereqs, grant,
-      start_knowledge, summary
+      bonuses_of, begin_tick, invalidate, tick_memo, end_tick, bonuses,
+      bonuses_without, has_effect, lines_for, move_costs, effect_lines,
+      missing_prereqs, grant, start_knowledge, summary
     constantes : BASE_STOCK_WEEKS, BASE_MAX_BANDS, BASE_VISION,
       BASE_REINFORCE, BASE_WINTER_PRESTIGE, BASE_FAMINE_PRESTIGE,
       BASE_MOVE_COST, BASE_CHIEF_REACH, BASE_INFLUENCE_RADIUS,
@@ -390,10 +390,10 @@ ETAGE 5  LES SYSTEMES
       craft_status, add_block, set_teams, output, stock, supplied, villagers,
       need, made, update, rot_mult, store_weeks, winter_famine,
       stability_parts, yield_mult, army_mult, build_mult, winter_prestige,
-      forage_mult, has_village, reserve, spare, wants, offers, price,
-      price_word, all_routes, routes_of, partners, find_route, trade_distance,
-      trade_ends, trade_range, trade_load, trading_places, convoys,
-      convoys_used, open_block, open_route, level_block, set_level,
+      forage_mult, village_tribes, has_village, reserve, spare, wants, offers,
+      price, price_word, all_routes, routes_of, partners, find_route,
+      trade_distance, trade_ends, trade_range, trade_load, trading_places,
+      convoys, convoys_used, open_block, open_route, level_block, set_level,
       close_route, route_price, preview, monthly, history, last_month,
       summary, route_text, ai_crafts, ai_routes, lines, tech_lines
     constantes : TEAM, TEAM_POP, MAX_TEAMS, OUTPUT, WORKSHOP, NEED, CAP,
@@ -686,10 +686,11 @@ ETAGE 10  la sauvegarde, le reseau, les essais
 
   persist.py
     LA SAUVEGARDE : une partie en JSON, et le dossier des sauvegardes.
-    fonctions : default_save_path, multi_save_path, prefs_path, load_prefs,
-      save_prefs, saves_dir, new_save_path, list_saves, latest_save,
-      trash_save, set_aside_save, save_game, dumps_game, loads_game,
-      game_to_json, load_game, map_id, game_from_json, peek_save
+    fonctions : default_save_path, error_path, write_error, multi_save_path,
+      prefs_path, load_prefs, save_prefs, saves_dir, new_save_path,
+      list_saves, latest_save, trash_save, set_aside_save, save_game,
+      dumps_game, loads_game, game_to_json, load_game, map_id, game_from_json,
+      peek_save
     constantes : SAVE_VERSION, KEEP_ASIDE, NOT_SAVES, CORBEILLE,
       CORBEILLE_KEEP, LEVELS_VERSION
 
@@ -1221,6 +1222,8 @@ ETAGE -  l'interface (pygame)
                               d'ordre fait ce que
   test_confed.py              La confederation (confed.py) : deux peuples, un
                               seul pays au dehors.
+  test_corrections_moteur.py  Les corrections du moteur (0.25.2) : le memo de
+                              la semaine partage entre
   test_diplo.py               Diplomatie : relations lisibles, pactes,
                               propositions, diffusion.
   test_economy.py             L'economie des bandes : la famine prend une
@@ -1539,6 +1542,9 @@ ETAGE -  l'interface (pygame)
   specs/2026-11-09-sans-cases-etude.txt
     Sans cases : distances et mouvements hors de l'hexagone (ETUDE)
     Statut : ETUDIE ; IL A CHOISI la troisieme facon (N3,
+  specs/2026-11-10-corrections-optimisation-profondeur.txt
+    Corrections, optimisation, et ce qui rendrait le jeu plus profond
+    Statut : FAIT (version 0.25.2) pour les corrections et
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt
