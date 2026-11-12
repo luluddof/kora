@@ -105,6 +105,15 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
 - L'écran de **l'armée et des guerres** (onglet *Guerre* ; touche **A** : l'armée, **W** : les guerres) : lever des
   troupes dans chaque village, voir et dissoudre vos troupes ; vos guerres pays par pays, l'avantage, les buts, les
   deux camps, les troupes en campagne, les sièges, les derniers combats ; exiger la soumission, proposer une trêve.
+- L'onglet **Décisions** (touche **D**, dès le premier village) : ce que votre peuple peut décider quand il le
+  veut, par familles (les vivres, le peuple et ses chefs, le sacré, les voisins, les grands desseins). Chaque
+  décision dit ce qu'il faut (coché ou non, avec vos chiffres), ce qu'elle coûte, ce qu'elle fait, et attend
+  quelques années avant de pouvoir être reprise. **La soudure** (les semaines avant la moisson, quand le grenier
+  ne tiendra pas) : rationner jusqu'à la récolte, acheter du grain, manger les semences, lancer une **razzia** sur
+  un village voisin, **piller les routes de commerce** des autres (une troupe postée sur leur chemin prend la
+  moitié de ce qui passe, et ils s'en souviennent), organiser une grande chasse. Et aussi : la grande fête, le
+  conseil des clans, les éclaireurs, la fête des morts, les récits des anciens, un mariage, devenir le chef des
+  chefs. Les autres peuples prennent aussi leurs décisions. L'onglet s'allume quand la soudure arrive.
 - Chaque partie a **sa sauvegarde** : *Continuer* reprend la plus récente, *Charger une partie* les montre toutes
   (jouer, supprimer) ; dans la partie, *Échap* puis *Sauvegarder une copie*.
 - La **musique de guerre** (*Casus bellis*) part de son début quand vous entrez dans une **guerre déclarée** (pas
@@ -233,6 +242,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **C** | Poser un campement · **K** : y déposer des vivres |
 | **H** | Honorer un clan (il reste fidèle) · une troupe de suzerain : appeler l'ost |
 | **W** | Vos guerres (le même écran, onglet *Guerre*) |
+| **D** | Les décisions (rationner, acheter du grain, une razzia, piller une route, une fête...) |
 | **V** | Fonder un village (sur un de vos campements) |
 | **L** | Lever une troupe (depuis un village) |
 | **Z** / **U** / **I** / **R** / **X** | Modes de carte : influence / suzerains / tournants / ressources / commerce |

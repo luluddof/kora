@@ -65,7 +65,10 @@ def test_follow_ups_are_reachable_and_pulses_have_a_weight():
         if ev.trigger == "follow":
             assert ev.id in followed, ev.id
         if ev.trigger == "pulse":
-            assert ev.weight > 0, ev.id
+            # Poids 0 : devenu une decision (on choisit son moment).
+            from src.kora.decisions import REPLACED
+
+            assert ev.weight > 0 or ev.id in REPLACED, ev.id
 
 
 def test_the_player_gets_a_card_and_chooses():

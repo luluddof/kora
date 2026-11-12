@@ -22,6 +22,7 @@ from src.kora import (
     chiefs,
     commands,
     diplo,
+    decisions,
     events,
     goods,
     grain,
@@ -31,6 +32,7 @@ from src.kora import (
     places,
     render_tech,
     render_treasury,
+    render_decisions,
     render_wars,
     screens,
     situations,
@@ -128,6 +130,27 @@ class ScreenClicks:
             return
         self.ui["war_pick"] = pick
         self.open_screen("guerres")
+
+    def decisions_click(self, choice) -> None:
+        """Clic dans l'ecran des decisions : choisir une decision, un
+        filtre, une cible ; Decider (commands.py, "decide")."""
+        if choice == "dclose":
+            screens.close_all(self.ui)
+            return
+        kind, _sep, rest = choice.partition(":")
+        if kind == "dpick":
+            self.ui["dec_pick"] = rest
+        elif kind == "dfilt":
+            self.ui["dec_filter"] = rest
+        elif kind == "dtarget":
+            did, step = rest.rsplit(":", 1)
+            render_decisions.cycle_target(self.state, self.ui, did, int(step))
+        elif kind == "ddecide":
+            why = decisions.block(self.state, self.state.viewer, rest, render_decisions.target_of(self.state, self.ui, rest))
+            if why:
+                self.toast(why)
+                return
+            self.issue(commands.make(self.me(), "decide", rest, render_decisions.target_of(self.state, self.ui, rest)))
 
     def wars_click(self, choice) -> None:
         """Clic dans l'ecran de l'armee et des guerres : l'armee (lever,

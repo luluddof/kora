@@ -1,25 +1,23 @@
-## Nouveau dans la 0.25 : l'âge du bronze
+## Nouveau dans la 0.26 : les décisions
 
-- (0.25.3) **Des savoirs qui n'arrivaient jamais arrivent** : les chiens de chasse (aussi après deux ans près du
-  gibier, pas seulement par l'événement des louveteaux), les routes du sel (un peuple ami suffit, plus besoin d'un
-  allié), les bœufs (150 personnes), les torches (100) et l'art du siège (200).
-- (0.25.2) **Les peuples sans village en fondent enfin un** : leurs clans trouvaient une terre mais jamais le
-  chemin pour y aller, et erraient des années. Le monde recommence à grandir. **Le jeu calcule plus vite** (environ
-  15 % en fin de partie). Une erreur de calcul est maintenant écrite dans *kora_erreur.txt*, pour qu'on la corrige.
+- **L'onglet Décisions** (touche **D**, dès le premier village) : ce que votre peuple décide **quand il le veut**,
+  au lieu d'attendre qu'un événement tombe. Treize décisions en cinq familles (les vivres, le peuple et ses chefs,
+  le sacré, les voisins, les grands desseins). Chacune dit ce qu'il faut (coché ou non, avec vos chiffres), ce
+  qu'elle coûte, ce qu'elle fait, et se repose quelques années avant de pouvoir être reprise. Les autres peuples
+  prennent aussi les leurs.
+- **La soudure** (les semaines avant la moisson, quand le grenier ne tiendra pas) devient un choix : **rationner**
+  jusqu'à la récolte (moins de naissances, mais personne ne meurt), **acheter du grain** (dès que la soudure se
+  voit, pas seulement en pleine disette), **manger les semences**, lancer une **razzia** sur un village voisin, ou
+  **piller les routes de commerce** des autres (une troupe postée sur leur chemin prend la moitié de ce qui passe ;
+  ils s'en souviennent et ont un motif de guerre), organiser une **grande chasse**. L'onglet s'allume quand la
+  soudure arrive.
+- Et aussi : le conseil des clans et les récits des anciens (deux anciens événements, dont vous choisissez
+  maintenant le moment), la fête des morts, les éclaireurs, un mariage, la grande fête, devenir le chef des chefs.
+- **Les villages prévoient enfin juste la récolte** : la prévision se trompait de plusieurs semaines selon la
+  latitude (« la récolte dans 1 semaine », six semaines de suite) ; les villages se croyaient sauvés et mouraient
+  de faim avant la moisson. Dans une partie avancée, la faim des villages est divisée par deux.
 
-- **Un troisième âge dans l'arbre des savoirs**, l'âge du bronze : dix-huit savoirs, plus chers que ceux du
-  néolithique (la fonte du cuivre, la roue, le bronze, les routes de l'étain...).
-- **Les chemins de gameplay** : à l'entrée de l'âge, l'arbre se sépare. **La cité** (canaux, briques crues, temple,
-  grenier du temple, sceaux, palais) ou **la steppe** (chariots à quatre roues, transhumance, feutre, char léger, arc
-  composite, horde) : deux grands tournants qui naissent et se répandent comme les autres, mais adopter l'un **ferme
-  l'autre pour tout l'âge**. L'arbre montre les deux branches côte à côte, avec un « ou » ; celle que vous n'avez pas
-  prise reste visible, éteinte.
-- **Le marqueur d'âge**, à côté de la saison : votre âge (à la couleur de votre voie) ; au survol, celui du monde ;
-  un clic ouvre l'arbre.
-- **Des événements** : « Les deux chemins » (le conseil se dispute : bâtir ou suivre les bêtes), « Le fondeur
-  étranger », « Les premières rues », « Le premier grand départ ».
-- Les autres peuples choisissent la voie qui va à leur façon de vivre. Vos parties continuent telles quelles.
-- (0.25.1) L'onglet de la voie passe sur le bord haut des cartes de l'arbre : il ne cache plus la fin des noms.
+Et dans la 0.25 : l'âge du bronze (dix-huit savoirs, les chemins de la cité ou de la steppe, le marqueur d'âge) ; des savoirs qui n'arrivaient jamais (0.25.3) ; des clans qui fondent enfin leur village, un jeu plus rapide, les erreurs écrites dans *kora_erreur.txt* (0.25.2).
 
 Et dans la 0.24 : les bâtiments à niveaux (les logements, le terrain, la file des chantiers, la page des bâtiments), le conseil des peuples ; le tutoriel à l'écran titre (0.24.1).
 

@@ -203,15 +203,32 @@ def rot_mult(state, site) -> float:
 # recolte avec FOOD_SAFE_WEEKS semaines de marge ; aucune s'il sera vide.
 FOOD_SAFE_WEEKS = 6.0
 FOOD_LOW_GROWTH = 0.0
+# Le rationnement de la soudure (decisions.py) : la part de chacun.
+RATION = 0.75
 FORAGE_MEMORY = 0.1
 
 
 _NEXT_SEASON = {Season.HIVER: Season.PRINTEMPS, Season.PRINTEMPS: Season.ETE, Season.ETE: Season.AUTOMNE, Season.AUTOMNE: Season.HIVER}
 
 
+# La semaine ou l'automne commence au calendrier (Clock.season) : il part
+# des poles et gagne l'equateur rangee par rangee (World.season_lag).
+AUTUMN_WEEK = 27
+
+
+def harvest_in(state, site) -> int:
+    """Les semaines (les pas du jeu) jusqu'a la prochaine recolte : l'automne
+    arrive ici AUTUMN_WEEK + son retard de latitude (1 a 52)."""
+    at = AUTUMN_WEEK + state.world.season_lag(site.hex, True)
+    left = (at - state.clock.week) % 52
+    return left or 52
+
+
 def _to_harvest(state, site) -> list:
     """[(saison, semaines)] jusqu'a la prochaine recolte (debut de l'automne
-    local)."""
+    local). Les saisons locales ne durent pas 13 semaines pile (le front
+    avance par latitudes) : le total est celui de harvest_in, la derniere
+    saison avant l'automne prend ce qui reste."""
     season = state.world.hex_season(site.hex)
     since = site.data.season_at
     if since is None:
@@ -223,6 +240,11 @@ def _to_harvest(state, site) -> list:
     while nxt is not Season.AUTOMNE:
         out.append((nxt, 13))
         nxt = _NEXT_SEASON[nxt]
+    total = harvest_in(state, site)
+    while len(out) > 1 and sum(w for _s, w in out[:-1]) >= total:
+        out.pop()
+    done = sum(w for _s, w in out[:-1])
+    out[-1] = (out[-1][0], max(1, total - done))
     return out
 
 
@@ -250,8 +272,13 @@ def food_outlook(state, site, band) -> tuple[int, float]:
     fish = goods.output(state, site, "pecheurs")
     food = band.stock
     total = 0
+    # Le rationnement (decisions.py) : chacun mange RATION de sa part.
+    tribe = state.tribes.get(band.tribe_id)
+    rationed = max(0, tribe.ration_until - state.tick_count) if tribe is not None else 0
     for season, weeks in _to_harvest(state, site):
-        food += weeks * (memo.get(season.value, here) + fish - pop)
+        lean = min(weeks, rationed)
+        rationed -= lean
+        food += weeks * (memo.get(season.value, here) + fish) - pop * (weeks - lean + lean * RATION)
         total += weeks
     return total, food / pop
 

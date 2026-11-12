@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-11-10.
+Derniere mise a jour : 2026-11-11.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -837,6 +837,26 @@ lente, bandes dessinees petites a taille fixe.
     dans sa partie ; routes du sel : 0 -> 22), le hasard du monde garde ;
     PROPOSE pour 3 : deux maquettes de l'onglet Decisions sur SA partie
     (A le registre, B les cartes) ; EXPLIQUE 2, 4, 8 (meme spec).
+2026-11-11 (0.26.0)
+  - "Cette interface est meilleure que l'autre" (la maquette A) ; la
+    soudure : "rationner (moins de naissances, mais personne ne meurt),
+    acheter du grain, manger les semences (pas de famine, mais une recolte
+    moindre), ou tenter du pillage : aller dans un autre village avec une
+    troupe qui sert pour le pillage (des villages ou des routes
+    commerciales)" ; les personnages : "j'aime bien, ca peut creer des
+    conflits de succession ou autre (ou des unions)" ; la guerre qui se
+    voit : "j'aime pas tant comme ca". FAIT (0.26.0 ; spec
+    2026-11-11-onglet-decisions-soudure.txt) : l'onglet Decisions (touche
+    D), treize decisions en cinq familles, avec conditions, cout, effets,
+    repos, cible ; l'IA decide aussi ; deux evenements deviennent des
+    decisions (le grand rassemblement, le dernier des anciens) ; la soudure
+    entiere (rationner, acheter du grain des la soudure, manger les
+    semences, une razzia sur un village, piller les routes de commerce, une
+    grande chasse). En verifiant, la vraie cause des faims de la soudure :
+    la prevision des villages se trompait de recolte (jusqu'a six semaines
+    chez lui), corrigee. Dans sa partie, un an : la faim des villages
+    divisee par deux, son village jamais affame. Les personnages : A FAIRE
+    ensuite.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -889,7 +909,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.25.3
+Version du jeu : 0.26.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -906,6 +926,10 @@ chemins de gameplay (les voies : la cite ou la steppe), le marqueur d'age.
 Fait le 2026-11-10 (0.25.2) : les erreurs de la review corrigees (memo,
 trace d'erreur, grain, clans qui ne fondaient jamais), la simulation
 allegee.
+Fait le 2026-11-10 (0.25.3) : les savoirs qui n'arrivaient jamais.
+Fait le 2026-11-11 (0.26.0) : l'onglet Decisions (la maquette A) et la
+soudure (rationner, grain, semences, razzia, routes pillees, chasse) ; la
+prevision de la recolte juste a chaque latitude.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
@@ -916,17 +940,26 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 2026-11-09-monde-sans-grille-plan.txt. B3 (points de
                 controle) se fera au chantier 4.
 
+  DEMANDE, A FAIRE ENSUITE :
+  - PERSONNAGES  "des conflits de succession, ou des unions" : l'age, la
+                famille, les heritiers, des mariages qui font des epoux et
+                des enfants, des decisions qui s'y rattachent
+                (2026-11-10-decisions-savoirs-profondeur.txt, section 4 ;
+                2026-11-11-onglet-decisions-soudure.txt, section 3).
+
   En attente de SON choix (propose, rien de code) :
-  - DECISIONS   l'onglet Decisions (maquettes A le registre, B les cartes)
-                et les evenements qui viennent au joueur ; puis la soudure,
-                les personnages, la guerre qui se voit :
-                2026-11-10-decisions-savoirs-profondeur.txt.
+  - DECISIONS+  d'autres evenements qui deviendraient des decisions (la
+                fete des moissons, une source sacree, ouvrir une mine), les
+                evenements qui viennent au joueur ; la guerre qui se voit
+                ("j'aime pas tant comme ca" : a reprendre autrement) :
+                2026-11-11-onglet-decisions-soudure.txt, section 3.
   - P1-P8       la profondeur du jeu (le monde qui grandit, la soudure, des
                 evenements qui viennent au joueur, les personnages, des
                 ambitions, des savoirs qui servent tous, des peuples
                 differents, la guerre qui se voit) :
                 2026-11-10-corrections-optimisation-profondeur.txt ;
-                ordre propose : P2, P3, puis P1 avec l'age du bronze.
+                P2 (la soudure) fait en 0.26.0, P6 en 0.25.3 ; P1 "plus
+                tard" ; P4 demande (PERSONNAGES).
   - B2-B6       L'AGE DU BRONZE, les parts suivantes (B1 fait en 0.25.0 :
                 2026-10-23-age-du-bronze-voies.txt) : 2026-10-23-age-du-
                 bronze-propositions.txt ; ses questions QB1, QB2 (QB3 :

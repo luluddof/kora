@@ -129,12 +129,13 @@ def quote(state, tid: int, site_id: int) -> dict:
     room = stock_max(band, state) - band.stock
     planned = not in_dearth(state, band)
     if planned:
-        lack = shortfall(state, band)
-        if lack <= 0:
+        # La soudure en vue : de quoi arriver a la recolte avec PLAN_MARGIN
+        # semaines de vivres (decisions.py : "Acheter du grain").
+        margin = villages.food_outlook(state, site, band)[1]
+        if margin >= PLAN_MARGIN:
             out["why"] = f"Pas de disette : le village a plus de {DEARTH_WEEKS} semaines de vivres, et tiendra jusqu'à la récolte"
             return out
-        # La disette en vue : de quoi tenir jusqu'a la recolte, et un peu.
-        want = min((lack + PLAN_MARGIN) * band.population, room)
+        want = min((PLAN_MARGIN - margin) * band.population, room)
     else:
         want = min(GRAIN_WEEKS * band.population - band.stock, room)
     out["planned"] = planned

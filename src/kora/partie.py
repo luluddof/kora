@@ -112,6 +112,12 @@ def fresh_ui() -> dict:
         "country_tab": "lois",
         "law_confirm": None,
         "levy": "troupe",
+        # L'ecran des decisions (render_decisions.py) : ouvert, la decision
+        # choisie, le filtre, la cible de chacune.
+        "decisions_open": False,
+        "dec_pick": None,
+        "dec_filter": "toutes",
+        "dec_target": {},
         # Multijoueur : cartes deja repondues (la reponse est en route).
         "answered": set(),
     }
@@ -241,7 +247,7 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         # Les clics de chaque grand ecran (screens.SCREENS).
         self.screen_clicks = {
             "village": self.village_click, "commerce": self.trade_click, "tresor": self.treasury_click, "pays": self.country_click,
-            "guerres": self.wars_click,
+            "guerres": self.wars_click, "decisions": self.decisions_click,
         }
         assert set(self.screen_clicks) == set(screens.BY_NAME)
         # Une partie guidee (le menu : Tutoriel) : la fiche du tutoriel s'ouvre.

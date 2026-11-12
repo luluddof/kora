@@ -128,6 +128,7 @@ from src.kora.peoples import (
 from src.kora.mapgen import generate_world
 from src.kora.villages import food_mult, growth_mult, note_forage, store_weeks, winter_famine_mult
 from src.kora.places import site_of
+from src.kora.decisions import RATION
 from src.kora.bands import (  # noqa: F401
     SPLIT_MIN_POP,
     _absorb,
@@ -532,9 +533,13 @@ def collect_food(state: GameState) -> None:
             if site is not None:
                 note_forage(state, site, gained[band.id])
     losses: dict[int, int] = {}
+    # Le rationnement (decisions.py, la soudure) : chacun mange moins jusqu'a
+    # la recolte.
+    now = state.tick_count
+    rationed = {tid for tid, t in state.tribes.items() if t.ration_until > now}
     for band in state.bands.values():
         take = gained.get(band.id, 0.0)
-        need = band.population * 1.0
+        need = band.population * (RATION if band.tribe_id in rationed else 1.0)
         available = band.stock + take
         if available >= need:
             band.stock = min(stock_max(band, state), available - need)

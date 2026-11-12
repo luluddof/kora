@@ -603,10 +603,30 @@ class World:
                     break
         self._season_frontier = frontier
 
+    def season_steps(self) -> int:
+        """Les rangees que le front d'une saison gagne chaque semaine."""
+        return max(8, self.height // 16)
+
+    def season_lag(self, h: Hex, from_poles: bool) -> int:
+        """Les semaines entre le debut d'une saison au calendrier et son
+        arrivee sur cette case (l'automne et l'hiver partent des poles, le
+        printemps et l'ete de l'equateur ; villages._to_harvest)."""
+        idx = self._index(h)
+        if idx is None:
+            return 0
+        row = idx[1]
+        if from_poles:
+            d = min(row, self.height - 1 - row)
+        else:
+            mid = self.height // 2
+            d = max(0, min(abs(row - mid), abs(row - (mid - 1)), abs(row - (mid + 1))))
+        steps = self.season_steps()
+        return max(0, -(-d // steps) - 1)
+
     def spread_season(self, target: Season, steps: int | None = None) -> int:
         code = _SEASON_INDEX[target]
         if steps is None:
-            steps = max(8, self.height // 16)
+            steps = self.season_steps()
         frontier = list(self._season_frontier)
         changed = 0
         for _ in range(steps):

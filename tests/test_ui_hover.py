@@ -68,6 +68,9 @@ def test_every_screen_survives_the_mouse_everywhere(monkeypatch):
         screens.append((panel, {}))
     # L'armee et les guerres : un seul grand ecran (le volet de l'armee).
     screens.append((None, {"wars_open": True, "war_pick": "armee"}))
+    # Les decisions : la liste, une fiche avec cible, un filtre.
+    screens.append((None, {"decisions_open": True, "dec_pick": "razzia"}))
+    screens.append((None, {"decisions_open": True, "dec_pick": "mariage", "dec_filter": "manque"}))
     for page in ("village", "batiments", "metiers", "chef"):
         screens.append((None, {"village_open": mine[0].id, "village_page": page}))
     screens.append((None, {"trade_open": True, "trade_partner": others[0]}))

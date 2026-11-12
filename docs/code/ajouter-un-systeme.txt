@@ -35,7 +35,7 @@ bas au plus haut :
        learning, bands, chiefs, sites, influence, production, diplo, guerre,
        goods, money, approach, numbers, laws, chiefdom, confed, memory, draws,
        turning, villages, batiments, troupes, battle, siege, ost, grain,
-       casus, situations, events, events_data
+       casus, situations, events, decisions, events_data
   6  l'IA des bandes, les ordres
        ai_war, orders, wars
   7  l'IA
@@ -49,10 +49,10 @@ bas au plus haut :
   -  l'interface (pygame)
        app, globe, globe_draw, layout, look, music, partie, partie_carte,
        partie_ecrans, render, render_batiments, render_battle, render_country,
-       render_menu, render_numbers, render_panels, render_peuples,
-       render_situations, render_tech, render_trade, render_treasury,
-       render_tutoriel, render_village, render_wars, screens, theme,
-       tree_graph, tutoriel
+       render_decisions, render_menu, render_numbers, render_panels,
+       render_peuples, render_situations, render_tech, render_trade,
+       render_treasury, render_tutoriel, render_village, render_wars, screens,
+       theme, tree_graph, tutoriel
 <<< fin auto >>>
 
   - Les systemes (etage 5) s'appellent entre eux : ils s'importent alors
@@ -198,6 +198,11 @@ La carte du depot (section 4) donne cet ordre en detail.
   - Un memo partage entre modules se DEMANDE a chaque fois (tech.tick_memo()),
     jamais `from tech import _TICK_MEMO` : l'import garde la valeur du
     chargement (None), et le memo ne sert jamais (0.25.2).
+  - La saison locale ne dure pas 13 semaines : le front avance par
+    latitudes (World.season_lag) ; le temps jusqu'a la recolte se lit par
+    villages.harvest_in, jamais "13 - semaines depuis le debut de la
+    saison" (la prevision disait "dans 1 semaine" six semaines de suite, et
+    les villages mouraient a la soudure ; 0.26.0).
   - Une erreur de la simulation garde sa trace (state.last_trace) ;
     l'interface l'ecrit dans kora_erreur.txt (persist.write_error) (0.25.2).
   - Un plafond de recherche de chemin (max_nodes) se verifie sur une vraie
@@ -312,6 +317,19 @@ La carte du depot (section 4) donne cet ordre en detail.
   - Une decision IA qui coute des vivres ou des bras regarde d'abord
     villages.food_outlook (la marge a la recolte) ; un metier IA ne prend
     jamais les bras des champs (goods._keeps_hands ; 0.17.0).
+  - UNE DECISION (l'onglet Decisions, decisions.py ; 0.26.0) : une ligne
+    Decision dans decisions._build (famille, icone de data/icons, texte,
+    conditions [(texte avec les chiffres du peuple, rempli)], cout, effets,
+    prise, repos en annees, cibles, envie de l'IA). Elle se prend par
+    decisions.take (l'ordre "decide"), jamais a la main : le repos et l'IA
+    en dependent. Un effet qui dure : une cle de decisions.EFFECTS, posee
+    par _set_effect (il compte comme un savoir, "dec:..."). Un evenement
+    devenu decision garde son texte mais prend le poids 0 (events : les
+    impulsions de poids 0 ne tombent plus) et son id va dans `replaces`.
+    L'ecran (render_decisions) calcule les fiches une fois par semaine et
+    par choix de cible, jamais a chaque image.
+  - Ce qui arrive a une route chaque mois, apres le passage des porteurs
+    (le pillage), passe par systems.ROUTE_RAIDS (0.26.0).
   - Un batiment a un NIVEAU (places.level ; VillageData.buildings : id ->
     niveau). Son effet se lit par batiments.value(site, id, cle, defaut),
     jamais par has() suivi d'un chiffre en dur : la table batiments.VALUES
@@ -495,11 +513,12 @@ seulement si le decoupage rend le systeme plus simple a changer) :
   diplo.py               ~1500 lignes
   render_village.py      ~1400 lignes
   events_data.py         ~1400 lignes
-  battle.py              ~1300 lignes
   sim.py                 ~1300 lignes
-  goods.py               ~1200 lignes
+  battle.py              ~1300 lignes
   world.py               ~1200 lignes
+  goods.py               ~1200 lignes
   villages.py            ~1200 lignes
+  decisions.py           ~1000 lignes
 <<< fin auto >>>
 
   - Les systemes de l'etage 5 forment encore un cercle (ils s'importent en

@@ -1,0 +1,127 @@
+Kora - L'onglet Decisions et la soudure
+=======================================
+Date : 2026-11-11. Statut : FAIT (version 0.26.0).
+
+Sa demande (reponse aux maquettes du 2026-11-10,
+2026-11-10-decisions-savoirs-profondeur.txt) :
+  "Cette interface est meilleure que l'autre" (la maquette A, le registre) ;
+  la soudure : "rationner : moins de naissances, mais personne ne meurt /
+  acheter du grain / manger les semences : pas de famine, mais une recolte
+  moindre / ou tenter du pillage, donc aller dans un autre village avec une
+  troupe qui sert pour le pillage (des villages ou des routes
+  commerciales)" ;
+  les personnages : "j'aime bien, ca peut creer des conflits de succession
+  ou autre (ou des unions)" (A FAIRE ensuite) ;
+  la guerre qui se voit : "j'aime pas tant comme ca" (en suspens) ;
+  le monde qui grandit : "plus tard".
+
+
+1. L'ONGLET DECISIONS (la maquette A, dans le jeu)
+-------------------------------------------------
+  Un grand ecran, comme celui des guerres : touche D, et un onglet
+  "Decisions" sur le rail (avec le premier village, ou des qu'une decision
+  est possible ; il respire quand la soudure est la).
+    - en haut, les filtres : toutes, possibles, il manque, en repos ;
+    - a gauche, la liste par familles (les vivres, le peuple et ses chefs,
+      le sacre, les voisins, les grands desseins) : l'icone, ce qui manque
+      ou ce que ca fait, l'etat ("Possible", "Il manque 2", "En repos :
+      3 ans") ;
+    - a droite, la fiche : le texte, CE QU'IL FAUT (coche verte ou croix
+      rouge, avec les chiffres de son peuple), LA CIBLE (un village, une
+      route, un peuple : les fleches pour changer), CE QUE CA COUTE, CE QUE
+      CA FAIT, le repos, le bouton Decider (au survol, s'il est eteint : ce
+      qui manque).
+  Une decision a un nom, une famille, un texte, des conditions, un cout,
+  des effets, un repos (on ne la reprend pas avant N ans), parfois une
+  cible ; l'IA prend les siennes avec les memes regles (une par mois au
+  plus, celle qui lui va le mieux). Tout passe par l'ordre "decide"
+  (multijoueur compris).
+  Les treize decisions :
+    LES VIVRES
+      Rationner jusqu'a la recolte - le grenier est trop juste (moins de 2
+        semaines de marge a la recolte) : chacun mange les trois quarts de
+        sa part jusqu'a la moisson ; naissances -50 %, stabilite -2.
+      Acheter du grain - un peuple qui vend (accord de commerce, allie, son
+        pays), un tresor ; maintenant possible des que la soudure se voit
+        (pas seulement en disette) : de quoi arriver a la recolte avec
+        2 semaines de marge, moins cher qu'en pleine disette.
+      Manger les semences - pas de faim tout de suite, moins de champs aux
+        semailles.
+      Une razzia sur un village - une troupe (le quart des hommes) marche
+        sur un village a moins de 15 cases ; entre peuples qui ont la
+        diplomatie, la guerre est declaree d'abord ; vaincu, le village est
+        pille ou soumis (le choix qui existait deja).
+      Piller les routes de commerce - une troupe se poste sur une route
+        d'autres peuples (ni allies ni tributaires, a moins de 12 cases) :
+        chaque mois, la moitie de ce qui passe ; les deux peuples de la
+        route s'en souviennent (relation -15 a chaque pillage, "Ils ont
+        pille vos porteurs") et ont un motif de guerre pendant deux ans.
+        La troupe pille tant qu'elle reste a moins de 2 cases de la route ;
+        celles de l'IA rentrent quand la faim est passee.
+      Organiser une grande chasse - du gibier a moins de 6 cases, 40
+        chasseurs : 2 a 5 semaines de vivres, quelques chasseurs perdus ;
+        repos 1 an.
+    LE PEUPLE ET SES CHEFS
+      Donner une grande fete (celle du chef, deja dans le jeu).
+      Reunir le conseil des clans - 2 clans au moins : l'attachement de
+        chaque clan +10 ; repos 3 ans. REMPLACE l'evenement du grand
+        rassemblement (il ne tombe plus au hasard).
+      Envoyer des eclaireurs - la carte se decouvre a 22 cases, les peuples
+        a 34 cases sont rencontres ; repos 2 ans.
+    LE SACRE
+      La fete des morts - le culte des ancetres : stabilite +4 pendant deux
+        ans, prestige +3 ; repos 5 ans.
+      Recueillir les recits des anciens - recherche +10 % pendant un an ;
+        repos 5 ans. REMPLACE l'evenement du dernier des anciens.
+    LES VOISINS
+      Proposer un mariage - un peuple cordial : relation +20 des deux
+        cotes (le mariage d'aujourd'hui ; les personnages viendront le
+        rendre vivant : des epoux, des enfants, des successions).
+    LES GRANDS DESSEINS
+      Devenir le chef des chefs - le savoir, 3 tributaires, prestige 80 :
+        un tributaire de plus possible, attachement +5, pour toujours.
+
+
+2. LA SOUDURE : CE QUI CLOCHAIT VRAIMENT
+----------------------------------------
+  En verifiant dans sa partie, une erreur de la prevision des villages : la
+  saison avance sur la planete par latitudes (l'automne part des poles et
+  gagne l'equateur rangee par rangee) ; la prevision supposait des saisons
+  locales de 13 semaines pile. Chez lui, la recolte vient a la semaine 33,
+  6 semaines apres l'automne du calendrier : de la semaine 26 a la semaine
+  32, la prevision disait "la recolte dans 1 semaine". Le village se
+  croyait sauve : les naissances ne ralentissaient pas, le grain ne
+  s'achetait pas, puis la faim tuait (54 personnes chez lui en un an dans
+  la simulation sans rien faire).
+  Maintenant (villages.harvest_in, World.season_lag) : la vraie semaine de
+  la recolte de chaque latitude (verifiee sur neuf latitudes de sa
+  planete) ; des la semaine 12, son village sait qu'il manquera une
+  semaine de vivres.
+
+  Verifie sur SA partie (an 48), un an puis quatre :
+                         faim dans les villages   son village     le monde
+    0.25.3               429 semaines (1 an)      200 -> 185      27 533 -> 27 538
+                         1 551 (4 ans)            8 sem. de faim  -> 31 231
+    0.26.0, il rationne  206 (1 an)               200 -> 231      -> 30 264
+                         669 (4 ans)              jamais faim     -> 38 358
+  Le monde grandit plus (la faim ne fauche plus ce qui nait), de moins en
+  moins vite : +10 %, +12 %, +8 %, +5 % d'une annee a l'autre. L'IA, en
+  quatre ans : 108 rationnements, 45 grandes chasses, 83 mariages, 15 routes
+  pillees, 11 conseils des clans, 114 recits des anciens.
+  Ce que coutent les decisions de l'IA : 3,3 s sur 42 s de simulation en
+  quatre ans (8 %) ; la recherche des mariages se fait un mois sur six par
+  peuple, les cibles se gardent le temps d'une semaine.
+
+
+3. CE QUI VIENT ENSUITE
+----------------------
+  - LES PERSONNAGES (sa reponse : "des conflits de succession, ou des
+    unions") : l'age, la famille, les heritiers, les mariages qui font des
+    epoux et des enfants ; d'autres decisions s'y rattacheront (designer
+    un heritier, legitimer un batard, une union entre deux lignees).
+  - Les evenements qui viennent au joueur (la piste 3) : plus souvent, et
+    PARCE QUE quelque chose arrive.
+  - D'autres evenements qui deviendraient des decisions : la fete des
+    moissons, faire d'une source un lieu sacre, ouvrir une mine.
+  - La guerre qui se voit : "j'aime pas tant comme ca" - a reprendre
+    autrement, quand il le dira.

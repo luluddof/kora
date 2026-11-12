@@ -58,6 +58,8 @@ MONTHLY = (
     "confed.monthly",
     "events.monthly",
     "situations.monthly",
+    # Les decisions : les effets finis s'en vont, l'IA prend les siennes.
+    "decisions.monthly",
 )
 
 STABILITY = (
@@ -77,6 +79,10 @@ FLEE = ("money.flee_mult",)
 # l'ost rejoint son suzerain, les sieges durent ou sont leves, les villages
 # IA en disette achetent du grain.
 WEEKLY = ("ost.weekly", "siege.weekly", "grain.ai_weekly", "troupes.warn_supply")
+
+# Chaque mois, apres le passage des porteurs d'une route (goods.monthly) :
+# les troupes postees dessus prennent leur part ; (state, route).
+ROUTE_RAIDS = ("decisions.seize",)
 
 # Ce qui change la defense d'un village (villages.defense_parts) ;
 # (state, bande du village, peuple qui attaque ou 0) -> [(libelle, x)].
@@ -109,6 +115,8 @@ EFFECT_FIELDS = (
     "numbers.effect_ids",
     # Les bonus des berceaux des grands tournants.
     "turning.effect_ids",
+    # Ce que laissent les decisions (le rationnement, la fete des morts...).
+    "decisions.effect_ids",
 )
 
 EFFECT_SPECS = {
@@ -116,6 +124,7 @@ EFFECT_SPECS = {
     "base:": "numbers.effect_specs",
     "op:": "numbers.effect_specs",
     "berceau:": "turning.effect_specs",
+    "dec:": "decisions.effect_specs",
 }
 
 # Ce que dit un savoir, en plus de ses effets (tech.effect_lines) ;

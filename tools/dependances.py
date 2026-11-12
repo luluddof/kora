@@ -43,7 +43,7 @@ LAYERS = (
     #    cercle, sinon dans la fonction), de preference par systems.py
     (
         "learning", "bands", "chiefs", "sites", "influence", "production", "diplo", "guerre", "goods", "money", "approach",
-        "numbers", "laws", "chiefdom", "confed", "memory", "draws", "turning", "villages", "batiments", "troupes", "battle", "siege", "ost", "grain", "casus", "situations", "events",
+        "numbers", "laws", "chiefdom", "confed", "memory", "draws", "turning", "villages", "batiments", "troupes", "battle", "siege", "ost", "grain", "casus", "situations", "events", "decisions",
         "events_data",
     ),
     # 6. l'IA et les ordres des bandes

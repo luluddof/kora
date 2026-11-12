@@ -986,6 +986,9 @@ def monthly(state) -> None:
     for key in sorted(by_pair):
         _run_pair(state, by_pair[key])
         for r in by_pair[key]:
+            # Les pillards postes sur la route (systems.ROUTE_RAIDS).
+            for path in systems.ROUTE_RAIDS:
+                systems.fn(path)(state, r)
             if r.units > 0:
                 delivered.add(key)
                 if _player_in(state, r):

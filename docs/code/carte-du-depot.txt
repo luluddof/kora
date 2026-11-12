@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.25.3
+A jour pour la version : 0.26.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -86,7 +86,8 @@ par theme).
     11. sim.update_influence ; chaque mois : systems.MONTHLY (dans l'ordre
         du tableau : diplomatie, commerce, production, chefferie, nombres,
         argent, chefs, approches, tournants, tirages, IA diplomatique,
-        motifs de guerre, confederations, evenements, situations)
+        motifs de guerre, confederations, evenements, situations,
+        decisions : les effets finis, les pillards des routes, l'IA)
     12. events.weekly, sim.update_prestige, learning.update_learning
     13. vision.recompute_vision, memory.update, les ennemis apercus
     14. ai.decide_ai              les ordres de l'IA pour la semaine suivante
@@ -121,7 +122,7 @@ ETAGE 0  les briques
   systems.py
     LE TABLEAU DES SYSTEMES : qui intervient, quand, et sur quoi.
     fonctions : fn, run, parts, total, apply_mult
-    constantes : MONTHLY, STABILITY, ARMY_MORALE, FLEE, WEEKLY,
+    constantes : MONTHLY, STABILITY, ARMY_MORALE, FLEE, WEEKLY, ROUTE_RAIDS,
       VILLAGE_DEFENSE, VILLAGE_FOOD, STOCK_WEEKS, BUILD_SPEED, CRAFT_OUTPUT,
       EFFECT_FIELDS, EFFECT_SPECS, TECH_LINES, EVENT_VOCABULARY, BAND_SPLIT,
       BAND_MERGE, MERGE_ALLOWED, SIGHT, EMANCIPATED
@@ -488,24 +489,25 @@ ETAGE 5  LES SYSTEMES
   villages.py
     Villages : une bande qui s'installe.
     classes : Oath
-    fonctions : stock_weeks, store_weeks, rot_mult, weeks_to_harvest,
-      note_forage, food_outlook, granary_growth, growth_mult, crowd_share,
-      crowd_growth, herd_mult, food_mult, winter_famine_mult, yield_mult,
-      wall_parts, defense_parts, defense_mult, winter_prestige, loyalty_parts,
-      nearest_village, stability_parts, stability, stability_word,
-      stability_growth, fertility, land_profile, choose_fields, hands_mult,
-      field_hands_mult, expected_harvest, sow, harvest, found_block,
-      propose_name, found, seat_chiefs, ai_oath, found_preview, leave_block,
-      leave, update, eat_seed, pillaged, lost, field_site, soil_avg,
-      next_step, lines, occupations, free_for_craft, occupation_lines
+    fonctions : stock_weeks, store_weeks, rot_mult, harvest_in,
+      weeks_to_harvest, note_forage, food_outlook, granary_growth,
+      growth_mult, crowd_share, crowd_growth, herd_mult, food_mult,
+      winter_famine_mult, yield_mult, wall_parts, defense_parts, defense_mult,
+      winter_prestige, loyalty_parts, nearest_village, stability_parts,
+      stability, stability_word, stability_growth, fertility, land_profile,
+      choose_fields, hands_mult, field_hands_mult, expected_harvest, sow,
+      harvest, found_block, propose_name, found, seat_chiefs, ai_oath,
+      found_preview, leave_block, leave, update, eat_seed, pillaged, lost,
+      field_site, soil_avg, next_step, lines, occupations, free_for_craft,
+      occupation_lines
     constantes : FIELD_WORKERS, MAX_FIELDS, FIELD_RADIUS, FIELD_FOOD, SEED,
       LATE_SOW, STORE_WEEKS, GROWTH, SOIL_LOSS, SOIL_REST, GRAIN_ROT, BURNED,
       DISEASE_POP, FLOOD_CHANCE, MIN_FOUND_POP, FIELD_HANDS, HISTORY,
       FIRST_VILLAGE_PRESTIGE, LOSE_BUILDING, ALERT_RANGE, ALERT_EVERY,
       FERTILITY, OATHS, OATH_ORDER, AI_OATH, FOOD_SAFE_WEEKS, FOOD_LOW_GROWTH,
-      FORAGE_MEMORY, CROWD_GROWTH, CROWD_GROWTH_MIN, CROWD_FEVER, WILD_HERD,
-      RIVER_FIELDS, RIVER_IRRIGATION, STABILITY_BASE, UNREST, UNREST_SHARE,
-      UNREST_MIN_POP, UNREST_JOIN_RANGE, SOW_KEEP_WEEKS
+      RATION, FORAGE_MEMORY, AUTUMN_WEEK, CROWD_GROWTH, CROWD_GROWTH_MIN,
+      CROWD_FEVER, WILD_HERD, RIVER_FIELDS, RIVER_IRRIGATION, STABILITY_BASE,
+      UNREST, UNREST_SHARE, UNREST_MIN_POP, UNREST_JOIN_RANGE, SOW_KEEP_WEEKS
 
   batiments.py
     LES BATIMENTS D'UN VILLAGE, A PLUSIEURS NIVEAUX (refonte du 2026-10-18,
@@ -611,6 +613,23 @@ ETAGE 5  LES SYSTEMES
       hook, monthly, weekly, copy_book, to_json, from_json
     constantes : PLAYER_GAP, AI_GAP, PULSE_CAP, MAX_PENDING, MOOD_COLORS,
       EVENTS, EFFECT_TEXT, OFFERS
+
+  decisions.py
+    LES DECISIONS (l'onglet Decisions, a la Crusader Kings 3, Europa
+    Universalis 5, Victoria 3 ; sa demande du 2026-11-10).
+    classes : Decision
+    fonctions : forget, resting, rationing, seize, targets_of, pick_target,
+      needs, status, block, take, possible_count, soudure_alert, monthly,
+      ai_monthly, effect_ids, effect_specs
+    constantes : WEEKS_PER_YEAR, RATION, LEAN_MARGIN, RATION_GROWTH,
+      RATION_STABILITY, RAID_RANGE, ROUTE_REACH, ROUTE_POST, ROUTE_SEIZE,
+      ROUTE_RELATION, ROUTE_CASUS_WEEKS, HUNT_RADIUS, HUNT_MIN_MEN,
+      HUNT_WEEKS, HUNT_AI, ROUTE_AI, COUNCIL_FOOD_WEEKS, COUNCIL_LOYALTY,
+      SCOUTS_POP, SCOUTS_FOOD, SCOUTS_RADIUS, SCOUTS_CONTACT,
+      DEAD_FEAST_FOOD_WEEKS, MARRIAGE_FOOD_WEEKS, MARRIAGE_RELATION,
+      MARRIAGE_EVERY, MARRIAGE_AI, FRIEND, HIGH_CHIEF_VASSALS,
+      HIGH_CHIEF_PRESTIGE, HIGH_CHIEF_COST, TALES_WINTERS, FOREVER, FAMILIES,
+      EFFECTS, DECISIONS, REPLACED
 
   events_data.py
     Les evenements de l'age tribal (donnees). Moteur : events.py.
@@ -755,8 +774,8 @@ ETAGE -  l'interface (pygame)
       TREE_PAD, TREE_GUTTER, TREE_COL, TREE_ROW, TREE_NODE_W, TREE_NODE_H,
       TREE_COLHEAD, TREE_BAND, TREE_TURN_ROW, TREE_TURN_H, TREE_ZOOM_MAX,
       TREE_ZOOM_STEP, TECH_ROW_H, TECH_GUTTER, SIDE_TABS, COMMERCE_TAB,
-      TREASURY_TAB, COUNTRY_TAB, WARS_TAB, SWORD_LIFT, STACK_SHIFT,
-      HEADING_LOOKAHEAD
+      TREASURY_TAB, COUNTRY_TAB, WARS_TAB, DECISIONS_TAB, SWORD_LIFT,
+      STACK_SHIFT, HEADING_LOOKAHEAD
 
   look.py
     LES COULEURS DE LA CARTE (presentation, sans pygame) : un sol selon sa
@@ -827,6 +846,26 @@ ETAGE -  l'interface (pygame)
     Tout changement passe par commands.py ("law").
     fonctions : country_layout, country_hit, draw_country
     constantes : GREEN, TABS
+
+  render_decisions.py
+    L'ONGLET DECISIONS, un grand ecran (touche D ; la maquette A, "le
+    registre", qu'il a choisie le 2026-11-10) ; decisions.py en donne le
+    contenu.
+      - en haut, les filtres : toutes, possibles, il manque, en repos ;
+      - a gauche, LA LISTE par familles (les vivres, le peuple et ses chefs, le
+        sacre, les voisins, les grands desseins) : chaque decision, son icone,
+        ce qui manque, son etat (Possible, Il manque 2, En repos : 3 ans) ;
+      - a droite, LA FICHE de la decision choisie : son texte, CE QU'IL FAUT
+        (coche ou croix, avec les chiffres du peuple), la CIBLE (un village, une
+        route, un peuple : les fleches pour changer), CE QUE CA COUTE, CE QUE CA
+        FAIT, le bouton Decider.
+    La mise en page est faite au dessin (r.decisions_hits) ; decisions_hit la
+    lit. Le contenu est calcule une fois par semaine de jeu (et quand la cible
+    change), pas a chaque image. Tout changement passe par commands.py
+    ("decide").
+    fonctions : decisions_hit, target_of, cycle_target, decisions_ready,
+      decisions_alert, possible_count, draw_decisions
+    constantes : LIST_W, FILTERS, COLORS
 
   render_menu.py
     Les ecrans d'avant la partie (dans le style des autres fenetres : cadre
@@ -965,7 +1004,7 @@ ETAGE -  l'interface (pygame)
 
   screens.py
     Les GRANDS ECRANS de l'interface : le village, le commerce, le tresor, le
-    pays, les guerres.
+    pays, les guerres, les decisions.
     classes : Screen
     fonctions : is_open, opened, close_all, open, toggle, under_mouse, hit,
       draw
@@ -1224,6 +1263,8 @@ ETAGE -  l'interface (pygame)
                               seul pays au dehors.
   test_corrections_moteur.py  Les corrections du moteur (0.25.2) : le memo de
                               la semaine partage entre
+  test_decisions.py           Les decisions (decisions.py, l'onglet Decisions)
+                              : la soudure (rationner,
   test_diplo.py               Diplomatie : relations lisibles, pactes,
                               propositions, diffusion.
   test_economy.py             L'economie des bandes : la famine prend une
@@ -1548,6 +1589,9 @@ ETAGE -  l'interface (pygame)
   specs/2026-11-10-decisions-savoirs-profondeur.txt
     Les decisions, des savoirs qui servent tous, la profondeur expliquee
     Statut : FAIT pour les savoirs (version 0.25.3) ;
+  specs/2026-11-11-onglet-decisions-soudure.txt
+    L'onglet Decisions et la soudure
+    Statut : FAIT (version 0.26.0).
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

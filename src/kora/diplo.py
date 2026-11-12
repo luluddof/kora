@@ -77,6 +77,8 @@ MOD_TEXT = {
     "grain": ("Vous leur avez vendu du grain dans la disette", "Ils vous ont vendu du grain dans la disette", 0.5),
     "echanges": ("Échanges réguliers", "Échanges réguliers", 0.3),
     "route_fermee": ("Vous avez fermé une de leurs routes", "Ils ont fermé une de vos routes", 0.5),
+    # Le pillage d'une route de commerce (decisions.py).
+    "routes_pillees": ("Vous avez pillé leurs porteurs", "Ils ont pillé vos porteurs", 0.5),
     "union_refusee": ("Union refusée", "Union refusée", 0.8),
     # Les situations (situations.py).
     "passage": ("Rivaux au grand passage", "Rivaux au grand passage", 0.5),

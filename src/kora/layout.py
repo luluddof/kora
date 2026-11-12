@@ -661,9 +661,15 @@ COUNTRY_TAB = ("pays", "Pays")
 WARS_TAB = ("guerres", "Guerre")
 
 
-def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False, country: bool = False, wars: bool = False) -> tuple:
+# LES DECISIONS (render_decisions.py) : avec le premier village, ou une
+# decision possible.
+DECISIONS_TAB = ("decisions", "Décisions")
+
+
+def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False, country: bool = False, wars: bool = False, decide: bool = False) -> tuple:
     return (
         SIDE_TABS
+        + ((DECISIONS_TAB,) if decide else ())
         + ((WARS_TAB,) if army or wars else ())
         + ((COMMERCE_TAB,) if commerce else ())
         + ((TREASURY_TAB,) if treasury else ())
@@ -671,11 +677,11 @@ def side_tabs(army: bool = False, commerce: bool = False, treasury: bool = False
     )
 
 
-def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None, tech_tab: str = "arbre", treasury: bool = False, country: bool = False, wars: bool = False) -> dict:
+def side_layout(width: int, height: int, panel: str | None = None, era: int = 0, army: bool = False, commerce: bool = False, tech_cam=None, tech_tab: str = "arbre", treasury: bool = False, country: bool = False, wars: bool = False, decide: bool = False) -> dict:
     tab_w, gap = TAB_W, 6
     tab_x = width - tab_w - 4
     top = HUD_HEIGHT + 44
-    shown = side_tabs(army, commerce, treasury, country, wars)
+    shown = side_tabs(army, commerce, treasury, country, wars, decide)
     n = len(shown)
     tab_h = max(54, min(TAB_H, (height - top - 8 - gap * (n - 1)) // n))
     tabs = {key: (tab_x, top + i * (tab_h + gap), tab_w, tab_h) for i, (key, _l) in enumerate(shown)}

@@ -37,12 +37,14 @@ from src.kora.bands import set_goto, set_march_to_band
 from src.kora import troupes
 from src.kora import batiments
 from src.kora import guerre
+from src.kora import decisions
 
 KINDS = (
     "goto", "march", "band", "found", "route_open", "route_close", "route_level",
     "teams", "diplo", "invite", "build", "unqueue", "demolish", "raise", "reequip", "dissolve",
     "honor", "promote", "heir", "learn", "event", "situation",
     "battle_retreat", "levy_rate", "feast", "charge", "base", "budget", "law", "grain",
+    "decide",
 )
 IN_BATTLE = "En bataille : ordonnez le repli d'abord"
 NOT_YOURS = "Ce n'est pas à vous"
@@ -86,6 +88,8 @@ def apply(state, cmd) -> dict:
     handler = _HANDLERS.get(kind)
     if handler is None:
         return _out("Ordre inconnu")
+    # Un ordre change la partie : les cibles des decisions se recalculent.
+    decisions.forget()
     try:
         return handler(state, tid, *args)
     except (TypeError, ValueError, KeyError, IndexError):
@@ -388,6 +392,17 @@ def _charge(state, tid, fam_id, charge):
     return _out(chiefdom.set_charge(state, tid, int(fam_id), str(charge)))
 
 
+def _decide(state, tid, did, target=None):
+    """Prendre une decision (l'onglet Decisions) ; target : un village, une
+    route ("exportateur:importateur:bien"), un peuple, ou rien."""
+    did = str(did)
+    if did not in decisions.DECISIONS:
+        return _out("Décision inconnue")
+    if isinstance(target, float):
+        target = int(target)
+    return _out(decisions.take(state, tid, did, target))
+
+
 def _base(state, tid, base):
     return _out(numbers.choose(state, tid, int(base)))
 
@@ -416,6 +431,7 @@ _HANDLERS = {
     "battle_retreat": _battle_retreat,
     "levy_rate": _levy_rate,
     "feast": _feast,
+    "decide": _decide,
     "charge": _charge,
     "goto": _goto,
     "march": _march,

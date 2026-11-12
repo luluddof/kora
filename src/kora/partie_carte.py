@@ -31,6 +31,7 @@ from src.kora import (
     orders,
     render_battle,
     render_tutoriel,
+    render_decisions,
     render_wars,
     screens,
     sites,
@@ -355,6 +356,11 @@ class MapInput:
                 self.toast("L'armée vient avec le premier village.")
                 return None
             self.open_war_room(render_wars.ARMY)
+        elif event.key == pygame.K_d:
+            if not render_decisions.decisions_ready(self.renderer, self.state, self.ui):
+                self.toast("Les décisions viennent avec le premier village.")
+                return None
+            self.open_screen("decisions", toggle=True)
         elif event.key == pygame.K_w:
             if not wars_ready(self.state) and not army_ready(self.state):
                 self.toast("Les guerres se déclarent avec Messagers et serments (la diplomatie vient avec les villages).")

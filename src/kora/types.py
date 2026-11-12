@@ -147,6 +147,9 @@ class Band:
     # la structure ordinaire), et ses blesses.
     demo: dict[str, float] = field(default_factory=dict)
     wounded: int = 0
+    # Troupe postee sur une route de commerce pour la piller (decisions.py) :
+    # "exportateur:importateur:bien" ("" : aucune).
+    raid_route: str = ""
 
 
 @dataclass
@@ -261,6 +264,12 @@ class Tribe:
     approach: str = ""
     approach_since: int = -1000000
     approach_chief: int = 0
+    # Les decisions (decisions.py) : decision -> semaine ou elle a ete prise
+    # (son repos) ; effet -> semaine de fin ; le rationnement (jusqu'a la
+    # recolte).
+    decided: dict[str, int] = field(default_factory=dict)
+    decision_effects: dict[str, int] = field(default_factory=dict)
+    ration_until: int = -1
 
 
 @dataclass

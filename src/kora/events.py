@@ -1418,7 +1418,8 @@ def monthly(state) -> None:
     if not getattr(state, "story", False):
         return
     book = _book(state)
-    pulses = [e for e in sorted(EVENTS.values(), key=lambda e: e.id) if e.trigger == "pulse"]
+    # Poids 0 : devenu une decision (decisions.py : on choisit son moment).
+    pulses = [e for e in sorted(EVENTS.values(), key=lambda e: e.id) if e.trigger == "pulse" and e.weight > 0]
     for tid in sorted(state.tribes):
         tribe = state.tribes[tid]
         if not _alive(state, tid):

@@ -74,6 +74,7 @@ from src.kora.vision import enemy_band_visible, is_explored, is_visible, vision_
 from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.theme import C
 from src.kora import resources
+from src.kora import render_decisions
 from src.kora.resources import COLORS, LABELS, NAMES
 from src.kora.batiments import palisade_state
 from src.kora.layout import panel_box
@@ -310,6 +311,7 @@ class Renderer:
         self.treasury_hits: dict = {}
         self.country_hits: dict = {}
         self.wars_hits: dict = {}
+        self.decisions_hits: dict = {}
         self.trade_partners: list = []
         self.trade_routes: list = []
         self.trade_candidates: list = []
@@ -1241,13 +1243,14 @@ class Renderer:
         treasury = money.has_money(state, state.viewer)
         country = bool(laws.available(state, state.viewer))
         at_war = render_panels.wars_ready(state)
+        decide = render_decisions.decisions_ready(self, state, ui)
         if panel == "savoirs" and ui.get("tech_cam") is None:
             # Premiere ouverture : la vue se pose sur la recherche en cours.
             ui["tech_cam"] = render_tech.focus_cam(state, w, h)
         layout = side_layout(
             w, h, panel=panel, era=ui.get("era", 0), army=army, commerce=commerce,
             tech_cam=ui.get("tech_cam"), tech_tab=ui.get("tech_tab", "arbre"), treasury=treasury, country=country,
-            wars=at_war,
+            wars=at_war, decide=decide,
         )
         if layout.get("tech") is not None:
             ui["tech_cam"] = layout["tech"]["cam"]
@@ -1273,6 +1276,8 @@ class Renderer:
         label = render_panels.tribe_tab_label(state)
         self._draw_tab(tabs["tribu"], label, panel == "tribu", render_panels.tribe_alert(state), "tribu" if label == "Tribu" else "village")
         self._draw_tab(tabs["peuples"], "Peuples", panel == "peuples", False, "peuples")
+        if "decisions" in tabs:
+            self._draw_tab(tabs["decisions"], "Décisions", bool(ui.get("decisions_open")), render_decisions.decisions_alert(self, state, ui), "couronne")
         if "guerres" in tabs:
             self._draw_tab(tabs["guerres"], "Guerre", bool(ui.get("wars_open")), render_panels.wars_alert(state), "combat")
         if "commerce" in tabs:

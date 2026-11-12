@@ -891,7 +891,8 @@ EVENTS: dict[str, Event] = {
             "Le grand rassemblement",
             "Plusieurs clans se retrouvent autour du feu de {chief} pour l'hiver. On chante, on échange, on se marie.",
             conds=(("chief_band",), ("season", "hiver"), ("crowded", 2)),
-            weight=0.08,
+            # Devenu une decision : "Reunir le conseil des clans" (decisions.py).
+            weight=0.0,
             cooldown=52,
             mood="chance",
             options=(
@@ -1039,7 +1040,8 @@ EVENTS: dict[str, Event] = {
             "Le plus vieux de la tribu, le dernier a se souvenir des grands hivers, sent venir sa fin.",
             scope="tribe",
             conds=(("bands_ge", 2),),
-            weight=0.015,
+            # Devenu une decision : "Recueillir les recits des anciens".
+            weight=0.0,
             cooldown=260,
             mood="esprit",
             options=(
