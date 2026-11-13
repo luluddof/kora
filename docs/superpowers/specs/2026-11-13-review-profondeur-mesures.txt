@@ -1,0 +1,156 @@
+Kora - Review du projet : ce que le jeu utilise vraiment de ses systemes
+=======================================================================
+Date : 2026-11-13. Statut : PROPOSE (rien de code ; dix pistes M1-M10, en
+attente de son choix).
+
+Ses mots (2026-11-13, apres la 0.28.0) : "J'aimerais que tu me dises ce qui
+rendrait ce projet meilleur, dans le sens ou il serait plus profond et
+exploiterait mieux les nombreuses fonctionnalites qu'il a, quitte a en
+rajouter. En bref, fais-moi une review complete du projet."
+
+
+1. COMMENT C'EST MESURE
+-----------------------
+  Trois essais sans fenetre, sur la 0.28.0, avec des sondes ecrites dans le
+  scratchpad de la session (elles enveloppent les fonctions du jeu pour
+  compter : guerre.declare_war, battle.start, chiefdom.conquer,
+  chiefdom.make_vassal, events.fire, situations._start, goods.open_route,
+  troupes.raise_army, batiments.build, ai._could_take... ; le robot de
+  tests/test_balance.py tient le peuple du joueur) :
+    A. SA PARTIE de l'an 48 (une copie), prolongee de 40 ans (an 88) ;
+    B. une PARTIE NEUVE (la planete par defaut, graine 5), 90 ans ;
+    C. dix ans de GUERRES sur la copie de sa partie (an 48 a 58) : chaque
+       bataille, chaque guerre finie, chaque fois que l'IA se demande si
+       elle prendrait un village.
+  Plus : la lecture du code, ses captures d'ecran du 2026-11-12
+  (docs/maquettes/rework/existant), les tests rapides (788 passes).
+
+
+2. LE CONSTAT : DES POURCENTAGES, PAS DES CHANGEMENTS
+-----------------------------------------------------
+  Le jeu a beaucoup de systemes ; presque tous produisent des
+  multiplicateurs (un bien : stabilite +3 ; un savoir : recolte x1,15), peu
+  changent le monde. Vers l'an 45, la partie atteint un equilibre et n'en
+  sort plus.
+
+  LA GUERRE TOURNE A VIDE
+    A (40 ans, 120 peuples) : 91 guerres declarees, 892 armees levees, 70
+      batailles, 0 village pris ; 27 tributaires, dont 25 par protection.
+    B (90 ans) : 114 guerres, 63 batailles, 13 villages pris, TOUS avant
+      l'an 40 ; de l'an 55 a l'an 64 : 14 guerres declarees, 0 bataille.
+    C (10 ans) : 41 guerres (40 pour soumettre) ; l'IA se demande 770 fois
+      si une levee prendrait le village vise : 770 fois non, seule comme
+      avec l'ost. La levee vaut en mediane 12 % de la defense du village
+      (au mieux 90 %). Un exemple : force 126, defense 778 (palissade et
+      fosse x2,2, enceintes x1,3, le moral du village, les femmes au mur).
+      190 armees levees, 27 voient une bataille (presque toutes contre des
+      clans nomades) ; 12 guerres finies, 80 semaines en mediane, 8 sur 12
+      a 0-0.
+    La cause : une levee est une part des hommes (26 levables sur 200
+    habitants, 18 dans une troupe) ; le village se defend avec tous les
+    siens derriere des murs qui multiplient. Les buts de guerre, le score,
+    la lassitude, l'ost, le siege existent mais n'ont rien a moudre.
+
+  LE MONDE SE FIGE
+    A : 120 peuples a l'an 48, 120 a l'an 88 (peoples.MAX_LIVING_TRIBES) ;
+      112 -> 118 villages ; la population plafonne vers 59 000 des l'an 78.
+    B : 18 peuples a l'an 1, 120 a l'an 46, puis plus rien ne nait ni ne
+      meurt ; premier village vers l'an 10.
+
+  L'AGE DU BRONZE EST UNE COQUILLE
+    Il arrive vers l'an 40 (B) ou 52 (A) ; 108 peuples sur 120 l'ont a
+    l'an 78 (B). Ses 18 savoirs ne portent que des pourcentages : aucun
+    batiment, aucune unite, aucun metier (Le temple : stabilite +4 ; Le
+    bronze : combat x1,15). La voie de la steppe : 10 peuples contre 61
+    pour la cite (A), aucun (B) ; ses savoirs restent sous 5 %.
+    L'arbre s'epuise : 93 peuples sur 120 sans rien a etudier a l'an 80
+    (B), 87 a l'an 88 (A).
+
+  LES EVENEMENTS SONT RESTES A L'AGE DES TRIBUS
+    65 evenements ecrits. A (40 ans de village) : le joueur en recoit 130
+    (3 par an), dont 36 offres repetees de l'IA (19 alliances, 17
+    protections) ; les memes reviennent (semences 10, belle veine 10,
+    fievre 10) ; 44 sur 65 ne tombent jamais. Aucun ne nait des familles,
+    des tributaires, d'une guerre, d'une loi, d'un monument, du bronze.
+    B (le robot reste nomade) : 2 evenements en 5 ans, 7 en 10 ans.
+    Sa partie du 13 novembre (an 3) : 19 lignes du journal sur 32 sont
+    "Famine : 1 morts".
+
+  LE COMMERCE CLIGNOTE, L'ARGENT S'ENTASSE
+    Les routes : 36 a 140 d'une annee a l'autre (A) ; a l'an 88, 53 sur
+    114 a l'arret ("le vendeur n'a rien de trop") ; a l'an 91 (B), 64 sur
+    112. Le journal du joueur se remplit de "ouvrent une route". Sa
+    capture : 8 biens sur 10 "en manque" chez lui et chez ses voisins.
+    Treize metiers, dix biens, chacun un bonus fixe ; aucun bien n'en
+    nourrit un autre. L'argent : 121 sicles chez lui a l'an 48, les quatre
+    curseurs de depense a zero ; laisse seul, le tresor monte a 12 000.
+
+  CE QUI NE BOUGE PAS
+    Le prestige : plafonne a 100, atteint a l'an 49, il y reste (peu de
+    depenses : honorer, inviter, reformer la base, declarer).
+    Les familles : deux chez lui, faveur 100 sur 100.
+    Les chefs : 240 morts en 40 ans (156 de maladie, 80 de vieillesse, 4 au
+    combat) ; la succession contestee n'est jamais tombee chez le joueur.
+    Les lois : deux. Le grand monument : seulement pendant la conjoncture
+    des grands travaux (2 en 40 ans dans A).
+    L'approche "marchand" : 0 a 3 chefs sur 116.
+    La zone d'influence d'un village : la defense chez soi, l'attachement
+    des clans, le motif de guerre "terre", les peages ; rien d'autre.
+    Les saisons ne pesent pas sur la guerre, les rivieres ni les cotes sur
+    le commerce ; les cultures ne different plus une fois fixees.
+
+  CE QUI MARCHE
+    Les decisions : l'IA en prend (rationner 116 peuples, mariages 115,
+    grandes chasses 77, routes pillees 65 ; jamais la razzia ni les
+    eclaireurs). Les tirages des savoirs : les savoirs "connus de personne"
+    sont des tirages voulus (les chamanes viennent dans 86 mondes sur 200).
+    Les situations : 103 en 40 ans (A), surtout la disette et le mal qui
+    court. L'architecture, le determinisme, le multijoueur, les notes.
+
+  LA VITESSE
+    Une annee tardive coute au moins 9 secondes de calcul (120 peuples) :
+    les vitesses 4 et 5 ne tiennent pas en fin de partie.
+
+
+3. LES DIX PISTES (M1-M10), DANS L'ORDRE CONSEILLE
+--------------------------------------------------
+  M1  LA GUERRE QUI ABOUTIT. Ravager sans prendre : bruler les champs,
+      voler le troupeau, vider le grenier, couper les routes ; le score de
+      guerre monte, jusqu'au tribut ou a la soumission. Les defenseurs qui
+      sortent pour sauver leurs champs (une bataille en terrain ouvert). Le
+      siege qui affame vraiment. Une IA qui ose a moins que la certitude.
+      Reutilise : buts, score, lassitude, ost, siege, tribut, grain.
+  M2  UN MONDE QUI MONTE ET QUI TOMBE. Des villages qui declinent ou sont
+      abandonnes (ruines, terres a reprendre), des peuples qui s'unissent,
+      des pays qui se forment ; l'envers de l'explosion demographique des
+      villes du bronze (B2). Lie a P1 ("plus tard").
+  M3  UN SAVOIR OUVRE QUELQUE CHOSE A FAIRE. Une regle pour l'arbre : pas
+      de savoir qui ne soit qu'un pourcentage. Le bronze : le temple, le
+      palais, le grenier du temple en batiments ; le char, l'arc composite
+      en unites ; le bronze comme metier (cuivre + etain) ; la voie de la
+      steppe jouable (B6). Lie a B2-B6.
+  M4  DES BIENS QUI S'ENCHAINENT. Des biens qui en nourrissent d'autres
+      (haches -> chantiers, poteries -> greniers, cuivre + etain ->
+      bronze -> armes) ; des besoins qui montent avec la taille du village
+      (grandir demande plus de sortes de biens) ; des routes engagees pour
+      un an (plus de clignotement) ; des depenses pour l'argent (les pistes
+      A, B, C, E-H de l'argent hors des echanges).
+  M5  DES EVENEMENTS POUR L'AGE DES VILLAGES, nes de ce qui arrive : une
+      famille qui monte, un tributaire qui gronde, un heritier conteste,
+      une guerre qui dure, un voisin qui change d'approche ; les offres de
+      l'IA regroupees. Lie a DECISIONS+ et a P3.
+  M6  LES PERSONNAGES BRANCHES SUR LES FAMILLES (PERSONNAGES, deja
+      demande) : les familles deviennent les rivales et les heritiers ; les
+      mariages font des enfants, donc des successions ; les otages (le
+      savoir existe).
+  M7  LE PRESTIGE SANS PLAFOND ET DES AMBITIONS (P5) : un but choisi tous
+      les dix ou vingt ans, que l'IA a aussi ; pas une fin de partie.
+  M8  LES LOIS (LOIS) : qui est leve, qui herite, ce que doit un
+      tributaire, le commerce ouvert ou ferme ; elles relient la
+      population, les familles, les tributaires, l'argent.
+  M9  LA GEOGRAPHIE QUI COMPTE ENCORE : des peuples qui restent differents
+      une fois fixes (P7), une saison des campagnes, des routes moins
+      cheres le long des rivieres et des cotes, une zone d'influence qui
+      donne des droits (B3, les points de controle).
+  M10 LE DEBUT : les dix premieres annees (peu d'evenements, un journal de
+      famines) ; des premiers buts, des evenements plus frequents au debut.

@@ -1620,6 +1620,9 @@ ETAGE -  l'interface (pygame)
   specs/2026-11-13-monde-sans-grille-premiere-version.txt
     Le monde sans grille, premiere version jouable (0.27.0)
     Statut : FAIT (0.27.0) pour ce qui suit ; LA SUITE plus bas.
+  specs/2026-11-13-review-profondeur-mesures.txt
+    Review du projet : ce que le jeu utilise vraiment de ses systemes
+    Statut : PROPOSE (rien de code ; dix pistes M1-M10, en
   specs/2026-11-13-sans-grille-points-terres.txt
     Sans grille, la suite : la carte stable, les unites a un point, les
     terres en surfaces (0.28.0)

@@ -894,6 +894,24 @@ lente, bandes dessinees petites a taille fixe.
     aussi sur l'influence. Reste dessous (dit) : les releves par lieu
     (nourriture, vue, influence, champs), les rencontres par lieu, les
     villages poses au centre d'un lieu.
+2026-11-13 (suite)
+  - "Dis-moi ce qui rendrait ce projet meilleur, dans le sens ou il serait
+    plus profond et exploiterait mieux les nombreuses fonctionnalites qu'il
+    a, quitte a en rajouter. En bref, une review complete du projet."
+    FAIT (reponse ecrite ; spec 2026-11-13-review-profondeur-mesures.txt) :
+    mesure sur SA partie de l'an 48 prolongee de 40 ans, une partie neuve
+    de 90 ans, dix ans de guerres. Le constat : les systemes produisent
+    des pourcentages, pas des changements, et le monde se fige vers l'an
+    45. La guerre tourne a vide (91 guerres, 0 village pris en 40 ans :
+    une levee vaut 12 % de la defense du village vise) ; 120 peuples pour
+    toujours ; l'age du bronze n'est que des pourcentages et l'arbre
+    s'epuise vers l'an 80 ; 44 evenements sur 65 ne tombent jamais au
+    village ; les routes clignotent, l'argent s'entasse, le prestige
+    plafonne. PROPOSE : dix pistes M1-M10 (la guerre qui aboutit, un monde
+    qui monte et qui tombe, un savoir ouvre quelque chose a faire, des
+    biens qui s'enchainent, des evenements pour l'age des villages, les
+    personnages branches sur les familles, le prestige sans plafond et des
+    ambitions, les lois, la geographie qui compte, le debut).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -1001,6 +1019,15 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 2026-11-11-onglet-decisions-soudure.txt, section 3).
 
   En attente de SON choix (propose, rien de code) :
+  - M1-M10      la review du 2026-11-13, mesuree sur ses parties (la guerre
+                qui aboutit : aujourd'hui aucun village n'est pris apres
+                l'an 40 ; un monde qui monte et qui tombe ; un savoir ouvre
+                quelque chose a faire ; des biens qui s'enchainent ; des
+                evenements pour l'age des villages ; les personnages
+                branches sur les familles ; le prestige sans plafond et des
+                ambitions ; les lois ; la geographie qui compte ; le
+                debut) : 2026-11-13-review-profondeur-mesures.txt.
+                Conseil : M1 d'abord.
   - DECISIONS+  d'autres evenements qui deviendraient des decisions (la
                 fete des moissons, une source sacree, ouvrir une mine), les
                 evenements qui viennent au joueur ; la guerre qui se voit
