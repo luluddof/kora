@@ -933,7 +933,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.27.0
+Version du jeu : 0.27.1
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -955,7 +955,9 @@ Fait le 2026-11-11 (0.26.0) : l'onglet Decisions (la maquette A) et la
 soudure (rationner, grain, semences, razzia, routes pillees, chasse) ; la
 prevision de la recolte juste a chaque latitude.
 Fait le 2026-11-13 (0.27.0) : le monde sans grille, premiere version (la
-carte en formes, la vraie distance, l'influence ronde, le glissement).
+carte en formes, la vraie distance, l'influence ronde, le glissement) ;
+0.27.1 le meme jour (la publication de la 0.27.0 avait echoue sur un test :
+la memoire du glissement est gardee sur la partie).
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 

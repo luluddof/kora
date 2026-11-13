@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.27.0
+A jour pour la version : 0.27.1
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 

@@ -9,6 +9,8 @@
 - **Les unités glissent** le long de leur chemin au lieu de sauter de case en case ; le chemin tracé est une
   courbe.
 - La fiche au survol dit le sol qu'on voit sous la souris.
+- (0.27.1) La 0.27.0 n'a pas été publiée (un test a échoué au moment de la construction) : la 0.27.1 est la
+  même, corrigée.
 
 Et dans la 0.26 : l'onglet **Décisions** (touche D) et la soudure (rationner, acheter du grain, manger les
 semences, une razzia, piller les routes de commerce, une grande chasse) ; les villages prévoient enfin juste

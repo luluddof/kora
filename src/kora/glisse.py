@@ -25,8 +25,16 @@ MAX_SECONDS = 1.2
 MAX_JUMP = 14
 # Points de la courbe entre deux points du chemin.
 STEPS = 6
-_TRACK: dict = {}
-_GLIDE: dict = {}
+
+
+def _books(state) -> tuple:
+    """(positions vues, glissements) : gardes SUR la partie (une autre
+    partie, meme a la meme adresse en memoire, a les siens). Pas un champ :
+    rien n'est sauvegarde."""
+    books = state.__dict__.get("_glisse")
+    if books is None:
+        books = state.__dict__["_glisse"] = ({}, {})
+    return books
 
 
 def _points(world, hexes) -> list:
@@ -83,9 +91,10 @@ def _along(curve: list, frac: float):
 def observe(state, band, now: float | None = None) -> None:
     """A chaque image : une position qui a change lance un glissement le long
     du chemin fait (le chemin d'avant, jusqu'a la nouvelle position)."""
-    key = (id(state), band.id)
+    track, glides = _books(state)
+    key = band.id
     pos = band.position
-    last = _TRACK.get(key)
+    last = track.get(key)
     if last is not None and last[0] != pos:
         old, path = last
         world = state.world
@@ -98,31 +107,29 @@ def observe(state, band, now: float | None = None) -> None:
             rate = state.clock.ticks_per_second() if not state.clock.paused else 0.0
             dur = min(MAX_SECONDS, 1.0 / rate) if rate > 0 else 0.4
             now = time.perf_counter() if now is None else now
-            _GLIDE[key] = (smooth(_points(world, trail)), now, dur)
+            glides[key] = (smooth(_points(world, trail)), now, dur)
         else:
-            _GLIDE.pop(key, None)
-    _TRACK[key] = (pos, tuple(band.path))
-    if len(_TRACK) > 20000:
-        _TRACK.clear()
-        _GLIDE.clear()
+            glides.pop(key, None)
+    track[key] = (pos, tuple(band.path))
 
 
 def place(state, band, now: float | None = None):
     """(colonne, rangee) a virgule ou montrer l'unite, ou None (a sa
     position)."""
-    key = (id(state), band.id)
-    glide = _GLIDE.get(key)
+    glides = _books(state)[1]
+    key = band.id
+    glide = glides.get(key)
     if glide is None:
         return None
     curve, t0, dur = glide
     now = time.perf_counter() if now is None else now
     frac = (now - t0) / dur if dur > 0 else 1.0
     if frac >= 1.0:
-        del _GLIDE[key]
+        del glides[key]
         return None
     return _along(curve, frac)
 
 
-def gliding() -> bool:
+def gliding(state) -> bool:
     """Une unite glisse encore (l'ecran doit se redessiner)."""
-    return bool(_GLIDE)
+    return bool(_books(state)[1])
