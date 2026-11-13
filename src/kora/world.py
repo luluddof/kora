@@ -22,6 +22,7 @@ pour l'ancienne carte) ; la generer : mapgen.py, jamais en jeu.
 N'importe pas pygame.
 """
 
+import math
 import json
 from pathlib import Path
 
@@ -140,14 +141,24 @@ BIG_RADIUS_CACHE_SIZE = 3000
 _RADIUS_DELTAS: dict[int, list[tuple[int, int]]] = {}
 
 
+def true_distance(dq: int, dr: int) -> int:
+    """LA VRAIE DISTANCE (le monde sans grille, 0.27.0) : la distance a vol
+    d'oiseau entre deux centres, en largeurs de case, arrondie ; en entiers
+    (le meme calcul sur chaque machine). Un pas vers un voisin vaut 1 ; un
+    pas "en biais" (deux cases en escalier) vaut 1,73 et non 2 : une portee,
+    une vue, un rayon sont des cercles, plus des hexagones."""
+    x = 2 * dq + dr
+    return (math.isqrt(x * x + 3 * dr * dr) + 1) // 2
+
+
 def _radius_deltas(radius: int) -> list[tuple[int, int]]:
     deltas = _RADIUS_DELTAS.get(radius)
     if deltas is None:
         deltas = [
             (dq, dr)
-            for dq in range(-radius, radius + 1)
-            for dr in range(-radius, radius + 1)
-            if (abs(dq) + abs(dq + dr) + abs(dr)) // 2 <= radius
+            for dq in range(-2 * radius - 1, 2 * radius + 2)
+            for dr in range(-radius - 1, radius + 2)
+            if true_distance(dq, dr) <= radius
         ]
         _RADIUS_DELTAS[radius] = deltas
     return deltas
@@ -327,18 +338,17 @@ class World:
         ca, ra = ia
         cb, rb = ib
         qa = ca - (ra - (ra & 1)) // 2
-        sa = -qa - ra
         half_b = (rb - (rb & 1)) // 2
-        qb = cb - half_b
-        dr = abs(ra - rb)
-        best = (abs(qa - qb) + abs(sa + qb + rb) + dr) // 2
+        dr = rb - ra
+        # La vraie distance (true_distance), la plus courte en faisant le
+        # tour de la planete.
+        x = 2 * (cb - half_b - qa) + dr
         if self.wrap_x:
-            for shift in (-self.width, self.width):
-                qs = cb + shift - half_b
-                d = (abs(qa - qs) + abs(sa + qs + rb) + dr) // 2
-                if d < best:
-                    best = d
-        return best
+            w2 = 2 * self.width
+            x = (x + self.width) % w2 - self.width
+            if x < -self.width:
+                x += w2
+        return (math.isqrt(x * x + 3 * dr * dr) + 1) // 2
 
     def terrain(self, h: Hex) -> Terrain:
         idx = self._index(h)
@@ -403,7 +413,7 @@ class World:
                 seen.add(h)
                 dists.append(self.distance(origin, h))
             else:
-                dists.append((abs(dq) + abs(dq + dr) + abs(dr)) // 2)
+                dists.append(true_distance(dq, dr))
             found.append(h)
         limit = RADIUS_CACHE_SIZE if small else BIG_RADIUS_CACHE_SIZE
         if len(cache) >= limit:

@@ -26,6 +26,9 @@ from src.kora.types import Hex, Terrain
 from src.kora.world import NEIGHBOR_DELTAS, river_pct
 from src.kora.places import influence_radius
 
+# Un pas en biais (deux cases en escalier, en ligne droite) : racine de 3
+# sur 2 du cout des deux pas.
+DIAGONAL = math.sqrt(3.0) / 2.0
 ZONE_MIN = 0.12
 CORE_MIN = 0.40
 MONTH_DECAY = 0.94
@@ -95,18 +98,53 @@ def projection(world, center, radius: int) -> tuple[list, list]:
     heap = [(0.0, 0, origin)]
     n = 0
     rivers = bool(world._flow)
+
+    memo: dict = {}
+
+    def edge(h, k):
+        """Le pas de h vers sa voisine k : (voisine, cout) ou None (garde :
+        les biais repassent par les memes pas)."""
+        key = (h, k)
+        if key in memo:
+            return memo[key]
+        memo[key] = out = _edge(h, k)
+        return out
+
+    def _edge(h, k):
+        dq, dr = NEIGHBOR_DELTAS[k]
+        nb = world.canonicalize(Hex(h.q + dq, h.r + dr))
+        if nb is None or nb not in inside:
+            return None
+        step = PROJECTION.get(world.terrain(nb), 1.0)
+        if rivers:
+            (c0, r0), (c1, r1) = world._index(h), world._index(nb)
+            step = step * river_pct(world, c0, r0, c1, r1, k) / 100.0
+        return nb, step
+
     while heap:
         cost, _k, h = heapq.heappop(heap)
         if cost > best.get(h, 1e9):
             continue
-        for k, (dq, dr) in enumerate(NEIGHBOR_DELTAS):
-            nb = world.canonicalize(Hex(h.q + dq, h.r + dr))
-            if nb is None or nb not in inside:
-                continue
-            step = PROJECTION.get(world.terrain(nb), 1.0)
-            if rivers:
-                (c0, r0), (c1, r1) = world._index(h), world._index(nb)
-                step = step * river_pct(world, c0, r0, c1, r1, k) / 100.0
+        steps = [edge(h, k) for k in range(6)]
+        moves = [s_ for s_ in steps if s_ is not None]
+        # EN BIAIS (le monde sans grille) : la case a deux pas en escalier
+        # se rejoint en ligne droite (1,73 au lieu de 2), au cout du moins
+        # cher des deux escaliers : l'influence rayonne en rond.
+        for k in range(6):
+            a, b = steps[k], steps[(k + 1) % 6]
+            options = []
+            if a is not None:
+                nxt = edge(a[0], (k + 1) % 6)
+                if nxt is not None:
+                    options.append((nxt[0], a[1] + nxt[1]))
+            if b is not None:
+                nxt = edge(b[0], k)
+                if nxt is not None:
+                    options.append((nxt[0], b[1] + nxt[1]))
+            if options:
+                far, two = min(options, key=lambda o: o[1])
+                moves.append((far, two * DIAGONAL))
+        for nb, step in moves:
             c = cost + step
             if c <= radius + 1e-9 and c < best.get(nb, 1e9):
                 best[nb] = c

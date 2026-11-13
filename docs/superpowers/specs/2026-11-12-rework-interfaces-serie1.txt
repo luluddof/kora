@@ -1,0 +1,94 @@
+Kora - Le rework des interfaces, premiere serie de propositions
+==============================================================
+Date : 2026-11-12. Statut : PROPOSE (maquettes sur SA partie, en attente de
+son choix ; rien de code dans le jeu).
+
+Sa demande : "ce que j'ai envie de faire actuellement, c'est rework les
+interfaces de plein de choses ; pour plein d'interfaces tu vas me donner des
+propositions et je choisirai ce qui me plait le plus."
+
+Ou les voir : docs/maquettes/rework/
+  existant/          chaque interface d'aujourd'hui, sur sa partie (an 48)
+  serie1/            les propositions de la premiere serie
+  planche_serie1.png la planche de choix : aujourd'hui, puis A, B, C
+Les scripts : docs/maquettes/source_ecrans/maq_existant.py, maq_rework1.py,
+maq_planche.py (python <script> RACINE SAUVEGARDE SORTIE).
+
+
+1. LA PREMIERE SERIE : CE QU'ON VOIT A CHAQUE MINUTE DE JEU
+----------------------------------------------------------
+  LA BARRE DU HAUT ET LE RAIL (aujourd'hui : la saison, la vitesse, le
+  savoir, et quatre chiffres nus a droite ; neuf onglets empiles a droite)
+    A  Le bandeau des comptes (a la Europa Universalis 5) : chaque compte
+       dans sa case, avec ce qui le fait bouger (gens, vivres jusqu'a la
+       recolte, tresor du mois, prestige, stabilite, savoir et sa barre) ;
+       rouge quand il inquiete ; au survol, d'ou vient le chiffre. Les
+       onglets portent une pastille a compte (5 decisions possibles...).
+    B  Les alertes (a la Victoria 3) : sous la barre, une rangee de
+       pastilles, ce qui demande votre attention par ordre d'urgence (la
+       soudure, les evenements, un savoir a choisir, les decisions, une
+       offre) ; un clic y mene. Le rail range ses onglets en trois
+       familles (gouverner, le monde, savoir) avec leur touche.
+    C  Le dock en bas (a la Crusader Kings 3) : les onglets deviennent des
+       medaillons en bas a droite, avec leur touche et leur pastille ; la
+       droite de l'ecran est libre pour les panneaux ; les evenements en
+       attente deviennent des medaillons qui respirent, en bas a gauche.
+
+  LE PANNEAU VILLAGE (touche B) - aujourd'hui son bas se chevauche (la
+  reserve, les accords et les besoins s'ecrivent les uns sur les autres :
+  un vrai defaut, a corriger quel que soit le choix) et le milieu est vide.
+    A  Le tableau : le chef en tete (age, trait, renommee, heritier) ;
+       chaque village en carte a trois jauges (gens et logements, grenier
+       avec la recolte marquee, stabilite) et l'alerte de la soudure ; la
+       reserve du peuple en grille (vert : pourvu ; rouge : en manque).
+    B  Le portrait du peuple : les chiffres du peuple en tete ; a gauche
+       les gens qui comptent (le chef, l'heritier, les familles, leur trait,
+       leur charge, leur faveur) ; a droite les villages et la reserve.
+       (Prepare les personnages, son prochain chantier.)
+
+  L'UNITE CHOISIE - aujourd'hui une fiche de neuf lignes de texte et dix
+  boutons.
+    A  La fiche a jauges : le nom, les hommes, la force, le chef ; quatre
+       jauges (vivres, collecte, attachement, compagnies) ; les ordres en
+       icones avec leur touche ; le detail de chaque ordre au survol.
+    B  La fiche laterale : une colonne a gauche - qui (chaque compagnie et
+       ses hommes en petits points), ou, les vivres, les ordres en liste.
+
+  LA CARTE D'EVENEMENT - aujourd'hui une fenetre sobre au milieu, les
+  effets en une ligne de texte.
+    A  Le recit illustre : une grande image a gauche (aux couleurs de
+       l'humeur : chance, menace, esprit...), le recit a droite ; les choix
+       en cartes, leurs effets en pastilles vertes ou rouges ; le temps qui
+       reste en barre.
+    B  La carte a jouer : une carte haute, comme une carte de jeu ; l'image
+       en haut, le recit, les choix empiles ; les autres evenements en
+       attente en eventail derriere.
+    C  Dans le coin : le jeu ne s'arrete pas ; l'evenement s'ouvre en bas a
+       gauche, ses choix en boutons ; les autres en petites cartes
+       au-dessus.
+
+  LE JOURNAL - aujourd'hui une liste de lignes, des filtres en mots.
+    A  La chronique : ce qui attend une reponse en tete ; puis les nouvelles
+       par saison (Printemps de l'an 48, Hiver de l'an 47...), chacune avec
+       son icone et sa couleur ; les filtres en icones.
+    B  A faire et nouvelles : un panneau plus large en deux colonnes ; a
+       gauche ce qui attend (evenements, la soudure, un savoir, les
+       decisions, un heritier), a droite le fil des nouvelles, les
+       dernieres en grand, un bouton Voir sur la carte.
+
+  On peut melanger : par exemple le bandeau A avec les alertes de B.
+
+
+2. LES SERIES SUIVANTES (proposees, dans cet ordre)
+--------------------------------------------------
+  Serie 2 - LES GRANDS ECRANS : l'ecran du village (ses quatre pages : il
+    est dense, le graphique des recoltes prend un tiers de la place), le
+    commerce (une longue liste de biens tres chargee), le tresor (la moitie
+    gauche presque vide), le pays et ses lois (deux lignes de cartes sur un
+    grand ecran vide), l'armee et les guerres (presque vide sans guerre).
+  Serie 3 - le reste : l'arbre des savoirs (sa fiche), les peuples (refait
+    en 0.24, seulement s'il le veut), le rapport de bataille, la fondation
+    d'un village, la fenetre des situations, le menu, l'ecran titre et le
+    chargement des parties, les fiches au survol de la carte.
+  Les decisions (0.26.0) viennent d'etre faites sur sa maquette : pas
+  reprises sauf s'il le demande.

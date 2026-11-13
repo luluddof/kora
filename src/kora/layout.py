@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import math
 
-from src.kora import numbers, tech, tree_graph
-from src.kora.globe import FOCUS_ZOOM, hex_to_globe_screen
+from src.kora import glisse, numbers, tech, tree_graph
+from src.kora.globe import FOCUS_ZOOM, hex_to_globe_screen, point_to_globe_screen
 from src.kora.log import FILTER_ALL, LogKind
 from src.kora.types import Hex, OrderKind
 from src.kora.vision import enemy_band_visible
@@ -862,12 +862,17 @@ def band_screen_positions(state, yaw, pitch, gcx, gcy, focal, dist) -> dict:
             continue
         if band.tribe_id != state.viewer and not enemy_band_visible(state, band, state.viewer):
             continue
-        pos = hex_to_globe_screen(
-            band.position, state.world, yaw, pitch, gcx, gcy, focal, dist
-        )
+        # Le glissement (glisse.py) : une unite qui vient de bouger glisse le
+        # long de son chemin au lieu de sauter de case en case.
+        glisse.observe(state, band)
+        moving = glisse.place(state, band)
+        if moving is not None:
+            pos = point_to_globe_screen(moving[0], moving[1], state.world, yaw, pitch, gcx, gcy, focal, dist)
+        else:
+            pos = hex_to_globe_screen(band.position, state.world, yaw, pitch, gcx, gcy, focal, dist)
         if pos is None:
             continue
-        k = stack.get(band.position, 0)
+        k = 0 if moving is not None else stack.get(band.position, 0)
         stack[band.position] = k + 1
         radius = band_radius(band.population, dist)
         shift = max(STACK_SHIFT, radius * 1.3)

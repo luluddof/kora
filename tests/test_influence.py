@@ -124,7 +124,9 @@ def test_influence_projects_far_on_plains_and_barely_in_mountains():
         # Ce que le lieu repand en tout (meme calcul que _spread).
         weight[terrain] = sum(1.0 - 0.5 * c / 5 for c in costs)
         assert costs[hexes.index(world.canonicalize(centre))] == 0.0
-    assert reach[Terrain.PLAINE] == 5 and reach[Terrain.STEPPE] == 3 and reach[Terrain.MONTAGNE] == 2
+    # En vraie distance (0.27.0) : la plaine porte a tout le rayon, la steppe
+    # moins loin, la montagne a peine.
+    assert reach[Terrain.PLAINE] == 5 and reach[Terrain.STEPPE] == 4 and reach[Terrain.MONTAGNE] == 2
     assert weight[Terrain.PLAINE] > weight[Terrain.STEPPE] > weight[Terrain.FORET] > weight[Terrain.MONTAGNE]
 
 

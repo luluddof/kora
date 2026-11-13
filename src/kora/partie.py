@@ -37,7 +37,7 @@ from src.kora import (
     situations,
 )
 from src.kora.gamestate import human_dead, log_of
-from src.kora.globe import clamp_pitch, orbit_sensitivity, pixel_to_hex_globe, view_params
+from src.kora.globe import clamp_pitch, hit_globe, orbit_sensitivity, pixel_to_hex_globe, view_params
 from src.kora.layout import (
     band_card_hit,
     HUD_HEIGHT,
@@ -50,7 +50,7 @@ from src.kora.layout import (
     TREE_ZOOM_STEP,
     zoom_at,
 )
-from src.kora.log import FILTER_ALL, LogKind
+from src.kora.log import FILTER_ALL, LogKind, terrain_fr
 from src.kora.persist import (
     default_save_path,
     load_prefs,
@@ -604,6 +604,12 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
             )
             if hx is not None:
                 hover_info = hex_inspect(self.state, hx)
+            if hover_info is not None:
+                # Le sol de la forme sous la souris (le monde sans grille).
+                hit = hit_globe((mx - gcx) / focal, (gcy - my) / focal, self.globe_yaw, self.globe_pitch, dist)
+                if hit is not None:
+                    shape = self.renderer._planet_for(self.state.world).terrain_at(hit[0], hit[1])
+                    hover_info["terrain_fr"] = terrain_fr(shape)
         # Une de vos bandes choisie, la souris sur un etranger : ce que
         # donnerait l'attaque (orders.attack_preview), a la place de la case.
         self.ui["attack_preview"] = None

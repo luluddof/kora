@@ -1,0 +1,73 @@
+Kora - Le monde sans grille, premiere version jouable (0.27.0)
+=============================================================
+Date : 2026-11-13. Statut : FAIT (0.27.0) pour ce qui suit ; LA SUITE plus bas.
+
+Sa question (2026-11-13), devant une fiche du survol sur une carte encore
+en cases : "pourquoi on revient sur le systeme de case et sans glissement ?"
+La reponse : du plan decide le 2026-11-09 (2026-11-09-monde-sans-grille-
+plan.txt), seule la piece des formes (formes.py) etait faite, et pas
+branchee ; ses autres demandes etaient passees devant sans que je le dise.
+Puis : "oui, en adaptant notamment la proximite et les zones d'influence".
+
+
+1. CE QUI CHANGE POUR LUI
+------------------------
+  - LA CARTE EN FORMES, a tous les zooms : plus un seul polygone de case.
+    Les sols, la mer, les lacs, la plage le long du rivage, le brouillard,
+    les zones d'influence et leurs frontieres sont des courbes. De tres
+    loin (une case de moins de 5 pixels), la case la plus proche, comme
+    avant (on ne voit pas de case a cette taille).
+  - LA PROXIMITE EN VRAIE DISTANCE : toute distance du jeu (vue, portees,
+    rayons de collecte et d'influence, razzias, rencontres, l'IA) est la
+    distance a vol d'oiseau, plus le nombre de pas d'hexagone. Un rayon est
+    un cercle : a 10, 391 lieux au lieu de 331 (un hexagone) ; les petits
+    rayons (1, 2) ne changent pas.
+  - LES ZONES D'INFLUENCE RONDES : l'influence rayonne en rond (elle va en
+    biais en ligne droite, 1,73 au lieu de 2), en suivant toujours le sol
+    (plaine loin, montagne a peine) et les rivieres ; dessinees en surfaces
+    aux bords courbes.
+  - LE GLISSEMENT : une unite ne saute plus d'un lieu a l'autre ; elle glisse
+    le long du chemin qu'elle vient de faire, lisse en courbe, pendant la
+    duree reelle d'une semaine a la vitesse choisie. Le chemin dessine est
+    une courbe (plus l'escalier des cases).
+  - LE SURVOL dit le sol de la forme sous la souris.
+
+
+2. COMMENT C'EST FAIT
+--------------------
+  - world.true_distance, World.distance, World.hexes_in_radius : la
+    distance euclidienne entre centres, en entiers (math.isqrt : le meme
+    calcul sur chaque machine, le multijoueur, l'empreinte).
+  - influence.projection : un Dijkstra a douze voisins (les six voisins, et
+    les six "en biais" a racine de 3, au cout du moins cher des deux
+    escaliers) : rond, et le sol et les rivieres comptent toujours.
+  - globe_draw.Planet : chaque point de l'ecran vote avec les neuf centres
+    voisins, ponderes par une cloche (SHAPE_SIGMA = 0,5 case) ; la
+    frontiere passe ou les votes s'equilibrent. Cuit par tuiles de 128 x 128
+    sous-cases a la premiere vue, au grain de 4 a 64 sous-cases par case
+    selon le zoom (une sous-case ne depasse pas 1,6 pixel ; 4 pixels quand
+    la vue bouge).
+    Mesures sur sa partie (1600 x 900) : 25 ms par image quand la vue bouge,
+    0,3 s pour l'image nette quand elle s'arrete, la premiere vue d'une
+    region 0,5 a 2 s (une fois).
+  - glisse.py (l'interface) : le chemin fait, lisse (Catmull-Rom), parcouru
+    en une semaine reelle ; Renderer.draw_path suit la meme courbe.
+
+  Verifie sur sa partie (an 48), un an : le monde 27 533 -> 30 110 (30 264
+  avant ce chantier), la faim des villages 205 semaines (206), son village
+  200 -> 234 ; la simulation ~5 % plus lente apres optimisation (les
+  biais de l'influence, gardes en memoire pendant le calcul).
+
+
+3. LA SUITE (le plan du 2026-11-09, ce qu'il reste)
+---------------------------------------------------
+  Encore sur les cases EN DESSOUS (on ne les voit plus) :
+  - LES POINTS : une bande, un village est encore pose au centre d'une
+    case ; la marche avance encore de case en case dans la simulation
+    (l'ecran la fait glisser). A faire : des positions a virgule (entiers
+    fins), la marche par jour, le nuage de points de passage et les chemins
+    redresses dans la simulation (chantier 2 du plan).
+  - LES SURFACES : les terres des villages (champs, epuisement) et le
+    brouillard sont encore par case dessous (chantier 4).
+  - LA FIN DE LA GRILLE : le code et les tests qui parlent de cases
+    (chantier 5).

@@ -24,12 +24,11 @@ import math
 import pygame
 
 from src.kora.atlas import build_atlas_labels
-from src.kora.globe import hex_to_globe_screen, offset_to_xyz, project_xyz, rotate_xyz, view_params
+from src.kora.globe import hex_to_globe_screen, offset_to_xyz, point_to_globe_screen, project_xyz, rotate_xyz, view_params
 from src.kora.globe_draw import (
     FAST_SAMPLES,
     FINE_SAMPLES,
     FOG_UNEXPLORED,
-    POLY_HEX_PX,
     Planet,
     hex_screen_px,
 )
@@ -38,6 +37,7 @@ from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
 from src.kora.look import country_color
 from src.kora import (
+    glisse,
     render_tutoriel,
     __version__,
     battle as _battle,
@@ -392,14 +392,15 @@ class Renderer:
             pygame.draw.circle(
                 target, FOG_UNEXPLORED, (int(cx), int(cy)), max(1, int(limb + 1))
             )
-        if hex_screen_px(state.world, focal, dist) >= POLY_HEX_PX:
-            planet.draw_hexes(target, state, yaw, pitch, cx, cy, focal, dist)
-        else:
-            clip = pygame.Rect(0, HUD_HEIGHT, sw, sh - HUD_HEIGHT)
-            painted = planet.texture(state, yaw, pitch, cx, cy, focal, dist, clip, samples)
-            if painted is not None:
-                surf, pos = painted
-                target.blit(surf, pos)
+        # Le monde en formes (0.27.0) : a tous les zooms, plus de cases ;
+        # nette (un calcul par pixel) des que la vue s'arrete.
+        clip = pygame.Rect(0, HUD_HEIGHT, sw, sh - HUD_HEIGHT)
+        fine = samples if samples <= FAST_SAMPLES else max(samples, clip.width * clip.height)
+        painted = planet.texture(state, yaw, pitch, cx, cy, focal, dist, clip, fine)
+        if painted is not None:
+            surf, pos = painted
+            target.blit(surf, pos)
+        planet.draw_rivers(target, state, yaw, pitch, cx, cy, focal, dist)
         if limb < min(sw, sh) * 0.9:
             pygame.draw.circle(target, (170, 200, 230), (int(cx), int(cy)), int(limb + 1), 1)
         if dist >= 1.72:
@@ -1165,14 +1166,28 @@ class Renderer:
         world = state.world
         sw, sh = self.screen.get_size()
         gcx, gcy, focal, dist = view_params(zoom, sw, sh, HUD_HEIGHT)
+        # Le chemin en courbe (glisse.smooth) : il contourne comme le chemin,
+        # sans l'escalier des cases ; il part d'ou l'unite glisse.
+        start = glisse.place(state, band)
+        line = glisse._points(world, [band.position, *band.path])
+        if start is not None:
+            line[0] = start
         pts = []
-        for hx in [band.position, *band.path]:
-            pos = hex_to_globe_screen(hx, world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
+        for col, row in glisse.smooth(line):
+            pos = point_to_globe_screen(col, row, world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
             if pos is not None:
                 pts.append(pos)
+        walked = 0.0
         for a, b in zip(pts, pts[1:]):
-            theme.dotted(self.screen, a, b, C.nuit, 7, 3)
-            theme.dotted(self.screen, a, b, C.os, 7, 2)
+            seg = math.dist(a, b)
+            # Les points d'os, en continu le long de la courbe.
+            n = int((walked + seg) // 9) - int(walked // 9)
+            for k in range(1, n + 1):
+                t = ((int(walked // 9) + k) * 9 - walked) / max(1e-6, seg)
+                x, y = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+                pygame.draw.circle(self.screen, C.nuit, (int(x), int(y)), 3)
+                pygame.draw.circle(self.screen, C.os, (int(x), int(y)), 2)
+            walked += seg
         if pts:
             ex, ey = int(pts[-1][0]), int(pts[-1][1])
             pygame.draw.circle(self.screen, C.nuit, (ex, ey), 7)

@@ -114,6 +114,10 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   moitié de ce qui passe, et ils s'en souviennent), organiser une grande chasse. Et aussi : la grande fête, le
   conseil des clans, les éclaireurs, la fête des morts, les récits des anciens, un mariage, devenir le chef des
   chefs. Les autres peuples prennent aussi leurs décisions. L'onglet s'allume quand la soudure arrive.
+- **Le monde sans cases** (0.27) : la carte est dessinée en formes à tous les zooms (côtes, sols, plages, zones
+  d'influence et frontières en courbes) ; les distances sont les vraies (une portée, une vue, une zone sont des
+  cercles) ; l'influence rayonne en rond en suivant le relief ; les unités glissent le long de leur chemin, tracé
+  en courbe.
 - Chaque partie a **sa sauvegarde** : *Continuer* reprend la plus récente, *Charger une partie* les montre toutes
   (jouer, supprimer) ; dans la partie, *Échap* puis *Sauvegarder une copie*.
 - La **musique de guerre** (*Casus bellis*) part de son début quand vous entrez dans une **guerre déclarée** (pas

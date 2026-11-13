@@ -127,6 +127,15 @@ def hex_to_globe_screen(
     return project_xyz(x, y, z, cx, cy, focal, dist)
 
 
+def point_to_globe_screen(
+    col: float, row: float, world, yaw: float, pitch: float, cx: float, cy: float, focal: float, dist: float
+) -> tuple[float, float] | None:
+    """Un point a virgule (colonne, rangee) a l'ecran (le glissement)."""
+    x, y, z = offset_to_xyz(col, row, world.width, world.height)
+    x, y, z = rotate_xyz(x, y, z, yaw, pitch)
+    return project_xyz(x, y, z, cx, cy, focal, dist)
+
+
 def _norm3(x: float, y: float, z: float) -> tuple[float, float, float]:
     inv = 1.0 / math.sqrt(max(1e-12, x * x + y * y + z * z))
     return x * inv, y * inv, z * inv

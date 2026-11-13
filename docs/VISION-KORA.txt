@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-11-11.
+Derniere mise a jour : 2026-11-13.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -857,6 +857,30 @@ lente, bandes dessinees petites a taille fixe.
     chez lui), corrigee. Dans sa partie, un an : la faim des villages
     divisee par deux, son village jamais affame. Les personnages : A FAIRE
     ensuite.
+2026-11-12
+  - "Ce que j'ai envie de faire actuellement, c'est rework les interfaces
+    de plein de choses ; pour plein d'interfaces tu vas me donner des
+    propositions et je choisirai ce qui me plait le plus." PROPOSE (spec
+    2026-11-12-rework-interfaces-serie1.txt) : chaque interface
+    d'aujourd'hui photographiee sur sa partie ; la premiere serie (ce qu'on
+    voit a chaque minute) : la barre du haut et le rail (A, B, C), le
+    panneau Village (A, B), l'unite choisie (A, B), la carte d'evenement
+    (A, B, C), le journal (A, B) ; planche de choix
+    docs/maquettes/rework/planche_serie1.png. Series 2 (les grands ecrans)
+    et 3 (le reste) annoncees.
+2026-11-13 (0.27.0)
+  - "Pourquoi on revient sur le systeme de case et sans glissement ?" (une
+    fiche du survol, la carte encore en cases) : du monde sans grille, seule
+    la piece des formes etait faite, pas branchee ; ses autres demandes
+    etaient passees devant sans que je le dise. "Oui, en adaptant
+    notamment la proximite et les zones d'influence." FAIT, premiere
+    version jouable (0.27.0 ; spec 2026-11-13-monde-sans-grille-premiere-
+    version.txt) : la carte en formes a tous les zooms (plus un polygone de
+    case) ; la proximite en vraie distance (des cercles) ; l'influence qui
+    rayonne en rond et ses zones en surfaces courbes ; le glissement des
+    unites et le chemin en courbe ; le survol dit le sol de la forme. Reste
+    (dessous) : les positions a virgule et la marche sans case, les terres
+    des villages en surfaces, la fin de la grille.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -909,7 +933,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.26.0
+Version du jeu : 0.27.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -930,15 +954,25 @@ Fait le 2026-11-10 (0.25.3) : les savoirs qui n'arrivaient jamais.
 Fait le 2026-11-11 (0.26.0) : l'onglet Decisions (la maquette A) et la
 soudure (rationner, grain, semences, razzia, routes pillees, chasse) ; la
 prevision de la recolte juste a chaque latitude.
+Fait le 2026-11-13 (0.27.0) : le monde sans grille, premiere version (la
+carte en formes, la vraie distance, l'influence ronde, le glissement).
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   DECIDE, A FAIRE EN PREMIER :
-  - SANS GRILLE  le monde en formes, en cinq chantiers (1 les formes de la
-                planete, 2 les points et la marche, 3 les distances, 4 les
-                surfaces, 5 la fin de la grille) :
-                2026-11-09-monde-sans-grille-plan.txt. B3 (points de
-                controle) se fera au chantier 4.
+  - SANS GRILLE  le monde en formes : 0.27.0 a fait ce qui se voit (la carte
+                en formes, la vraie distance, l'influence ronde, le
+                glissement) ; restent dessous les positions a virgule et la
+                marche sans case, les terres en surfaces, la fin de la
+                grille : 2026-11-13-monde-sans-grille-premiere-version.txt,
+                section 3 ; le plan : 2026-11-09-monde-sans-grille-plan.txt.
+                B3 (points de controle) se fera avec les surfaces.
+
+  En attente de SON choix, EN COURS :
+  - REWORK       le rework des interfaces, serie par serie : la serie 1
+                proposee (2026-11-12-rework-interfaces-serie1.txt, planche
+                docs/maquettes/rework/planche_serie1.png) ; series 2 (les
+                grands ecrans) et 3 a proposer.
 
   DEMANDE, A FAIRE ENSUITE :
   - PERSONNAGES  "des conflits de succession, ou des unions" : l'age, la

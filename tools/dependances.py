@@ -21,7 +21,7 @@ SRC = ROOT / "src" / "kora"
 # La presentation (pygame) ; le reste est la simulation et ses outils.
 PRESENTATION = {
     "app", "partie", "partie_carte", "partie_ecrans", "tutoriel", "render", "theme", "look", "globe", "globe_draw", "screens",
-    "layout", "tree_graph", "music",
+    "layout", "tree_graph", "music", "glisse",
 }
 
 # LES ETAGES, du plus bas au plus haut. Un module n'importe en tete que des

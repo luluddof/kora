@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.26.0
+A jour pour la version : 0.27.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -46,7 +46,7 @@ par theme).
   La SIMULATION (tout sauf l'interface) n'importe jamais pygame, ne lit
   jamais state.viewer, et tourne en Python pur (le multijoueur exige les
   memes nombres sur chaque machine). L'INTERFACE (app, render, render_*,
-  theme, look, globe, globe_draw, layout, screens, tree_graph, music, et la
+  theme, look, globe, globe_draw, glisse, layout, screens, tree_graph, music, et la
   partie a l'ecran : partie, partie_carte, partie_ecrans) lit la
   partie et ne la change QUE par un ordre (commands.py, via Play.issue).
   numpy : seulement globe_draw.py (le rendu) et mapgen.py (la cuisson des
@@ -162,12 +162,12 @@ ETAGE 2  la planete
     LA PLANETE en jeu : la grille des cases, ses sols, ses rivieres, ses
     ressources, et ce qui change dessus (epuisement, influence, saison locale).
     classes : AtlasLabel, World
-    fonctions : offset_to_axial, axial_to_offset, hex_distance, hex_neighbors,
-      is_passable, enter_cost, hex_distance_wrapped, is_inshore, cost_pct,
-      enter_cost_for, river_pct, direction, step_cost, make_filled_world,
-      landmass_grid, same_landmass, spawn_forage, pick_spawn_hexes,
-      pick_spawn_continents, save_world, load_world, season_multiplier,
-      food_production, local_winter_weeks
+    fonctions : true_distance, offset_to_axial, axial_to_offset, hex_distance,
+      hex_neighbors, is_passable, enter_cost, hex_distance_wrapped,
+      is_inshore, cost_pct, enter_cost_for, river_pct, direction, step_cost,
+      make_filled_world, landmass_grid, same_landmass, spawn_forage,
+      pick_spawn_hexes, pick_spawn_continents, save_world, load_world,
+      season_multiplier, food_production, local_winter_weeks
     constantes : INSHORE_MOVE_COST, RIVER_PCT, DIRECTION_FR, RIVER_SIZE_FR,
       FORD_PCT, FORD_BIG_PCT, COST_VAR_MIN, COST_VAR_MAX, COST_VAR_CELLS,
       COST_VAR_WEIGHTS, MOVE_COST, BIOME_INDEX, NEIGHBOR_DELTAS, WIDTH,
@@ -337,8 +337,8 @@ ETAGE 5  LES SYSTEMES
     fonctions : note_presence, projection, radius_of, update, overlaps,
       dominant, in_zone, in_core, is_home, foreign_zone, zone_size,
       zone_lines, projection_word
-    constantes : ZONE_MIN, CORE_MIN, MONTH_DECAY, GAIN, MAX_WEIGHT, CAMP_GAIN,
-      VILLAGE_GAIN, VILLAGE_RADIUS, PROJECTION, FORGET
+    constantes : DIAGONAL, ZONE_MIN, CORE_MIN, MONTH_DECAY, GAIN, MAX_WEIGHT,
+      CAMP_GAIN, VILLAGE_GAIN, VILLAGE_RADIUS, PROJECTION, FORGET
 
   production.py
     Le SAVOIR-FAIRE des villages : l'efficacite de la production.
@@ -734,15 +734,22 @@ ETAGE -  l'interface (pygame)
     multijoueur, puis la partie a l'ecran (la classe Play).
     fonctions : run, title_screen, play
 
+  glisse.py
+    LE GLISSEMENT (le monde sans grille, 0.27.0 ; sa demande du 2026-11-09 :
+    "le mouvement glisserait au lieu d'aller de case en case", et "pas forcement
+    en ligne droite").
+    fonctions : smooth, observe, place, gliding
+    constantes : MAX_SECONDS, MAX_JUMP, STEPS
+
   globe.py
     LA SPHERE A L'ECRAN : la planete (un cylindre de cases pour la
     simulation) projetee sur un globe qu'on tourne et qu'on zoome.
     fonctions : land_draw_stride, lonlat_from_offset, xyz_from_lonlat,
       offset_to_xyz, rotate_xyz, inverse_rotate, dist_from_zoom, view_params,
-      project_xyz, hex_to_globe_screen, hex_corner_xyz, hit_globe, warp,
-      lonlat_to_colrow, pixel_to_hex_globe, look_at_offset, look_at_hex,
-      look_center, visible_hex_radius, globe_uses_texture, clamp_pitch,
-      orbit_sensitivity
+      project_xyz, hex_to_globe_screen, point_to_globe_screen, hex_corner_xyz,
+      hit_globe, warp, lonlat_to_colrow, pixel_to_hex_globe, look_at_offset,
+      look_at_hex, look_center, visible_hex_radius, globe_uses_texture,
+      clamp_pitch, orbit_sensitivity
     constantes : HEX_SIZE, PITCH_LIMIT, NEAR_DIST, FOCUS_ZOOM, HEX_ROW_SHIFT,
       HEX_ROW_SQUASH, WARP_SCALES, WARP_WAVES, WARP_MAX
 
@@ -750,8 +757,10 @@ ETAGE -  l'interface (pygame)
     Dessin de la planete avec numpy.
     classes : Planet
     fonctions : hex_screen_px
-    constantes : FOG_UNEXPLORED, TERRAINS, TERRAIN_CODE, SEASONS, POLY_HEX_PX,
-      FAST_SAMPLES, FINE_SAMPLES, RIVER_COLOR, RIVER_TINT
+    constantes : FOG_UNEXPLORED, TERRAINS, TERRAIN_CODE, SEASONS, SHAPE_SIGMA,
+      SHAPE_CHUNK, TILE_SUB, TILE_GRAINS, TILE_PX, TILE_PX_FAST, TILE_CACHE,
+      SHAPE_MIN_PX, BEACH_WATER, BEACH_COAST, RIVER_LINE_PX, FAST_SAMPLES,
+      FINE_SAMPLES, RIVER_COLOR, RIVER_TINT
 
   layout.py
     LES MISES EN PAGE de l'interface : ou est chaque chose a l'ecran.
@@ -1349,6 +1358,8 @@ ETAGE -  l'interface (pygame)
                               rentre A PIED vers son groupe ou
   test_revolte.py             Se liberer d'un suzerain n'est plus un simple
                               clic (2026-10-17) : un
+  test_sans_grille.py         Le monde sans grille, premiere version (0.27.0)
+                              : la vraie distance (des
   test_saves_music.py         Les sauvegardes (une par partie, charger,
                               supprimer, copier) et la
   test_season_look.py         Les couleurs des saisons (look.py) : l'hiver
@@ -1592,6 +1603,12 @@ ETAGE -  l'interface (pygame)
   specs/2026-11-11-onglet-decisions-soudure.txt
     L'onglet Decisions et la soudure
     Statut : FAIT (version 0.26.0).
+  specs/2026-11-12-rework-interfaces-serie1.txt
+    Le rework des interfaces, premiere serie de propositions
+    Statut : PROPOSE (maquettes sur SA partie, en attente de
+  specs/2026-11-13-monde-sans-grille-premiere-version.txt
+    Le monde sans grille, premiere version jouable (0.27.0)
+    Statut : FAIT (0.27.0) pour ce qui suit ; LA SUITE plus bas.
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

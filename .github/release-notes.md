@@ -1,21 +1,18 @@
-## Nouveau dans la 0.26 : les décisions
+## Nouveau dans la 0.27 : le monde sans cases
 
-- **L'onglet Décisions** (touche **D**, dès le premier village) : ce que votre peuple décide **quand il le veut**,
-  au lieu d'attendre qu'un événement tombe. Treize décisions en cinq familles (les vivres, le peuple et ses chefs,
-  le sacré, les voisins, les grands desseins). Chacune dit ce qu'il faut (coché ou non, avec vos chiffres), ce
-  qu'elle coûte, ce qu'elle fait, et se repose quelques années avant de pouvoir être reprise. Les autres peuples
-  prennent aussi les leurs.
-- **La soudure** (les semaines avant la moisson, quand le grenier ne tiendra pas) devient un choix : **rationner**
-  jusqu'à la récolte (moins de naissances, mais personne ne meurt), **acheter du grain** (dès que la soudure se
-  voit, pas seulement en pleine disette), **manger les semences**, lancer une **razzia** sur un village voisin, ou
-  **piller les routes de commerce** des autres (une troupe postée sur leur chemin prend la moitié de ce qui passe ;
-  ils s'en souviennent et ont un motif de guerre), organiser une **grande chasse**. L'onglet s'allume quand la
-  soudure arrive.
-- Et aussi : le conseil des clans et les récits des anciens (deux anciens événements, dont vous choisissez
-  maintenant le moment), la fête des morts, les éclaireurs, un mariage, la grande fête, devenir le chef des chefs.
-- **Les villages prévoient enfin juste la récolte** : la prévision se trompait de plusieurs semaines selon la
-  latitude (« la récolte dans 1 semaine », six semaines de suite) ; les villages se croyaient sauvés et mouraient
-  de faim avant la moisson. Dans une partie avancée, la faim des villages est divisée par deux.
+- **La carte n'a plus de cases**, à aucun zoom : les sols, la mer, les lacs, la plage le long du rivage, le
+  brouillard, les zones d'influence et leurs frontières sont des courbes.
+- **Les vraies distances** : une portée, une vue, un rayon sont des cercles, plus des hexagones (aller en biais
+  ne coûte plus deux pas).
+- **Les zones d'influence rondes**, qui suivent toujours le relief (loin en plaine, à peine en montagne) et les
+  rivières.
+- **Les unités glissent** le long de leur chemin au lieu de sauter de case en case ; le chemin tracé est une
+  courbe.
+- La fiche au survol dit le sol qu'on voit sous la souris.
+
+Et dans la 0.26 : l'onglet **Décisions** (touche D) et la soudure (rationner, acheter du grain, manger les
+semences, une razzia, piller les routes de commerce, une grande chasse) ; les villages prévoient enfin juste
+leur récolte.
 
 Et dans la 0.25 : l'âge du bronze (dix-huit savoirs, les chemins de la cité ou de la steppe, le marqueur d'âge) ; des savoirs qui n'arrivaient jamais (0.25.3) ; des clans qui fondent enfin leur village, un jeu plus rapide, les erreurs écrites dans *kora_erreur.txt* (0.25.2).
 
