@@ -1,0 +1,93 @@
+Kora - Sans grille, la suite : la carte stable, les unites a un point, les terres en surfaces (0.28.0)
+==================================================================================================
+Date : 2026-11-13. Statut : FAIT (0.28.0) ; LA SUITE plus bas.
+
+Ses mots (2026-11-13, apres la 0.27.1) :
+  1) "il y a un petit probleme de stabilite de la map ou elle se pixelise et
+     se depixelise sans arret" ;
+  2) "je te laisse pour les unites, les terres, etc., pour supprimer la
+     grille dans le code (en sachant que je veux garder le fait que selon le
+     terrain, et meme sur un meme terrain, la proximite et donc l'influence
+     peuvent varier)".
+
+
+1. LA CARTE NE SCINTILLE PLUS
+----------------------------
+  La cause : le temps qui avance change le brouillard (les unites bougent,
+  chaque semaine) ; je repeignais alors toute la planete, d'abord en image
+  rapide (grossiere), puis nette. D'ou le va-et-vient.
+  Maintenant (le dessin de la planete : render.py, globe_draw) :
+    - LE FOND (les sols eclaires) ne se refait que si la VUE change (glisser,
+      zoomer) ; une saison qui avance ou un autre mode de carte le refont
+      net d'un coup, sans image rapide, en ne recolorant que ce qui change
+      (les sols de la vue sont gardes) ;
+    - LES CALQUES (le brouillard, les zones d'influence, les champs) sont
+      calcules a part, a plus petite resolution, adoucis, et poses
+      par-dessus (le brouillard en multiplication) ; une zone n'est recuite
+      que si son coin de carte a change.
+  Mesure sur sa partie : une semaine qui passe, 60 a 130 ms pour l'image
+  (au lieu d'une image grossiere puis d'une nette de 0,3 s) ; rien ne
+  scintille.
+
+
+2. LES UNITES A UN POINT, LA MARCHE CONTINUE
+-------------------------------------------
+  points.py : une unite est a un POINT (Band.fu, fv : des entiers fins, 64
+  par largeur de case : le meme calcul sur chaque machine). La case n'est
+  plus qu'un RELEVE du monde sous le point (son sol, son cout de marche et
+  sa variation, sa nourriture) : Band.position est la case sous le point.
+  - LA MARCHE (points.march) : chaque semaine, l'unite avance le long de son
+    chemin d'autant que le sol le permet ; chaque bout de chemin coute le
+    sol ou il passe, a proportion de sa longueur (la variation d'un meme sol
+    comprise, et le courant a la traversee d'une riviere). Elle s'arrete
+    entre deux lieux ; plus d'elan perdu a attendre au centre d'une case.
+  - LE CLIC vise le point clique (l'ordre "goto" porte le point ; Band.aim_u,
+    aim_v) ; une troupe qui marche sur une autre vise son point.
+  - LE DESSIN : l'unite a son point, qui glisse de semaine en semaine le
+    long du chemin fait ; le chemin trace part d'elle et finit au point
+    vise. Tout ce qui est pose sur la carte a le meme centre de lieu (un
+    quart de case de cote selon la rangee : globe.HEX_ROW_SHIFT).
+  Une partie d'avant se charge telle quelle : une unite sans point est au
+  centre de son lieu.
+
+
+3. LES TERRES EN SURFACES, LES RIVIERES EN COURBES
+-------------------------------------------------
+  - Les champs des villages ne sont plus un signe par case : un aplat dore,
+    sillonne, aux bords doux, sous les zones d'influence (Planet.sync_fields,
+    le calque).
+  - Les rivieres sont des courbes : chaque troncon passe du milieu d'un pas
+    au milieu du suivant (plus le zigzag des centres).
+
+
+4. LA PROXIMITE QUI VARIE, MEME SUR UN MEME SOL
+----------------------------------------------
+  Garde et etendu : la marche lisait deja la variation d'un meme sol
+  (world.cost_pct, de -10 % a +12 %) ; l'INFLUENCE la lit aussi maintenant
+  (influence.projection) : une plaine un peu plus rude porte l'influence
+  moins loin (tests/test_influence.py).
+
+
+5. VERIFIE
+---------
+  Sa partie (an 48), deux ans : le monde 27 533 -> 30 274 (an 1) -> 33 848 ;
+  son village 200 -> 270 ; la faim des villages comme avant. La vitesse de
+  la simulation : pas d'ecart mesurable avec la 0.27.1 (la machine variait
+  de 14 a 27 s pour la meme annee pendant les mesures). 793 tests (le
+  centre d'un lieu, la marche continue, l'influence variable) ; l'empreinte
+  re-enregistree (le jeu change, voulu) ; le multijoueur avec l'exe.
+
+
+6. CE QUI RESTE SOUS LA CARTE (dit franchement)
+----------------------------------------------
+  Le monde est encore RELEVE par cases dessous : la nourriture d'un lieu,
+  la vue (ce qu'on a vu), l'influence (une valeur par lieu), les champs
+  choisis autour d'un village, les rencontres (deux unites dans le meme
+  lieu) ; les chemins sont cherches de lieu en lieu puis parcourus en
+  continu. C'est l'index que le plan du 2026-11-09 admettait ("tire du
+  monde, jamais une regle du jeu"), mais il pese encore sur des regles :
+  les rencontres et les champs surtout. A faire ensuite : les rencontres a
+  la distance (deux troupes qui se croisent entre deux semaines), les
+  chemins redresses dans la simulation (plus seulement a l'ecran), les
+  villages et les camps poses a un point, puis la fin de la grille dans le
+  code et ses tests.

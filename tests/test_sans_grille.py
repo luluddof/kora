@@ -87,6 +87,8 @@ def test_a_unit_glides_along_a_smooth_path(monkeypatch):
 
     class Band:
         id = 7
+        village = 0
+        fu = fv = aim_u = aim_v = -1
         position = offset_to_axial(10, 10)
         path = [offset_to_axial(11, 10), offset_to_axial(12, 11), offset_to_axial(13, 11)]
 
@@ -99,11 +101,41 @@ def test_a_unit_glides_along_a_smooth_path(monkeypatch):
     glisse.observe(st, band, now=10.0)
     start = glisse.place(st, band, now=10.0)
     mid = glisse.place(st, band, now=10.5)
-    assert start is not None and abs(start[0] - 10.0) < 1e-6
-    assert 10.5 < mid[0] < 12.5
+    assert start is not None and abs(start[0] - 9.75) < 1e-6
+    assert 10.25 < mid[0] < 12.75
     assert glisse.place(st, band, now=11.5) is None
     # Le chemin lisse passe par ses points, sans angle.
     curve = glisse.smooth([(0.0, 0.0), (1.0, 0.0), (2.0, 1.0), (3.0, 1.0)])
     assert curve[0] == (0.0, 0.0) and curve[-1] == (3.0, 1.0)
     assert any(abs(p[0] - 1.0) < 1e-9 and abs(p[1]) < 1e-9 for p in curve)
     assert len(curve) > 10
+
+
+def test_a_unit_walks_to_the_clicked_point_and_stops_between_places():
+    """La marche continue (points.py) : l'unite va au point clique, pas au
+    centre du lieu ; elle s'arrete ou s'arrete son elan, entre deux lieux ;
+    le sol (et sa variation) se paie a proportion du chemin."""
+    from src.kora import points
+    from src.kora.path import MOVE_POINTS_PER_WEEK
+    from src.kora.types import Band
+
+    world = make_filled_world(40, 30, Terrain.PLAINE, wrap_x=True)
+    world._cost_pct = [[100] * 40 for _ in range(30)]
+    band = Band(1, 1, offset_to_axial(10, 10), 30, 100.0)
+    goal = offset_to_axial(16, 10)
+    band.path = [offset_to_axial(c, 10) for c in range(11, 17)]
+    aim = (points.center(goal)[0] + 20, points.center(goal)[1] + 10)
+    band.aim_u, band.aim_v = aim
+    points.march(world, band, MOVE_POINTS_PER_WEEK, False, None)
+    # 40 points en plaine (10 par case) : 4 cases, pile entre deux lieux.
+    start = points.center(offset_to_axial(10, 10))
+    assert abs(points.length(world, start, (band.fu, band.fv)) - 4 * points.FINE) <= 2
+    assert band.position == offset_to_axial(14, 10)
+    points.march(world, band, MOVE_POINTS_PER_WEEK, False, None)
+    assert (band.fu, band.fv) == aim and not band.path
+    # Une case chere au milieu : on la paie a proportion.
+    world._cost_pct[10][12] = 200
+    band2 = Band(2, 1, offset_to_axial(10, 10), 30, 100.0)
+    band2.path = [offset_to_axial(c, 10) for c in range(11, 17)]
+    points.march(world, band2, MOVE_POINTS_PER_WEEK, False, None)
+    assert points.length(world, start, (band2.fu, band2.fv)) < 4 * points.FINE - 10

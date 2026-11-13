@@ -147,6 +147,13 @@ class Band:
     # la structure ordinaire), et ses blesses.
     demo: dict[str, float] = field(default_factory=dict)
     wounded: int = 0
+    # LE POINT de l'unite (points.py, le monde sans grille) : (fu, fv) en
+    # entiers fins, -1 : le centre de sa case ; le point vise au bout du
+    # chemin (aim_u, aim_v ; -1 : le centre de la derniere case).
+    fu: int = -1
+    fv: int = -1
+    aim_u: int = -1
+    aim_v: int = -1
     # Troupe postee sur une route de commerce pour la piller (decisions.py) :
     # "exportateur:importateur:bien" ("" : aucune).
     raid_route: str = ""

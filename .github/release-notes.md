@@ -1,4 +1,14 @@
-## Nouveau dans la 0.27 : le monde sans cases
+## Nouveau dans la 0.28 : le monde sans cases, la suite
+
+- **La carte ne scintille plus** quand le temps avance : le fond ne se redessine qu'avec la vue ; le brouillard,
+  les zones d'influence et les champs se posent par-dessus.
+- **Les unités sont à un point**, n'importe où (plus au centre d'une case) : elles marchent en continu, s'arrêtent
+  où leur élan s'arrête (plus d'élan perdu à attendre), et vont au point exact que vous cliquez.
+- **Les champs des villages** sont des surfaces dorées et sillonnées ; **les rivières** sont des courbes.
+- **Même sur un même sol, l'influence porte plus ou moins loin** selon qu'il est plus ou moins rude (comme la
+  marche).
+
+Et dans la 0.27 : le monde sans cases
 
 - **La carte n'a plus de cases**, à aucun zoom : les sols, la mer, les lacs, la plage le long du rivage, le
   brouillard, les zones d'influence et leurs frontières sont des courbes.

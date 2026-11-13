@@ -881,6 +881,19 @@ lente, bandes dessinees petites a taille fixe.
     unites et le chemin en courbe ; le survol dit le sol de la forme. Reste
     (dessous) : les positions a virgule et la marche sans case, les terres
     des villages en surfaces, la fin de la grille.
+  - "Il y a un petit probleme de stabilite de la map, ou elle se pixelise
+    et se depixelise sans arret" ; "je te laisse pour les unites, les
+    terres, etc., pour supprimer la grille dans le code (en sachant que je
+    veux garder le fait que selon le terrain, et meme sur un meme terrain,
+    la proximite et donc l'influence peuvent varier)". FAIT (0.28.0 ; spec
+    2026-11-13-sans-grille-points-terres.txt) : la carte ne scintille plus
+    (le fond ne se refait qu'avec la vue ; brouillard, zones et champs en
+    calques a part) ; les unites a un point, la marche continue (plus
+    d'elan perdu), le clic vise le point ; les champs des villages en
+    surfaces, les rivieres en courbes ; la variation d'un meme sol joue
+    aussi sur l'influence. Reste dessous (dit) : les releves par lieu
+    (nourriture, vue, influence, champs), les rencontres par lieu, les
+    villages poses au centre d'un lieu.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -933,7 +946,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.27.1
+Version du jeu : 0.28.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -958,16 +971,20 @@ Fait le 2026-11-13 (0.27.0) : le monde sans grille, premiere version (la
 carte en formes, la vraie distance, l'influence ronde, le glissement) ;
 0.27.1 le meme jour (la publication de la 0.27.0 avait echoue sur un test :
 la memoire du glissement est gardee sur la partie).
+Fait le 2026-11-13 (0.28.0) : la carte stable (calques), les unites a un
+point et la marche continue, les terres en surfaces, l'influence qui varie
+sur un meme sol.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
   DECIDE, A FAIRE EN PREMIER :
-  - SANS GRILLE  le monde en formes : 0.27.0 a fait ce qui se voit (la carte
-                en formes, la vraie distance, l'influence ronde, le
-                glissement) ; restent dessous les positions a virgule et la
-                marche sans case, les terres en surfaces, la fin de la
-                grille : 2026-11-13-monde-sans-grille-premiere-version.txt,
-                section 3 ; le plan : 2026-11-09-monde-sans-grille-plan.txt.
+  - SANS GRILLE  le monde en formes : 0.27 (la carte en formes, la vraie
+                distance, l'influence ronde, le glissement), 0.28 (les
+                unites a un point, la marche continue, les terres en
+                surfaces) ; restent : les rencontres a la distance, les
+                chemins redresses dans la simulation, les villages a un
+                point, la fin de la grille dans le code et les tests :
+                2026-11-13-sans-grille-points-terres.txt, section 6.
                 B3 (points de controle) se fera avec les surfaces.
 
   En attente de SON choix, EN COURS :

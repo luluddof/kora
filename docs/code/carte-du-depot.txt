@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.27.1
+A jour pour la version : 0.28.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -183,6 +183,15 @@ ETAGE 3  ce qui s'y pose
     semaines (travel_weeks).
     fonctions : astar, travel_weeks
     constantes : MOVE_POINTS_PER_WEEK
+
+  points.py
+    LES POINTS ET LA MARCHE (le monde sans grille, 0.28.0 ; sa demande du
+    2026-11-13 : "supprimer la grille dans le code, en gardant le fait que selon
+    le terrain, et meme sur un meme terrain, la proximite et donc l'influence
+    peuvent varier").
+    fonctions : center, cell_of, delta, length, point_of, to_colrow,
+      from_colrow, aim_of, march
+    constantes : FINE, STEP
 
   atlas.py
     L'ATLAS : les noms au dezoom (continents, banquises, bassins des grands
@@ -746,10 +755,11 @@ ETAGE -  l'interface (pygame)
     simulation) projetee sur un globe qu'on tourne et qu'on zoome.
     fonctions : land_draw_stride, lonlat_from_offset, xyz_from_lonlat,
       offset_to_xyz, rotate_xyz, inverse_rotate, dist_from_zoom, view_params,
-      project_xyz, hex_to_globe_screen, point_to_globe_screen, hex_corner_xyz,
-      hit_globe, warp, lonlat_to_colrow, pixel_to_hex_globe, look_at_offset,
-      look_at_hex, look_center, visible_hex_radius, globe_uses_texture,
-      clamp_pitch, orbit_sensitivity
+      project_xyz, hex_to_globe_screen, colrow_of_lonlat,
+      point_to_globe_screen, hex_corner_xyz, hit_globe, warp,
+      lonlat_to_colrow, pixel_to_hex_globe, look_at_offset, look_at_hex,
+      look_center, visible_hex_radius, globe_uses_texture, clamp_pitch,
+      orbit_sensitivity
     constantes : HEX_SIZE, PITCH_LIMIT, NEAR_DIST, FOCUS_ZOOM, HEX_ROW_SHIFT,
       HEX_ROW_SQUASH, WARP_SCALES, WARP_WAVES, WARP_MAX
 
@@ -760,6 +770,7 @@ ETAGE -  l'interface (pygame)
     constantes : FOG_UNEXPLORED, TERRAINS, TERRAIN_CODE, SEASONS, SHAPE_SIGMA,
       SHAPE_CHUNK, TILE_SUB, TILE_GRAINS, TILE_PX, TILE_PX_FAST, TILE_CACHE,
       SHAPE_MIN_PX, BEACH_WATER, BEACH_COAST, RIVER_LINE_PX, FAST_SAMPLES,
+      FIELD_COLOR, FIELD_ALPHA, OVERLAY_SAMPLES, OVERLAY_SAMPLES_FAST,
       FINE_SAMPLES, RIVER_COLOR, RIVER_TINT
 
   layout.py
@@ -1609,6 +1620,10 @@ ETAGE -  l'interface (pygame)
   specs/2026-11-13-monde-sans-grille-premiere-version.txt
     Le monde sans grille, premiere version jouable (0.27.0)
     Statut : FAIT (0.27.0) pour ce qui suit ; LA SUITE plus bas.
+  specs/2026-11-13-sans-grille-points-terres.txt
+    Sans grille, la suite : la carte stable, les unites a un point, les
+    terres en surfaces (0.28.0)
+    Statut : FAIT (0.28.0) ; LA SUITE plus bas.
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

@@ -114,7 +114,8 @@ def test_look_at_offset_puts_hex_near_screen_center():
     world = make_filled_world(40, 20, Terrain.PLAINE, wrap_x=True)
     h = offset_to_axial(8, 12)
     col, row = axial_to_offset(h)
-    yaw, pitch = look_at_offset(col, row, 40, 20)
+    # Le centre d'un lieu : un quart de case de cote selon la rangee.
+    yaw, pitch = look_at_offset(col + (0.25 if row & 1 else -0.25), row, 40, 20)
     cx, cy, focal, dist = view_params(FOCUS_ZOOM, 400, 400, 48)
     pos = hex_to_globe_screen(h, world, yaw, pitch, cx, cy, focal, dist)
     assert pos is not None
@@ -125,7 +126,8 @@ def test_look_at_offset_puts_hex_near_screen_center():
 def test_look_at_hex_matches_offset():
     h = offset_to_axial(8, 12)
     col, row = axial_to_offset(h)
-    assert look_at_hex(h, 40, 20) == look_at_offset(col, row, 40, 20)
+    # Le centre d'un lieu : un quart de case de cote selon la rangee.
+    assert look_at_hex(h, 40, 20) == look_at_offset(col + (0.25 if row & 1 else -0.25), row, 40, 20)
 
 
 def test_look_at_matches_look_center():
@@ -174,7 +176,8 @@ def test_the_warped_terrain_keeps_each_hex_on_its_centre_and_has_no_seam():
     for width, height in ((40, 20), (400, 200)):
         for col in range(0, width, 7):
             for row in range(1, height - 1, 3):
-                lon, lat = lonlat_from_offset(col, row, width, height)
+                # Le centre d'un lieu (decale d'un quart de case selon la rangee).
+                lon, lat = lonlat_from_offset(col + (0.25 if row & 1 else -0.25), row, width, height)
                 assert lonlat_to_colrow(lon, lat, width, height) == (col, row)
         # Pas de couture : le bruit fait le tour du monde.
         a = warp(-0.5, 5.0, width)

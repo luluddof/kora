@@ -28,7 +28,8 @@ bas au plus haut :
   2  la planete
        world
   3  ce qui s'y pose
-       path, atlas, mapgen, formes, planets, gamestate, peoples, places
+       path, points, atlas, mapgen, formes, planets, gamestate, peoples,
+       places
   4  les savoirs, les gens
        tech, units, vision, population
   5  LES SYSTEMES
@@ -208,6 +209,18 @@ La carte du depot (section 4) donne cet ordre en detail.
     par lieu) vote avec les neuf centres voisins, ou se lit par une tuile
     cuite ; ce qui change souvent (brouillard) s'adoucit et s'interpole.
     Ce que dit le survol vient de la forme (Planet.terrain_at).
+  - UNE UNITE EST A UN POINT (points.py, 0.28.0) : son point se lit par
+    points.point_of(world, band), jamais par points.center(band.position) ;
+    elle marche par points.march (le sol paye a proportion de la longueur) ;
+    un ordre vers un endroit precis passe son point (set_goto(aim=...)). Le
+    code qui pose une unite sur un lieu (band.position = ...) n'a rien a
+    faire de plus : sans point sur ce lieu, elle est a son centre.
+  - LA CARTE : le FOND ne se refait qu'avec la vue (le dessin de la planete, render.py) ;
+    ce qui change avec la partie est un CALQUE (Planet.overlays : brouillard,
+    zones, champs), refait a part. Un calque nouveau va la, jamais dans le
+    fond (sinon la carte se repeint et scintille chaque semaine).
+  - Ce qui se propage selon le sol lit aussi sa variation sur un meme sol
+    (world.cost_pct) : la marche et l'influence le font.
   - Une unite qui bouge GLISSE a l'ecran (glisse.py, l'interface) ; une
     position a l'ecran se lit par layout.band_screen_positions (qui fait
     glisser), jamais par hex_to_globe_screen(band.position) direct.
@@ -520,17 +533,18 @@ seulement si le decoupage rend le systeme plus simple a changer) :
 
 <<< auto : gros-modules >>>
   situations.py          ~1800 lignes
-  tech.py                ~1700 lignes
   render.py              ~1700 lignes
+  tech.py                ~1700 lignes
   events.py              ~1600 lignes
   diplo.py               ~1500 lignes
   render_village.py      ~1400 lignes
   events_data.py         ~1400 lignes
-  sim.py                 ~1300 lignes
   battle.py              ~1300 lignes
+  sim.py                 ~1300 lignes
   world.py               ~1300 lignes
   goods.py               ~1200 lignes
   villages.py            ~1200 lignes
+  globe_draw.py          ~1100 lignes
   decisions.py           ~1000 lignes
 <<< fin auto >>>
 

@@ -36,8 +36,9 @@ from src.kora import (
     screens,
     sites,
     tutoriel,
+    points,
 )
-from src.kora.globe import hex_to_globe_screen, look_at_hex, pixel_to_hex_globe, view_params
+from src.kora.globe import colrow_of_lonlat, hex_to_globe_screen, hit_globe, look_at_hex, pixel_to_hex_globe, view_params
 from src.kora.layout import (
     band_card_hit,
     band_screen_positions,
@@ -207,7 +208,7 @@ class MapInput:
 
         self.issue(commands.make(self.me(), "band", target, action), done)
 
-    def order_move(self, hx) -> bool:
+    def order_move(self, hx, aim=None) -> bool:
         band = self.state.bands.get(self.selected) if self.selected is not None else None
         if band is None:
             return False
@@ -220,7 +221,10 @@ class MapInput:
         if band.homebound:
             self.toast(orders.HOMEBOUND + ".")
             return False
-        self.issue(commands.make(self.me(), "goto", self.selected, hx.q, hx.r))
+        if aim is not None:
+            self.issue(commands.make(self.me(), "goto", self.selected, hx.q, hx.r, aim[0], aim[1]))
+        else:
+            self.issue(commands.make(self.me(), "goto", self.selected, hx.q, hx.r))
         return True
 
     def _attack_preview(self, foe_id: int):
@@ -550,7 +554,15 @@ class MapInput:
                 )
                 if hx is not None:
                     if self.selected is not None:
-                        self.order_move(hx)
+                        # Le point exact du clic (le monde sans grille).
+                        aim = None
+                        hit = hit_globe((mx - gcx) / focal, (gcy - my) / focal, self.globe_yaw, self.globe_pitch, dist)
+                        if hit is not None:
+                            col, row = colrow_of_lonlat(hit[0], hit[1], self.state.world)
+                            u, v = points.from_colrow(col, row)
+                            if points.cell_of(self.state.world, u, v) == self.state.world.canonicalize(hx):
+                                aim = (u, v)
+                        self.order_move(hx, aim)
                     else:
                         other = self._country_at(hx)
                         if other:

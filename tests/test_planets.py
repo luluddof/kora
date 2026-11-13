@@ -91,6 +91,8 @@ def _river_world():
     for col in range(2, 18):
         layer[5 * w + col] = (0 + 1) | (2 << 3)  # vers l'est, une riviere
     world.set_rivers(bytes(layer))
+    # Un sol sans variation : seul le courant joue.
+    world._cost_pct = [[100] * w for _ in range(h)]
     return world
 
 
@@ -177,6 +179,7 @@ def test_influence_follows_the_current_and_stops_at_the_river():
     assert cost[down] < cost[up], "en aval, l'influence porte plus loin"
     # Sans riviere, la meme plaine : aval et amont pareils.
     flat = World([[Terrain.PLAINE for _ in range(20)] for _ in range(11)])
+    flat._cost_pct = [[100] * 20 for _ in range(11)]
     h2, c2 = projection(flat, center, 6)
     plain = dict(zip(h2, c2))
     assert plain[down] == plain[up]
@@ -188,6 +191,7 @@ def test_influence_follows_the_current_and_stops_at_the_river():
     for col in range(2, 18):
         layer[6 * 20 + col] = 1 | (3 << 3)  # un fleuve vers l'est, rangee 6
     side.set_rivers(bytes(layer))
+    side._cost_pct = [[100] * 20 for _ in range(11)]
     h3, c3 = projection(side, offset_to_axial(9, 4), 6)
     over = dict(zip(h3, c3))
     assert over.get(across, 99) > plain[near], "le fleuve fait frontiere"

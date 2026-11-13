@@ -53,6 +53,7 @@ from src.kora import (
     memory,
     ost,
     places,
+    points,
     planets,
     population,
     records,
@@ -687,20 +688,12 @@ def apply_movement(state: GameState) -> None:
                     costs=costs,
                 )
                 band.path = [] if path is None else path
-        points = MOVE_POINTS_PER_WEEK
-        while band.path and points > 0:
-            nxt = band.path[0]
-            cost = step_cost(state.world, band.position, nxt, water_ok, costs)
-            if cost is None:
-                # Chemin coupe : ordre annule, la bande reste (spec du 14).
-                band.path = []
-                break
-            if cost > points:
-                break
-            points -= cost
-            placed = state.world.canonicalize(nxt)
-            band.position = nxt if placed is None else placed
-            band.path.pop(0)
+            # On vise la bande elle-meme, pas le centre de son lieu.
+            band.aim_u, band.aim_v = points.point_of(state.world, target)
+        # LA MARCHE CONTINUE (points.py) : le long du chemin, d'autant que le
+        # sol le permet ; un lieu infranchissable coupe le chemin (l'ordre
+        # est annule, la bande reste : spec du 14).
+        points.march(state.world, band, MOVE_POINTS_PER_WEEK, water_ok, costs)
         if not band.path and band.order.kind is OrderKind.GOTO:
             band.order = stay_order()
         if band.retreating and not band.path:

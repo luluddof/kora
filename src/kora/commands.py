@@ -100,7 +100,7 @@ def apply(state, cmd) -> dict:
 # --- les bandes ------------------------------------------------------------------------
 
 
-def _goto(state, tid, band_id, q, r):
+def _goto(state, tid, band_id, q, r, u=None, v=None):
     band, why = _own_band(state, tid, band_id)
     if band is None:
         return _out(why)
@@ -114,7 +114,9 @@ def _goto(state, tid, band_id, q, r):
         return _out(IN_BATTLE + ".")
     # Un ordre de marche retient la troupe appelee a l'ost (ost.py).
     band.ost = 0
-    set_goto(state, band.id, Hex(int(q), int(r)))
+    # Le point clique (points.py) : la bande va la, pas au centre du lieu.
+    aim = (int(u), int(v)) if u is not None and v is not None else None
+    set_goto(state, band.id, Hex(int(q), int(r)), aim=aim)
     return _out()
 
 

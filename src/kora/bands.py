@@ -180,7 +180,10 @@ def set_goto(
     goal: Hex,
     max_nodes: int | None = None,
     max_cost: int | None = None,
+    aim: tuple[int, int] | None = None,
 ) -> None:
+    """Un ordre de marche vers `goal` ; `aim` : le point vise dans ce lieu
+    (points.py ; le clic du joueur), sinon son centre."""
     band = state.bands.get(band_id)
     if band is None or band.retreating or band.village or band.homebound:
         return
@@ -194,6 +197,7 @@ def set_goto(
         and band.order.target_hex == goal_c
         and band.path
     ):
+        band.aim_u, band.aim_v = aim if aim is not None else (-1, -1)
         return
     dist = state.world.distance(band.position, goal_c)
     if max_nodes is None:
@@ -211,8 +215,12 @@ def set_goto(
     )
     if path is None:
         return
+    if not path and aim is not None:
+        # Deja dans ce lieu : quelques pas vers le point vise.
+        path = [goal_c]
     band.order = Order(kind=OrderKind.GOTO, target_hex=goal_c)
     band.path = path
+    band.aim_u, band.aim_v = aim if aim is not None else (-1, -1)
 
 
 def set_march_to_band(state: GameState, band_id: int, target_band_id: int) -> None:

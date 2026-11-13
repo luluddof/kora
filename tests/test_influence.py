@@ -68,6 +68,11 @@ def test_a_few_weeks_in_one_place_make_it_home_and_it_fades_in_about_a_year():
 def test_zone_radius_grows_with_landmarks_knowledge():
     base, b1 = _state()
     wise, b2 = _state(known=("huttes", "reperes"))
+    # Un sol sans variation (la variation d'un meme sol joue sur la portee :
+    # test_the_same_ground_can_carry_influence_more_or_less_far).
+    for st in (base, wise):
+        st.world._cost_pct = [[100] * st.world.width for _ in range(st.world.height)]
+        st.world._proj_cache = {}
     _live(base, 12)
     _live(wise, 12)
     edge = offset_to_axial(12 + 3, 8)
@@ -142,3 +147,20 @@ def test_a_mountain_ridge_stops_the_influence_of_a_valley():
     cols = {h for h in hexes}
     assert offset_to_axial(10, 10) in cols  # 4 cases de vallee
     assert offset_to_axial(19, 10) not in cols  # derriere la chaine
+
+
+def test_the_same_ground_can_carry_influence_more_or_less_far():
+    """Sa demande (2026-11-13) : la proximite, et donc l'influence, varient
+    selon le sol, et meme sur un meme sol (world.cost_pct)."""
+    from src.kora.world import make_filled_world
+
+    world = make_filled_world(30, 20, Terrain.PLAINE)
+    world._cost_pct = [[100] * 30 for _ in range(20)]
+    centre = offset_to_axial(15, 10)
+    flat = len(influence.projection(world, centre, 5)[0])
+    rough = make_filled_world(30, 20, Terrain.PLAINE)
+    rough._cost_pct = [[100 if c < 15 else 112 for c in range(30)] for _ in range(20)]
+    hexes, _costs = influence.projection(rough, centre, 5)
+    east = sum(1 for h in hexes if h.q + (h.r - (h.r & 1)) // 2 > 15)
+    west = sum(1 for h in hexes if h.q + (h.r - (h.r & 1)) // 2 < 15)
+    assert len(hexes) < flat and east < west

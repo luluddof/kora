@@ -17,7 +17,8 @@ from __future__ import annotations
 import math
 import time
 
-from src.kora.world import axial_to_offset
+from src.kora import points
+from src.kora.types import Hex
 
 MAX_SECONDS = 1.2
 # Au-dela de tant de cases d'un coup, ce n'est pas une marche (une partie
@@ -37,13 +38,14 @@ def _books(state) -> tuple:
     return books
 
 
-def _points(world, hexes) -> list:
-    """Les points (colonne, rangee) du chemin, deroules autour du monde."""
+def _points(world, spots) -> list:
+    """Les points (colonne, rangee a virgule) d'un chemin - des lieux ou des
+    points fins (points.py) -, deroules autour du monde."""
     out = []
     width = world.width
-    for h in hexes:
-        c, r = axial_to_offset(h)
-        c = float(c)
+    for h in spots:
+        fine = points.center(h) if isinstance(h, Hex) else h
+        c, r = points.to_colrow(*fine)
         if out and world.wrap_x:
             prev = out[-1][0]
             while c - prev > width / 2:
@@ -93,17 +95,17 @@ def observe(state, band, now: float | None = None) -> None:
     du chemin fait (le chemin d'avant, jusqu'a la nouvelle position)."""
     track, glides = _books(state)
     key = band.id
-    pos = band.position
+    world = state.world
+    pos = points.point_of(world, band)
     last = track.get(key)
     if last is not None and last[0] != pos:
         old, path = last
-        world = state.world
-        if world.distance(old, pos) <= MAX_JUMP:
-            trail = [old]
-            if pos in path:
-                trail += list(path[: path.index(pos) + 1])
-            else:
-                trail.append(pos)
+        if points.length(world, old, pos) <= MAX_JUMP * points.FINE:
+            # Le chemin fait : les lieux passes (le chemin d'avant, moins ce
+            # qui reste), jusqu'au point d'arrivee.
+            now_path = tuple(band.path)
+            gone = len(path) - len(now_path) if path[len(path) - len(now_path):] == now_path else 0
+            trail = [old, *[h for h in path[:gone] if points.center(h) != pos], pos] if gone else [old, pos]
             rate = state.clock.ticks_per_second() if not state.clock.paused else 0.0
             dur = min(MAX_SECONDS, 1.0 / rate) if rate > 0 else 0.4
             now = time.perf_counter() if now is None else now

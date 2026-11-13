@@ -4,8 +4,9 @@ Ce n'est pas un territoire : aucune case n'appartient a personne et rien
 ne bloque le passage. Chaque semaine on note ou se tiennent les bandes ;
 chaque mois l'influence s'use (x0,94 : demi-vie d'environ un an), puis
 chaque lieu note la PROJETTE autour de lui, aussi loin que porte son rayon
-(les savoirs). La projection suit le sol (PROJECTION) : chaque case
-traversee use la portee selon son terrain, peu en plaine et en vallee, un
+(les savoirs). La projection suit le sol (PROJECTION) : chaque lieu
+traverse use la portee selon son terrain et sa variation sur un meme sol
+(world.cost_pct, comme la marche), peu en plaine et en vallee, un
 peu plus en steppe, plus en foret et en collines, beaucoup en desert et en
 montagne. Une plaine se tient de loin ; une montagne, seulement de pres.
 Campements et villages l'ancrent, meme vides.
@@ -23,7 +24,7 @@ import math
 
 from src.kora import tech
 from src.kora.types import Hex, Terrain
-from src.kora.world import NEIGHBOR_DELTAS, river_pct
+from src.kora.world import NEIGHBOR_DELTAS, cost_pct, river_pct
 from src.kora.places import influence_radius
 
 # Un pas en biais (deux cases en escalier, en ligne droite) : racine de 3
@@ -98,6 +99,7 @@ def projection(world, center, radius: int) -> tuple[list, list]:
     heap = [(0.0, 0, origin)]
     n = 0
     rivers = bool(world._flow)
+    pct = cost_pct(world)
 
     memo: dict = {}
 
@@ -115,9 +117,12 @@ def projection(world, center, radius: int) -> tuple[list, list]:
         nb = world.canonicalize(Hex(h.q + dq, h.r + dr))
         if nb is None or nb not in inside:
             return None
-        step = PROJECTION.get(world.terrain(nb), 1.0)
+        # Le sol, et sa variation sur un meme sol (world.cost_pct, la meme
+        # que la marche : sa demande du 2026-11-13, la proximite et donc
+        # l'influence varient meme sur un meme terrain).
+        (c0, r0), (c1, r1) = world._index(h), world._index(nb)
+        step = PROJECTION.get(world.terrain(nb), 1.0) * pct[r1][c1] / 100.0
         if rivers:
-            (c0, r0), (c1, r1) = world._index(h), world._index(nb)
             step = step * river_pct(world, c0, r0, c1, r1, k) / 100.0
         return nb, step
 

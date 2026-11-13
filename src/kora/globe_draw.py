@@ -62,6 +62,12 @@ RIVER_LINE_PX = 5.0
 # Pixels calcules par image : peu pendant que la camera bouge, beaucoup
 # une fois qu'elle s'arrete (voir Renderer._draw_sphere).
 FAST_SAMPLES = 90_000
+# Les terres des villages (les champs) : leur teinte, leur opacite.
+FIELD_COLOR = (206, 178, 92)
+FIELD_ALPHA = 0.55
+# Les calques (brouillard, zones) : peu de points, adoucis a l'agrandissement.
+OVERLAY_SAMPLES = 360_000
+OVERLAY_SAMPLES_FAST = 40_000
 FINE_SAMPLES = 600_000
 _KEY = (255, 0, 255)
 _PALETTE = np.array(
@@ -138,6 +144,18 @@ class Planet:
         self._res_key = None
         self._shape = None
         self._tiles: dict = {}
+        self._codes_key = None
+        self._codes = None
+        self._views: dict = {}
+        self._fields_key = None
+        self._fields_gen = 0
+        self._fields_soft = None
+        self._group_cache: dict = {}
+        self._fog_geo: dict = {}
+        self._img_key = None
+        self._img = None
+        self._surf = None
+        self._img_season = None
         self._zone_tiles: dict = {}
         # Les rivieres : la taille de chaque case (0 : sans riviere).
         rivers = world.rivers
@@ -285,6 +303,18 @@ class Planet:
         hit = self._zone_tiles.get(key)
         if hit is not None and hit[0] == self._zone_key:
             return hit[1], hit[2]
+        # Le coin de carte de la tuile (et deux cases autour) : s'il n'a pas
+        # change, la tuile non plus (le brouillard qui bouge ailleurs ne
+        # recuit pas tout).
+        span = TILE_SUB // level
+        rows = np.clip(np.arange(ty * span - 2, (ty + 1) * span + 3), 0, self.height - 1)
+        cols = np.arange(tx * span - 2, (tx + 1) * span + 3) % self.width
+        region = b"".join(
+            a[np.ix_(rows, cols)].tobytes() for a in (self.zone_owner, self.zone_group, self.zone_inner)
+        ) + np.float32(self.zone_edge).tobytes() + self.zone_colors.tobytes()
+        if hit is not None and hit[3] == region:
+            self._zone_tiles[key] = (self._zone_key, hit[1], hit[2], region)
+            return hit[1], hit[2]
         xf, yf = self._tile_points(level, tx, ty)
         rows, cols, w = self._stencil(xf, yf)
         own, alpha = self._bake_zones(rows, cols, w)
@@ -292,32 +322,51 @@ class Planet:
             for old in list(self._zone_tiles)[: TILE_CACHE // 4]:
                 del self._zone_tiles[old]
         own, alpha = own.reshape(TILE_SUB, TILE_SUB), alpha.reshape(TILE_SUB, TILE_SUB)
-        self._zone_tiles[key] = (self._zone_key, own, alpha)
+        self._zone_tiles[key] = (self._zone_key, own, alpha, region)
         return own, alpha
 
-    def _lookup(self, xf, yf, level: int, zones: bool):
-        """Les sols (et les zones) cuits sous les points (xf, yf), NON
-        deplaces : la tuile garde le deplacement de chaque sous-case."""
+    def _groups(self, xf, yf, level: int, key=None) -> list:
+        """Les points (xf, yf) groupes par tuile : [(tx, ty, indices, ly,
+        lx)] ; gardes pour une vue (key) : ils ne dependent que d'elle."""
+        if key is not None:
+            hit = self._group_cache.get(key)
+            if hit is not None:
+                return hit
         n = TILE_SUB
         span_x = self.width * level
         sx = np.floor((xf + 0.5) * level).astype(np.int64) % span_x
         sy = np.clip(np.floor((yf + 0.5) * level).astype(np.int64), 0, self.height * level - 1)
-        tx, ty = sx // n, sy // n
         ntx = -(-span_x // n)
-        tid = ty * ntx + tx
+        tid = (sy // n) * ntx + sx // n
+        order = np.argsort(tid, kind="stable")
+        tids = tid[order]
+        cuts = np.flatnonzero(np.diff(tids)) + 1
+        out = []
+        for part in np.split(order, cuts):
+            if not len(part):
+                continue
+            t = int(tid[part[0]])
+            a, b = t % ntx, t // ntx
+            out.append((a, b, part.astype(np.int32), (sy[part] - b * n).astype(np.int16), (sx[part] - a * n).astype(np.int16)))
+        if key is not None:
+            if len(self._group_cache) >= 2:
+                self._group_cache.clear()
+            self._group_cache[key] = out
+        return out
+
+    def _lookup(self, xf, yf, level: int, zones: bool, key=None):
+        """Les sols (et les zones) cuits sous les points (xf, yf), NON
+        deplaces : la tuile garde le deplacement de chaque sous-case."""
         code = np.empty(len(xf), dtype=np.uint8)
         own = np.full(len(xf), -1, dtype=np.int16) if zones else None
         alpha = np.zeros(len(xf), dtype=np.uint8) if zones else None
-        used = np.nonzero(np.bincount(tid))[0]
-        for t in used.tolist():
-            sel = tid == t
-            a, b = t % ntx, t // ntx
-            ly, lx = sy[sel] - b * n, sx[sel] - a * n
-            code[sel] = self._tile(level, a, b)[ly, lx]
-            if zones:
+        for a, b, idx, ly, lx in self._groups(xf, yf, level, key):
+            if not zones:
+                code[idx] = self._tile(level, a, b)[ly, lx]
+            else:
                 zo, za = self._zone_tile(level, a, b)
-                own[sel] = zo[ly, lx]
-                alpha[sel] = za[ly, lx]
+                own[idx] = zo[ly, lx]
+                alpha[idx] = za[ly, lx]
         return code, own, alpha
 
     def _soft_fog(self) -> np.ndarray:
@@ -347,51 +396,59 @@ class Planet:
         code, _o, _a = self._lookup(xf, yf, 16, False)
         return TERRAINS[int(code[0])]
 
-    def _fog_at(self, xf, yf):
-        """Le brouillard (0 a 2) entre les centres, en douceur."""
-        height, width = self.height, self.width
-        x0 = np.floor(xf)
-        y0 = np.floor(yf)
-        fx = xf - x0
-        fy = yf - y0
-        fx = fx * fx * (3.0 - 2.0 * fx)
-        fy = fy * fy * (3.0 - 2.0 * fy)
-        c0 = x0.astype(np.int64) % width
-        c1 = (c0 + 1) % width
-        r0 = np.clip(y0.astype(np.int64), 0, height - 1)
-        r1 = np.minimum(r0 + 1, height - 1)
-        f = self._soft_fog()
+    def sync_fields(self, cells) -> tuple:
+        """LES TERRES DES VILLAGES en surfaces : les champs vus (colonne,
+        rangee), adoucis comme le brouillard ; rend leur cle (les calques se
+        refont quand elle change)."""
+        key = tuple(sorted(cells))
+        if key != self._fields_key:
+            grid = np.zeros((self.height, self.width), dtype=np.float32)
+            for col, row in key:
+                if 0 <= row < self.height:
+                    grid[row, col % self.width] = 1.0
+            self._fields_soft = self._soften(grid)
+            self._fields_key = key
+            self._fields_gen += 1
+        return self._fields_gen
+
+    def _soften(self, f: np.ndarray) -> np.ndarray:
+        k = np.array((0.08, 0.24, 0.36, 0.24, 0.08), dtype=np.float32)
+        for axis in (0, 1):
+            pad = [(0, 0), (0, 0)]
+            pad[axis] = (2, 2)
+            g = np.pad(f, pad, mode="wrap" if axis == 1 else "edge")
+            acc = np.zeros_like(f)
+            for i, w in enumerate(k):
+                acc += w * (g[i:i + f.shape[0]] if axis == 0 else g[:, i:i + f.shape[1]])
+            f = acc
+        return f
+
+    def _fog_at(self, xf, yf, key=None, grid=None):
+        """Le brouillard (0 a 2) entre les centres, en douceur (les indices
+        et les poids d'une vue gardes : key)."""
+        hit = self._fog_geo.get(key) if key is not None else None
+        if hit is None:
+            height, width = self.height, self.width
+            x0 = np.floor(xf)
+            y0 = np.floor(yf)
+            fx = xf - x0
+            fy = yf - y0
+            fx = (fx * fx * (3.0 - 2.0 * fx)).astype(np.float32)
+            fy = (fy * fy * (3.0 - 2.0 * fy)).astype(np.float32)
+            c0 = (x0.astype(np.int64) % width).astype(np.int32)
+            c1 = ((c0 + 1) % width).astype(np.int32)
+            r0 = np.clip(y0.astype(np.int64), 0, height - 1).astype(np.int32)
+            r1 = np.minimum(r0 + 1, height - 1).astype(np.int32)
+            hit = (r0, r1, c0, c1, fx, fy)
+            if key is not None:
+                if len(self._fog_geo) >= 2:
+                    self._fog_geo.clear()
+                self._fog_geo[key] = hit
+        r0, r1, c0, c1, fx, fy = hit
+        f = self._soft_fog() if grid is None else grid
         top = f[r0, c0] * (1.0 - fx) + f[r0, c1] * fx
         bot = f[r1, c0] * (1.0 - fx) + f[r1, c1] * fx
         return (top * (1.0 - fy) + bot * fy).astype(np.float32)
-
-    def _shade(self, xf, yf, level: int):
-        """La couleur et le brouillard (0 a 2, doux) des points (xf, yf) non
-        deplaces, au grain `level`."""
-        zones = self.zones_on and not self.trade_on and not (self.res_on and self.world.resources)
-        code, own, alpha = self._lookup(xf, yf, level, zones)
-        height, width = self.height, self.width
-        nr = np.clip(np.rint(yf).astype(np.int64), 0, height - 1)
-        nc = np.rint(xf).astype(np.int64) % width
-        base = _PALETTE[self.seasons()[nr, nc], code]
-        fog = self._fog_at(xf, yf)
-        if self.trade_on:
-            grey = base.mean(axis=-1, keepdims=True)
-            base = (base * 0.35 + grey * 0.65) * 0.55
-        elif self.res_on and self.world.resources:
-            color, ralpha = self._resources()
-            a = ralpha[nr, nc][:, None]
-            base = base * (0.55 * (1.0 - a)) + color[nr, nc] * a
-        elif zones:
-            if self.realm_on or self.turn_pick:
-                grey = base.mean(axis=-1, keepdims=True)
-                base = (base * 0.3 + grey * 0.7) * 0.75
-            mine = own >= 0
-            if mine.any():
-                a = (alpha[mine].astype(np.float32) / np.float32(255.0))[:, None]
-                base = base.copy()
-                base[mine] = base[mine] * (1.0 - a) + self.zone_colors[own[mine]] * a
-        return base, fog
 
     # --- saisons et brouillard ---------------------------------------
 
@@ -662,7 +719,7 @@ class Planet:
         t2 = (-b + root) / 2.0
         t = np.where(t1 > 1e-4, t1, t2)
         hit &= t > 1e-4
-        flat = np.nonzero(hit.ravel())[0]
+        flat = np.nonzero(hit.ravel())[0].astype(np.int32)
         t = t.ravel()[flat]
         rays = (
             flat,
@@ -670,16 +727,14 @@ class Planet:
             (ly.ravel()[flat] * t).astype(np.float32),
             (dist + lz.ravel()[flat] * t).astype(np.float32),
         )
-        if len(self._rays) >= 4:
+        if len(self._rays) >= 2:
             self._rays.clear()
         self._rays[key] = rays
         return rays
 
-    def texture(
-        self, state, yaw, pitch, cx, cy, focal, dist, clip: pygame.Rect, samples=FINE_SAMPLES
-    ):
-        """Surface de la planete vue d'ici, et sa position a l'ecran."""
-        self.sync_fog(state)
+    def _view(self, yaw, pitch, cx, cy, focal, dist, clip: pygame.Rect, samples):
+        """Les rayons de la vue : (x0, y0, nx, ny, step, flat, lon, lat, hz),
+        ou None (la planete hors de l'ecran)."""
         limb = focal / math.sqrt(max(1e-4, dist * dist - 1.0))
         x0 = max(clip.left, int(cx - limb) - 1)
         x1 = min(clip.right, int(cx + limb) + 2)
@@ -692,60 +747,203 @@ class Planet:
         nx = -(-(x1 - x0) // step)
         ny = -(-(y1 - y0) // step)
         flat, hx, hy, hz = self._ray_hits(x0, y0, nx, ny, step, cx, cy, focal, dist)
+        vkey = (x0, y0, nx, ny, step, cx, cy, focal, dist, yaw, pitch)
+        hit = self._views.get(vkey)
+        if hit is not None:
+            return hit
+        cp, sp = np.float32(math.cos(pitch)), np.float32(math.sin(pitch))
+        cyw, syw = np.float32(math.cos(yaw)), np.float32(math.sin(yaw))
+        y1r = hy * cp + hz * sp
+        z1 = -hy * sp + hz * cp
+        x2 = hx * cyw - z1 * syw
+        z2 = hx * syw + z1 * cyw
+        lon = np.arctan2(x2, z2)
+        lat = np.arcsin(np.clip(y1r, -1.0, 1.0))
+        if len(self._views) >= 2:
+            self._views.clear()
+        out = self._views[vkey] = (x0, y0, nx, ny, step, flat, lon, lat, hz)
+        return out
+
+    def _xy(self, lon, lat):
+        width, height = self.width, self.height
+        xf = (lon + np.float32(math.pi)) * np.float32(width / (2.0 * math.pi)) - np.float32(0.5)
+        yf = (np.float32(math.pi / 2.0) - lat) * np.float32((height - 1) / math.pi)
+        return xf, yf
+
+    def base_key(self) -> tuple:
+        """Ce qui change le FOND (les sols et leurs couleurs) en dehors de la
+        vue : la saison, le mode de carte."""
+        return (self.season_gen(), self.trade_on, self.res_on, self.res_hidden, self.realm_on, bool(self.turn_pick), self.zones_on)
+
+    def _ground(self, rows, cols, base):
+        """Le mode de carte sur les couleurs du sol (commerce, ressources,
+        carte politique) ; le brouillard et les zones sont des calques."""
+        if self.trade_on:
+            grey = base.mean(axis=-1, keepdims=True)
+            return (base * 0.35 + grey * 0.65) * 0.55
+        if self.res_on and self.world.resources:
+            color, alpha = self._resources()
+            a = alpha[rows, cols][:, None]
+            return base * (0.55 * (1.0 - a)) + color[rows, cols] * a
+        if self.zones_on and (self.realm_on or self.turn_pick):
+            grey = base.mean(axis=-1, keepdims=True)
+            return (base * 0.3 + grey * 0.7) * 0.75
+        return base
+
+    def texture(
+        self, state, yaw, pitch, cx, cy, focal, dist, clip: pygame.Rect, samples=FINE_SAMPLES
+    ):
+        """LE FOND de la planete vue d'ici (les sols eclaires, sans brouillard
+        ni zones : ils se posent par-dessus, overlays), et sa position. Il ne
+        change qu'avec la vue, la saison ou le mode de carte : la partie qui
+        avance ne le refait pas (plus de scintillement)."""
+        view = self._view(yaw, pitch, cx, cy, focal, dist, clip, samples)
+        if view is None:
+            return None
+        x0, y0, nx, ny, step, flat, lon, lat, hz = view
         img = np.empty((ny * nx, 3), dtype=np.uint8)
         img[:] = _KEY
         if len(flat):
-            cp, sp = np.float32(math.cos(pitch)), np.float32(math.sin(pitch))
-            cyw, syw = np.float32(math.cos(yaw)), np.float32(math.sin(yaw))
-            y1r = hy * cp + hz * sp
-            z1 = -hy * sp + hz * cp
-            x2 = hx * cyw - z1 * syw
-            z2 = hx * syw + z1 * cyw
-            lon = np.arctan2(x2, z2)
-            lat = np.arcsin(np.clip(y1r, -1.0, 1.0))
-            width, height = self.width, self.height
-            xf = (lon + np.float32(math.pi)) * np.float32(width / (2.0 * math.pi)) - np.float32(0.5)
-            yf = (np.float32(math.pi / 2.0) - lat) * np.float32((height - 1) / math.pi)
-            px = hex_screen_px(self.world, focal, dist)
             lit = np.float32(0.34) + np.float32(0.66) * np.clip(hz, 0.0, 1.0)
+            px = hex_screen_px(self.world, focal, dist)
             if px < SHAPE_MIN_PX:
                 # De tres loin : la case la plus proche (une case < un pixel).
                 rows, cols = self.cells_at(lon, lat)
-                base, fog = self._colors(rows, cols)
-                lit = np.where(fog == 1, lit * np.float32(0.55), lit)
-                rgb = np.minimum(255.0, np.floor(base * lit[:, None])).astype(np.uint8)
-                rgb[fog == 0] = FOG_UNEXPLORED
-                img[flat] = rgb
+                base = _PALETTE[self.seasons()[rows, cols], self.terr[rows, cols]]
+                size = self.river_size[rows, cols]
+                if size.any():
+                    a = RIVER_TINT[size][:, None]
+                    base = base * (1.0 - a) + RIVER_COLOR * a
+                base = self._ground(rows, cols, base)
+                img[flat] = np.minimum(255.0, np.floor(base * lit[:, None])).astype(np.uint8)
             else:
                 level = next((k for k in TILE_GRAINS if px / k <= TILE_PX), TILE_GRAINS[-1])
                 if samples <= FAST_SAMPLES:
                     # La vue bouge : un grain plus gros (vite cuit), sans
                     # escalier trop visible.
                     level = next((k for k in TILE_GRAINS if px / k <= TILE_PX_FAST), TILE_GRAINS[-1])
-                if self.zones_on:
-                    self._zone_tiles_key = self._zone_key
-                for a in range(0, len(flat), SHAPE_CHUNK):
-                    b = a + SHAPE_CHUNK
-                    base, fog = self._shade(xf[a:b], yf[a:b], level)
-                    # Le brouillard doux : vu (2), connu (1), jamais vu (0).
-                    seen = np.clip(fog - 1.0, 0.0, 1.0)
-                    known = np.clip((fog - 0.35) / 0.3, 0.0, 1.0)[:, None]
-                    li = lit[a:b] * (np.float32(0.55) + np.float32(0.45) * seen)
-                    rgb = np.minimum(255.0, np.floor(base * li[:, None]))
-                    rgb = rgb * known + np.array(FOG_UNEXPLORED, dtype=np.float32) * (1.0 - known)
-                    img[flat[a:b]] = rgb.astype(np.uint8)
+                # Les sols de cette vue, gardes : une saison qui avance, un mode
+                # de carte ne refont que les couleurs.
+                vkey = (x0, y0, nx, ny, step, yaw, pitch, cx, cy, focal, dist, level)
+                if self._codes_key != vkey:
+                    xf, yf = self._xy(lon, lat)
+                    height, width = self.height, self.width
+                    codes, cells = [], []
+                    for a in range(0, len(flat), SHAPE_CHUNK):
+                        b = a + SHAPE_CHUNK
+                        code, _o, _a = self._lookup(xf[a:b], yf[a:b], level, False)
+                        nr = np.clip(np.rint(yf[a:b]).astype(np.int64), 0, height - 1)
+                        nc = np.rint(xf[a:b]).astype(np.int64) % width
+                        codes.append(code)
+                        cells.append((nr.astype(np.int32), nc.astype(np.int32)))
+                    self._codes = (np.concatenate(codes), np.concatenate([c[0] for c in cells]), np.concatenate([c[1] for c in cells]))
+                    self._codes_key = vkey
+                    self._img_key = None
+                code, nr, nc = self._codes
+                season = self.seasons()[nr, nc]
+                gkey = (vkey, self.trade_on, self.res_on, self.res_hidden, self.realm_on, bool(self.turn_pick), self.zones_on)
+                if self._img_key == gkey:
+                    # La meme vue, le meme mode : seuls les points dont la
+                    # saison a change sont recolores (aucun : l'image d'avant).
+                    img = self._img
+                    sel = np.nonzero(season != self._img_season)[0]
+                    if not len(sel) and self._surf is not None:
+                        return self._surf, (x0, y0)
+                else:
+                    sel = slice(None)
+                if isinstance(sel, slice) or len(sel):
+                    base = self._ground(nr[sel], nc[sel], _PALETTE[season[sel], code[sel]])
+                    img[flat[sel]] = np.minimum(255.0, np.floor(base * lit[sel, None])).astype(np.uint8)
+                self._img, self._img_season, self._img_key = img, season, gkey
         surf = pygame.Surface((nx, ny))
         pygame.surfarray.blit_array(surf, img.reshape(ny, nx, 3).transpose(1, 0, 2))
         surf.set_colorkey(_KEY)
         if step > 1:
             surf = pygame.transform.scale(surf, (nx * step, ny * step))
+        self._surf = surf
         return surf, (x0, y0)
+
+    def overlays(self, state, yaw, pitch, cx, cy, focal, dist, clip: pygame.Rect, samples=OVERLAY_SAMPLES):
+        """LES CALQUES qui changent avec la partie, a petite resolution puis
+        adoucis : les zones d'influence (une surface RGBA, ou None) et le
+        brouillard (une surface a MULTIPLIER : blanc = rien, noir = jamais
+        vu) ; leur position. Refaits quand le brouillard ou les zones
+        changent, sans toucher au fond."""
+        self.sync_fog(state)
+        view = self._view(yaw, pitch, cx, cy, focal, dist, clip, samples)
+        if view is None:
+            return None
+        x0, y0, nx, ny, step, flat, lon, lat, hz = view
+        fog_img = np.full((ny * nx, 3), 255, dtype=np.uint8)
+        zone_img = None
+        if len(flat):
+            xf, yf = self._xy(lon, lat)
+            vkey = (x0, y0, nx, ny, step, yaw, pitch, cx, cy, focal, dist)
+            fog = self._fog_at(xf, yf, vkey)
+            seen = np.clip(fog - 1.0, 0.0, 1.0)
+            known = np.clip((fog - 0.35) / 0.3, 0.0, 1.0)
+            m = known * (np.float32(0.55) + np.float32(0.45) * seen)
+            fog_img[flat] = np.clip(m * 255.0, 0, 255).astype(np.uint8)[:, None]
+            # Les terres des villages : un aplat dore, sillonne, aux bords doux.
+            lit = np.float32(0.34) + np.float32(0.66) * np.clip(hz, 0.0, 1.0)
+            if self._fields_soft is not None and self._fields_key:
+                fv = self._fog_at(xf, yf, vkey, self._fields_soft)
+                fa = np.clip((fv - 0.22) / 0.3, 0.0, 1.0)
+                on = fa > 0.01
+                if on.any():
+                    furrow = np.float32(0.82) + np.float32(0.18) * np.sin(xf[on] * np.float32(2.0 * math.pi * 2.5) + yf[on] * np.float32(4.0))
+                    zone_img = np.zeros((ny * nx, 4), dtype=np.uint8)
+                    color = np.array(FIELD_COLOR, dtype=np.float32)[None, :] * (lit[on] * furrow)[:, None]
+                    sel = flat[on]
+                    zone_img[sel, :3] = np.clip(color, 0, 255).astype(np.uint8)
+                    zone_img[sel, 3] = (fa[on] * FIELD_ALPHA * 255.0).astype(np.uint8)
+            plain = self.zones_on and not self.trade_on and not (self.res_on and self.world.resources)
+            if plain:
+                px = hex_screen_px(self.world, focal, dist)
+                if px < SHAPE_MIN_PX:
+                    rows, cols = self.cells_at(lon, lat)
+                    own = self.zone_owner[rows, cols]
+                    alpha = (self.zone_alpha[rows, cols] * 255.0).astype(np.uint8)
+                else:
+                    # Le grain des zones : celui de l'image (une sous-case par
+                    # point du calque, ou un peu moins).
+                    level = next((k for k in TILE_GRAINS if px / k <= step * 0.8), TILE_GRAINS[-1])
+                    _c, own, alpha = self._lookup(xf, yf, level, True, (vkey, level))
+                mine = own >= 0
+                if mine.any():
+                    if zone_img is None:
+                        zone_img = np.zeros((ny * nx, 4), dtype=np.uint8)
+                    color = self.zone_colors[own[mine]] * lit[mine][:, None]
+                    sel = flat[mine]
+                    # La zone par-dessus les champs (composition alpha).
+                    az = alpha[mine].astype(np.float32)[:, None] / 255.0
+                    af = zone_img[sel, 3].astype(np.float32)[:, None] / 255.0
+                    under = zone_img[sel, :3].astype(np.float32)
+                    a = az + af * (1.0 - az)
+                    rgb = (color * az + under * af * (1.0 - az)) / np.maximum(a, 1e-6)
+                    zone_img[sel, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+                    zone_img[sel, 3] = np.clip(a[:, 0] * 255.0, 0, 255).astype(np.uint8)
+        fog_surf = pygame.Surface((nx, ny))
+        pygame.surfarray.blit_array(fog_surf, fog_img.reshape(ny, nx, 3).transpose(1, 0, 2))
+        size = (nx * step, ny * step)
+        if step > 1:
+            fog_surf = pygame.transform.smoothscale(fog_surf, size)
+        zone_surf = None
+        if zone_img is not None:
+            zone_surf = pygame.Surface((nx, ny), pygame.SRCALPHA)
+            zi = zone_img.reshape(ny, nx, 4).transpose(1, 0, 2)
+            pygame.surfarray.blit_array(zone_surf, zi[..., :3])
+            pygame.surfarray.pixels_alpha(zone_surf)[...] = zi[..., 3]
+            if step > 1:
+                zone_surf = pygame.transform.smoothscale(zone_surf, size)
+        return zone_surf, fog_surf, (x0, y0)
 
     # --- pres : polygones ------------------------------------------------
 
     def _centers_of(self, rr, cc) -> np.ndarray:
         """Le point de la sphere au centre des cases (rr, cc)."""
-        lon = 2.0 * math.pi * (cc + 0.5) / self.width - math.pi
+        shift = np.where(rr & 1, HEX_ROW_SHIFT, -HEX_ROW_SHIFT)
+        lon = 2.0 * math.pi * (cc + shift + 0.5) / self.width - math.pi
         lat = (math.pi / 2.0) - (math.pi * rr / (self.height - 1)) if self.height > 1 else rr * 0.0
         cl = np.cos(lat)
         return np.stack([cl * np.sin(lon), np.sin(lat), cl * np.cos(lon)], axis=-1)
@@ -798,23 +996,48 @@ class Planet:
             sel = k == d
             if sel.any():
                 nr[sel], nc[sel] = self._neighbor_of(rr[sel], cc[sel], d)
+        # La case en aval de l'aval (pour la courbe) : elle-meme si l'eau
+        # s'arrete la (la mer, un lac).
+        grid = np.frombuffer(rivers, dtype=np.uint8).reshape(self.height, self.width)
+        down = grid[nr, nc]
+        k2 = (down & 7).astype(np.int64) - 1
+        nr2, nc2 = nr.copy(), nc.copy()
+        for d in range(6):
+            sel = (k2 == d) & (down > 0)
+            if sel.any():
+                nr2[sel], nc2[sel] = self._neighbor_of(nr[sel], nc[sel], d)
         hex_px = focal * (2.0 * math.pi / max(1, self.width)) / max(1e-3, dist - 1.0)
         widths = np.maximum(1, np.round(hex_px * np.array((0.0, 0.07, 0.13, 0.22))[code >> 3])).astype(np.int64)
         ends = []
-        for r_, c_ in ((rr, cc), (nr, nc)):
+        for r_, c_ in ((rr, cc), (nr, nc), (nr2, nc2)):
             p_ = self._warp_points(self._centers_of(r_, c_))
             x, y, z = _rotate(p_[:, 0], p_[:, 1], p_[:, 2], yaw, pitch)
             depth = dist - z
             ok = (z * dist >= 0.98) & (depth > 0.04)
             depth = np.where(ok, depth, 1.0)
             ends.append((cx + focal * x / depth, cy - focal * y / depth, ok))
-        (ax, ay, aok), (bx, by, bok) = ends
+        (ax, ay, aok), (bx, by, bok), (qx, qy, qok) = ends
         color = tuple(int(c) for c in RIVER_COLOR)
         dim = tuple(int(c * 0.55) for c in RIVER_COLOR)
-        line = pygame.draw.line
-        # Du centre de la case au centre de la case en aval.
-        for i in np.nonzero(aok & bok)[0].tolist():
-            line(screen, color if fog[i] == 2 else dim, (ax[i], ay[i]), (bx[i], by[i]), int(widths[i]))
+        lines = pygame.draw.lines
+        # Les sources (personne ne s'y jette parmi les cases dessinees) : le
+        # trait part de leur centre.
+        fed = set(zip(nr.tolist(), nc.tolist()))
+        ts = np.linspace(0.0, 1.0, 6)
+        # LA RIVIERE EN COURBE : du milieu d'un pas au milieu du suivant, en
+        # passant pres du centre de la case (une courbe, plus le zigzag des
+        # centres).
+        for i in np.nonzero(aok & bok & qok)[0].tolist():
+            col_ = color if fog[i] == 2 else dim
+            m1 = ((ax[i] + bx[i]) / 2, (ay[i] + by[i]) / 2)
+            m2 = ((bx[i] + qx[i]) / 2, (by[i] + qy[i]) / 2)
+            pts = [
+                ((1 - t) ** 2 * m1[0] + 2 * (1 - t) * t * bx[i] + t * t * m2[0], (1 - t) ** 2 * m1[1] + 2 * (1 - t) * t * by[i] + t * t * m2[1])
+                for t in ts
+            ]
+            if (int(rr[i]), int(cc[i])) not in fed:
+                pts.insert(0, (ax[i], ay[i]))
+            lines(screen, col_, False, pts, int(widths[i]))
 
     def _warp_points(self, p: np.ndarray) -> np.ndarray:
         """Des points de la sphere deplaces comme le terrain (globe.warp)."""

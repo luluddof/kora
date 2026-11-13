@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 
-from src.kora import glisse, numbers, tech, tree_graph
+from src.kora import glisse, numbers, points, tech, tree_graph
 from src.kora.globe import FOCUS_ZOOM, hex_to_globe_screen, point_to_globe_screen
 from src.kora.log import FILTER_ALL, LogKind
 from src.kora.types import Hex, OrderKind
@@ -866,13 +866,16 @@ def band_screen_positions(state, yaw, pitch, gcx, gcy, focal, dist) -> dict:
         # long de son chemin au lieu de sauter de case en case.
         glisse.observe(state, band)
         moving = glisse.place(state, band)
-        if moving is not None:
-            pos = point_to_globe_screen(moving[0], moving[1], state.world, yaw, pitch, gcx, gcy, focal, dist)
+        if moving is None:
+            # Son point (points.py) : n'importe ou, plus le centre d'une case.
+            moving = points.to_colrow(*points.point_of(state.world, band))
+            still = True
         else:
-            pos = hex_to_globe_screen(band.position, state.world, yaw, pitch, gcx, gcy, focal, dist)
+            still = False
+        pos = point_to_globe_screen(moving[0], moving[1], state.world, yaw, pitch, gcx, gcy, focal, dist)
         if pos is None:
             continue
-        k = 0 if moving is not None else stack.get(band.position, 0)
+        k = stack.get(band.position, 0) if still and (band.village or band.fu < 0) else 0
         stack[band.position] = k + 1
         radius = band_radius(band.population, dist)
         shift = max(STACK_SHIFT, radius * 1.3)

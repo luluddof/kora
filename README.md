@@ -116,8 +116,10 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   chefs. Les autres peuples prennent aussi leurs décisions. L'onglet s'allume quand la soudure arrive.
 - **Le monde sans cases** (0.27) : la carte est dessinée en formes à tous les zooms (côtes, sols, plages, zones
   d'influence et frontières en courbes) ; les distances sont les vraies (une portée, une vue, une zone sont des
-  cercles) ; l'influence rayonne en rond en suivant le relief ; les unités glissent le long de leur chemin, tracé
-  en courbe.
+  cercles) ; l'influence rayonne en rond en suivant le relief, et même un même sol, plus ou moins rude, la porte
+  plus ou moins loin ; les unités sont à un point (pas au centre d'une case), marchent en continu (elles
+  s'arrêtent où leur élan s'arrête) et vont au point cliqué ; les champs des villages sont des surfaces dorées,
+  les rivières des courbes.
 - Chaque partie a **sa sauvegarde** : *Continuer* reprend la plus récente, *Charger une partie* les montre toutes
   (jouer, supprimer) ; dans la partie, *Échap* puis *Sauvegarder une copie*.
 - La **musique de guerre** (*Casus bellis*) part de son début quand vous entrez dans une **guerre déclarée** (pas

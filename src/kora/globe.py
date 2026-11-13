@@ -122,9 +122,17 @@ def hex_to_globe_screen(
     dist: float,
 ) -> tuple[float, float] | None:
     col, row = axial_to_offset(h)
-    x, y, z = offset_to_xyz(col, row, world.width, world.height)
+    x, y, z = offset_to_xyz(col + (HEX_ROW_SHIFT if row & 1 else -HEX_ROW_SHIFT), row, world.width, world.height)
     x, y, z = rotate_xyz(x, y, z, yaw, pitch)
     return project_xyz(x, y, z, cx, cy, focal, dist)
+
+
+def colrow_of_lonlat(lon: float, lat: float, world) -> tuple[float, float]:
+    """(colonne, rangee) a virgule d'un point du globe (sans le warp : un
+    point, pas une forme ; l'inverse de lonlat_from_offset)."""
+    col = (lon + math.pi) * (world.width / (2.0 * math.pi)) - 0.5
+    row = (math.pi / 2.0 - lat) * ((world.height - 1) / math.pi) if world.height > 1 else 0.0
+    return col, row
 
 
 def point_to_globe_screen(
@@ -190,11 +198,12 @@ def hit_globe(
     return lon, lat, hz
 
 
-# Les hexagones dessines ont leur centre a col - 1/6 (rangee paire) ou
-# col + 1/6 (rangee impaire). La case sous un point est la plus proche de
-# ces centres parmi les deux rangees voisines ; globe_draw.Planet.cells_at
-# applique la meme regle a tous les pixels d'un coup.
-HEX_ROW_SHIFT = 1.0 / 6.0
+# Le centre d'un lieu est a col - 1/4 (rangee paire) ou col + 1/4 (rangee
+# impaire) : une rangee sur deux decalee d'une demi-case (le plan des points,
+# points.py). La case sous un point est la plus proche de ces centres parmi
+# les deux rangees voisines ; globe_draw (les formes) et le clic suivent la
+# meme regle ; tout ce qui est pose sur la carte aussi (hex_to_globe_screen).
+HEX_ROW_SHIFT = 0.25
 HEX_ROW_SQUASH = 0.87
 
 # Un terrain sans nid d'abeille (sa maquette T1) : avant de chercher la case
@@ -308,8 +317,10 @@ def look_at_offset(col: float, row: float, width: int, height: int) -> tuple[flo
 
 
 def look_at_hex(h: Hex, width: int, height: int) -> tuple[float, float]:
+    """La camera sur le centre d'un lieu (decale d'un quart de case selon la
+    rangee : HEX_ROW_SHIFT)."""
     col, row = axial_to_offset(h)
-    return look_at_offset(col, row, width, height)
+    return look_at_offset(col + (HEX_ROW_SHIFT if row & 1 else -HEX_ROW_SHIFT), row, width, height)
 
 
 def look_center(world, yaw: float, pitch: float):

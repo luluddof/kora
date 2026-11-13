@@ -28,6 +28,8 @@ from src.kora.globe import hex_to_globe_screen, offset_to_xyz, point_to_globe_sc
 from src.kora.globe_draw import (
     FAST_SAMPLES,
     FINE_SAMPLES,
+    OVERLAY_SAMPLES,
+    OVERLAY_SAMPLES_FAST,
     FOG_UNEXPLORED,
     Planet,
     hex_screen_px,
@@ -38,6 +40,7 @@ from src.kora.peoples import color_of
 from src.kora.look import country_color
 from src.kora import (
     glisse,
+    points,
     render_tutoriel,
     __version__,
     battle as _battle,
@@ -283,6 +286,9 @@ class Renderer:
         self._layer: pygame.Surface | None = None
         self._layer_key = None
         self._layer_fine = False
+        self._dyn_key = None
+        self._over = None
+        self._base = None
         self.band_hits: dict = {}
         self.toast_hits: list = []
         # "zones" (teinte des zones d'influence) ou "relief".
@@ -354,57 +360,84 @@ class Renderer:
         planet.trade_on = self.map_mode == "commerce"
         if planet.zones_on:
             planet.sync_zones(state)
-        key = (
-            sw,
-            sh,
-            yaw,
-            pitch,
-            dist,
-            planet.sync_fog(state),
-            planet.season_gen(),
-            planet.zone_key(),
-        )
+        # LE FOND (les sols) ne change qu'avec la vue, la saison, le mode de
+        # carte ; LES CALQUES (brouillard, zones) avec la partie. La partie
+        # qui avance ne refait que les calques : la carte ne se pixelise plus
+        # a chaque semaine.
+        view_key = (sw, sh, yaw, pitch, dist)
+        base_key = (view_key, planet.base_key())
+        dyn_key = (planet.sync_fog(state), planet.zone_key(), planet.sync_fields(self._seen_fields(state)))
         layer = self._layer
         if layer is None or layer.get_size() != (sw, sh):
             layer = self._layer = pygame.Surface((sw, sh))
+            self._base = pygame.Surface((sw, sh))
             self._layer_key = None
-        if self._layer_key != key:
-            # Vue qui change (glisser, zoom) : image rapide...
-            self._paint_planet(layer, state, planet, yaw, pitch, cx, cy, focal, dist, FAST_SAMPLES)
-            self._layer_key = key
-            self._layer_fine = False
-        elif not self._layer_fine:
-            # ...puis nette des que la vue s'arrete.
-            self._paint_planet(layer, state, planet, yaw, pitch, cx, cy, focal, dist, FINE_SAMPLES)
+        clip = pygame.Rect(0, HUD_HEIGHT, sw, sh - HUD_HEIGHT)
+        redo = False
+        if self._layer_key is not None and self._layer_key[0] == view_key and self._layer_key != base_key:
+            # La meme vue, une saison qui avance ou un autre mode de carte :
+            # le fond net d'un coup (ses sols sont gardes), sans passer par
+            # l'image rapide.
+            self._paint_base(self._base, state, planet, yaw, pitch, cx, cy, focal, dist, max(FINE_SAMPLES, clip.width * clip.height))
+            self._layer_key = base_key
             self._layer_fine = True
+            redo = True
+        elif self._layer_key != base_key:
+            # La vue change (glisser, zoom) : un fond rapide...
+            self._paint_base(self._base, state, planet, yaw, pitch, cx, cy, focal, dist, FAST_SAMPLES)
+            self._layer_key = base_key
+            self._layer_fine = False
+            redo = True
+        elif not self._layer_fine:
+            # ...puis net des que la vue s'arrete.
+            self._paint_base(self._base, state, planet, yaw, pitch, cx, cy, focal, dist, max(FINE_SAMPLES, clip.width * clip.height))
+            self._layer_fine = True
+            redo = True
+        if redo or self._dyn_key != dyn_key:
+            samples = OVERLAY_SAMPLES if self._layer_fine else OVERLAY_SAMPLES_FAST
+            self._over = planet.overlays(state, yaw, pitch, cx, cy, focal, dist, clip, samples)
+            self._dyn_key = dyn_key
+            layer.blit(self._base, (0, 0))
+            if self._over is not None:
+                zone_surf, fog_surf, pos = self._over
+                if zone_surf is not None:
+                    layer.blit(zone_surf, pos)
+                layer.blit(fog_surf, pos, special_flags=pygame.BLEND_MULT)
+            planet.draw_rivers(layer, state, yaw, pitch, cx, cy, focal, dist)
+            if dist >= 1.72:
+                self._draw_atlas_globe(layer, state, planet, yaw, pitch, cx, cy, focal, dist)
         self.screen.blit(layer, (0, 0))
 
-    def _paint_planet(
-        self, target, state, planet, yaw, pitch, cx, cy, focal, dist, samples
-    ) -> None:
+    def _seen_fields(self, state) -> list:
+        """Les champs des villages que le joueur voit (les siens, ou il est
+        alle ; ceux des autres sous ses yeux) : (colonne, rangee)."""
+        out = []
+        me = getattr(state, "viewer", None)
+        if me is None or not hasattr(state, "sites"):
+            return out
+        for site in state.sites.values():
+            if site.kind != "village" or not site.data.fields:
+                continue
+            mine = site.tribe_id == me
+            if (is_explored(state, site.hex, me) if mine else is_visible(state, site.hex, me)):
+                out.extend(tuple(f) for f in site.data.fields)
+        return out
+
+    def _paint_base(self, target, state, planet, yaw, pitch, cx, cy, focal, dist, samples) -> None:
+        """Le fond : l'espace, l'ocean deviné au bord, les sols eclaires."""
         sw, sh = target.get_size()
         target.fill((14, 11, 9))
         limb = focal / math.sqrt(max(1e-4, dist * dist - 1.0))
-        # Sous les cases : le noir du brouillard. L'eau exploree est dessinee
-        # case par case, sinon l'ocean trahirait la forme des terres inconnues.
         if limb < max(sw, sh) * 2.4:
             pygame.draw.circle(target, (70, 110, 150), (int(cx), int(cy)), int(limb + 6))
-            pygame.draw.circle(
-                target, FOG_UNEXPLORED, (int(cx), int(cy)), max(1, int(limb + 1))
-            )
-        # Le monde en formes (0.27.0) : a tous les zooms, plus de cases ;
-        # nette (un calcul par pixel) des que la vue s'arrete.
+            pygame.draw.circle(target, FOG_UNEXPLORED, (int(cx), int(cy)), max(1, int(limb + 1)))
         clip = pygame.Rect(0, HUD_HEIGHT, sw, sh - HUD_HEIGHT)
-        fine = samples if samples <= FAST_SAMPLES else max(samples, clip.width * clip.height)
-        painted = planet.texture(state, yaw, pitch, cx, cy, focal, dist, clip, fine)
+        painted = planet.texture(state, yaw, pitch, cx, cy, focal, dist, clip, samples)
         if painted is not None:
             surf, pos = painted
             target.blit(surf, pos)
-        planet.draw_rivers(target, state, yaw, pitch, cx, cy, focal, dist)
         if limb < min(sw, sh) * 0.9:
             pygame.draw.circle(target, (170, 200, 230), (int(cx), int(cy)), int(limb + 1), 1)
-        if dist >= 1.72:
-            self._draw_atlas_globe(target, state, planet, yaw, pitch, cx, cy, focal, dist)
 
     def _band_marks(self, state: GameState) -> tuple[dict, set]:
         """Ce que disent les jetons au-dela de la marche : la FAIM de vos bandes
@@ -832,8 +865,6 @@ class Renderer:
             seen = is_explored(state, site.hex, state.viewer) if mine else is_visible(state, site.hex, state.viewer)
             if not seen:
                 continue
-            if site.kind == "village":
-                self.draw_fields(state, site, yaw, pitch, gcx, gcy, focal, dist)
             pos = hex_to_globe_screen(site.hex, state.world, yaw, pitch, gcx, gcy, focal, dist)
             if pos is None:
                 continue
@@ -904,25 +935,6 @@ class Renderer:
         pygame.draw.rect(self.screen, color, rect)
         inner = rect.inflate(-max(2, half // 2), -max(2, half // 2))
         pygame.draw.rect(self.screen, _darken(color, 0.7), inner, 1)
-
-    def draw_fields(self, state, site, yaw, pitch, gcx, gcy, focal, dist) -> None:
-        w, h = self.screen.get_size()
-        big = dist <= LABEL_DIST
-        for col, row in site.data.fields:
-            hx = offset_to_axial(col, row)
-            pos = hex_to_globe_screen(hx, state.world, yaw, pitch, gcx, gcy, focal, dist)
-            if pos is None:
-                continue
-            x, y = int(pos[0]), int(pos[1])
-            if x < -10 or y < HUD_HEIGHT or x > w + 10 or y > h + 10:
-                continue
-            if big:
-                rect = (x - 7, y - 4, 14, 9)
-                pygame.draw.rect(self.screen, (196, 170, 80), rect, border_radius=2)
-                for k in (-2, 1, 4):
-                    pygame.draw.line(self.screen, (140, 116, 50), (x - 6, y + k - 1), (x + 6, y + k - 1), 1)
-            else:
-                pygame.draw.circle(self.screen, (206, 180, 90), (x, y), 2)
 
     def draw_map_modes(self, state=None) -> None:
         """Le bouton des modes de carte (en bas a gauche) et, ouverte, sa
@@ -1169,7 +1181,11 @@ class Renderer:
         # Le chemin en courbe (glisse.smooth) : il contourne comme le chemin,
         # sans l'escalier des cases ; il part d'ou l'unite glisse.
         start = glisse.place(state, band)
-        line = glisse._points(world, [band.position, *band.path])
+        aim = points.aim_of(world, band)
+        spots = [points.point_of(world, band), *band.path]
+        if aim is not None:
+            spots[-1] = aim
+        line = glisse._points(world, spots)
         if start is not None:
             line[0] = start
         pts = []
