@@ -148,14 +148,16 @@ aboutit ?") : "Oui, la guerre". C'est la piste M1 de la review
       batailles                         25             58
         dont troupe contre troupe       3              17
       semaines de ravage                -              249
-      soumissions exigees et obtenues   0              11
+      soumissions exigees et obtenues   (*)            11
       tributs de guerre                 -              13
       villages pris                     0              4
-      tributaires par la force          0              14
+      tributaires par la force          (*)            14
       guerres finies                    12             15
         leur duree mediane              80 sem.        48 sem.
         finies a 0-0                    8              6
       population du monde (an 58)       45 534         46 925
+      (*) pas comptes sur ces dix ans-la ; sur quarante ans de la meme
+          partie, avant : 2 tributaires par la force, aucun village pris.
   Le monde ne s'effondre pas : la faim des villages reste du meme ordre
   (196 semaines par an sur 118 villages).
   VINGT ANS de sa partie (an 68) et CINQUANTE ANS d'une partie neuve, faits

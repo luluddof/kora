@@ -932,8 +932,9 @@ lente, bandes dessinees petites a taille fixe.
     SA partie (il ravage Taane : 75 % de la recolte perdue en huit
     semaines, puis les Rail sortent et le battent ; les Rail ravagent
     Ilsen, il sort et gagne). Dix ans de sa partie : 11 soumissions
-    obtenues et 13 tributs de guerre (0 avant), 58 batailles (25), 4
-    villages pris (0), la population intacte. En verifiant : deux troupes
+    obtenues et 13 tributs de guerre (avant : 2 tributaires par la force
+    en quarante ans), 58 batailles (25), 4 villages pris (0), la
+    population intacte. En verifiant : deux troupes
     des Rail se relayaient en aller-retour toutes les quatre semaines
     (corrige : trois regles de l'IA en campagne). Reste : quatre guerres
     sur dix finissent encore a 0-0.
