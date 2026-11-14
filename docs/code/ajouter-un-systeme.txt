@@ -35,8 +35,8 @@ bas au plus haut :
   5  LES SYSTEMES
        learning, bands, chiefs, sites, influence, production, diplo, guerre,
        goods, money, approach, numbers, laws, chiefdom, confed, memory, draws,
-       turning, villages, batiments, troupes, battle, siege, ost, grain,
-       casus, situations, events, decisions, events_data
+       turning, villages, batiments, troupes, battle, siege, ravage, ost,
+       grain, casus, situations, events, decisions, events_data
   6  l'IA des bandes, les ordres
        ai_war, orders, wars
   7  l'IA
@@ -104,7 +104,7 @@ bas au plus haut :
      stabilite, au moral, aux fuyards, aux reserves, a la production, a la
      defense et aux vivres d'un village : une ligne dans systems.STABILITY,
      ARMY_MORALE, FLEE, STOCK_WEEKS, BUILD_SPEED, CRAFT_OUTPUT,
-     VILLAGE_DEFENSE, VILLAGE_FOOD. Ses reactions aux bandes (BAND_SPLIT,
+     VILLAGE_DEFENSE, VILLAGE_FOOD, VILLAGE_FORAGE. Ses reactions aux bandes (BAND_SPLIT,
      BAND_MERGE, MERGE_ALLOWED), aux clans emancipes (EMANCIPATED), ce qu'il
      dit d'un savoir (TECH_LINES), la vue partagee (SIGHT). La fonction
      attendue par chaque tableau est decrite en tete de systems.py ; un
@@ -408,6 +408,30 @@ La carte du depot (section 4) donne cet ordre en detail.
   - Attaquer = clic droit sur un etranger (une de vos bandes choisie) ; clic
     gauche sur un etranger = sa diplomatie (0.11.0).
   - Une loi nouvelle = une Law dans laws._build (0.9.0).
+  - LE RAVAGE (ravage.py ; 0.29.0) : une levee ne prend pas un village
+    fortifie (elle vaut 12 % de sa defense) ; ce qui fait aboutir une guerre
+    sans assaut passe par ravage.py : une troupe postee a ravage.RANGE cases
+    (Band.ravage : le lieu ; ravage.send pour y aller, ravage.toggle pour
+    l'ordre du joueur) detruit la recolte sur pied (VillageData.ravaged, lu
+    par villages.expected_harvest), enferme le village, emmene le troupeau,
+    et fait monter l'avantage (guerre.add_score). Les issues : la soumission
+    (guerre.submit), le TRIBUT DE GUERRE (guerre.tribute_peace : toute paix
+    payee y passe - diplo "tribut", la carte du joueur, l'IA de casus), la
+    reddition d'un village assiege et affame (ravage._surrender).
+  - Ce qu'un village trouve DEHORS seulement (cueillette, troupeau) passe par
+    systems.VILLAGE_FORAGE ; systems.VILLAGE_FOOD touche aussi la recolte (le
+    siege) : ne pas y mettre ce qui est deja compte dans la recolte (0.29.0).
+  - Un village qui vient d'etre pris a son repit (bands.is_shielded) : ni
+    investi (siege.weekly), ni ravage, ni rendu une seconde fois (0.29.0).
+  - Une troupe IA en campagne ne rentre que pour une menace GRAVE sur son
+    village (AI_THREAT) ; une troupe qui ravage ne rentre que si elle battrait
+    cette menace (sinon elle rend coup pour coup), et une troupe chez elle
+    devant une menace ne part pas ravager ailleurs : sans ces trois regles,
+    deux troupes d'un meme peuple se relaient en aller-retour toutes les
+    quatre semaines sans jamais rien finir (vu dans sa partie ; 0.29.0).
+  - Une portee de l'IA se partage entre celui qui leve et celle qui cherche
+    (AI_RAVAGE_REACH) : un village levait pour un ennemi a 28 cases, sa
+    troupe n'en cherchait qu'a 14 et rentrait aussitot (0.29.0).
 
 4.7 L'argent, le prestige, les effets
   - Tout prestige GAGNE passe par bands.gain_prestige (bonus prestige_gain ;
@@ -537,13 +561,13 @@ seulement si le decoupage rend le systeme plus simple a changer) :
   tech.py                ~1700 lignes
   events.py              ~1600 lignes
   diplo.py               ~1500 lignes
-  render_village.py      ~1400 lignes
   events_data.py         ~1400 lignes
-  battle.py              ~1300 lignes
+  render_village.py      ~1400 lignes
   sim.py                 ~1300 lignes
+  battle.py              ~1300 lignes
   world.py               ~1300 lignes
-  goods.py               ~1200 lignes
   villages.py            ~1200 lignes
+  goods.py               ~1200 lignes
   globe_draw.py          ~1100 lignes
   decisions.py           ~1000 lignes
 <<< fin auto >>>

@@ -9,7 +9,7 @@ l'armee, touche W : les guerres) ; wars.py en donne le contenu.
   - ou la guerre choisie : qui l'a declaree, la barre de
     l'AVANTAGE (et ce qui le fait), les buts, les deux CAMPS, les troupes
     EN CAMPAGNE (les leurs : celles que vous voyez), les SIEGES, les
-    derniers COMBATS ; en bas, exiger leur soumission, proposer une treve,
+    derniers COMBATS ; en bas, exiger leur soumission ou un tribut, proposer une treve,
     leur fiche (Peuples).
 La mise en page est faite au dessin (r.wars_hits) ; wars_hit la lit.
 Tout changement passe par commands.py ("diplo").
@@ -407,6 +407,21 @@ def _draw_front(r, state, me, front, area, lay, mx, my, tips) -> None:
             theme.button(screen, see, "Voir", "second", True, _hover(see, mx, my), role="bouton_petit")
             y += ROW_H
         y += 8
+    # Les champs ravages.
+    if front.ravages:
+        y = _section(r, x, y, w, "CHAMPS RAVAGÉS")
+        for site, weeks, by, lost in front.ravages[:3]:
+            crop = f" · {round(100 * lost)} % de la récolte perdue" if lost > 0 else ""
+            if weeks:
+                text = f"{places.name(site)} ({_name(state, site.tribe_id)}) : ravagé par les {_name(state, by)} depuis {weeks} sem.{crop}"
+            else:
+                text = f"{places.name(site)} ({_name(state, site.tribe_id)}) : le ravage a cessé{crop}"
+            theme.text(screen, theme.fit(theme.font("mini"), text, w - 70), "mini", INK, (x, y + 1))
+            see = (x + w - 60, y - 1, 60, 20)
+            lay["buttons"][f"wsite:{site.id}"] = see
+            theme.button(screen, see, "Voir", "second", True, _hover(see, mx, my), role="bouton_petit")
+            y += ROW_H
+        y += 8
     # Les derniers combats.
     actions_y = bottom - 74
     if y + 24 < actions_y:
@@ -426,22 +441,25 @@ def _draw_front(r, state, me, front, area, lay, mx, my, tips) -> None:
     # Les actions.
     pygame.draw.line(screen, C.bois, (x, actions_y - 8), (x + w, actions_y - 8))
     target = front.target
-    bw3 = (w - 24) // 3
+    # Quatre issues : la soumission, le tribut de guerre (ils paient, la
+    # guerre finit), la treve, et leur fiche.
     acts = (
-        ("soumission", f"Exiger la soumission des {_name(state, target)}", target),
-        ("treve", f"Proposer une trêve aux {_name(state, front.key)}", front.key),
-        ("fiche", "Leur fiche (Peuples)", front.key),
+        ("soumission", "Exiger leur soumission", f"Exiger la soumission des {_name(state, target)}", target),
+        ("tribut", "Exiger un tribut", f"Exiger un tribut des {_name(state, target)} : ils paient chaque saison, deux ans, et la guerre finit", target),
+        ("treve", "Proposer une trêve", f"Proposer une trêve aux {_name(state, front.key)}", front.key),
+        ("fiche", "Leur fiche (Peuples)", "Leur fiche (Peuples)", front.key),
     )
-    for i, (key, label, tid) in enumerate(acts):
+    bw3 = (w - 12 * (len(acts) - 1)) // len(acts)
+    for i, (key, short, label, tid) in enumerate(acts):
         rect = (x + i * (bw3 + 12), actions_y, bw3, 32)
         lay["buttons"][f"wact:{key}:{tid}"] = rect
         if key == "fiche":
-            theme.button(screen, rect, label, "second", True, _hover(rect, mx, my), role="bouton_petit")
+            theme.button(screen, rect, theme.fit(theme.font("petit_gras"), short, bw3 - 16), "second", True, _hover(rect, mx, my), role="bouton_petit")
             continue
         verdict = diplo.evaluate(state, me, tid, key)
         wait = diplo.on_cooldown(state, me, tid, key)
         on = not verdict.blocked and not wait
-        theme.button(screen, rect, theme.fit(theme.font("petit_gras"), label, bw3 - 16), "second", on, on and _hover(rect, mx, my), role="bouton_petit")
+        theme.button(screen, rect, theme.fit(theme.font("petit_gras"), short, bw3 - 16), "second", on, on and _hover(rect, mx, my), role="bouton_petit")
         if verdict.blocked:
             line, col = verdict.blocked, NOTE
         elif wait:

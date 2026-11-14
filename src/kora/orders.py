@@ -4,13 +4,15 @@ Chaque action rend "" si elle est possible, sinon la raison (affichee au
 survol du bouton de la fiche de bande). Un clan indocile n'obeit plus :
 seuls "honorer" et "le chef vient ici" restent possibles (c'est ainsi
 qu'on le regagne). Une troupe (villages.py) ne campe pas, ne se scinde
-pas, ne fonde rien : elle se bat, rentre au village ou y est rappelee.
+pas, ne fonde rien : elle se bat, rentre au village ou y est rappelee ; son
+bouton "camp" RAVAGE les champs d'un village ennemi a sa portee, ou cesse
+(ravage.py) ; attack_preview le conseille quand les murs sont trop forts.
 N'importe ni pygame ni render.
 """
 
 from __future__ import annotations
 
-from src.kora import ai_war, battle, chiefs, diplo, ost, places, sites, villages
+from src.kora import ai_war, battle, chiefs, diplo, ost, places, ravage, sites, villages
 from src.kora.path import astar, travel_weeks
 from src.kora.bands import (
     campaign_weeks,
@@ -55,7 +57,9 @@ def _army_actions(state, band) -> dict[str, str]:
         "next": "" if own > 1 else "Une seule bande",
         "chief": chiefs.can_move_chief(state, band.id),
         "village": "Une troupe ne fonde pas de village",
-        "camp": TROOP_CAMP,
+        # Une troupe ne campe pas : ce bouton ravage les champs d'un village
+        # ennemi (ravage.py), ou cesse de le faire.
+        "camp": "" if band.ravage else ravage.block(state, band),
         "deposit": TROOP_CAMP,
         "withdraw": TROOP_CAMP,
         # Une troupe n'a pas a etre honoree : ce bouton appelle l'ost.
@@ -63,7 +67,7 @@ def _army_actions(state, band) -> dict[str, str]:
         "army": troupes.dissolve_block(state, band.id),
     }
     if band.homebound:
-        for key in ("split", "merge", "chief", "army", "honor"):
+        for key in ("split", "merge", "chief", "army", "honor", "camp"):
             out[key] = HOMEBOUND
         return out
     if band.retreating:
@@ -159,6 +163,7 @@ def hints(state, band_id: int) -> dict:
     if band is not None and band.kind == "armee":
         return {
             "honor": f"Appeler l'ost : les troupes de vos tributaires à {ost.OST_RANGE} cases viennent se fondre dans celle-ci (vous les menez, vous payez leur solde)",
+            "camp": "La troupe cesse de ravager : elle reste sur place" if band.ravage else ravage.hint(state, band),
         }
     return {}
 
@@ -177,6 +182,7 @@ def labels(state, band_id: int) -> dict:
         out["merge"] = "Rentrer [F]" if at_home else "Réunir [F]"
         out["army"] = "Dissoudre [L]"
         out["honor"] = "Ost [H]"
+        out["camp"] = "Cesser [C]" if band.ravage else "Ravager [C]"
     return out
 
 
@@ -211,6 +217,8 @@ def perform(state, band_id: int, key: str):
     if key == "chief":
         chiefs.move_chief(state, band_id)
         return band_id, ""
+    if key == "camp" and band.kind == "armee":
+        return band_id, ravage.toggle(state, band)
     if key == "camp":
         here = sites.own_site_at(state, band)
         if here is not None and here.kind == "camp":
@@ -323,6 +331,8 @@ def attack_preview(state, band_id: int, prey_id: int) -> dict | None:
             rows.append((text, "note"))
     if prey.kind != "armee" and not prey.village:
         rows.append(("Un clan peut fuir avant votre arrivée", "note"))
+    if prey.village and band.kind == "armee" and ratio < 1.3:
+        rows.append((f"Ses murs sont trop forts ? Postez la troupe dans ses champs (à {ravage.RANGE} cases) et ravagez-les [C] : la récolte brûle, votre avantage monte", "note"))
     if not out["blocked"] and diplo.peace_pact(state, me, them):
         rows.append(("Un pacte vous lie : attaquer serait une trahison (prestige -10)", "mauvais"))
     return out

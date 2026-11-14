@@ -9,7 +9,7 @@ confederes) avec qui il est en guerre declaree. Pour chacune :
     allies en guerre ;
   - les troupes EN CAMPAGNE : les siennes et celles de son pays ; celles de
     l'ennemi qu'il VOIT (le brouillard compte) ; l'ost en route ;
-  - les SIEGES en cours, des deux cotes ;
+  - les SIEGES en cours, des deux cotes, et les CHAMPS RAVAGES (ravage.py) ;
   - les derniers COMBATS entre les deux camps (state.fights : six mois) ;
   - ce qu'il peut faire : exiger leur soumission, proposer une treve.
 Ailleurs dans le monde : les guerres entre pays qu'il connait.
@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.kora import chiefdom, diplo, places, villages
+from src.kora import chiefdom, diplo, places, ravage, villages
 from src.kora.vision import is_visible
 from src.kora import troupes
 from src.kora import guerre
@@ -39,6 +39,7 @@ class Front:
     scores: dict  # peuple ennemi -> notre avantage
     armies: list = field(default_factory=list)  # [(bande, camp, ce qu'elle fait)]
     sieges: list = field(default_factory=list)  # [(site, semaines, qui assiege)]
+    ravages: list = field(default_factory=list)  # [(site, semaines, qui ravage, part de la recolte perdue)]
     fights: list = field(default_factory=list)  # FightMark entre les camps
 
     @property
@@ -110,6 +111,9 @@ def _doing(state, band) -> str:
     for site in state.sites.values():
         if site.kind == "village" and getattr(site.data, "siege", 0) and state.world.distance(site.hex, band.position) <= 1 and site.tribe_id != band.tribe_id:
             return f"assiège {places.name(site)}"
+    ravaged = state.sites.get(band.ravage) if band.ravage else None
+    if ravaged is not None:
+        return f"ravage les champs de {places.name(ravaged)}" if not band.path else f"marche sur les champs de {places.name(ravaged)}"
     home = troupes.home_of(state, band)
     if home is not None and state.world.distance(home.hex, band.position) <= troupes.ARMY_HOME:
         return "au village"
@@ -132,6 +136,13 @@ def _fill(state, me: int, front: Front) -> None:
         by = site.data.besieger
         if (site.tribe_id in mine and by in theirs) or (site.tribe_id in theirs and by in mine):
             front.sieges.append((site, weeks, by))
+    for site in sorted(state.sites.values(), key=lambda s: s.id):
+        if site.kind != "village" or not (site.data.ravage or site.data.ravaged > 0):
+            continue
+        by = site.data.ravager
+        ours = site.tribe_id in mine and (by in theirs or not by)
+        if ours or (site.tribe_id in theirs and by in mine):
+            front.ravages.append((site, site.data.ravage, by, site.data.ravaged))
     for mark in reversed(state.fights):
         sides = {mark.winner_tribe, mark.loser_tribe}
         if sides & mine and sides & theirs:
@@ -159,6 +170,7 @@ def others(state, me: int) -> list[tuple[int, int, int]]:
 def score_text() -> str:
     return (
         f"+{guerre.WIN_SCORE:.0f} par combat gagné, -{guerre.WIN_SCORE:.0f} par combat perdu, "
-        f"+{guerre.VILLAGE_SCORE:.0f} par village pris, +{guerre.SIEGE_SCORE:.0f} par semaine de siège "
+        f"+{guerre.VILLAGE_SCORE:.0f} par village pris, +{guerre.SIEGE_SCORE:.0f} par semaine de siège, "
+        f"+{ravage.SCORE:.0f} par semaine de ravage de leurs champs, +{ravage.HERD_SCORE:.0f} pour un troupeau emmené "
         f"(de -{guerre.SCORE_CAP:.0f} à +{guerre.SCORE_CAP:.0f})"
     )

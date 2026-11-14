@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.28.0
+A jour pour la version : 0.29.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -73,7 +73,8 @@ par theme).
      2. sim.apply_season_spread   la saison locale avance par rangees
      3. sim.apply_movement        les marches (path, world.step_cost)
      4. sim.resolve_joins         les ralliements
-     5. systems.WEEKLY            ost, sieges, grain, vivres des troupes
+     5. systems.WEEKLY            ost, sieges, ravages et redditions, grain,
+                                  vivres des troupes
      6. learning.update_practice  le vecu (sols, hivers, rivages, steppe)
      7. battle : prune_fight_marks, resolve_raids, advance (les jours des
         batailles sans joueur)
@@ -123,9 +124,9 @@ ETAGE 0  les briques
     LE TABLEAU DES SYSTEMES : qui intervient, quand, et sur quoi.
     fonctions : fn, run, parts, total, apply_mult
     constantes : MONTHLY, STABILITY, ARMY_MORALE, FLEE, WEEKLY, ROUTE_RAIDS,
-      VILLAGE_DEFENSE, VILLAGE_FOOD, STOCK_WEEKS, BUILD_SPEED, CRAFT_OUTPUT,
-      EFFECT_FIELDS, EFFECT_SPECS, TECH_LINES, EVENT_VOCABULARY, BAND_SPLIT,
-      BAND_MERGE, MERGE_ALLOWED, SIGHT, EMANCIPATED
+      VILLAGE_DEFENSE, VILLAGE_FOOD, VILLAGE_FORAGE, STOCK_WEEKS, BUILD_SPEED,
+      CRAFT_OUTPUT, EFFECT_FIELDS, EFFECT_SPECS, TECH_LINES, EVENT_VOCABULARY,
+      BAND_SPLIT, BAND_MERGE, MERGE_ALLOWED, SIGHT, EMANCIPATED
 
 
 ETAGE 1  le temps, les fiches
@@ -385,7 +386,7 @@ ETAGE 5  LES SYSTEMES
       motive_against, casus_of, add_score, score, weariness, long_war,
       truce_mood, goal_of, goals_of, submit, goal_done, submit_verdict,
       fade_wars, war_allies, war_pairs, war_verdict, declare_war, end_war,
-      wars_of, vassal_pact, oath_weeks, oath_left, revolt_odds,
+      tribute_peace, wars_of, vassal_pact, oath_weeks, oath_left, revolt_odds,
       revolt_verdict, rebel, free_verdict, free
     constantes : WAR, WAR_FADE_WEEKS, DECLARE_RELATION, DECLARE_PRESTIGE,
       WAR_WEEKS, WIN_SCORE, VILLAGE_SCORE, SIEGE_SCORE, SCORE_CAP,
@@ -577,6 +578,17 @@ ETAGE 5  LES SYSTEMES
       can_besiege, weekly, lines
     constantes : SIEGE_RANGE
 
+  ravage.py
+    LE RAVAGE : la guerre qui aboutit sans prendre les murs (0.29.0 ; sa
+    demande du 2026-11-14, apres la review : "la guerre", la piste M1).
+    fonctions : target_of, block, start, send, stop, toggle, ravagers,
+      foes_at, food_mult, stability_parts, weekly, sortie_force, field_force,
+      dares, worth, sortie, lines, band_lines, hint
+    constantes : RANGE, MEN, STEP, STEP_MAX, MAX, FIRE, FOOD, LIVE, SCORE,
+      HERD_CHANCE, HERD_TOWER, HERD_WEEKS, HERD_FOOD, HERD_SCORE, STABILITY,
+      HERD_STABILITY, RELATION, SURRENDER_WEEKS, TELL_EVERY, EVENT_CONDITIONS,
+      EVENT_EFFECTS, EVENT_TEXTS
+
   ost.py
     L'OST : le suzerain appelle les troupes de ses tributaires.
     fonctions : candidates, call_block, call, coming, weekly, join, foreign,
@@ -596,7 +608,7 @@ ETAGE 5  LES SYSTEMES
     fonctions : monthly, country_power
     constantes : CASUS_WEEKS, SUCCESSION_WEEKS, LAND_CELLS, RES_RADIUS,
       CLAIM_RES, SUCCESSION_CLAIM, WEAK_RATIO, AI_CONQUEST_GAP,
-      CONQUER_CHANCE, MOTIVE_CHANCE, AI_MAX_WARS
+      CONQUER_CHANCE, MOTIVE_CHANCE, AI_MAX_WARS, TRIBUTE_SCORE
 
   situations.py
     Les SITUATIONS : crises et conjonctures (spec 2026-10-02-profondeur-
@@ -681,7 +693,9 @@ ETAGE 7  l'IA
       AI_HOUSE_RESERVE, AI_FOOD_MARGIN, AI_SETTLE_POP, VILLAGE_SPACING,
       FOREIGN_VILLAGE_ROOM, NEW_LAND_RADIUS, NEW_LAND_FAR, COLONY_RADIUS,
       CROWDED_SPACING, SETTLE_PATIENCE_YEARS, FOUND_GOOD, FOUND_GOOD_HEXES,
-      AI_SIEGE_REACH, AI_SIEGE_FOOD_WEEKS, AI_SIEGE_EDGE, AI_CACHE_SEEK
+      AI_SIEGE_REACH, AI_SIEGE_FOOD_WEEKS, AI_SIEGE_EDGE, AI_RAVAGE_EDGE,
+      AI_RAVAGE_REACH, AI_RAVAGE_HOLD, AI_SORTIE_EDGE, AI_RAVAGE_WATCH,
+      AI_CACHE_SEEK
 
 
 ETAGE 8  la semaine du monde
@@ -1015,7 +1029,7 @@ ETAGE -  l'interface (pygame)
       - ou la guerre choisie : qui l'a declaree, la barre de
         l'AVANTAGE (et ce qui le fait), les buts, les deux CAMPS, les troupes
         EN CAMPAGNE (les leurs : celles que vous voyez), les SIEGES, les
-        derniers COMBATS ; en bas, exiger leur soumission, proposer une treve,
+        derniers COMBATS ; en bas, exiger leur soumission ou un tribut, proposer une treve,
         leur fiche (Peuples).
     La mise en page est faite au dessin (r.wars_hits) ; wars_hit la lit.
     Tout changement passe par commands.py ("diplo").
@@ -1110,6 +1124,12 @@ ETAGE -  l'interface (pygame)
   les buts, la lassitude              guerre.declare_war, guerre.submit,
                                       guerre.weariness) ; casus.py (motifs) ;
                                       chiefdom.country (le pays)
+  Le ravage des champs, la sortie,    ravage.py (ravage.weekly, ravage.toggle,
+  la reddition, le tribut de guerre   ravage.send, ravage.sortie, ravage.dares) ;
+                                      guerre.tribute_peace ; l'IA : ai.py
+                                      (AI_RAVAGE_EDGE, AI_SORTIE_EDGE) ; la
+                                      carte "ravage_subi" : events_data.py ;
+                                      le feu sur la carte : render._draw_fire
   La revolte d'un tributaire          guerre.rebel, guerre.revolt_verdict,
                                       guerre.oath_left ; tech.VASSAL_OATH_WEEKS
   Affranchir un tributaire            guerre.free, guerre.free_verdict,
@@ -1357,6 +1377,8 @@ ETAGE -  l'interface (pygame)
                               surproduction et
   test_raid.py                Les raids : le plus fort fait fuir l'autre, une
                               marque de combat visible
+  test_ravage.py              Le ravage (ravage.py) : une troupe dans les
+                              champs d'un village ennemi
   test_realm.py               Le pays (chiefdom.country) : les tributaires
                               suivent leur suzerain a la
   test_render_math.py         La projection a l'ecran sans fenetre : pixel et
@@ -1627,6 +1649,10 @@ ETAGE -  l'interface (pygame)
     Sans grille, la suite : la carte stable, les unites a un point, les
     terres en surfaces (0.28.0)
     Statut : FAIT (0.28.0) ; LA SUITE plus bas.
+  specs/2026-11-14-la-guerre-qui-aboutit.txt
+    La guerre qui aboutit : le ravage, la sortie, le tribut de guerre, la
+    reddition (0.29.0)
+    Statut : FAIT (version 0.29.0) ; LA SUITE en section 7.
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt
@@ -1667,6 +1693,13 @@ ETAGE -  l'interface (pygame)
   - L'influence est RECONSTRUITE chaque mois (influence.update) : ne pas
     garder une reference a une cellule.
   - famine_in_period est efface chaque semaine : lire Band.famine_tick.
+  - systems.VILLAGE_FOOD touche la cueillette ET la recolte d'un village
+    (le siege) ; ce qui ne touche que la cueillette : systems.VILLAGE_FORAGE
+    (le ravage : sa part de recolte perdue est dans VillageData.ravaged).
+  - Une IA de troupe qui decide une semaine sur quatre ne se voit pas en
+    une semaine : pour juger un comportement de guerre, tracer semaine par
+    semaine sur plusieurs mois (deux troupes des Rail se relayaient en
+    aller-retour, chacune raisonnable a sa decision).
   - Un monkeypatch d'une constante importee par nom ne touche pas la copie :
     lire module.CONST.
   - tools/accents.py sans --dry ECRIT (meme avec --help) ; il propose de

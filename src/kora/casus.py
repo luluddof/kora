@@ -22,7 +22,9 @@ LES GUERRES DE SOUMISSION de l'IA (chaque mois, un peuple sur quatre) :
   - les autres chefs, seulement avec un motif, selon leur envie de tribut
     (approach "tribute").
   En guerre, l'IA exige la soumission quand elle a l'avantage (diplo
-  "soumission" ; un joueur recoit une carte).
+  "soumission" ; un joueur recoit une carte) ; sinon, a TRIBUTE_SCORE
+  d'avantage, un TRIBUT DE GUERRE qui finit la guerre (diplo "tribut" ;
+  celui qui voulait soumettre ne s'y resout qu'apres un an).
 N'importe pas pygame.
 """
 
@@ -51,6 +53,8 @@ AI_CONQUEST_GAP = 30
 CONQUER_CHANCE = 0.08
 MOTIVE_CHANCE = 0.05
 AI_MAX_WARS = 2
+# L'avantage a partir duquel l'IA exige un tribut de guerre.
+TRIBUTE_SCORE = 15
 
 
 def monthly(state) -> None:
@@ -203,11 +207,21 @@ def _ai_submissions(state) -> None:
         if tribe.is_player or (state.tick_count // 4 + tid) % 2:
             continue
         for other in guerre.wars_of(state, tid):
-            if guerre.score(state, tid, other) <= 0 or diplo.on_cooldown(state, tid, other, "soumission"):
+            lead = guerre.score(state, tid, other)
+            if lead <= 0:
                 continue
-            verdict = diplo.evaluate(state, tid, other, "soumission")
-            if verdict.blocked:
+            if not diplo.on_cooldown(state, tid, other, "soumission"):
+                verdict = diplo.evaluate(state, tid, other, "soumission")
+                if not verdict.blocked and (verdict.accepted or is_human(state, other)):
+                    diplo.perform(state, tid, other, "soumission")
+                    break
+            # Pas de soumission a attendre : un tribut, qui finit la guerre
+            # (celui qui voulait soumettre ne s'y resout qu'apres un an).
+            if lead < TRIBUTE_SCORE or diplo.on_cooldown(state, tid, other, "tribut"):
                 continue
-            if verdict.accepted or is_human(state, other):
-                diplo.perform(state, tid, other, "soumission")
+            if guerre.goal_of(state, tid, other) and not guerre.long_war(state, tid, other):
+                continue
+            tribute = diplo.evaluate(state, tid, other, "tribut")
+            if not tribute.blocked and (tribute.accepted or is_human(state, other)):
+                diplo.perform(state, tid, other, "tribut")
                 break

@@ -1,0 +1,184 @@
+Kora - La guerre qui aboutit : le ravage, la sortie, le tribut de guerre, la reddition (0.29.0)
+===========================================================================================
+Date : 2026-11-14. Statut : FAIT (version 0.29.0) ; LA SUITE en section 7.
+
+Ses mots (2026-11-13, a la question "Je commence par la guerre qui
+aboutit ?") : "Oui, la guerre". C'est la piste M1 de la review
+(2026-11-13-review-profondeur-mesures.txt).
+
+
+1. LE PROBLEME (mesure le 2026-11-13)
+-------------------------------------
+  Une levee vaut en mediane 12 % de la defense du village vise (une part
+  des hommes contre tout le village derriere des murs qui multiplient). En
+  dix ans de sa partie, l'IA s'est demande 770 fois si elle prendrait un
+  village : 770 fois non. Les guerres se declaraient (91 en 40 ans), puis
+  s'eteignaient a 0-0 : aucun village pris, 2 tributaires par la force.
+
+
+2. LA REPONSE : ON NE PREND PAS LES MURS, ON RUINE CE QUI EST DEHORS
+-------------------------------------------------------------------
+  Comme au neolithique. Un module, ravage.py (etage 5) ; rien ne change a
+  la defense des villages.
+
+  RAVAGER. Une troupe postee a 3 cases d'un village ennemi (la guerre
+  declaree ; sans la diplomatie, une hostilite ouverte), qui ne marche
+  pas, avec l'ordre de ravager. Chaque semaine :
+    - la recolte sur pied perd 10 % pour 20 guerriers (20 % au plus par
+      semaine ; x1,5 avec Torches et brandons), jusqu'aux trois quarts ;
+      les semailles et la recolte remettent le compte a zero ;
+    - le village ne s'eloigne plus de ses murs : il trouve dehors 70 % de
+      ses vivres (la cueillette seulement : un tableau a part,
+      systems.VILLAGE_FORAGE ; la recolte perdue est deja comptee) ;
+    - le troupeau (un enclos) : une chance sur quatre par semaine de
+      l'emmener (la moitie avec une tour de guet) ; l'enclos reste vide un
+      an, la troupe gagne 120 vivres par niveau ;
+    - la troupe vit sur le pays ennemi (0,8 ration par guerrier) ;
+    - l'avantage dans la guerre : +3 par semaine, +5 pour un troupeau ;
+    - la stabilite du village : -6 (champs ravages), -2 (troupeau vole) ;
+    - les deux peuples s'en souviennent (relation -15).
+  La troupe qui part, qui marche, la paix : le ravage cesse.
+
+  LA SORTIE. Le village leve tous ses hommes et attaque la troupe dans ses
+  champs : une bataille en terrain ouvert, sans les murs. C'est la que les
+  batailles reviennent.
+
+  TROIS FINS au lieu d'une (la paix blanche) :
+    - LA SOUMISSION : l'avantage decide (guerre.submit_verdict, inchange) ;
+      l'IA l'exige des qu'elle a l'avantage (casus, inchange) ;
+    - LE TRIBUT DE GUERRE : "Exiger un tribut" compte maintenant l'avantage
+      dans la guerre ; accepte, ils paient deux ans et la guerre finit
+      (guerre.tribute_peace). L'IA l'exige a 15 d'avantage (celui qui
+      voulait soumettre ne s'y resout qu'apres un an de guerre) ;
+    - LA REDDITION : un village ASSIEGE (L'art du siege) et affame trois
+      semaines de suite ouvre ses portes : pris sans assaut (soumis ou
+      pille, comme un village pris). Un village qui vient d'etre pris a
+      son repit : ni investi, ni ravage.
+
+
+3. L'IA
+-------
+  - En guerre declaree, un village qui ne peut prendre aucun village leve
+    en masse pour RAVAGER celui dont il battrait la sortie (a 0,9 contre
+    1 : elle ose), a 20 cases au plus, seul ou avec l'ost de ses
+    tributaires.
+  - La troupe se poste dans les champs, ravage tant qu'il reste quelque
+    chose (une recolte, un troupeau), que ses vivres tiennent, qu'aucune
+    troupe plus forte (x1,15) n'arrive et qu'elle n'est pas levee depuis
+    plus de 26 semaines.
+  - Un village dont on ravage les champs (ou qu'on assiege) SORT s'il
+    battrait la troupe dehors ; une troupe restee chez elle sort de meme.
+  - Trois regles nees de la verification dans sa partie (les troupes des
+    Rail se relayaient en aller-retour toutes les quatre semaines) : une
+    troupe en campagne ne rentre que pour une menace grave sur son
+    village ; une troupe qui ravage ne rentre que si elle battrait cette
+    menace (sinon elle rend coup pour coup) ; une troupe chez elle devant
+    une menace ne part pas ravager ailleurs.
+  - Une portee accordee : le village levait pour un ennemi a 28 cases, sa
+    troupe n'en cherchait qu'a 14 et rentrait aussitot.
+
+
+4. LE JOUEUR
+------------
+  - La fiche de la troupe : le bouton "Camper" d'une troupe devient
+    RAVAGER [C] (une torche) / Cesser [C] ; au survol, ce que ca fait, ou
+    pourquoi c'est impossible ("Aucun village ennemi a 3 cases : postez la
+    troupe dans ses champs", "Vous etes en paix avec les... "). Une ligne
+    dit ce qu'elle ravage et ce qui est perdu.
+  - Le rapport de force (le survol d'un village ennemi, une troupe
+    choisie) : quand les murs sont trop forts, il conseille de ravager.
+  - L'ecran des guerres : "ravage les champs de..." pour chaque troupe,
+    une section CHAMPS RAVAGES (qui, depuis quand, la recolte perdue,
+    Voir), l'avantage qui dit ce qui le fait, et un quatrieme bouton :
+    EXIGER UN TRIBUT (avec la reponse attendue et ses raisons).
+  - La carte : un FEU sur le village dont on ravage les champs ou qu'on
+    assiege ; ses champs palissent ; le survol le dit en mots.
+  - La fenetre du village : en tete de "Le village aujourd'hui", le
+    ravage, la recolte perdue, le troupeau vole, la faim avant la
+    reddition ; la recolte attendue et la stabilite suivent seules.
+  - Quand c'est LUI qu'on ravage : une carte, "Ils ravagent nos champs"
+    (sortir les chasser / tenir derriere les murs / payer pour qu'ils
+    partent : un tribut de deux ans, la guerre finit) ; sans reponse en
+    trois semaines, il tient.
+  - La decision "Une razzia sur un village" : la troupe attaque le
+    village si elle peut le prendre ; sinon elle ravage ses champs (elle
+    marchait a l'assaut et perdait).
+  - Le journal : le debut, l'avancee toutes les quatre semaines, la fin,
+    le troupeau, la recolte ("Les champs ravages ont donne 62 % de
+    moins").
+  Tout passe par les ordres existants ("band" : camp ; "diplo" : tribut ;
+  "event") : rien de nouveau pour le multijoueur.
+
+
+5. LES DONNEES
+--------------
+  Band.ravage (le lieu qu'elle ravage) ; VillageData.ravage (semaines),
+  ravager (le peuple), ravaged (la part de la recolte perdue), herd_lost
+  (la semaine jusqu'ou l'enclos est vide), starved (les semaines de faim
+  d'un village assiege). Des champs types : la sauvegarde s'en deduit ;
+  une partie d'avant se charge telle quelle.
+
+
+6. VERIFIE
+----------
+  DANS SA PARTIE (une copie, an 48), le joueur lui-meme, par les ordres du
+  jeu :
+    - Il declare la guerre aux Rail (Taane, 253 habitants, a 10 cases) et
+      leve 26 guerriers. Le rapport de force contre le village : 0,32,
+      defavorable ; la fiche conseille de ravager. Trois semaines de
+      marche, Ravager [C] : en huit semaines, la recolte attendue de Taane
+      passe de 12 335 a 2 005 vivres (75 % perdue), son avantage monte a
+      +24 ; l'ecran des guerres le montre. Puis les Rail SORTENT (51
+      combattants contre 26) : sa troupe est battue. Dans un premier essai
+      (avant la correction de l'IA), il obtenait un tribut de guerre a +54
+      d'avantage : "Les Rail paieront un tribut chaque saison (2 ans) : la
+      guerre finit."
+    - A l'inverse : les Rail lui declarent la guerre, 33 guerriers
+      ravagent Ilsen. Le feu est sur son village, la carte "Ils ravagent
+      nos champs" arrive ; il choisit de sortir : Ilsen leve 26 hommes, la
+      bataille se livre dans ses champs, victoire ("Encercles, ils ont ete
+      massacres dans la fuite") ; le ravage cesse.
+    Les captures (sa partie) : docs/maquettes/guerre/ (la troupe qui
+    ravage, l'ecran des guerres, la carte "Ils ravagent nos champs", le
+    feu sur son village, la fenetre du village).
+  DIX ANS de sa partie (an 48 a 58, les IA et un joueur passif), le code
+  final, contre les memes dix ans avant :
+                                        avant (0.28)   0.29.0
+      guerres declarees                 41             36
+      batailles                         25             58
+        dont troupe contre troupe       3              17
+      semaines de ravage                -              249
+      soumissions exigees et obtenues   0              11
+      tributs de guerre                 -              13
+      villages pris                     0              4
+      tributaires par la force          0              14
+      guerres finies                    12             15
+        leur duree mediane              80 sem.        48 sem.
+        finies a 0-0                    8              6
+      population du monde (an 58)       45 534         46 925
+  Le monde ne s'effondre pas : la faim des villages reste du meme ordre
+  (196 semaines par an sur 118 villages).
+  VINGT ANS de sa partie (an 68) et CINQUANTE ANS d'une partie neuve, faits
+  avant le dernier reglage (l'avantage au prorata de la troupe) : 52
+  guerres, 70 batailles, 17 soumissions, 15 tributs de guerre, 5 villages
+  pris, 54 055 habitants (54 800 avant) ; et 44 guerres, 81 batailles (36
+  troupe contre troupe), 16 soumissions, 18 tributs, 8 villages pris.
+  Les tests (dont tests/test_ravage.py : quatorze, et un scenario de touches
+  dans la vraie boucle), test_balance sur quatre graines, l'empreinte
+  re-enregistree (le jeu change, voulu), le multijoueur, l'exe.
+
+
+7. CE QUI RESTE (dit franchement)
+---------------------------------
+  - Quatre guerres sur dix finissent encore a 0-0 (six sur quinze) : des
+    ennemis hors de portee (plus de 20 cases), ou deux camps dont aucun
+    n'ose. A regarder avec M2 (un monde qui monte et qui tombe).
+  - Dans une partie neuve, le monde redevient calme apres l'an 50 : peu de
+    guerres se declarent (les approches "soumis" et "protecteur" dominent).
+    Le ravage fait aboutir les guerres ; il n'en fait pas naitre.
+  - L'IA decide une semaine sur quatre : sa sortie peut tarder un mois.
+  - Un joueur qui ne repond pas voit ses champs bruler (la carte choisit
+    "tenir") : voulu, mais dur ; a surveiller dans ses parties.
+  - Pas encore : les captifs, la vengeance, la tactique avant la bataille
+    (la piste 2C) ; les caravanes attaquables ; les renforts des allies
+    d'un village ravage (seuls ses hommes sortent).

@@ -12,8 +12,9 @@ les siennes (ai_monthly), avec les memes regles.
   pas) : RATIONNER (chacun mange RATION de sa part : moins de naissances, un
   peu de grogne, mais le grenier dure plus), ACHETER DU GRAIN (grain.py),
   MANGER LES SEMENCES (pas de faim maintenant, moins de champs ensuite), une
-  RAZZIA sur un village (une troupe part le prendre ; vaincu, on le pille ou
-  on le soumet), PILLER LES ROUTES de commerce (une troupe se poste sur une
+  RAZZIA sur un village (une troupe part : s'il peut etre pris, elle
+  l'attaque - vaincu, on le pille ou on le soumet ; si ses murs sont trop
+  forts, elle ravage ses champs : ravage.py), PILLER LES ROUTES de commerce (une troupe se poste sur une
   route d'autres peuples et prend une part de ce qui passe : seize), une
   GRANDE CHASSE.
   Le peuple et ses chefs : la grande fete (chiefdom.feast), le conseil des
@@ -37,7 +38,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Callable
 
-from src.kora import chiefdom, chiefs, diplo, goods, grain, guerre, places, population, sites, tech, troupes, villages
+from src.kora import battle, chiefdom, chiefs, diplo, goods, grain, guerre, places, population, ravage, sites, tech, troupes, villages
 from src.kora.bands import gain_prestige, set_goto, set_march_to_band, stock_max
 from src.kora.gamestate import is_human, note
 from src.kora.log import LogKind
@@ -369,9 +370,16 @@ def _raid_take(state, tid, sid):
     if army is None:
         return "Personne ne part"
     target = places.band_of(state, other)
-    set_march_to_band(state, army.id, target.id)
-    _log(state, tid, f"Une razzia part sur {other.name or 'leur village'} : vaincu, le village sera pillé ou soumis.", other.hex, LogKind.COMBAT)
-    return "La troupe part."
+    if battle.band_force(state, army) > battle.defense_force(state, target, tid):
+        set_march_to_band(state, army.id, target.id)
+        _log(state, tid, f"Une razzia part sur {other.name or 'leur village'} : vaincu, le village sera pillé ou soumis.", other.hex, LogKind.COMBAT)
+        return "La troupe part."
+    # Ses murs sont trop forts pour cette troupe : elle ravage ses champs
+    # et emmene ce qu'elle peut (ravage.py).
+    if not ravage.send(state, army, other):
+        set_march_to_band(state, army.id, target.id)
+    _log(state, tid, f"Une razzia part sur {other.name or 'leur village'} : ses murs sont trop forts, la troupe ravagera ses champs et emmènera son troupeau.", other.hex, LogKind.COMBAT)
+    return "La troupe part ravager leurs champs."
 
 
 def _route_key(route) -> str:
@@ -781,9 +789,13 @@ def _build() -> dict:
         ),
         Decision(
             "razzia", "Les vivres", "combat", "Une razzia sur un village",
-            "Une troupe part prendre ce que le grenier d'un voisin a de trop. Vaincu, son village sera pillé, ou soumis.",
+            "Une troupe part chez un voisin. Si elle peut prendre son village, elle l'attaque ; si ses murs sont trop forts, elle ravage ses champs et emmène son troupeau.",
             _raid_needs, _raid_cost,
-            _lines("La troupe marche sur le village et l'attaque", "Victoire : le butin de leur grenier, puis piller ou soumettre", "Défaite : la troupe revient diminuée"),
+            _lines(
+                "Le village peut être pris : la troupe l'attaque (butin, puis piller ou soumettre)",
+                "Ses murs sont trop forts : elle ravage ses champs (la récolte brûle, le troupeau est emmené, la troupe vit sur le pays)",
+                "Ils peuvent sortir la combattre",
+            ),
             _raid_take, targets=_raid_targets, target_name=_raid_name,
         ),
         Decision(

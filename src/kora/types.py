@@ -157,6 +157,9 @@ class Band:
     # Troupe postee sur une route de commerce pour la piller (decisions.py) :
     # "exportateur:importateur:bien" ("" : aucune).
     raid_route: str = ""
+    # Troupe qui ravage les champs d'un village ennemi (ravage.py) : le lieu
+    # (0 : aucun).
+    ravage: int = 0
 
 
 @dataclass

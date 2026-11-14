@@ -13,8 +13,9 @@ Un MOTIF (set_casus, motive_against ; casus.py en fait naitre : la terre,
 une ressource, une succession, un tribut refuse) : declarer sans honte ;
 sinon prestige -DECLARE_PRESTIGE et une reputation d'agresseur. Un BUT :
 soumettre (goal_of, submit : on ne sert qu'un suzerain, l'ancien fait la
-treve) ; l'AVANTAGE (add_score, score : batailles, sieges, villages pris)
-decide si l'on peut exiger la soumission (submit_verdict). LA LASSITUDE
+treve) ; l'AVANTAGE (add_score, score : batailles, champs ravages -
+ravage.py -, sieges, villages pris) decide si l'on peut exiger la soumission
+(submit_verdict) ou un tribut de guerre (tribute_peace : il finit la guerre). LA LASSITUDE
 (weariness : +WEARY_STEP par saison, WEARY_CAP au plus) pousse a la paix
 blanche (truce_mood, lu par diplo.evaluate "treve") ; apres un an
 (long_war) la relation ne filtre plus les offres de paix. Une guerre sans
@@ -454,6 +455,20 @@ def end_war(state, a: int, b: int) -> None:
                 diplo.of(state).pacts[k] = kept
             else:
                 diplo.of(state).pacts.pop(k, None)
+
+
+def tribute_peace(state, a: int, b: int) -> bool:
+    """Le tribut de guerre : l'un paie, la guerre declaree entre les deux
+    pays finit (le but et l'avantage tombent). Rend True s'il y avait une
+    guerre."""
+    if not declared_war(state, a, b):
+        return False
+    end_war(state, a, b)
+    d = diplo.of(state)
+    for key in ((a, b), (b, a)):
+        d.goals.pop(key, None)
+        d.scores.pop(key, None)
+    return True
 
 
 def wars_of(state, tid: int) -> list[int]:

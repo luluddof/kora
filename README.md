@@ -104,7 +104,8 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   et les leurs, renforts, abri, moral, trajet, vivres d'une troupe), et ce qui l'empêche.
 - L'écran de **l'armée et des guerres** (onglet *Guerre* ; touche **A** : l'armée, **W** : les guerres) : lever des
   troupes dans chaque village, voir et dissoudre vos troupes ; vos guerres pays par pays, l'avantage, les buts, les
-  deux camps, les troupes en campagne, les sièges, les derniers combats ; exiger la soumission, proposer une trêve.
+  deux camps, les troupes en campagne, les sièges, les champs ravagés, les derniers combats ; exiger la soumission
+  ou un tribut, proposer une trêve.
 - L'onglet **Décisions** (touche **D**, dès le premier village) : ce que votre peuple peut décider quand il le
   veut, par familles (les vivres, le peuple et ses chefs, le sacré, les voisins, les grands desseins). Chaque
   décision dit ce qu'il faut (coché ou non, avec vos chiffres), ce qu'elle coûte, ce qu'elle fait, et attend
@@ -148,9 +149,18 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   leur catégorie.
 - L'**ost** : un suzerain appelle les troupes de ses tributaires (fiche de sa troupe, **Ost [H]**) ; elles le
   rejoignent et ne font plus qu'une grande troupe, qu'il mène. Dissoute, chacun rentre chez soi.
-- Le **siège** : avec *Torches et brandons*, les palissades de l'ennemi ne comptent plus qu'à moitié ; avec
-  *L'art du siège*, une troupe en guerre qui se tient à côté d'un village ennemi l'investit : il ne trouve plus que
-  35 % de ses vivres et sa défense s'use chaque semaine.
+- Le **ravage** : une levée ne prend pas un village derrière ses murs. Postez votre troupe **dans ses champs** (à
+  3 cases) et ordonnez **Ravager [C]** : chaque semaine, une part de sa récolte sur pied brûle (jusqu'aux trois
+  quarts), ses gens ne s'éloignent plus des murs, son troupeau peut être emmené (un enclos vide un an), votre
+  troupe vit sur le pays et **votre avantage dans la guerre monte**. À la fin : il **se soumet**, ou il **paie un
+  tribut** qui finit la guerre (écran des guerres, ou Peuples). Lui peut **sortir** : tous ses hommes vous
+  attaquent en terrain ouvert, sans leurs murs. Si c'est vous qu'on ravage, une carte vous le demande : sortir
+  les chasser, tenir derrière les murs, ou payer pour qu'ils partent. Un **feu** sur un village de la carte : on
+  ravage ses champs, ou on l'assiège. La **razzia** (Décisions) ravage d'elle-même quand les murs sont trop forts.
+- Le **siège** : avec *Torches et brandons*, les palissades de l'ennemi ne comptent plus qu'à moitié (et ses blés
+  brûlent plus vite) ; avec *L'art du siège*, une troupe en guerre qui se tient à côté d'un village ennemi
+  l'investit : il ne trouve plus que 35 % de ses vivres et sa défense s'use chaque semaine. Affamé trois semaines
+  de suite, il **ouvre ses portes** : pris sans assaut.
 - En cet âge, **un peuple n'a qu'un village** : les autres villages de votre civilisation sont des frères
   indépendants, ou vos tributaires. Chacun travaille selon son sexe et son métier (chasse, cueillette, champs,
   poterie, silex…) ; un soldat retourne à son travail quand la troupe est dissoute.
@@ -245,7 +255,7 @@ tournant, vos clans nomades prendront peu à peu leur indépendance.
 | **S** | Scinder la bande choisie (former un clan) |
 | **F** | Réunir les bandes proches |
 | **Tab** | Bande suivante |
-| **C** | Poser un campement · **K** : y déposer des vivres |
+| **C** | Poser un campement · **K** : y déposer des vivres ; une troupe : **ravager** les champs d'un village ennemi |
 | **H** | Honorer un clan (il reste fidèle) · une troupe de suzerain : appeler l'ost |
 | **W** | Vos guerres (le même écran, onglet *Guerre*) |
 | **D** | Les décisions (rationner, acheter du grain, une razzia, piller une route, une fête...) |

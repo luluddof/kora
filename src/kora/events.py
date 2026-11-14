@@ -216,9 +216,12 @@ def names(state, inst) -> dict:
         leader_rival = rival.leader.name
     else:
         leader_rival = leader
+    # Le village de la bande, par son nom (une carte qui parle d'un village).
+    site = state.sites.get(band.village) if band is not None and band.village else None
     return {
         "band": band_txt,
         "Band": band_txt[:1].upper() + band_txt[1:],
+        "village": (site.name or "votre village") if site is not None else "votre village",
         "leader": leader,
         "rival": leader_rival,
         "chief": chief.name if chief is not None else "le chef",
@@ -615,6 +618,8 @@ def _eff_pact(state, inst, tribe, band, *args) -> None:
             diplo.add_pact(state, tribe.id, inst.other, "alliance")
             diplo.add_mod(state, tribe.id, inst.other, "mariage", 15)
         elif what == "tribut_paye":
+            # En guerre declaree : le tribut finit la guerre.
+            guerre.tribute_peace(state, tribe.id, inst.other)
             diplo.add_pact(state, tribe.id, inst.other, "tribut", diplo.TRIBUTE_WEEKS, payer=tribe.id)
         elif what == "commerce":
             diplo.add_pact(state, tribe.id, inst.other, "commerce")
@@ -979,6 +984,7 @@ def _require_text(cond) -> str:
         "stock_ge": f"Il faut {args[0] if args else ''} semaines de vivres",
         "can_split": "Trop de bandes déjà",
         "knows": "Il faut un savoir",
+        "can_sortie": "Il faut des hommes à lever",
     }.get(kind, "Impossible pour l'instant")
 
 

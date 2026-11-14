@@ -420,7 +420,9 @@ class Renderer:
                 continue
             mine = site.tribe_id == me
             if (is_explored(state, site.hex, me) if mine else is_visible(state, site.hex, me)):
-                out.extend(tuple(f) for f in site.data.fields)
+                # Des champs ravages (ravage.py) palissent : la part qui reste.
+                left = round(1.0 - 0.8 * site.data.ravaged, 2)
+                out.extend((f[0], f[1], left) for f in site.data.fields)
         return out
 
     def _paint_base(self, target, state, planet, yaw, pitch, cx, cy, focal, dist, samples) -> None:
@@ -453,6 +455,12 @@ class Renderer:
                     h = band_hunger(state, b)
                     if h:
                         self._hunger[b.id] = h
+            # Les villages dont on ravage les champs, ou qu'on assiege (le
+            # signe du feu ; le survol le dit en mots : sim._trouble_lines).
+            self._burning = {
+                s.data.band for s in state.sites.values()
+                if s.kind == "village" and (s.data.ravage > 0 or s.data.siege > 0)
+            }
         key2 = (*key, pygame.time.get_ticks() // 500)
         if getattr(self, "_hostile_key", None) != key2:
             self._hostile_key = key2
@@ -513,6 +521,7 @@ class Renderer:
         heads = []
         hunger, hostile = self._band_marks(state)
         hungry = []
+        fires = []
         for band_id, (bx, by, radius) in spots.items():
             band = state.bands[band_id]
             if bx < -40 or by < -40 or bx > w + 40 or by > h + 40:
@@ -534,6 +543,8 @@ class Renderer:
                 _draw_hostile(self.screen, ix, iy, radius + (4 if band.village else 3), band.village)
             if band.id in hunger:
                 hungry.append((ix, iy, radius + (2 if band.village else 0), hunger[band.id]))
+            if band.village and band.id in self._burning:
+                fires.append((ix, iy, radius + 2))
             if band.tribe_id == state.viewer and not chiefs.is_chief_band(state, band):
                 # Clan qui se detache : anneau orange (indocile), rouge (pret a partir).
                 if band.loyalty < chiefs.LEAVE:
@@ -576,6 +587,8 @@ class Renderer:
             _draw_heading(self.screen, *head)
         for mark in hungry:
             _draw_hunger(self.screen, *mark)
+        for mark in fires:
+            _draw_fire(self.screen, *mark)
         self.draw_hud(state)
         self._legend_state = state
         extra_y = HUD_HEIGHT + 8
@@ -664,7 +677,9 @@ class Renderer:
                 hint = hints[key]
             hover = on and _contains(rect, mx, my)
             head, key_hint = split_hint(labels[key])
-            theme.button(self.screen, rect, head, "second", on, hover, icon_key=BAND_ICONS.get(key), key_hint=key_hint, role="bouton_petit")
+            # Le bouton "camp" d'une troupe ravage (ravage.py) : une torche.
+            icon = "torche" if key == "camp" and band.kind == "armee" else BAND_ICONS.get(key)
+            theme.button(self.screen, rect, head, "second", on, hover, icon_key=icon, key_hint=key_hint, role="bouton_petit")
         warn = hint != BAND_HINT and hint not in hints.values()
         theme.text(self.screen, hint, "mini", C.alerte if warn else C.cendre, (bx + 16, by + bh - 10 - 18), bw - 32)
 
@@ -1672,6 +1687,20 @@ def _draw_hostile(surf: pygame.Surface, cx: int, cy: int, r: int, square: bool) 
     _ring(surf, C.nuit, cx, cy, r + 1, square)
     _ring(surf, C.mauvais, cx, cy, r, square)
     _ring(surf, C.mauvais, cx, cy, r - 1, square)
+
+
+def _draw_fire(surf: pygame.Surface, cx: int, cy: int, radius: int) -> None:
+    """Le signe du feu, en bas a droite d'un village : on ravage ses champs,
+    ou on l'assiege (ravage.py, siege.py). Une flamme sur une pastille
+    sombre, dessinee a la main (une icone si petite ne se lit pas)."""
+    d = int(radius * 0.72) + 5
+    x, y = cx + d, cy + d
+    pygame.draw.circle(surf, C.nuit, (x, y), 9)
+    pygame.draw.circle(surf, C.mauvais, (x, y), 8)
+    flame = [(x, y - 7), (x + 4, y - 1), (x + 5, y + 3), (x + 2, y + 6), (x - 2, y + 6), (x - 5, y + 3), (x - 3, y - 1), (x - 1, y - 2)]
+    pygame.draw.polygon(surf, C.braise, flame)
+    heart = [(x, y - 2), (x + 2, y + 2), (x + 1, y + 5), (x - 1, y + 5), (x - 2, y + 2)]
+    pygame.draw.polygon(surf, C.os, heart)
 
 
 def _draw_hunger(surf: pygame.Surface, cx: int, cy: int, radius: int, kind: str) -> None:

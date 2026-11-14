@@ -114,6 +114,8 @@ def _goto(state, tid, band_id, q, r, u=None, v=None):
         return _out(IN_BATTLE + ".")
     # Un ordre de marche retient la troupe appelee a l'ost (ost.py).
     band.ost = 0
+    # Elle part : elle ne ravage plus (ravage.py).
+    band.ravage = 0
     # Le point clique (points.py) : la bande va la, pas au centre du lieu.
     aim = (int(u), int(v)) if u is not None and v is not None else None
     set_goto(state, band.id, Hex(int(q), int(r)), aim=aim)
@@ -140,6 +142,8 @@ def _march(state, tid, band_id, target_id):
         if guerre.needs_declaration(state, tid, target.tribe_id) and not guerre.declared_war(state, tid, target.tribe_id) and not guerre.at_war(state, tid, target.tribe_id):
             return _out(f"Vous êtes en paix avec les {state.tribes[target.tribe_id].name} : déclarez-leur d'abord la guerre (écran Peuples)")
     band.ost = 0
+    # Elle part : elle ne ravage plus (ravage.py).
+    band.ravage = 0
     set_march_to_band(state, band.id, target.id)
     return _out()
 

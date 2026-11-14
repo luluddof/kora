@@ -64,6 +64,18 @@ def test_a_raid_sends_a_troop_against_a_village():
     assert ssite.id in targets
     assert "il faut choisir" in decisions.block(st, 1, "razzia").lower()
     out = commands.apply(st, commands.make(1, "decide", "razzia", ssite.id))
+    # Ses murs sont trop forts pour une levee : la troupe part ravager ses
+    # champs (ravage.py) ; elle ne donne l'assaut que si elle peut le prendre.
+    assert out["msg"] == "La troupe part ravager leurs champs.", out
+    army = next(b for b in st.bands.values() if b.tribe_id == 1 and b.kind == "armee")
+    assert army.ravage == ssite.id and army.path
+
+
+def test_a_raid_storms_a_village_it_can_take():
+    st, buyer, bsite, seller, ssite = _two(stock=100.0)
+    seller.population = 12
+    seller.demo = {}
+    out = commands.apply(st, commands.make(1, "decide", "razzia", ssite.id))
     assert out["msg"] == "La troupe part.", out
     army = next(b for b in st.bands.values() if b.tribe_id == 1 and b.kind == "armee")
     assert army.order.kind is OrderKind.MARCH_TO_BAND and army.order.target_band_id == seller.id

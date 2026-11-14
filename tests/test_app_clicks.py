@@ -274,3 +274,31 @@ def test_the_village_levies_its_militia_and_buys_grain_in_dearth(monkeypatch, tm
     assert len(army) == 1 and len(army[0].units) >= 2, "chacun dans sa categorie : plusieurs compagnies"
     assert seen["stock"] > 50.0, "le grain acheté arrive au grenier"
     assert diplo.relation(st, 1, 3) is not None
+
+
+def test_a_troop_ravages_the_fields_of_an_enemy_village_with_c(monkeypatch, tmp_path):
+    """Le ravage (ravage.py) par la vraie boucle : Tab choisit la troupe, C
+    la fait ravager le village ennemi a sa portee, C encore la fait cesser."""
+    from src.kora import diplo, guerre, troupes
+    from test_ravage import _post, _state
+    from test_ravage import _village as _war_village
+
+    st = _state()
+    _home, village_a = _war_village(st, 1, 1, col=10)
+    target, _village_b = _war_village(st, 2, 2, col=22)
+    diplo.make_contact(st, 1, 2, quiet=True)
+    guerre.declare_war(st, 1, 2, 2)
+    army = troupes.raise_army(st, village_a.id, troupes.LEVY_SHARE["masse"])
+    _post(army, 21, 15)
+
+    def need(cond, what):
+        assert cond, what
+
+    steps = [
+        lambda r: [],
+        lambda r: _key(pygame.K_TAB),
+        lambda r: _key(pygame.K_c),
+        lambda r: need(army.ravage == target.id, "C : la troupe ravage les champs du village ennemi") or _key(pygame.K_c),
+        lambda r: need(army.ravage == 0, "C encore : elle cesse") or [],
+    ]
+    _play(monkeypatch, tmp_path, st, steps)

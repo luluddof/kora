@@ -398,14 +398,16 @@ class Planet:
 
     def sync_fields(self, cells) -> tuple:
         """LES TERRES DES VILLAGES en surfaces : les champs vus (colonne,
-        rangee), adoucis comme le brouillard ; rend leur cle (les calques se
-        refont quand elle change)."""
-        key = tuple(sorted(cells))
+        rangee, et la part qui en reste : des champs ravages palissent),
+        adoucis comme le brouillard ; rend leur cle (les calques se refont
+        quand elle change)."""
+        key = tuple(sorted(tuple(c) for c in cells))
         if key != self._fields_key:
             grid = np.zeros((self.height, self.width), dtype=np.float32)
-            for col, row in key:
+            for cell in key:
+                col, row = cell[0], cell[1]
                 if 0 <= row < self.height:
-                    grid[row, col % self.width] = 1.0
+                    grid[row, col % self.width] = cell[2] if len(cell) > 2 else 1.0
             self._fields_soft = self._soften(grid)
             self._fields_key = key
             self._fields_gen += 1

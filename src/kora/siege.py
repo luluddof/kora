@@ -13,7 +13,9 @@ echelles et les tours roulantes viendront avec le bronze et les villes).
         qu'il trouve (on ne sort plus des murs) ;
       - sa defense s'use de tech.SIEGE_ERODE par semaine, jusqu'a
         tech.SIEGE_FLOOR (la faim, la fatigue, les pieux qu'on sape).
-    Une troupe qui part, ou la paix : le siege est leve.
+    Une troupe qui part, ou la paix : le siege est leve. Un village
+    assiege et affame se rend (ravage.py : la reddition) ; un village qui
+    vient d'etre pris (son repit, bands.is_shielded) n'est pas investi.
 L'IA (ai.py) : un village qui sait assieger leve une troupe contre un
 village qu'il prendrait une fois sa defense usee ; la troupe declare la
 guerre, s'installe devant lui et attend que la defense tombe, puis donne
@@ -27,6 +29,7 @@ besieger : le peuple qui l'investit). N'importe pas pygame.
 from __future__ import annotations
 
 from src.kora import diplo, places, tech, villages
+from src.kora.bands import is_shielded
 from src.kora.gamestate import is_human, note
 from src.kora.log import LogKind
 from src.kora import guerre
@@ -117,7 +120,8 @@ def weekly(state) -> None:
     for site in sorted(state.sites.values(), key=lambda s: s.id):
         if site.kind != "village" or places.band_of(state, site) is None:
             continue
-        here = besiegers(state, site)
+        # Un village qui vient d'etre pris a son repit : on ne l'investit pas.
+        here = [] if is_shielded(state, places.band_of(state, site)) else besiegers(state, site)
         was = getattr(site.data, "siege", 0)
         if not here:
             if was:

@@ -18,7 +18,10 @@ d'avance). Un village (_village_ai) : batir au printemps sur le surplus
 sans marge de vivres (AI_FOOD_MARGIN :
 villages.food_outlook), lever une troupe si une menace ou une proie est la
 (AI_THREAT), appeler l'ost. Une troupe (_army_ai) : defendre, raider en
-guerre, assieger (_besiege), rentrer avant la faim (ai_war.short_of_food).
+guerre, assieger (_besiege), ravager les champs d'un village qu'elle ne
+peut pas prendre (_ravage, ravage.py), rentrer avant la faim
+(ai_war.short_of_food). Un village dont on ravage les champs SORT s'il
+battrait la troupe en terrain ouvert (AI_SORTIE_EDGE).
 L'IA ne triche pas sur les stocks ni la nourriture ; elle voit toutes les
 positions (pas de brouillard). Ses choix envers les autres peuples suivent
 l'approche de son chef (approach.factor). N'importe pas pygame.
@@ -35,8 +38,9 @@ from src.kora.ai_war import (
     short_of_food,
     start_plan,
     unsafe_spots,
+    wins,
 )
-from src.kora import approach, chiefdom, chiefs, diplo, goods, ost, places, siege, sites, villages
+from src.kora import approach, chiefdom, chiefs, diplo, goods, ost, places, ravage, siege, sites, villages
 from src.kora.peoples import culture_of
 from src.kora.battle import band_force, band_quality, defense_force
 from src.kora.bands import (
@@ -483,6 +487,12 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
             if not batiments.build_block(state, band.id, bid):
                 batiments.build(state, band.id, bid)
                 break
+    if site is not None and (site.data.ravage or site.data.siege) and weeks >= 1:
+        # On ravage ses champs, on l'assiege : il sort s'il battrait la
+        # troupe en terrain ouvert, sans ses murs (ravage.py).
+        foes = ravage.foes_at(state, site)
+        if foes and ravage.sortie_force(state, band) >= AI_SORTIE_EDGE * sum(defense_force(state, f, band.tribe_id) for f in foes):
+            ravage.sortie(state, band)
     if site is not None and not troupes.army_block(state, band.id):
         foe, foe_f = _threat(state, band, AI_THREAT_RANGE)
         raise_it = foe is not None and foe_f >= AI_THREAT * band_force(state, band)
@@ -500,6 +510,16 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
                         break
                     if _could_take(state, band, prey, size, with_ost=True):
                         raise_it, with_ost = size, True
+                        break
+            if not raise_it:
+                # Aucun village a prendre : on ravage les champs de celui dont
+                # on battrait la sortie (ravage.py), en masse, avec l'ost.
+                for prey in bands_near(state, band.position, AI_RAVAGE_REACH):
+                    if not prey.village or is_shielded(state, prey) or not guerre.declared_war(state, band.tribe_id, prey.tribe_id):
+                        continue
+                    how = _would_ravage(state, band, prey)
+                    if how:
+                        raise_it, with_ost = "masse", how == "ost"
                         break
         if not raise_it and weeks >= 8 and safe and band.population >= AI_ARMY_POP and state.rng.random() < AI_ARMY_WHIM * approach.factor(state, band.tribe_id, "army"):
             tribe = state.tribes[band.tribe_id]
@@ -586,9 +606,16 @@ def _army_ai(state: GameState, band: Band, weeks: float) -> None:
     village = places.band_of(state, home)
     at_home = state.world.distance(home.hex, band.position) <= troupes.ARMY_HOME
     foe, foe_f = _threat(state, village, AI_THREAT_RANGE) if village is not None else (None, 0.0)
-    if foe is not None and not at_home and state.world.distance(home.hex, band.position) > AI_THREAT_RANGE:
-        set_goto(state, band.id, home.hex, max_nodes=500, max_cost=1000)
-        return
+    # Elle ne quitte sa campagne que pour une vraie menace sur son village
+    # (AI_THREAT, comme pour lever).
+    grave = foe is not None and village is not None and foe_f >= AI_THREAT * band_force(state, village)
+    if grave and not at_home and state.world.distance(home.hex, band.position) > AI_THREAT_RANGE:
+        # Une troupe qui ravage rend coup pour coup : elle ne rentre que si
+        # elle battrait ceux qui menacent son village.
+        if not band.ravage or wins(state, [band], foe, edge=AI_SORTIE_EDGE):
+            ravage.stop(band)
+            set_goto(state, band.id, home.hex, max_nodes=500, max_cost=1000)
+            return
     culture = culture_of(state.tribes[band.tribe_id])
     reach_weeks = max(6, culture.raid_weeks)
     if guerre.wars_of(state, band.tribe_id):
@@ -596,6 +623,16 @@ def _army_ai(state: GameState, band: Band, weeks: float) -> None:
     # Qui sait assieger s'occupe d'abord du village qu'il peut prendre
     # (c'est pour lui qu'on l'a levee) : siege, puis assaut.
     if _besiege(state, band, weeks):
+        return
+    if at_home and grave and foe.kind == "armee" and (home.data.ravage or home.data.siege):
+        # On ravage les champs de son village, on l'assiege : elle sort si
+        # elle battrait cette troupe dehors ; sinon elle garde les murs.
+        if wins(state, [band], foe, edge=AI_SORTIE_EDGE):
+            set_march_to_band(state, band.id, foe.id)
+        return
+    # Sinon, elle ravage les champs d'un village ennemi (ravage.py) ; pas
+    # quand son propre village est menace (elle le garde).
+    if not (at_home and grave) and _ravage(state, band, weeks):
         return
     plan = plan_raid(state, band, reach_weeks, hungry=weeks < 3)
     if plan is not None:
@@ -712,6 +749,76 @@ def _besiege(state: GameState, band: Band, weeks: float) -> bool:
         return False
     set_goto(state, band.id, spot, max_nodes=600, max_cost=1500)
     return bool(band.path)
+
+
+# LE RAVAGE (ravage.py) : une troupe en guerre qui ne peut pas prendre un
+# village se poste dans ses champs si elle y battrait sa sortie
+# (AI_RAVAGE_EDGE) ; elle y reste tant qu'il y a quelque chose a ravager,
+# que ses vivres tiennent et qu'aucune troupe plus forte (AI_RAVAGE_HOLD)
+# n'arrive ; un village sort contre une troupe qu'il battrait dehors
+# (AI_SORTIE_EDGE).
+AI_RAVAGE_EDGE = 0.9
+# Un village a ravager : a AI_RAVAGE_REACH cases au plus (le village qui
+# leve et la troupe qui cherche regardent aussi loin l'un que l'autre).
+AI_RAVAGE_REACH = 20
+AI_RAVAGE_HOLD = 1.15
+AI_SORTIE_EDGE = 1.0
+AI_RAVAGE_WATCH = 4
+
+
+def _would_ravage(state: GameState, band: Band, prey: Band) -> str:
+    """Ce village leverait-il pour ravager les champs de `prey` ? "seul",
+    "ost" (avec ses tributaires) ou ""."""
+    site = places.site_of(state, prey)
+    if site is None or not ravage.worth(state, site):
+        return ""
+    theirs = AI_RAVAGE_EDGE * max(1.0, ravage.sortie_force(state, prey))
+    mine = ravage.field_force(state, band)
+    if mine >= theirs:
+        return "seul"
+    for v in _ost_villages(state, band):
+        mine += troupes.levy_size(v, troupes.LEVY_SHARE["troupe"], state) * band_quality(state, v)
+    return "ost" if mine >= theirs else ""
+
+
+def _ravage_foe(state: GameState, band: Band, prey: Band) -> bool:
+    """Peut-on ravager ce village : la guerre declaree, ou (sans la
+    diplomatie) un peuple qu'on raiderait."""
+    a, b = band.tribe_id, prey.tribe_id
+    if guerre.declared_war(state, a, b):
+        return True
+    return not guerre.needs_declaration(state, a, b) and fair_game(state, band, prey, hungry=False)
+
+
+def _ravage(state: GameState, band: Band, weeks: float) -> bool:
+    site = state.sites.get(band.ravage) if band.ravage else None
+    if site is not None:
+        # Elle ravage deja : tenir, ou partir.
+        prey = places.band_of(state, site)
+        tired = state.tick_count - band.raised > troupes.ARMY_TERM
+        foe, foe_f = _threat(state, band, AI_RAVAGE_WATCH)
+        stronger = foe is not None and foe.kind == "armee" and foe_f > AI_RAVAGE_HOLD * band_force(state, band)
+        if prey is None or tired or stronger or weeks < 1 or short_of_food(state, band) or not ravage.worth(state, site):
+            ravage.stop(band)
+            return False
+        return True
+    best, best_d = None, None
+    for prey in bands_near(state, band.position, AI_RAVAGE_REACH):
+        if not prey.village or is_shielded(state, prey) or not _ravage_foe(state, band, prey):
+            continue
+        psite = places.site_of(state, prey)
+        if psite is None or not ravage.worth(state, psite) or not ravage.dares(state, band, prey, AI_RAVAGE_EDGE):
+            continue
+        if short_of_food(state, band, prey.position):
+            continue
+        d = state.world.distance(band.position, prey.position)
+        if best is None or d < best_d or (d == best_d and prey.id < best.id):
+            best, best_d = prey, d
+    if best is None:
+        return False
+    go_to_war(state, band, best)
+    # L'ordre est donne : le ravage commence a l'arrivee (ravage.weekly).
+    return ravage.send(state, band, places.site_of(state, best), max_nodes=1200, max_cost=2500)
 
 
 AI_CACHE_SEEK = 8

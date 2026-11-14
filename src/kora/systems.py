@@ -26,6 +26,8 @@ part ailleurs, on dit ou il se branche sur le reste du jeu :
                  une bande se scinde, se reunit, peut se reunir (bands.py)
   EMANCIPATED    un clan devient un peuple : ou il part (state, band)
   SIGHT          la vue partagee : (state, peuple) -> peuples
+  VILLAGE_FORAGE ce qu'un village trouve dehors (pas sa recolte) ;
+                 (state, site) -> multiplicateur
 
 Un systeme nouveau : son module, puis UNE ligne dans chaque tableau ou il
 intervient ; le reste du jeu n'a pas a l'importer. L'ordre des tableaux
@@ -66,6 +68,8 @@ STABILITY = (
     "goods.stability_parts",
     "chiefdom.stability_parts",
     "money.stability_parts",
+    # Les champs ravages, le troupeau vole (ravage.py).
+    "ravage.stability_parts",
 )
 
 ARMY_MORALE = (
@@ -76,9 +80,10 @@ ARMY_MORALE = (
 FLEE = ("money.flee_mult",)
 
 # Chaque semaine, apres les marches et les ralliements (sim._week) :
-# l'ost rejoint son suzerain, les sieges durent ou sont leves, les villages
-# IA en disette achetent du grain.
-WEEKLY = ("ost.weekly", "siege.weekly", "grain.ai_weekly", "troupes.warn_supply")
+# l'ost rejoint son suzerain, les sieges durent ou sont leves, les champs
+# sont ravages et les villages affames se rendent, les villages IA en
+# disette achetent du grain.
+WEEKLY = ("ost.weekly", "siege.weekly", "ravage.weekly", "grain.ai_weekly", "troupes.warn_supply")
 
 # Chaque mois, apres le passage des porteurs d'une route (goods.monthly) :
 # les troupes postees dessus prennent leur part ; (state, route).
@@ -91,6 +96,10 @@ VILLAGE_DEFENSE = ("siege.defense_parts",)
 # Les vivres qu'un village trouve et recolte (villages.food_mult,
 # villages.yield_mult) ; (state, site) -> x.
 VILLAGE_FOOD = ("siege.food_mult",)
+
+# Les vivres qu'un village trouve DEHORS seulement (villages.food_mult : la
+# cueillette, la chasse, le troupeau ; pas la recolte) ; (state, site) -> x.
+VILLAGE_FORAGE = ("ravage.food_mult",)
 
 # Semaines de reserve d'une bande, en plus de ses savoirs (bands.stock_max) ;
 # (state, band) -> semaines (0 si le systeme ne s'en mele pas).
@@ -133,7 +142,7 @@ TECH_LINES = ("goods.tech_lines",)
 
 # Les modules qui ajoutent des conditions, des effets et leurs textes aux
 # evenements (EVENT_CONDITIONS, EVENT_EFFECTS, EVENT_TEXTS ; events.vocabulary).
-EVENT_VOCABULARY = ("goods", "money", "numbers", "ai_war", "turning")
+EVENT_VOCABULARY = ("goods", "money", "numbers", "ai_war", "turning", "ravage")
 
 # Une bande se scinde (bands.split_band) ; (state, ancienne, nouvelle).
 BAND_SPLIT = ("chiefs.on_split",)

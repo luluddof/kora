@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-11-13.
+Derniere mise a jour : 2026-11-14.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -912,6 +912,31 @@ lente, bandes dessinees petites a taille fixe.
     biens qui s'enchainent, des evenements pour l'age des villages, les
     personnages branches sur les familles, le prestige sans plafond et des
     ambitions, les lois, la geographie qui compte, le debut).
+2026-11-14 (0.29.0)
+  - "Oui, la guerre" (a la question : "Je commence par la guerre qui
+    aboutit ?", la piste M1 de la review). FAIT (0.29.0 ; spec
+    2026-11-14-la-guerre-qui-aboutit.txt) : on ne prend pas les murs, on
+    ruine ce qui est dehors. LE RAVAGE : une troupe postee dans les champs
+    d'un village ennemi (Ravager [C]) brule sa recolte semaine apres
+    semaine (jusqu'aux trois quarts), l'enferme, peut emmener son
+    troupeau, vit sur le pays, et fait monter l'avantage dans la guerre.
+    LA SORTIE : le village leve tous ses hommes et attaque la troupe en
+    terrain ouvert. TROIS FINS au lieu de la paix blanche : la soumission,
+    le TRIBUT DE GUERRE (ils paient deux ans, la guerre finit ; un bouton
+    de l'ecran des guerres), la REDDITION d'un village assiege et affame.
+    L'IA ravage le voisin dont elle battrait la sortie, sort, se replie
+    devant plus fort, exige la soumission ou un tribut. A l'ecran : un feu
+    sur le village, ses champs qui palissent, la fiche du village, l'ecran
+    des guerres ; la carte "Ils ravagent nos champs" (sortir, tenir,
+    payer) ; la razzia ravage quand les murs sont trop forts. Verifie dans
+    SA partie (il ravage Taane : 75 % de la recolte perdue en huit
+    semaines, puis les Rail sortent et le battent ; les Rail ravagent
+    Ilsen, il sort et gagne). Dix ans de sa partie : 11 soumissions
+    obtenues et 13 tributs de guerre (0 avant), 58 batailles (25), 4
+    villages pris (0), la population intacte. En verifiant : deux troupes
+    des Rail se relayaient en aller-retour toutes les quatre semaines
+    (corrige : trois regles de l'IA en campagne). Reste : quatre guerres
+    sur dix finissent encore a 0-0.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -964,7 +989,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.28.0
+Version du jeu : 0.29.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -992,6 +1017,9 @@ la memoire du glissement est gardee sur la partie).
 Fait le 2026-11-13 (0.28.0) : la carte stable (calques), les unites a un
 point et la marche continue, les terres en surfaces, l'influence qui varie
 sur un meme sol.
+Fait le 2026-11-14 (0.29.0) : la guerre qui aboutit (M1) : le ravage des
+champs, la sortie, le tribut de guerre, la reddition d'un village affame ;
+l'IA qui ravage, sort et exige.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
@@ -1019,15 +1047,18 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 2026-11-11-onglet-decisions-soudure.txt, section 3).
 
   En attente de SON choix (propose, rien de code) :
-  - M1-M10      la review du 2026-11-13, mesuree sur ses parties (la guerre
-                qui aboutit : aujourd'hui aucun village n'est pris apres
-                l'an 40 ; un monde qui monte et qui tombe ; un savoir ouvre
-                quelque chose a faire ; des biens qui s'enchainent ; des
-                evenements pour l'age des villages ; les personnages
-                branches sur les familles ; le prestige sans plafond et des
-                ambitions ; les lois ; la geographie qui compte ; le
-                debut) : 2026-11-13-review-profondeur-mesures.txt.
-                Conseil : M1 d'abord.
+  - M2-M10      la review du 2026-11-13, mesuree sur ses parties (M1, la
+                guerre qui aboutit : FAIT en 0.29.0 ; restent : un monde qui
+                monte et qui tombe ; un savoir ouvre quelque chose a faire ;
+                des biens qui s'enchainent ; des evenements pour l'age des
+                villages ; les personnages branches sur les familles ; le
+                prestige sans plafond et des ambitions ; les lois ; la
+                geographie qui compte ; le debut) :
+                2026-11-13-review-profondeur-mesures.txt.
+  - GUERRE+     la suite de la guerre qui aboutit : les guerres qui
+                finissent encore a 0-0 (quatre sur dix), les renforts des
+                allies d'un village ravage, les captifs, la vengeance :
+                2026-11-14-la-guerre-qui-aboutit.txt, section 7.
   - DECISIONS+  d'autres evenements qui deviendraient des decisions (la
                 fete des moissons, une source sacree, ouvrir une mine), les
                 evenements qui viennent au joueur ; la guerre qui se voit

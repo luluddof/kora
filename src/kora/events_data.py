@@ -675,6 +675,40 @@ EVENTS: dict[str, Event] = {
                 Option("Piller le village", effects=(("conquest", "piller"),), text="Vos guerriers pillent le village des {other}.", ai=1.0),
             ),
         ),
+        # --- le ravage des champs (ravage.py) ---------------------------------
+        Event(
+            "ravage_subi",
+            "Ils ravagent nos champs",
+            "Une troupe des {other} est dans les champs de {village} : les blés brûlent, on pousse les bêtes hors "
+            "des enclos. Derrière les murs, on regarde monter la fumée. Sortir se battre en terrain ouvert, sans "
+            "la palissade ? Attendre qu'ils se lassent ? Ou payer pour qu'ils s'en aillent ?",
+            trigger="ravage_subi",
+            player_only=True,
+            deadline=3,
+            cooldown=26,
+            conds=(("other_alive",),),
+            mood="danger",
+            options=(
+                Option(
+                    "Sortir les chasser",
+                    effects=(("sortie",),),
+                    requires=(("can_sortie",),),
+                    text="Tous les hommes prennent les armes et sortent : la bataille se livrera dans vos champs, sans vos murs.",
+                    ai=1.0,
+                ),
+                Option(
+                    "Tenir derrière les murs",
+                    text="On ferme les portes. La récolte sera maigre, mais personne ne meurt aujourd'hui.",
+                    ai=1.2,
+                ),
+                Option(
+                    "Payer pour qu'ils partent",
+                    effects=(("war_tribute",),),
+                    text="Vous paierez un tribut aux {other} chaque saison, deux ans durant : ils lèvent le camp.",
+                    ai=0.6,
+                ),
+            ),
+        ),
         # --- la fievre --------------------------------------------------------
         Event(
             "fievre",

@@ -1,4 +1,22 @@
-## Nouveau dans la 0.28 : le monde sans cases, la suite
+## Nouveau dans la 0.29 : la guerre qui aboutit
+
+Avant, une guerre se déclarait puis s'éteignait sans rien : une levée ne peut pas prendre un village derrière
+ses murs. Maintenant, comme au néolithique, on ruine ce qui est dehors jusqu'à ce que l'autre sorte ou plie.
+
+- **Ravager [C]** : une troupe postée dans les champs d'un village ennemi brûle sa récolte semaine après
+  semaine, peut emmener son troupeau, vit sur le pays, et fait monter **votre avantage dans la guerre**.
+- **Trois fins** au lieu d'une : le village **se soumet** (tributaire), il **paie un tribut de guerre** (deux ans,
+  et la guerre finit), ou, assiégé et affamé trois semaines, il **ouvre ses portes**.
+- **La sortie** : un village dont on ravage les champs lève tous ses hommes et attaque la troupe en terrain
+  ouvert, sans ses murs. Les autres peuples le font ; quand c'est vous, une carte vous le demande (sortir, tenir,
+  ou payer pour qu'ils partent).
+- **Les autres peuples font la guerre ainsi** : ils ravagent le voisin dont ils battraient la sortie, se replient
+  devant plus fort, exigent la soumission ou un tribut.
+- À l'écran : un **feu** sur un village ravagé ou assiégé, ses champs qui pâlissent, la fiche du village et l'écran
+  des guerres qui disent ce qui est perdu, le bouton **Exiger un tribut**.
+- La **razzia** (Décisions) ravage d'elle-même quand les murs sont trop forts pour un assaut.
+
+Et dans la 0.28 : le monde sans cases, la suite
 
 - **La carte ne scintille plus** quand le temps avance : le fond ne se redessine qu'avec la vue ; le brouillard,
   les zones d'influence et les champs se posent par-dessus.

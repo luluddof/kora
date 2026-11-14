@@ -56,6 +56,7 @@ from src.kora import (
     points,
     planets,
     population,
+    ravage,
     records,
     siege,
     sites,
@@ -206,6 +207,8 @@ def hex_inspect(state: GameState, h: Hex) -> dict | None:
                 "hunger": band_hunger(state, band) if band.tribe_id == me else "",
                 "village": bool(band.village),
                 "hostile": guerre.hostile(state, me, band.tribe_id),
+                # Un village assiege, des champs ravages (siege.py, ravage.py).
+                "trouble": _trouble_lines(state, band),
             }
             break
     site = sites.site_on_hex(state, placed)
@@ -337,13 +340,22 @@ def _village_lines(state: GameState, band: Band) -> list[str]:
     if not band.village:
         return []
     site = places.site_of(state, band)
-    return villages.lines(state, band) + (siege.lines(state, site) if site is not None else [])
+    return villages.lines(state, band) + (siege.lines(state, site) + ravage.lines(state, site) if site is not None else [])
+
+
+def _trouble_lines(state: GameState, band: Band) -> list[str]:
+    """Ce que le signe du feu dit en mots (le survol d'un village) : assiege,
+    ses champs ravages, son troupeau vole."""
+    site = site_of(state, band) if band.village else None
+    if site is None:
+        return []
+    return siege.lines(state, site) + ravage.lines(state, site)
 
 
 def _army_lines(state: GameState, band: Band) -> list[str]:
     if band.kind != "armee":
         return []
-    return troupes.army_lines(state, band) + ost.lines(state, band)
+    return troupes.army_lines(state, band) + ost.lines(state, band) + ravage.band_lines(state, band)
 
 
 def _raid_lines(state: GameState, band: Band) -> list[str]:
@@ -459,6 +471,7 @@ def inspect_lines(info: dict) -> list[str]:
             lines.append(f"{who}  ·  {band['population']}" + ("  ·  en guerre avec vous" if band.get("hostile") else ""))
             if band.get("hunger"):
                 lines.append(hunger_text(band["hunger"], band.get("village", False)))
+            lines.extend(band.get("trouble") or [])
     lines.extend(info.get("resources") or [])
     lines.extend(info.get("zone") or [])
     lines.extend(info.get("site") or [])

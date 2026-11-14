@@ -57,6 +57,7 @@ from src.kora.battle import band_force
 from src.kora.bands import bonus_of, stock_max
 from src.kora import troupes
 from src.kora import batiments
+from src.kora import ravage, siege
 
 WARN = C.alerte
 CARD = {
@@ -1069,7 +1070,9 @@ def _today(r, state, site, band, rect) -> None:
     growth = ((1.0 + GROWTH_RATE * know.growth * villages.growth_mult(state, band)) ** 13 - 1.0) * 100
     parts = villages.defense_parts(state, band)
     stab = villages.stability(state, site, band)
-    rows = [
+    # La guerre d'abord : assiege, ses champs ravages, son troupeau vole.
+    rows = [(line, WARN) for line in siege.lines(state, site) + ravage.lines(state, site)]
+    rows += [
         (f"Stabilité : {stab:.0f} ({villages.stability_word(stab)}), croissance x{villages.stability_growth(state, band):.2f}".replace(".", ","), GOOD if stab >= 50 else WARN),
         (f"Grenier : {know.stock_weeks + villages.store_weeks(state, band):.0f} semaines de réserve", SOFT),
         (f"Grain gâte : {100 * villages.GRAIN_ROT * villages.rot_mult(state, site):.2f} % par semaine".replace(".", ","), SOFT),

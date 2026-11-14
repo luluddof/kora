@@ -61,6 +61,16 @@ class VillageData:
     # Le siege (siege.py) : semaines d'investissement, le peuple qui assiege.
     siege: int = 0
     besieger: int = 0
+    # Le ravage (ravage.py) : semaines de ravage en cours et le peuple qui
+    # ravage ; la part de la recolte sur pied detruite (0 a ravage.MAX,
+    # remise a zero aux semailles et a la recolte) ; la semaine jusqu'ou le
+    # troupeau vole manque ; les semaines de faim d'un village assiege (la
+    # reddition).
+    ravage: int = 0
+    ravager: int = 0
+    ravaged: float = 0.0
+    herd_lost: int = 0
+    starved: int = 0
 
 
 def _village_data(raw) -> VillageData:

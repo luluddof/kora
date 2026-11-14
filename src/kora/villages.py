@@ -352,6 +352,9 @@ def food_mult(state, band) -> float:
         mult *= production.of(state, band.tribe_id, "collecte")
         # Un village assiege ne sort plus de ses murs (siege.py).
         mult = systems.apply_mult(mult, systems.VILLAGE_FOOD, state, site)
+        # Des champs ravages, un troupeau vole (ravage.py) : la cueillette
+        # seulement (la recolte perdue est dans VillageData.ravaged).
+        mult = systems.apply_mult(mult, systems.VILLAGE_FORAGE, state, site)
     return mult
 
 
@@ -671,6 +674,8 @@ def expected_harvest(state, site, band=None) -> float:
         total += fertility(state, site.tribe_id, h) * soil.get(_key(col, row), 1.0)
     ratio = site.data.sown_ratio
     burned = BURNED if site.data.burned else 1.0
+    # Les champs ravages par une troupe ennemie (ravage.py).
+    burned *= 1.0 - site.data.ravaged
     return total * FIELD_FOOD * ratio * yield_mult(state, site) * burned * field_hands_mult(site, band)
 
 
@@ -709,6 +714,7 @@ def sow(state, site, band, late: bool = False) -> None:
     ratio = (sown / need) if need > 0 else 0.0
     site.data.sown_ratio = ratio * (LATE_SOW if late else 1.0)
     site.data.burned = False
+    site.data.ravaged = 0.0
     if state.tribes[band.tribe_id].is_player:
         if sown <= 0:
             _note(state, LogKind.SURVIE, f"{name(site)} : pas de semences, les champs restent vides cette année.", site.hex, to=band.tribe_id)
@@ -746,8 +752,10 @@ def harvest(state, site, band) -> float:
     # La part du chef part au grenier commun (chiefdom.py).
     left = chiefdom.take_from_harvest(state, band, crop - keep)
     band.stock = min(stock_max(band, state), band.stock + left)
+    ravaged = site.data.ravaged
     site.data.fields = []
     site.data.sown_ratio = 0.0
+    site.data.ravaged = 0.0
     site.data.last_harvest = round(crop)
     history = site.data.history
     history.append([state.clock.year, round(crop)])
@@ -756,6 +764,8 @@ def harvest(state, site, band) -> float:
         text = f"{name(site)} : récolte de {crop:.0f} vivres."
         if short < 1.0:
             text += " Il manquait des bras : une part est restee aux champs."
+        if ravaged > 0:
+            text += f" Les champs ravagés ont donné {round(100 * ravaged)} % de moins."
         _note(state, LogKind.SURVIE, text, site.hex, to=band.tribe_id)
     if crop > 0 and luck >= 1.15:
         events.hook(state, "bonne_recolte", tribe_id=band.tribe_id, band_id=band.id)

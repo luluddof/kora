@@ -79,6 +79,8 @@ MOD_TEXT = {
     "route_fermee": ("Vous avez fermé une de leurs routes", "Ils ont fermé une de vos routes", 0.5),
     # Le pillage d'une route de commerce (decisions.py).
     "routes_pillees": ("Vous avez pillé leurs porteurs", "Ils ont pillé vos porteurs", 0.5),
+    # Les champs ravages (ravage.py).
+    "ravage": ("Vous avez ravagé leurs champs", "Ils ont ravagé vos champs", 0.5),
     "union_refusee": ("Union refusée", "Union refusée", 0.8),
     # Les situations (situations.py).
     "passage": ("Rivaux au grand passage", "Rivaux au grand passage", 0.5),
@@ -973,6 +975,11 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
             return Verdict(blocked="On n'exige rien d'un allié")
         out.append(("Base", -40))
         out.append(("Rapport de forces", max(-30, min(50, round((ratio - 1.0) * 25)))))
+        # En guerre declaree : l'avantage (batailles, champs ravages, sieges)
+        # fait payer le tribut, qui finit la guerre.
+        lead = guerre.score(state, actor, target)
+        if lead:
+            out.append(("Votre avantage dans la guerre", round(lead)))
         dist = gap(state, actor, target)
         if dist <= 20:
             out.append(("Vous êtes à leur porte", 10))
@@ -1185,7 +1192,11 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
         chiefs.marriage_note(state, actor, target)
         return f"Alliance scellée avec les {names} par des mariages."
     if action == "tribut":
+        # Le tribut de guerre : ils paient, la guerre finit.
+        peace = guerre.tribute_peace(state, actor, target)
         add_pact(state, actor, target, "tribut", TRIBUTE_WEEKS, payer=target)
+        if peace:
+            return f"Les {names} paieront un tribut chaque saison (2 ans) : la guerre finit."
         return f"Les {names} paieront un tribut chaque saison (2 ans)."
     if action == "commerce":
         add_pact(state, actor, target, "commerce")
