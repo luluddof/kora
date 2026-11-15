@@ -1,0 +1,109 @@
+Kora - Sans grille, la suite : les chemins redresses, les rencontres a la distance, les lieux a un point (0.30.0)
+===============================================================================================================
+Date : 2026-11-15. Statut : FAIT (version 0.30.0) ; CE QUI RESTE en section 6.
+
+Ses mots (2026-11-15, a la question "Je reprends ensuite le monde sans
+grille, comme vous l'aviez decide ?") : "Oui, sans grille". La suite de
+2026-11-13-sans-grille-points-terres.txt (section 6 : "les rencontres a la
+distance, les chemins redresses dans la simulation, les villages et les
+camps poses a un point, puis la fin de la grille").
+
+
+1. LE CHEMIN REDRESSE
+---------------------
+  Ses mots du 2026-11-09 : "elle glisse en tenant compte de la proximite,
+  pas forcement en ligne droite ?" (oui : le chemin suit le sol, il ne va
+  droit que si ca ne coute pas plus).
+  Avant : le chemin etait cherche de lieu en lieu (un escalier) et l'unite
+  le suivait centre apres centre. Maintenant (points.march) : en marchant,
+  l'unite regarde 24 lieux devant elle sur son chemin et va TOUT DROIT vers
+  le plus lointain qu'elle rejoint sans payer plus qu'en suivant
+  l'escalier (le sol est lu tous les quarts de lieu, le courant des
+  rivieres compris). Droit quand ca ne coute pas plus ; sinon elle
+  contourne comme le chemin (un lac, une montagne, un sol plus rude).
+  - Le chemin trace a l'ecran est celui qu'elle fera (points.route), plus
+    l'escalier adouci ; le glissement suit le trajet vraiment fait.
+  - Rien ne change pour le reste du jeu : Band.path reste la liste des
+    lieux du chemin (les estimations de duree sont un peu prudentes).
+  Sur un sol uni, 14 lieux en biais : 4 semaines (5 par l'escalier).
+
+
+2. LES RENCONTRES A LA DISTANCE
+-------------------------------
+  Avant : deux bandes ennemies se battaient quand elles etaient "dans le
+  meme lieu" ; a un dixieme de lieu l'une de l'autre mais de part et
+  d'autre d'une limite, elles ne se voyaient pas ; deux troupes qui
+  marchaient l'une vers l'autre se traversaient entre deux semaines.
+  Maintenant (battle._meetings) :
+  - deux bandes se rencontrent quand leurs POINTS sont a trois quarts de
+    lieu ou moins (points.MEET) ; l'attaquant vient au contact, la bataille
+    est la ou est l'autre ;
+  - un VILLAGE reste un lieu : on ne le rencontre qu'en y entrant (ou en
+    marchant sur lui) ; une troupe postee tout pres ne donne pas l'assaut
+    par megarde (le ravage, le siege) ;
+  - LES CROISEMENTS : deux bandes passees a trois quarts de lieu l'une de
+    l'autre pendant la semaine (points.crossed, d'apres leur point au debut
+    de la marche : Band.pu, pv) se rencontrent quand l'une poursuivait
+    l'autre, ou que l'une est une troupe ; deux clans qui errent ne se
+    cherchent pas ;
+  - les renforts rejoignent une bataille depuis le lieu, ou a trois quarts
+    de lieu de ceux qui s'y battent ;
+  - rejoindre les siens : tout pres, a la vraie distance (points.NEAR), en
+    plus du lieu d'a cote.
+
+
+3. LES LIEUX A UN POINT
+-----------------------
+  Un camp, une cache, un village sont au POINT ou la bande etait
+  (Site.u, v ; points.site_point), plus au centre de leur lieu. Le village
+  est au point de son campement, sa bande aussi. A l'ecran : le lieu a son
+  point ; la memoire du brouillard garde ce point (memory.point). Une
+  partie d'avant se charge telle quelle (ses lieux restent au centre ; la
+  bande d'un village y gardait un vieux point : il est remis sur son lieu).
+
+
+4. LES DONNEES
+--------------
+  Band.pu, pv (le point au debut de la marche de la semaine ; -1 : elle
+  n'a pas marche) ; Site.u, v (le point du lieu ; -1 : son centre) ; la
+  memoire d'un lieu vu : deux valeurs de plus (son point). Des champs
+  types : la sauvegarde s'en deduit.
+
+
+5. VERIFIE
+----------
+  DANS SA PARTIE (une copie de sa partie neuve, an 3) : sa bande part en
+  biais a 10,6 lieux a vol d'oiseau ; le chemin de lieu en lieu faisait
+  12,1 lieux ; le trajet redresse : deux lignes droites, 11,3 lieux (le
+  sol l'oblige a un coude) ; elle arrive en 5 semaines au point vise. Elle
+  s'arrete a un point choisi dans son lieu et campe : le camp est a ce
+  point, pas au centre. Les captures : docs/maquettes/sans_cases/
+  (chemin_redresse.png, camp_au_point.png).
+  SA PARTIE AVANCEE (an 48, dix ans, trois graines), l'ancien code et le
+  nouveau cote a cote :
+                                0.29.0              0.30.0
+      semaines de ravage        93 a 249            100 a 163
+      batailles                 22 a 58             38 a 48
+      soumissions               8 a 14              7 a 11
+      population (an 58)        45 500 a 47 000     45 000 a 47 100
+  Le hasard d'une partie pese plus que le changement : les guerres
+  aboutissent comme avant, les batailles montent un peu (les croisements).
+  UNE PARTIE NEUVE de trente ans : 42 batailles (43 avant) : les clans qui
+  errent ne se battent pas plus.
+  Les 825 tests (dont tests/test_sans_grille_suite.py : seize), test_balance
+  sur quatre graines, l'empreinte re-enregistree (le jeu change, voulu), le
+  multijoueur, l'exe.
+
+
+6. CE QUI RESTE SOUS LA CARTE (dit franchement)
+-----------------------------------------------
+  Le dernier chantier du plan (2026-11-09-monde-sans-grille-plan.txt) : la
+  fin de la grille dans le code et ses tests. Aujourd'hui encore :
+  - le chemin est CHERCHE de lieu en lieu, puis redresse a la marche (pas
+    encore un nuage de points de passage) ;
+  - la nourriture, la vue, l'influence, l'epuisement du sol sont releves
+    par lieu ; les champs d'un village sont choisis par lieux autour de lui ;
+  - les portees des systemes (le ravage a 3, le siege a 1, le commerce, les
+    renforts) sont mesurees de lieu a lieu : a un demi-lieu pres ;
+  - les batailles ont un lieu (Battle.hex) ; les tests posent des lieux.
+  B3 (les points de controle) se fera avec les surfaces.

@@ -654,8 +654,9 @@ def resolve_joins(state: GameState) -> None:
         target = state.bands.get(band.order.target_band_id)
         if target is None or target.tribe_id != band.tribe_id:
             continue
-        # Rejoindre : il suffit d'etre tout pres (on ne compte pas les cases).
-        if state.world.distance(target.position, band.position) > 1:
+        # Rejoindre : il suffit d'etre tout pres (P12), a la vraie distance
+        # (points.NEAR) ou dans le lieu d'a cote.
+        if state.world.distance(target.position, band.position) > 1 and points.apart(state.world, band, target) > points.NEAR:
             continue
         if target.kind == "armee" and band.kind != "armee":
             # Des familles ne s'engagent pas dans une troupe : on s'arrete.
@@ -675,10 +676,14 @@ def apply_movement(state: GameState) -> None:
     # Une bande engagee dans une bataille ne marche pas (sauf le repli, a la fin).
     fighting = {b for bt in battle.battles(state) if not bt.outcome for b in bt.attackers + bt.defenders}
     for band in state.bands.values():
+        # Son point au debut de la marche (points.crossed : deux unites qui se
+        # croisent dans la semaine se rencontrent) ; -1 : elle n'a pas marche.
+        band.pu = band.pv = -1
         if band.population <= 0 or band.id in fighting:
             continue
         water_ok = _water_ok(state, band.tribe_id)
         costs = costs_of(state, band.tribe_id)
+        start = points.point_of(state.world, band)
         if band.order.kind is OrderKind.MARCH_TO_BAND:
             tid = band.order.target_band_id
             if tid not in state.bands:
@@ -707,6 +712,8 @@ def apply_movement(state: GameState) -> None:
         # sol le permet ; un lieu infranchissable coupe le chemin (l'ordre
         # est annule, la bande reste : spec du 14).
         points.march(state.world, band, MOVE_POINTS_PER_WEEK, water_ok, costs)
+        if points.point_of(state.world, band) != start:
+            band.pu, band.pv = start
         if not band.path and band.order.kind is OrderKind.GOTO:
             band.order = stay_order()
         if band.retreating and not band.path:

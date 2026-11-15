@@ -97,6 +97,7 @@ class Site:
     id: int
     kind: str  # "camp", "cache", "village"
     tribe_id: int
+    # Le lieu ou il est (le releve du monde sous son point).
     hex: Hex
     store: float = 0.0
     founded: int = 0
@@ -104,6 +105,10 @@ class Site:
     name: str = ""
     # population : inutilise (les villageois sont une bande installee).
     population: int = 0
+    # SON POINT (points.py, le monde sans grille) : la ou la bande etait
+    # quand elle l'a pose ; -1 : le centre de son lieu (un lieu d'avant).
+    u: int = -1
+    v: int = -1
     # L'etat du village (VillageData ; par defaut pour un campement).
     data: VillageData = field(default_factory=VillageData, metadata={"decode": _village_data})
 

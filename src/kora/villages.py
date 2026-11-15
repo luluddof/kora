@@ -831,6 +831,8 @@ def found(state, band_id: int, oath: str = "", name_: str | None = None):
         taken = [s.name for s in state.sites.values() if s.name]
         camp.name = make_name(state.story_rng, culture_of(tribe) if culture_of(tribe).syllables else CULTURES["vallee"], taken)
     band.position = camp.hex
+    # Le village est au point de son campement, la bande avec lui.
+    band.fu, band.fv = camp.u, camp.v
     band.path = []
     band.order = stay_order()
     band.village = camp.id

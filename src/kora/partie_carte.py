@@ -38,7 +38,7 @@ from src.kora import (
     tutoriel,
     points,
 )
-from src.kora.globe import colrow_of_lonlat, hex_to_globe_screen, hit_globe, look_at_hex, pixel_to_hex_globe, view_params
+from src.kora.globe import colrow_of_lonlat, hex_to_globe_screen, hit_globe, look_at_hex, pixel_to_hex_globe, point_to_globe_screen, view_params
 from src.kora.layout import (
     band_card_hit,
     band_screen_positions,
@@ -106,13 +106,16 @@ def seen_village_at_pixel(state, x, y, zoom, globe_yaw, globe_pitch, sw, sh):
         return 0
     gcx, gcy, focal, dist = view_params(zoom, sw, sh, HUD_HEIGHT)
     best, hit = 14.0, 0
-    for _sid, (q, r, kind, tid, _w, _lord) in sorted(vis.sites.items()):
+    for _sid, entry in sorted(vis.sites.items()):
+        q, r, kind, tid = entry[:4]
         if kind != "village" or tid == state.viewer:
             continue
         h = Hex(q, r)
         if h in vis.visible:
             continue
-        pos = hex_to_globe_screen(h, state.world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
+        # La ou il est dessine : a son point (memory.point).
+        col, row = points.to_colrow(*memory.point(entry))
+        pos = point_to_globe_screen(col, row, state.world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
         if pos is None:
             continue
         d = ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5

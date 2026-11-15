@@ -215,6 +215,28 @@ La carte du depot (section 4) donne cet ordre en detail.
     un ordre vers un endroit precis passe son point (set_goto(aim=...)). Le
     code qui pose une unite sur un lieu (band.position = ...) n'a rien a
     faire de plus : sans point sur ce lieu, elle est a son centre.
+  - LE CHEMIN SE REDRESSE A LA MARCHE (points.march, 0.30.0) : Band.path
+    reste la liste des lieux du chemin (astar) ; l'unite va tout droit vers
+    le coin le plus lointain qui ne coute pas plus (points.LOOK lieux). Le
+    premier lieu du chemin n'est donc plus forcement voisin de l'unite : ne
+    jamais supposer que path[0] touche band.position. Ce qu'on dessine du
+    trajet a venir : points.route (calcule quand il change, pas a chaque
+    image) ; un regard trop court ne redresse rien (un chemin en "L" :
+    8 lieux ne suffisaient pas).
+  - LES RENCONTRES SONT A LA DISTANCE (battle._meetings, 0.30.0) : deux
+    unites se rencontrent a points.MEET, ou en se croisant dans la semaine
+    (points.crossed, Band.pu / pv) quand l'une poursuit l'autre ou est une
+    troupe ; un VILLAGE est un lieu (on y entre). Une regle "si deux unites
+    sont au meme endroit" se lit par points.apart, jamais par
+    a.position == b.position.
+  - UN LIEU EST A UN POINT (Site.u, v, 0.30.0) : il se dessine et se
+    mesure par points.site_point(site), jamais par points.center(site.hex) ;
+    la bande d'un village est au point de son lieu (villages.found le lui
+    donne, persist le lui rend). Un souvenir du brouillard se lit par
+    tranche (entry[:6]) et son point par memory.point.
+  - A l'ecran, une unite deplacee hors des images (un essai, une capture)
+    GLISSE encore depuis son ancien point : attendre la fin du glissement
+    avant de photographier.
   - LA CARTE : le FOND ne se refait qu'avec la vue (le dessin de la planete, render.py) ;
     ce qui change avec la partie est un CALQUE (Planet.overlays : brouillard,
     zones, champs), refait a part. Un calque nouveau va la, jamais dans le
@@ -561,10 +583,10 @@ seulement si le decoupage rend le systeme plus simple a changer) :
   tech.py                ~1700 lignes
   events.py              ~1600 lignes
   diplo.py               ~1500 lignes
+  battle.py              ~1400 lignes
   events_data.py         ~1400 lignes
   render_village.py      ~1400 lignes
   sim.py                 ~1300 lignes
-  battle.py              ~1300 lignes
   world.py               ~1300 lignes
   villages.py            ~1200 lignes
   goods.py               ~1200 lignes

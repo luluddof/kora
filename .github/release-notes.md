@@ -1,4 +1,16 @@
-## Nouveau dans la 0.29 : la guerre qui aboutit
+## Nouveau dans la 0.30 : le monde sans cases, encore un pas
+
+- **Les unités marchent tout droit** quand ça ne coûte pas plus cher : plus d'escalier d'un lieu à l'autre. Elles
+  contournent toujours ce qui coûte (un lac, une montagne, un sol plus rude). Le chemin tracé à l'écran est celui
+  qu'elles feront. En biais, un trajet de 14 lieux prend 4 semaines au lieu de 5.
+- **Les rencontres à la distance** : deux bandes ennemies se battent quand elles sont à trois quarts de lieu l'une
+  de l'autre, plus « dans le même lieu ». Deux troupes qui se croisent en chemin, ou une bande rattrapée par celle
+  qui la poursuit, se rencontrent aussi (deux clans qui errent ne se cherchent pas). Un village reste un lieu : on
+  ne l'attaque qu'en y entrant.
+- **Les lieux à un point** : un camp, une cache, un village sont là où la bande s'est arrêtée, plus au centre d'un
+  lieu. Une partie d'avant se charge telle quelle.
+
+Et dans la 0.29 : la guerre qui aboutit
 
 Avant, une guerre se déclarait puis s'éteignait sans rien : une levée ne peut pas prendre un village derrière
 ses murs. Maintenant, comme au néolithique, on ruine ce qui est dehors jusqu'à ce que l'autre sorte ou plie.

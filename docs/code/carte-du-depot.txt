@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.29.0
+A jour pour la version : 0.30.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -190,9 +190,9 @@ ETAGE 3  ce qui s'y pose
     2026-11-13 : "supprimer la grille dans le code, en gardant le fait que selon
     le terrain, et meme sur un meme terrain, la proximite et donc l'influence
     peuvent varier").
-    fonctions : center, cell_of, delta, length, point_of, to_colrow,
-      from_colrow, aim_of, march
-    constantes : FINE, STEP
+    fonctions : center, cell_of, delta, length, point_of, site_point, apart,
+      before, crossed, to_colrow, from_colrow, aim_of, route, march
+    constantes : FINE, STEP, MEET, NEAR, LOOK
 
   atlas.py
     L'ATLAS : les noms au dezoom (continents, banquises, bassins des grands
@@ -477,7 +477,7 @@ ETAGE 5  LES SYSTEMES
 
   memory.py
     LA MEMOIRE DU BROUILLARD : ce qu'un joueur a vu la derniere fois.
-    fonctions : update, seed, site_at
+    fonctions : point, update, seed, site_at
     constantes : KINDS
 
   draws.py
@@ -568,7 +568,7 @@ ETAGE 5  LES SYSTEMES
       WALL_WOMEN, GENERAL_STEP, FLEE_MORALE, FLEE_RATE, AI_LOSING, AI_FAR,
       COMBAT_MARK_WEEKS, COMBAT_MARK_MAX, REINFORCE_RADIUS,
       RETREAT_ALLY_RANGE, RETREAT_SEARCH_RADIUS, RETREAT_SAFE_DIST,
-      RETREAT_MIN_SHIELD
+      RETREAT_MIN_SHIELD, CROSS_REACH
 
   siege.py
     LE SIEGE : la guerre contre les villages, telle que le neolithique la
@@ -1078,6 +1078,12 @@ ETAGE -  l'interface (pygame)
                                       mapgen (cuisson) ; test_planets les liste
   Vitesse de marche, taille du monde  path.MOVE_POINTS_PER_WEEK, world.MOVE_COST,
                                       tech.BASE_VISION (la vue)
+  La marche, le chemin redresse       points.march, points.route, points.LOOK
+  Les rencontres (a quelle distance,  points.MEET, points.NEAR, points.crossed ;
+  les croisements)                    les paires qui se battent : battle.py
+                                      (CROSS_REACH)
+  Le point d'un lieu (camp, village)  points.site_point ; places.Site ; le
+                                      souvenir du brouillard : memory.point
   Courant, gues                       world.RIVER_PCT, world.FORD_PCT,
                                       world.FORD_BIG_PCT, world.step_cost
   Nourriture, famine, croissance      sim.collect_food, sim.FAMINE_RATE,
@@ -1393,6 +1399,8 @@ ETAGE -  l'interface (pygame)
                               clic (2026-10-17) : un
   test_sans_grille.py         Le monde sans grille, premiere version (0.27.0)
                               : la vraie distance (des
+  test_sans_grille_suite.py   Le monde sans grille, la suite (0.30.0) : le
+                              chemin redresse (droit quand
   test_saves_music.py         Les sauvegardes (une par partie, charger,
                               supprimer, copier) et la
   test_season_look.py         Les couleurs des saisons (look.py) : l'hiver
@@ -1653,6 +1661,10 @@ ETAGE -  l'interface (pygame)
     La guerre qui aboutit : le ravage, la sortie, le tribut de guerre, la
     reddition (0.29.0)
     Statut : FAIT (version 0.29.0) ; LA SUITE en section 7.
+  specs/2026-11-15-sans-grille-rencontres-chemins-lieux.txt
+    Sans grille, la suite : les chemins redresses, les rencontres a la
+    distance, les lieux a un point (0.30.0)
+    Statut : FAIT (version 0.30.0) ; CE QUI RESTE en section 6.
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

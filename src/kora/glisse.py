@@ -7,7 +7,10 @@ change (une semaine de jeu), elle glisse le long du chemin qu'elle vient de
 faire, LISSE en courbe (une spline qui passe par les points du chemin : elle
 contourne comme le chemin, sans les angles de l'escalier), pendant la duree
 reelle d'une semaine a la vitesse choisie (MAX_SECONDS au plus). Le chemin
-dessine (Renderer.draw_path) suit la meme courbe (smooth).
+dessine (Renderer.draw_path) suit la meme courbe (smooth). Depuis la 0.30.0
+l'unite marche tout droit quand ca ne coute pas plus (points.py : le chemin
+redresse) : le glissement suit le trajet fait (note par points.march), le chemin
+dessine celui qu'elle fera (points.route).
 Interface seulement : la partie ne change pas, le temps de l'ecran ne
 compte que pour l'image (le jeu reste deterministe). N'importe pas pygame.
 """
@@ -103,9 +106,16 @@ def observe(state, band, now: float | None = None) -> None:
         if points.length(world, old, pos) <= MAX_JUMP * points.FINE:
             # Le chemin fait : les lieux passes (le chemin d'avant, moins ce
             # qui reste), jusqu'au point d'arrivee.
-            now_path = tuple(band.path)
-            gone = len(path) - len(now_path) if path[len(path) - len(now_path):] == now_path else 0
-            trail = [old, *[h for h in path[:gone] if points.center(h) != pos], pos] if gone else [old, pos]
+            # Le trajet de la semaine (points.march le note sur la bande) :
+            # tout droit la ou elle a redresse son chemin ; sinon, a defaut,
+            # les lieux passes du chemin d'avant.
+            walked = getattr(band, "trail", None)
+            if walked and len(walked) >= 2 and points.length(world, walked[0], old) <= 2 and points.length(world, walked[-1], pos) <= 2:
+                trail = [old, *walked[1:-1], pos]
+            else:
+                now_path = tuple(band.path)
+                gone = len(path) - len(now_path) if path[len(path) - len(now_path):] == now_path else 0
+                trail = [old, *[h for h in path[:gone] if points.center(h) != pos], pos] if gone else [old, pos]
             rate = state.clock.ticks_per_second() if not state.clock.paused else 0.0
             dur = min(MAX_SECONDS, 1.0 / rate) if rate > 0 else 0.4
             now = time.perf_counter() if now is None else now

@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-from src.kora import diplo, events, places, records, tech, villages
+from src.kora import diplo, events, places, points, records, tech, villages
 from src.kora.log import LogKind
 from src.kora.types import Hex, Terrain
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
@@ -133,6 +133,8 @@ def make_camp(state, band_id: int) -> Site | None:
     here = own_site_at(state, band)
     sid = _new_id(state)
     site = Site(sid, "camp", band.tribe_id, band.position, founded=state.tick_count, visited=state.tick_count)
+    # Le camp est la ou la bande est (son point, pas le centre du lieu).
+    site.u, site.v = points.point_of(state.world, band)
     if here is not None and here.kind == "cache" and here.hex == band.position:
         # La cache devient la reserve du campement.
         site.store = here.store
@@ -185,6 +187,7 @@ def deposit(state, band_id: int) -> float:
     if here is None:
         sid = _new_id(state)
         here = Site(sid, "cache", band.tribe_id, band.position, founded=state.tick_count, visited=state.tick_count)
+        here.u, here.v = points.point_of(state.world, band)
         state.sites[sid] = here
     room = capacity(state, here) - here.store
     amount = min(room, band.stock - KEEP_WEEKS * band.population)

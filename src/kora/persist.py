@@ -347,7 +347,14 @@ def _memory_to_json(vis) -> dict:
 def _memory_from_json(vis, data) -> None:
     if not isinstance(vis, PlayerVision) or not isinstance(data, dict):
         return
-    vis.sites = {int(r[0]): [int(r[1]), int(r[2]), str(r[3]), int(r[4]), bool(r[5]), int(r[6]) if len(r) > 6 else 0] for r in data.get("sites", [])}
+    # Les deux derniers : le point du lieu (-1 : un souvenir d'avant).
+    vis.sites = {
+        int(r[0]): [
+            int(r[1]), int(r[2]), str(r[3]), int(r[4]), bool(r[5]), int(r[6]) if len(r) > 6 else 0,
+            int(r[7]) if len(r) > 8 else -1, int(r[8]) if len(r) > 8 else -1,
+        ]
+        for r in data.get("sites", [])
+    }
     vis.zones = {(int(r[0]), int(r[1])): [int(r[2]), float(r[3])] for r in data.get("zones", [])}
     vis.mem_gen += 1
 
@@ -565,6 +572,13 @@ def game_from_json(data, world: World | None) -> tuple[GameState, dict] | None:
         state.overlap = {(int(a), int(b)): int(n) for a, b, n in data.get("overlap", [])}
         state.events = events.from_json(data.get("events"))
         state.story = True
+        # Un village est au point de son lieu (points.py) : sa bande aussi
+        # (une partie d'avant gardait le point ou elle s'etait arretee).
+        for site in state.sites.values():
+            if site.kind == "village":
+                home = state.bands.get(site.data.band)
+                if home is not None:
+                    home.fu, home.fv = site.u, site.v
         # Avant les chefs : chaque bande recoit le sien.
         chiefs.ensure(state)
         if not data.get("chief_seats"):

@@ -18,6 +18,7 @@ from src.kora import chiefdom, influence
 from src.kora.gamestate import humans
 from src.kora.types import Hex
 from src.kora.vision import vision_of
+from src.kora import points
 
 KINDS = ("village", "camp", "cache")
 
@@ -25,7 +26,17 @@ KINDS = ("village", "camp", "cache")
 def _entry(state, site) -> list:
     walled = site.kind == "village" and "palissade" in site.data.buildings
     lord = chiefdom.top_lord(state, site.tribe_id) if site.tribe_id in state.tribes else 0
-    return [site.hex.q, site.hex.r, site.kind, site.tribe_id, walled, lord if lord != site.tribe_id else 0]
+    # Les deux derniers : son point (points.site_point), la ou on l'a vu.
+    u, v = points.site_point(site)
+    return [site.hex.q, site.hex.r, site.kind, site.tribe_id, walled, lord if lord != site.tribe_id else 0, u, v]
+
+
+def point(entry) -> tuple[int, int]:
+    """Le point d'un lieu dont on se souvient (le centre de son lieu pour un
+    souvenir d'avant les lieux a un point)."""
+    if len(entry) >= 8 and entry[6] >= 0 and entry[7] >= 0:
+        return int(entry[6]), int(entry[7])
+    return points.center(Hex(entry[0], entry[1]))
 
 
 def update(state, cells=None) -> None:

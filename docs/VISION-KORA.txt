@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-11-14.
+Derniere mise a jour : 2026-11-15.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -938,6 +938,21 @@ lente, bandes dessinees petites a taille fixe.
     des Rail se relayaient en aller-retour toutes les quatre semaines
     (corrige : trois regles de l'IA en campagne). Reste : quatre guerres
     sur dix finissent encore a 0-0.
+2026-11-15 (0.30.0)
+  - "Oui, sans grille" (a la question : "Je reprends ensuite le monde sans
+    grille, comme vous l'aviez decide ?"). FAIT (0.30.0 ; spec
+    2026-11-15-sans-grille-rencontres-chemins-lieux.txt) : LE CHEMIN
+    REDRESSE (l'unite marche tout droit quand ca ne coute pas plus, sinon
+    elle contourne ; le chemin trace est celui qu'elle fera ; 14 lieux en
+    biais : 4 semaines au lieu de 5) ; LES RENCONTRES A LA DISTANCE (a
+    trois quarts de lieu, plus "dans le meme lieu" ; deux troupes qui se
+    croisent, une bande rattrapee par celle qui la poursuit ; un village
+    reste un lieu ou l'on entre) ; LES LIEUX A UN POINT (un camp, une
+    cache, un village la ou la bande etait). Verifie dans SA partie neuve
+    (un trajet en biais de 12,1 lieux redresse a 11,3 ; un camp pose au
+    point) et sur sa partie avancee, trois graines, l'ancien code et le
+    nouveau cote a cote (les guerres aboutissent comme avant). Reste : la
+    fin de la grille dans le code et ses tests.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -990,7 +1005,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.29.0
+Version du jeu : 0.30.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -1021,6 +1036,8 @@ sur un meme sol.
 Fait le 2026-11-14 (0.29.0) : la guerre qui aboutit (M1) : le ravage des
 champs, la sortie, le tribut de guerre, la reddition d'un village affame ;
 l'IA qui ravage, sort et exige.
+Fait le 2026-11-15 (0.30.0) : sans grille, la suite : le chemin redresse,
+les rencontres a la distance et les croisements, les lieux a un point.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
@@ -1028,11 +1045,15 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
   - SANS GRILLE  le monde en formes : 0.27 (la carte en formes, la vraie
                 distance, l'influence ronde, le glissement), 0.28 (les
                 unites a un point, la marche continue, les terres en
-                surfaces) ; restent : les rencontres a la distance, les
-                chemins redresses dans la simulation, les villages a un
-                point, la fin de la grille dans le code et les tests :
-                2026-11-13-sans-grille-points-terres.txt, section 6.
-                B3 (points de controle) se fera avec les surfaces.
+                surfaces), 0.30 (le chemin redresse, les rencontres a la
+                distance, les lieux a un point) ; reste le dernier
+                chantier : la fin de la grille dans le code et les tests
+                (le chemin cherche sans lieux, la nourriture, la vue et
+                l'influence sans releve par lieu, les portees a la vraie
+                distance) :
+                2026-11-15-sans-grille-rencontres-chemins-lieux.txt,
+                section 6. B3 (points de controle) se fera avec les
+                surfaces.
 
   En attente de SON choix, EN COURS :
   - REWORK       le rework des interfaces, serie par serie : la serie 1

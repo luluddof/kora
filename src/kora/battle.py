@@ -17,7 +17,13 @@ personnes (ou une troupe brisee) : ANEANTIE. Un village ne fuit pas : il
 est pille (champs brules, grain pris, un batiment peut-etre perdu), ou
 rase si ses defenseurs tombent.
 Chaque combat a son propre hasard (tour, bandes) : rejouable, et il n'use
-pas celui du reste du jeu. N'importe ni pygame ni render.
+pas celui du reste du jeu.
+QUI SE BAT (resolve_raids, _meetings ; le monde sans grille, 0.30.0) : deux
+bandes ennemies qui se RENCONTRENT, a la vraie distance (points.MEET) ou en
+se croisant dans la semaine (points.crossed : quand l'une poursuit l'autre,
+ou est une troupe) ; un village est un lieu ou l'on entre. L'attaquant
+vient au contact ; la bataille est la ou est l'autre.
+N'importe ni pygame ni render.
 """
 
 from __future__ import annotations
@@ -57,6 +63,7 @@ from src.kora.vision import is_explored, is_visible
 from src.kora.world import enter_cost_for, food_production
 from src.kora import troupes
 from src.kora import guerre
+from src.kora import points
 
 ROUNDS = 6
 KILL = 0.12
@@ -1197,10 +1204,12 @@ def _raid_text(state: GameState, attacker: Band, defender: Band, winner: Band, m
 
 
 def resolve_raids(state: GameState) -> None:
-    """Combats de la semaine : deux bandes ennemies sur la meme case
-    COMMENCENT une bataille, qui dure des jours. Les bandes d'un
-    camp (ou de ses allies) qui arrivent sur la case d'une bataille en cours
-    la rejoignent. Une bande ne livre qu'une bataille a la fois."""
+    """Combats de la semaine : deux bandes ennemies qui se RENCONTRENT
+    (_meetings : a la vraie distance, plus "sur la meme case") COMMENCENT
+    une bataille, qui dure des jours. Les bandes d'un camp (ou de ses
+    allies) qui arrivent sur le lieu d'une bataille en cours, ou tout pres
+    de ceux qui s'y battent, la rejoignent. Une bande ne livre qu'une
+    bataille a la fois."""
     from collections import defaultdict
     by_hex: dict[Hex, list[Band]] = defaultdict(list)
     for band in state.bands.values():
@@ -1208,54 +1217,121 @@ def resolve_raids(state: GameState) -> None:
             continue
         by_hex[band.position].append(band)
     busy = {b for bt in battles(state) if not bt.outcome for b in bt.attackers + bt.defenders}
-    # Les renforts.
+    world = state.world
+    # Les renforts : sur le lieu de la bataille, ou a points.MEET de ceux qui
+    # s'y battent (ils les rejoignent).
     for bt in sorted(battles(state), key=lambda b: b.uid):
         if bt.outcome:
             continue
         a_tribes = {state.bands[b].tribe_id for b in bt.attackers if b in state.bands}
         d_tribes = {state.bands[b].tribe_id for b in bt.defenders if b in state.bands}
-        for band in sorted(by_hex.get(bt.hex, []), key=lambda b: b.id):
+        there = [b for b in _alive(state, bt.defenders + bt.attackers) if b.position == bt.hex]
+        ref = points.point_of(world, there[0]) if there else points.center(bt.hex)
+        arrived = {b.id: b for b in by_hex.get(bt.hex, [])}
+        for h in world.neighbors(bt.hex):
+            for b in by_hex.get(h, []):
+                if not b.village and points.length(world, points.point_of(world, b), ref) <= points.MEET:
+                    arrived[b.id] = b
+        for band in sorted(arrived.values(), key=lambda b: b.id):
             if band.id in busy or is_shielded(state, band) or band.retreating:
                 continue
+            if band.position != bt.hex and (
+                band.tribe_id in a_tribes | d_tribes or any(diplo.allied(state, band.tribe_id, t) for t in a_tribes | d_tribes)
+            ):
+                band.position = bt.hex
+                band.fu, band.fv = ref
             if band.tribe_id in a_tribes or any(diplo.allied(state, band.tribe_id, t) for t in a_tribes):
                 join(state, bt, band, True)
                 busy.add(band.id)
             elif band.tribe_id in d_tribes or any(diplo.allied(state, band.tribe_id, t) for t in d_tribes):
                 join(state, bt, band, False)
                 busy.add(band.id)
-    for h, group in by_hex.items():
-        while True:
-            # Une bande en repli (ou dans son repit) ne se bat pas : c'est ce
-            # qui empeche d'attaquer plusieurs fois la meme bande.
-            present = sorted(
-                (
-                    b
-                    for b in group
-                    if b.position == h and b.population > 0 and not is_shielded(state, b) and b.id not in busy
-                ),
-                key=lambda b: b.id,
-            )
-            # Celle qui est venue attaquer livre sa bataille d'abord (sinon
-            # une bande soeur sur la meme case la livrerait a sa place).
-            pairs = [
-                (a, foe)
-                for i, a in enumerate(present)
-                for foe in present[i + 1 :]
-                if foe.tribe_id != a.tribe_id and _will_fight(state, a, foe)
-            ]
-            pair = next((p for p in pairs if _hunts(*p) or _hunts(p[1], p[0])), pairs[0] if pairs else None)
-            if pair is None:
-                break
-            a, foe = pair
-            attacker, defender = _raid_sides(a, foe)
-            bt = start(state, attacker, defender, h, _hunts(attacker, defender))
-            busy.update(bt.attackers)
-            busy.update(bt.defenders)
-            for me in humans(state):
-                if me in (attacker.tribe_id, defender.tribe_id):
-                    them = defender if attacker.tribe_id == me else attacker
-                    other = state.tribes.get(them.tribe_id)
-                    note(state, LogKind.COMBAT, f"Bataille contre les {other.name if other else 'ennemis'} : le temps passe en jours.", where=h, to=me)
+    # LES RENCONTRES A LA DISTANCE (points.py) : celle qui est venue attaquer
+    # livre sa bataille d'abord (sinon une bande soeur toute proche la
+    # livrerait a sa place), puis les autres, dans l'ordre des bandes.
+    for a, foe in _meetings(state, by_hex, busy):
+        # Une bande en repli (ou dans son repit) ne se bat pas : c'est ce qui
+        # empeche d'attaquer plusieurs fois la meme bande.
+        if a.id in busy or foe.id in busy or a.population <= 0 or foe.population <= 0:
+            continue
+        attacker, defender = _raid_sides(a, foe)
+        h = defender.position
+        if not attacker.village and (attacker.position != h or points.point_of(world, attacker) != points.point_of(world, defender)):
+            # L'attaquant vient au contact : la bataille est la ou est l'autre.
+            attacker.fu, attacker.fv = points.point_of(world, defender)
+            attacker.position = h
+        bt = start(state, attacker, defender, h, _hunts(attacker, defender))
+        busy.update(bt.attackers)
+        busy.update(bt.defenders)
+        for me in humans(state):
+            if me in (attacker.tribe_id, defender.tribe_id):
+                them = defender if attacker.tribe_id == me else attacker
+                other = state.tribes.get(them.tribe_id)
+                note(state, LogKind.COMBAT, f"Bataille contre les {other.name if other else 'ennemis'} : le temps passe en jours.", where=h, to=me)
+
+
+# Une troupe croise ceux qui passent a CROSS_REACH lieux d'elle (ce qu'on
+# marche en une semaine, des deux cotes).
+CROSS_REACH = 8
+
+
+def _meetings(state: GameState, by_hex: dict, busy: set) -> list:
+    """LES RENCONTRES de la semaine : les paires de bandes ennemies qui se
+    battront. Deux bandes se rencontrent quand leurs POINTS sont a
+    points.MEET ou moins (plus "dans le meme lieu") ; un village est un
+    lieu : on ne le rencontre qu'en y entrant, ou en marchant sur lui. Deux
+    bandes qui se sont CROISEES pendant la semaine (points.crossed) se
+    rencontrent aussi quand l'une poursuivait l'autre, ou que l'une est une
+    troupe (deux clans qui errent ne se cherchent pas). Les paires : celles
+    ou l'on poursuit d'abord, puis par id."""
+    world = state.world
+    free = sorted(
+        (b for b in state.bands.values() if b.population > 0 and b.id not in busy and not is_shielded(state, b)),
+        key=lambda b: b.id,
+    )
+    ok = {b.id for b in free}
+    spot = {b.id: points.point_of(world, b) for b in free}
+    pairs: dict = {}
+
+    def add(a: Band, b: Band) -> None:
+        if a.id > b.id:
+            a, b = b, a
+        if (a.id, b.id) not in pairs and a.tribe_id != b.tribe_id and _will_fight(state, a, b):
+            pairs[(a.id, b.id)] = (a, b)
+
+    def crossing(a: Band, b: Band) -> bool:
+        if a.pu < 0 and b.pu < 0:
+            return False
+        return points.crossed(world, points.before(world, a), spot[a.id], points.before(world, b), spot[b.id], points.MEET)
+
+    for a in free:
+        # A la fin de la semaine : tout pres l'une de l'autre ; un village
+        # est un lieu (on y entre).
+        for b in by_hex.get(a.position, ()):
+            if b.id > a.id and b.id in ok and (a.village or b.village or points.length(world, spot[a.id], spot[b.id]) <= points.MEET):
+                add(a, b)
+        if not a.village:
+            for h in world.neighbors(a.position):
+                for b in by_hex.get(h, ()):
+                    if b.id in ok and not b.village and b.id > a.id and points.length(world, spot[a.id], spot[b.id]) <= points.MEET:
+                        add(a, b)
+        # En chemin : celle qu'elle poursuivait.
+        if a.order.kind is OrderKind.MARCH_TO_BAND:
+            prey = state.bands.get(a.order.target_band_id)
+            if prey is not None and prey.id in ok and prey.tribe_id != a.tribe_id:
+                if not prey.village and (points.length(world, spot[a.id], spot[prey.id]) <= points.MEET or crossing(a, prey)):
+                    add(a, prey)
+        # Une troupe : ceux qu'elle a croises.
+        if a.kind == "armee" and not a.village:
+            for b in free:
+                if b.id == a.id or b.village or b.tribe_id == a.tribe_id:
+                    continue
+                if world.distance(a.position, b.position) > CROSS_REACH:
+                    continue
+                if crossing(a, b):
+                    add(a, b)
+    found = sorted(pairs.values(), key=lambda p: (not (_hunts(*p) or _hunts(p[1], p[0])), p[0].id, p[1].id))
+    return found
 
 
 def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, hunted: bool) -> None:

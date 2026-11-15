@@ -71,6 +71,8 @@ from src.kora import (
     theme,
 )
 from src.kora.sim import band_hunger, band_lines, band_summary, band_warn_from, fight_lines, inspect_lines
+from src.kora.bands import costs_of
+from src.kora import memory
 from src.kora.gamestate import GameState, human_dead, log_of
 from src.kora.types import Hex, Season
 from src.kora.vision import enemy_band_visible, is_explored, is_visible, vision_of
@@ -701,7 +703,7 @@ class Renderer:
             own = site.tribe_id == state.viewer
             if not own and not is_explored(state, site.hex, state.viewer):
                 continue
-            pos = hex_to_globe_screen(site.hex, world, yaw, pitch, gcx, gcy, focal, dist)
+            pos = _site_pos(site, world, yaw, pitch, gcx, gcy, focal, dist)
             if pos is None:
                 continue
             x, y = int(pos[0]), int(pos[1])
@@ -762,7 +764,7 @@ class Renderer:
             known.append((site.tribe_id, site.hex))
         if vis is not None:
             # Les villages du brouillard : ceux dont on se souvient.
-            for _sid, (q, r_, kind, tid, _w, _lord) in sorted(vis.sites.items()):
+            for _sid, (q, r_, kind, tid, _w, _lord, *_pt) in sorted(vis.sites.items()):
                 h_ = Hex(q, r_)
                 if kind == "village" and tid != state.viewer and h_ not in vis.visible:
                     known.append((tid, h_))
@@ -880,7 +882,8 @@ class Renderer:
             seen = is_explored(state, site.hex, state.viewer) if mine else is_visible(state, site.hex, state.viewer)
             if not seen:
                 continue
-            pos = hex_to_globe_screen(site.hex, state.world, yaw, pitch, gcx, gcy, focal, dist)
+            # Un lieu est a son point (points.site_point), plus au centre.
+            pos = _site_pos(site, state.world, yaw, pitch, gcx, gcy, focal, dist)
             if pos is None:
                 continue
             x, y = int(pos[0]), int(pos[1])
@@ -896,11 +899,13 @@ class Renderer:
             return
         # Le brouillard : les lieux des autres tels qu'on les a vus la
         # derniere fois (memory.py), un peu eteints.
-        for _sid, (q, r_, kind, tid, walled, lord) in sorted(vis.sites.items()):
+        for _sid, entry in sorted(vis.sites.items()):
+            q, r_, kind, tid, walled, lord = entry[:6]
             h_ = Hex(q, r_)
             if tid == state.viewer or h_ in vis.visible:
                 continue
-            pos = hex_to_globe_screen(h_, state.world, yaw, pitch, gcx, gcy, focal, dist)
+            col_, row_ = points.to_colrow(*memory.point(entry))
+            pos = point_to_globe_screen(col_, row_, state.world, yaw, pitch, gcx, gcy, focal, dist)
             if pos is None:
                 continue
             x, y = int(pos[0]), int(pos[1])
@@ -1196,11 +1201,15 @@ class Renderer:
         # Le chemin en courbe (glisse.smooth) : il contourne comme le chemin,
         # sans l'escalier des cases ; il part d'ou l'unite glisse.
         start = glisse.place(state, band)
-        aim = points.aim_of(world, band)
-        spots = [points.point_of(world, band), *band.path]
-        if aim is not None:
-            spots[-1] = aim
-        line = glisse._points(world, spots)
+        # Le trajet qu'elle fera (points.route : droit quand ca ne coute pas
+        # plus, sinon il contourne) ; calcule quand il change, pas a chaque
+        # image.
+        key = (id(state), band.id, state.tick_count, len(band.path), band.aim_u, band.aim_v, band.fu, band.fv, band.position)
+        if getattr(self, "_route_key", None) != key:
+            tribe_ = state.tribes.get(band.tribe_id)
+            self._route_key = key
+            self._route = points.route(world, band, bool(tribe_ and tribe_.cabotage), costs_of(state, band.tribe_id))
+        line = glisse._points(world, self._route)
         if start is not None:
             line[0] = start
         pts = []
@@ -1687,6 +1696,13 @@ def _draw_hostile(surf: pygame.Surface, cx: int, cy: int, r: int, square: bool) 
     _ring(surf, C.nuit, cx, cy, r + 1, square)
     _ring(surf, C.mauvais, cx, cy, r, square)
     _ring(surf, C.mauvais, cx, cy, r - 1, square)
+
+
+def _site_pos(site, world, yaw, pitch, gcx, gcy, focal, dist):
+    """Ou dessiner un lieu : a son point (points.site_point), la ou la bande
+    etait quand elle l'a pose."""
+    col, row = points.to_colrow(*points.site_point(site))
+    return point_to_globe_screen(col, row, world, yaw, pitch, gcx, gcy, focal, dist)
 
 
 def _draw_fire(surf: pygame.Surface, cx: int, cy: int, radius: int) -> None:

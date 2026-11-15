@@ -154,6 +154,10 @@ class Band:
     fv: int = -1
     aim_u: int = -1
     aim_v: int = -1
+    # Son point au debut de la marche de cette semaine (-1 : elle n'a pas
+    # marche) : deux unites qui se croisent se rencontrent (points.crossed).
+    pu: int = -1
+    pv: int = -1
     # Troupe postee sur une route de commerce pour la piller (decisions.py) :
     # "exportateur:importateur:bien" ("" : aucune).
     raid_route: str = ""

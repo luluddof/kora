@@ -120,7 +120,10 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   cercles) ; l'influence rayonne en rond en suivant le relief, et même un même sol, plus ou moins rude, la porte
   plus ou moins loin ; les unités sont à un point (pas au centre d'une case), marchent en continu (elles
   s'arrêtent où leur élan s'arrête) et vont au point cliqué ; les champs des villages sont des surfaces dorées,
-  les rivières des courbes.
+  les rivières des courbes. Depuis la 0.30 : une unité marche **tout droit** quand ça ne coûte pas plus (elle
+  contourne sinon), et le chemin tracé est celui qu'elle fera ; deux bandes se **rencontrent à la distance** (à
+  trois quarts de lieu), et deux troupes qui se croisent en chemin se battent ; un camp, une cache, un village
+  sont **là où la bande était**, plus au centre d'un lieu.
 - Chaque partie a **sa sauvegarde** : *Continuer* reprend la plus récente, *Charger une partie* les montre toutes
   (jouer, supprimer) ; dans la partie, *Échap* puis *Sauvegarder une copie*.
 - La **musique de guerre** (*Casus bellis*) part de son début quand vous entrez dans une **guerre déclarée** (pas
