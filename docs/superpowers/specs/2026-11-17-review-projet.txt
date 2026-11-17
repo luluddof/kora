@@ -1,0 +1,122 @@
+Kora - Review du projet apres le monde sans grille (0.31.0)
+==========================================================
+Date : 2026-11-17. Statut : PROPOSE (rien de code ; en attente de son choix).
+
+Sa demande : "finis-en avec les grilles, puis fais-moi une review du
+projet". La grille : 0.31.0 (2026-11-17-sans-grille-la-fin.txt). La review
+suit la precedente (2026-11-13-review-profondeur-mesures.txt) : ce qui a
+change depuis, ce qui reste.
+
+
+1. COMMENT C'EST MESURE
+-----------------------
+  Deux longues parties sans fenetre, avec une sonde qui compte ce que le
+  jeu fait (guerres, batailles, villages pris et fondes, tributaires,
+  routes ouvertes, decisions, evenements, situations) :
+    A. SA PARTIE de l'an 48 (une copie), prolongee de 30 ans (an 78) ; son
+       peuple laisse a lui-meme ;
+    B. SA PARTIE NEUVE du 13 novembre (an 3, une copie), prolongee de 40
+       ans (an 43) ; le robot des tests tient son peuple.
+  Plus : ses trois parties neuves du 13 novembre (arretees a l'an 1, 1 et
+  3), la lecture du code, les 825 tests.
+
+
+2. CE QUI A CHANGE DEPUIS LA DERNIERE REVIEW
+--------------------------------------------
+  LA GUERRE ABOUTIT (0.29) : dans A, 68 guerres, 74 batailles, 4 villages
+    pris et 16 tributaires par la force en 30 ans (avant : 0 village pris
+    et 2 tributaires par la force en 40 ans).
+  LE MONDE SANS CASES (0.27 a 0.31) : la carte en formes, la vraie
+    distance, l'influence ronde, les unites a un point qui glissent, les
+    batailles a un point, le chemin redresse.
+  LES DECISIONS (0.26) : l'IA s'en sert beaucoup (dans A : 2 849
+    rationnements, 1 464 grandes chasses, 583 mariages, 252 routes pillees
+    en 30 ans).
+
+
+3. CE QUI NE VA PAS ENCORE, MESURE
+---------------------------------
+  LE DEBUT N'ACCROCHE PAS
+    Ses trois parties neuves du 13 novembre s'arretent a l'an 1, 1 et 3. La
+    plus longue : une bande de 42, 3 savoirs en 3 ans ; 18 lignes du
+    journal sur 32 disent "Famine : 1 morts". Dans B, le peuple du joueur
+    recoit 28 evenements en 40 ans (9 differents). Rien ne dit au joueur ce
+    qu'il cherche a faire les premieres annees (le premier village vient
+    vers l'an 10 chez l'IA).
+
+  LE MONDE SE FIGE TOUJOURS
+    A : 120 peuples de l'an 48 a l'an 78 (le plafond), 6 villages fondes en
+      30 ans ; la population monte de 27 500 a 59 700 puis plafonne.
+    B : 18 peuples a l'an 3, 120 a l'an 43 (le plafond atteint), puis plus
+      rien ne nait ni ne meurt.
+
+  LE PRESTIGE ET L'ARGENT NE SERVENT A RIEN
+    Le prestige : la moitie des peuples a 100 (le plafond) des l'an 33 (B)
+      et pendant toute la partie A.
+    L'argent : son peuple a 6 640 sicles a l'an 78 (A), sans rien a en
+      faire ; la moitie des peuples en a moins de 60.
+
+  LE COMMERCE CLIGNOTE TOUJOURS
+    A : 8 505 routes OUVERTES en 30 ans pour 130 routes a la fin (environ
+      280 ouvertures par an : les routes s'ouvrent et se ferment sans
+      cesse) ; 57 sur 133 portent quelque chose.
+
+  LES EVENEMENTS RESTENT PEU NOMBREUX ET REPETES
+    A : 100 au joueur en 30 ans, 19 differents sur 66 ; 47 ne tombent
+      jamais. Les plus frequents : les offres de l'IA (13 alliances, 12
+      protections), les semences (10), la fievre (10).
+
+  L'ARBRE S'EPUISE, L'AGE DU BRONZE EST DES POURCENTAGES
+    A : a l'an 78, 69 peuples sur 120 n'ont plus rien a apprendre ; 74 ont
+      atteint l'age du bronze, qui n'apporte que des multiplicateurs.
+
+  LA FAIM RESTE
+    A : environ 200 semaines de faim de village par an (5 902 en 30 ans),
+      malgre le rationnement.
+
+  LA VITESSE EN FIN DE PARTIE
+    Une annee de 120 peuples coute 8 a 10 secondes de calcul (18 pendant
+    ces essais, deux parties tournant en meme temps) : les vitesses 4 et 5
+    ne tiennent pas en fin de partie.
+
+
+4. LE CODE ET LA METHODE
+------------------------
+  Solide : 93 modules (50 000 lignes), 825 tests dont l'equilibrage sur
+  quatre graines, le determinisme prouve (l'empreinte), le multijoueur
+  essaye avec l'exe a chaque version, des notes verifiees (tools/notes.py),
+  les releases automatiques.
+  Fragile : des gros modules (situations, render, tech, events, diplo : 1
+  500 a 1 800 lignes chacun) ; les memoires rangees selon une adresse en
+  memoire (deux erreurs de ce genre en une semaine : une regle ecrite,
+  ajouter-un-systeme section 4) ; l'interface (9 500 lignes de dessin) n'a
+  presque que des tests "ca dessine sans erreur".
+  La methode : une priorite qu'il avait decidee (le monde sans grille) est
+  passee derriere d'autres demandes sans qu'on le lui dise ; les choix
+  qu'il a laisses en attente s'accumulent (le rework des interfaces, les
+  personnages, dix pistes de profondeur).
+
+
+5. CE QUE JE PROPOSE, DANS CET ORDRE
+-----------------------------------
+  1. LE DEBUT : un but clair (fonder le premier village, avec ses etapes
+     dites), les famines resumees (une ligne par saison, pas une par
+     semaine), des evenements de bande (une chasse, une rencontre, un
+     abri), un premier savoir plus vite.
+  2. LE PRESTIGE ET L'ARGENT QUI SERVENT : des ambitions qui coutent du
+     prestige (un titre, un monument, une alliance par le mariage), et des
+     depenses en argent qui changent le jeu (payer une troupe, acheter un
+     batiment, faire venir des familles).
+  3. UN MONDE QUI MONTE ET QUI TOMBE : des peuples qui se divisent, qui
+     s'eteignent, des villages abandonnes ou fondes plus tard ; le plafond
+     de 120 qui ne fige plus tout.
+  4. LES PERSONNAGES (deja demandes) : l'age, la famille, les heritiers,
+     les successions disputees, les unions.
+  5. LE COMMERCE STABLE : une route ouverte tient (un engagement, un cout
+     pour la rompre) ; le journal ne s'en remplit plus.
+  6. LES INTERFACES : la premiere serie attend son choix (la planche du 12
+     novembre).
+  7. LES EVENEMENTS ET L'ARBRE : des evenements nes de ce qui arrive (une
+     guerre, un tributaire, une famine), l'age du bronze qui ouvre des
+     choses a faire (des batiments, des unites), pas des pourcentages.
+  8. LA VITESSE EN FIN DE PARTIE.

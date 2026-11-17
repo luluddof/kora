@@ -967,7 +967,16 @@ lente, bandes dessinees petites a taille fixe.
     rapide qu'avant (8,5 s l'annee de sa partie, 10 s avec la 0.30). Reste
     dessous, dit : le monde releve par lieux (le sol, la nourriture,
     l'influence, le brouillard), comme les pixels d'une image ; aucune
-    regle ne compte plus en cases.
+    regle ne compte plus en cases. La review : PROPOSE (spec 2026-11-17-
+    review-projet.txt), mesuree sur sa partie de l'an 48 prolongee de 30
+    ans et sur sa partie neuve prolongee de 40 : la guerre aboutit
+    maintenant (4 villages pris, 16 tributaires par la force en 30 ans) ;
+    restent le debut qui n'accroche pas (ses trois parties neuves arretees
+    a l'an 1 a 3), le monde fige au plafond de 120 peuples, le prestige au
+    plafond et l'argent sans usage, le commerce qui clignote (8 505
+    ouvertures de routes en 30 ans), 47 evenements sur 66 qui ne tombent
+    jamais, l'arbre epuise ; huit propositions dans l'ordre (le debut
+    d'abord).
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -1061,6 +1070,13 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 sans regle en cases ; aller plus loin n'est pas conseille
                 (section 5 de cette spec). B3 (points de controle) se fera
                 avec l'age du bronze.
+
+  En attente de SON choix (propose, rien de code) :
+  - REVIEW      la review du 2026-11-17, huit propositions dans l'ordre :
+                le debut, le prestige et l'argent qui servent, un monde qui
+                monte et qui tombe, les personnages, le commerce stable,
+                les interfaces, les evenements et l'arbre, la vitesse :
+                2026-11-17-review-projet.txt, section 5.
 
   En attente de SON choix, EN COURS :
   - REWORK       le rework des interfaces, serie par serie : la serie 1

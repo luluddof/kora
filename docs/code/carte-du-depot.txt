@@ -1666,6 +1666,9 @@ ETAGE -  l'interface (pygame)
     Sans grille, la suite : les chemins redresses, les rencontres a la
     distance, les lieux a un point (0.30.0)
     Statut : FAIT (version 0.30.0) ; CE QUI RESTE en section 6.
+  specs/2026-11-17-review-projet.txt
+    Review du projet apres le monde sans grille (0.31.0)
+    Statut : PROPOSE (rien de code ; en attente de son choix).
   specs/2026-11-17-sans-grille-la-fin.txt
     Sans grille, la fin : tout se mesure de point a point (0.31.0)
     Statut : FAIT (0.31.0) ; ce qui reste dessous, dit en
