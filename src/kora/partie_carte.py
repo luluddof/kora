@@ -175,7 +175,7 @@ def nearest_band_of(state, tid: int, near):
         return None
     if near is None:
         return min(bands, key=lambda b: b.id)
-    return min(bands, key=lambda b: (state.world.distance(b.position, near), b.id))
+    return min(bands, key=lambda b: (points.lieux(state.world, b, near), b.id))
 
 
 def in_rect(rect, mx, my) -> bool:

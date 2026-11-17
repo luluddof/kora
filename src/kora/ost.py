@@ -19,6 +19,7 @@ N'importe pas pygame.
 
 from __future__ import annotations
 
+from src.kora import points
 from src.kora import battle, chiefdom, siege, units, villages
 from src.kora.bands import _absorb, merge_text, set_goto
 from src.kora.gamestate import is_human, note
@@ -54,9 +55,9 @@ def candidates(state, army) -> list:
             if b.tribe_id in vassals
             and b.ost != army.id
             and _ready(state, b)
-            and world.distance(b.position, army.position) <= OST_RANGE
+            and points.lieux(world, b, army) <= OST_RANGE
         ),
-        key=lambda b: (world.distance(b.position, army.position), b.id),
+        key=lambda b: (points.lieux(world, b, army), b.id),
     )
 
 
@@ -125,7 +126,7 @@ def weekly(state) -> None:
         if not _valid(state, band, army):
             band.ost = 0
             continue
-        if state.world.distance(band.position, army.position) <= 1:
+        if points.lieux(state.world, band, army) <= 1:
             join(state, army, band)
             continue
         _walk(state, band, army)

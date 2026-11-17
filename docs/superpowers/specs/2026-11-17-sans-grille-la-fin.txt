@@ -1,0 +1,89 @@
+Kora - Sans grille, la fin : tout se mesure de point a point (0.31.0)
+===================================================================
+Date : 2026-11-17. Statut : FAIT (0.31.0) ; ce qui reste dessous, dit en
+section 5.
+
+Ses mots (2026-11-17) : "refais un point sur la grille et sur le reste",
+puis : "finis-en avec les grilles, puis fais-moi une review du projet".
+La suite de 2026-11-15-sans-grille-rencontres-chemins-lieux.txt (section 6 :
+le chemin cherche de lieu en lieu, les releves par lieu, les portees
+mesurees de lieu a lieu, les batailles a un lieu).
+
+
+1. LA PROXIMITE DE POINT A POINT
+--------------------------------
+  Avant : les distances etaient vraies (des cercles, 0.27) mais mesurees de
+  CENTRE DE CASE a centre de case : une unite au bord de son lieu etait
+  comptee a son centre ; deux unites cote a cote, de part et d'autre d'une
+  limite, a un lieu l'une de l'autre.
+  Maintenant (points.lieux) : la distance de POINT a point, entre deux
+  choses posees sur le monde (une unite, un village, un camp, une bataille,
+  une marque de combat ; points.where), en lieux, arrondie. 121 mesures du
+  jeu passent par la : le ravage, le siege, l'ost, les renforts, les
+  razzias et les routes pillees, l'IA qui choisit ses proies et ses
+  refuges, les clans qui se rallient, les evenements et les situations qui
+  regardent "pres de", le grain, le commerce.
+
+
+2. LES CERCLES AUTOUR D'UN POINT
+--------------------------------
+  points.around / cells_near : les lieux a tant de lieux d'un POINT (plus
+  du centre d'une case) : la VUE d'une unite, la COLLECTE d'une bande, les
+  TERRES d'un village (ses champs, et la fenetre de fondation), les
+  bandes pres d'un lieu, le regard sur la cote et la steppe, le refuge
+  d'une bande vaincue.
+  En verifiant : LE CERCLE ETAIT TRONQUE en haut et en bas depuis la 0.27
+  (les rangees sont plus serrees que les colonnes, racine de 3 sur 2 ; le
+  cercle s'arretait a r + 1 rangees) : a la vue 16, 979 lieux au lieu de
+  953. Corrige (world._radius_deltas) et verifie lieu par lieu, au hasard
+  et en force brute, jusqu'au rayon 22.
+
+
+3. LES BATAILLES A UN POINT, LE CHEMIN SANS ESCALIER
+----------------------------------------------------
+  - Une bataille a son POINT (Battle.u, v : la ou le defenseur a ete
+    rejoint) ; les renforts la rejoignent a trois quarts de lieu de ce
+    point ; les epees sur la carte et la marque du combat (FightMark.u, v)
+    y sont dessinees. Une bataille d'avant reste au centre de son lieu.
+  - LE CHEMIN CHERCHE (path.astar) va aussi EN BIAIS, en ligne droite : deux
+    lieux en escalier pour racine de 3 au lieu de 2, au cout du moins cher
+    des deux escaliers (le sol, sa variation, le courant) ; l'heuristique
+    est la vraie distance. Le trajet choisi n'a plus le biais des cases (un
+    lac contourne par ou c'est vraiment plus court). Le chemin rendu reste
+    une suite de lieux voisins ; la marche le redresse (points.march).
+    Dans sa partie neuve (an 3), sa bande envoyee en biais a 10,2 lieux :
+    un trajet de 11,5 lieux (11,9 avec la 0.30), arrivee en 4 semaines.
+
+
+4. VERIFIE
+----------
+  - SA PARTIE de l'an 48, un an, la 0.30 et la 0.31 cote a cote : le monde
+    30 278 / 30 210 personnes, son village 242 / 241, la faim des villages
+    218 / 203 semaines. La simulation : 8,5 s pour l'annee (9,6 a 10,2 s
+    avec la 0.30) - la recherche de chemin garde ses pas pendant une
+    recherche, le point verifie d'une unite est garde.
+  - En verifiant, deux erreurs trouvees et corrigees : LE MULTIJOUEUR se
+    desynchronisait (la memoire des lieux proches etait rangee selon
+    l'adresse du monde en memoire, qu'un autre monde peut reprendre : elle
+    est gardee sur le monde) ; la meme faiblesse dans la memoire des
+    decisions (un jeton propre a chaque partie).
+  - 825 tests (dont test_balance sur quatre graines), l'empreinte
+    re-enregistree (le jeu change, voulu), l'essai en reseau avec l'exe.
+
+
+5. CE QUI RESTE DESSOUS (dit franchement)
+-----------------------------------------
+  Le monde est RELEVE par lieux - une valeur par lieu, comme les pixels
+  d'une image : le sol, sa variation, la nourriture, l'influence,
+  l'epuisement des terres, ce qu'on a vu (le brouillard). Le plan du
+  2026-11-09 l'admettait ("des index tires du monde, jamais une regle du
+  jeu") ; aucune regle ne compte plus en cases : les distances, les
+  cercles, les rencontres, les batailles, la marche partent des points.
+  Le chemin est cherche sur ce releve (en douze directions) avant d'etre
+  redresse ; une unite garde, a cote de son point, le lieu sous ce point
+  (Band.position) pour lire le releve.
+  Les tests posent encore leurs unites par lieux (63 fichiers sur 94) :
+  c'est commode, ca ne change rien au jeu.
+  Aller plus loin (un nuage de points de passage, des releves a la volee)
+  ne changerait rien de visible, couterait en vitesse, et toucherait tout
+  le code : je ne le conseille pas.

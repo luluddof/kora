@@ -27,6 +27,7 @@ positions (pas de brouillard). Ses choix envers les autres peuples suivent
 l'approche de son chef (approach.factor). N'importe pas pygame.
 """
 
+from src.kora import points
 from src.kora.ai_war import (
     AI_RAID_EDGE,
     advance_plans,
@@ -123,7 +124,7 @@ def _pick_hex(
     foreign_villages = [
         s.hex
         for s in state.sites.values()
-        if s.kind == "village" and s.tribe_id != band.tribe_id and world.distance(s.hex, band.position) <= radius + FOREIGN_VILLAGE_ROOM
+        if s.kind == "village" and s.tribe_id != band.tribe_id and points.lieux(world, s, band) <= radius + FOREIGN_VILLAGE_ROOM
     ]
     # Grand rayon : un hex sur deux (sur trois au-dela de 15) suffit,
     # l'affinage regarde les voisins.
@@ -220,15 +221,15 @@ def _camp_care(state: GameState, band: Band, weeks: float) -> bool:
         and autumn
         and len(mine) < know.camps
         and _forage_total(state, band) >= band.population * 0.9
-        and all(state.world.distance(s.hex, band.position) > 12 for s in mine)
+        and all(points.lieux(state.world, s, band) > 12 for s in mine)
         and not sites.camp_block(state, band.id)
     ):
         sites.make_camp(state, band.id)
         return False
     if here is None and autumn and state.clock.weeks_until_winter() <= 6 and weeks < 8:
-        near = [s for s in mine if state.world.distance(s.hex, band.position) <= 25]
+        near = [s for s in mine if points.lieux(state.world, s, band) <= 25]
         if near:
-            goal = min(near, key=lambda s: state.world.distance(s.hex, band.position))
+            goal = min(near, key=lambda s: points.lieux(state.world, s, band))
             set_goto(state, band.id, goal.hex, max_nodes=400, max_cost=800)
             return bool(band.path)
     return False
@@ -286,13 +287,13 @@ SETTLE_PATIENCE_YEARS = 1
 
 def _villages_near(state: GameState, h, radius: int, other_than: int = 0) -> bool:
     for site in state.sites.values():
-        if site.kind == "village" and site.tribe_id != other_than and state.world.distance(site.hex, h) < radius:
+        if site.kind == "village" and site.tribe_id != other_than and points.lieux(state.world, site, h) < radius:
             return True
     return False
 
 
 def _any_village_near(state: GameState, h, radius: int) -> bool:
-    return any(site.kind == "village" and state.world.distance(site.hex, h) < radius for site in state.sites.values())
+    return any(site.kind == "village" and points.lieux(state.world, site, h) < radius for site in state.sites.values())
 
 
 def find_new_land(state: GameState, band: Band):
@@ -375,13 +376,13 @@ def _new_land(state: GameState, band: Band, radius: int, spacing: int, step: int
     world = state.world
     # Un village plus loin que radius + spacing ne gene aucune case du disque.
     reach = radius + spacing
-    homes = [v for v in _village_hexes(state) if world.distance(v, band.position) < reach]
+    homes = [v for v in _village_hexes(state) if points.lieux(world, v, band) < reach]
     best, best_v = None, -1.0
     for h in world.hexes_in_radius(band.position, radius)[::step]:
         good = good_land(state, band.tribe_id, h, spacing, homes)
         if not good:
             continue
-        v = good - 0.05 * world.distance(band.position, h)
+        v = good - 0.05 * points.lieux(world, band, h)
         if v > best_v:
             best, best_v = h, v
     return best
@@ -555,10 +556,10 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
             spot = None
             best = -1.0
             for h in state.world.hexes_in_radius(band.position, COLONY_RADIUS)[::2]:
-                if state.world.distance(h, band.position) < VILLAGE_SPACING:
+                if points.lieux(state.world, h, band) < VILLAGE_SPACING:
                     continue
                 good = good_land(state, band.tribe_id, h, VILLAGE_SPACING, homes)
-                v = good - 0.1 * state.world.distance(h, band.position)
+                v = good - 0.1 * points.lieux(state.world, h, band)
                 if good and v > best:
                     spot, best = h, v
             if spot is not None:
@@ -604,12 +605,12 @@ def _army_ai(state: GameState, band: Band, weeks: float) -> None:
     if home is None:
         return
     village = places.band_of(state, home)
-    at_home = state.world.distance(home.hex, band.position) <= troupes.ARMY_HOME
+    at_home = points.lieux(state.world, home, band) <= troupes.ARMY_HOME
     foe, foe_f = _threat(state, village, AI_THREAT_RANGE) if village is not None else (None, 0.0)
     # Elle ne quitte sa campagne que pour une vraie menace sur son village
     # (AI_THREAT, comme pour lever).
     grave = foe is not None and village is not None and foe_f >= AI_THREAT * band_force(state, village)
-    if grave and not at_home and state.world.distance(home.hex, band.position) > AI_THREAT_RANGE:
+    if grave and not at_home and points.lieux(state.world, home, band) > AI_THREAT_RANGE:
         # Une troupe qui ravage rend coup pour coup : elle ne rentre que si
         # elle battrait ceux qui menacent son village.
         if not band.ravage or wins(state, [band], foe, edge=AI_SORTIE_EDGE):
@@ -684,7 +685,7 @@ def _ost_villages(state: GameState, band: Band) -> list:
     for site in sorted(state.sites.values(), key=lambda s: s.id):
         if site.kind != "village" or site.tribe_id not in vassals:
             continue
-        if state.world.distance(site.hex, band.position) > ost.OST_RANGE:
+        if points.lieux(state.world, site, band) > ost.OST_RANGE:
             continue
         home = places.band_of(state, site)
         if home is not None and not troupes.army_block(state, home.id):
@@ -725,7 +726,7 @@ def _besiege(state: GameState, band: Band, weeks: float) -> bool:
         # Pris une fois sa defense usee ? (sinon, rien a attendre devant)
         if force_at(state, [band], prey.position) < _edge(state, band, prey) * _sieged_defense(state, band, prey):
             continue
-        d = state.world.distance(band.position, prey.position)
+        d = points.lieux(state.world, band, prey)
         if best is None or d < best_d or (d == best_d and prey.id < best.id):
             best, best_d = prey, d
     if best is None:
@@ -742,7 +743,7 @@ def _besiege(state: GameState, band: Band, weeks: float) -> bool:
         band.path = []
         return True
     spot = next(
-        (h for h in sorted(state.world.neighbors(best.position), key=lambda h: (state.world.distance(h, band.position), h.q, h.r)) if state.world.passable(h)),
+        (h for h in sorted(state.world.neighbors(best.position), key=lambda h: (points.lieux(state.world, h, band), h.q, h.r)) if state.world.passable(h)),
         None,
     )
     if spot is None:
@@ -811,7 +812,7 @@ def _ravage(state: GameState, band: Band, weeks: float) -> bool:
             continue
         if short_of_food(state, band, prey.position):
             continue
-        d = state.world.distance(band.position, prey.position)
+        d = points.lieux(state.world, band, prey)
         if best is None or d < best_d or (d == best_d and prey.id < best.id):
             best, best_d = prey, d
     if best is None:
@@ -834,7 +835,7 @@ def _seek_cache(state: GameState, band: Band, weeks: float) -> bool:
             continue
         if guerre.at_peace(state, site.tribe_id, band.tribe_id) or guerre.may_start(state, band.tribe_id, site.tribe_id):
             continue
-        d = state.world.distance(site.hex, band.position)
+        d = points.lieux(state.world, site, band)
         if d < best_d or (d == best_d and best is not None and site.id < best.id):
             best, best_d = site, d
     if best is None or best.hex == band.position:
@@ -850,7 +851,7 @@ def _regroup(state: GameState, band: Band, weeks: float) -> bool:
     if band.loyalty >= 55:
         return False
     heart = chiefs.chief_band(state, band.tribe_id)
-    if heart is None or state.world.distance(heart.position, band.position) <= 6:
+    if heart is None or points.lieux(state.world, heart, band) <= 6:
         return False
     set_goto(state, band.id, heart.position, max_nodes=500, max_cost=900)
     return bool(band.path)

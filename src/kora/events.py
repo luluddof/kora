@@ -25,6 +25,7 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 
+from src.kora import points
 from src.kora.log import LogKind
 from src.kora.world import (
     axial_to_offset,
@@ -355,7 +356,7 @@ def _cond_crowded(state, inst, tribe, band, *args) -> bool:
     mates = [
         b
         for b in state.bands.values()
-        if b.id != band.id and b.tribe_id == band.tribe_id and world.distance(b.position, band.position) <= 3
+        if b.id != band.id and b.tribe_id == band.tribe_id and points.lieux(world, b, band) <= 3
     ]
     return len(mates) >= args[0]
 
@@ -375,7 +376,7 @@ def _cond_loyalty_lt(state, inst, tribe, band, *args) -> bool:
 def _cond_near_chief(state, inst, tribe, band, *args) -> bool:
     world = state.world
     heart = chiefs.chief_band(state, tribe.id)
-    return heart is not None and world.distance(heart.position, band.position) <= args[0]
+    return heart is not None and points.lieux(world, heart, band) <= args[0]
 
 
 def _cond_chief_stronger(state, inst, tribe, band, *args) -> bool:
@@ -434,12 +435,12 @@ def _cond_foreign_near(state, inst, tribe, band, *args) -> bool:
         if b.tribe_id != tribe.id
         and b.population > 0
         # La distance d'abord (elle ecarte presque tout le monde), la paix ensuite.
-        and world.distance(b.position, band.position) <= args[0]
+        and points.lieux(world, b, band) <= args[0]
         and not guerre.at_peace(state, b.tribe_id, tribe.id)
     ]
     if not near:
         return False
-    near.sort(key=lambda b: (world.distance(b.position, band.position), b.id))
+    near.sort(key=lambda b: (points.lieux(world, b, band), b.id))
     inst.other = near[0].tribe_id
     return True
 
@@ -572,7 +573,7 @@ def _eff_loyalty_all(state, inst, tribe, band, *args) -> None:
 def _eff_loyalty_near(state, inst, tribe, band, *args) -> None:
     if band is not None:
         for b in state.bands.values():
-            if b.tribe_id == tribe.id and state.world.distance(b.position, band.position) <= 3:
+            if b.tribe_id == tribe.id and points.lieux(state.world, b, band) <= 3:
                 if not chiefs.is_chief_band(state, b):
                     b.loyalty = max(0.0, min(100.0, b.loyalty + args[0]))
 
@@ -586,7 +587,7 @@ def _eff_stock_all(state, inst, tribe, band, *args) -> None:
 def _eff_stock_near(state, inst, tribe, band, *args) -> None:
     if band is not None:
         for b in state.bands.values():
-            if b.tribe_id == tribe.id and state.world.distance(b.position, band.position) <= 3:
+            if b.tribe_id == tribe.id and points.lieux(state.world, b, band) <= 3:
                 b.stock = max(0.0, min(stock_max(b, state), b.stock + args[0] * b.population))
 
 
@@ -918,7 +919,7 @@ def _reveal(state, inst, radius: int) -> None:
         b for b in state.bands.values()
         if b.tribe_id != tribe.id and b.population > 0 and b.position not in vision.explored
     ]
-    unknown.sort(key=lambda b: (world.distance(b.position, band.position), b.id))
+    unknown.sort(key=lambda b: (points.lieux(world, b, band), b.id))
     if unknown:
         center = unknown[0].position
     else:
@@ -1509,7 +1510,7 @@ def _other_band(state, tid, band_id) -> int:
     band = state.bands.get(band_id)
     others = [b for b in state.bands.values() if b.tribe_id == tid and b.id != band_id and b.population > 0]
     if band is not None:
-        others = [b for b in others if state.world.distance(b.position, band.position) <= 25]
+        others = [b for b in others if points.lieux(state.world, b, band) <= 25]
     others.sort(key=lambda b: b.id)
     return others[0].id if others else 0
 

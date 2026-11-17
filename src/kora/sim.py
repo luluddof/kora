@@ -656,7 +656,7 @@ def resolve_joins(state: GameState) -> None:
             continue
         # Rejoindre : il suffit d'etre tout pres (P12), a la vraie distance
         # (points.NEAR) ou dans le lieu d'a cote.
-        if state.world.distance(target.position, band.position) > 1 and points.apart(state.world, band, target) > points.NEAR:
+        if points.lieux(state.world, target, band) > 1 and points.apart(state.world, band, target) > points.NEAR:
             continue
         if target.kind == "armee" and band.kind != "armee":
             # Des familles ne s'engagent pas dans une troupe : on s'arrete.
@@ -695,7 +695,7 @@ def apply_movement(state: GameState) -> None:
                 state.world.canonicalize(band.path[-1]) != target.position
             )
             if need:
-                dist = state.world.distance(band.position, target.position)
+                dist = points.lieux(state.world, band, target)
                 path = astar(
                     state.world,
                     band.position,

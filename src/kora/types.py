@@ -303,6 +303,9 @@ class FightMark:
     loot: float
     # Rapport de bataille (battle.py) : camps, passes d'armes, issue.
     report: Optional[dict] = None
+    # Le point de la bataille (points.py) ; -1 : le centre de son lieu.
+    u: int = -1
+    v: int = -1
 
 
 # --- la diplomatie (diplo.py : les regles ; ici, les donnees) -----------------------

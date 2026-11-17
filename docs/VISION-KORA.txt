@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-11-15.
+Derniere mise a jour : 2026-11-17.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -953,6 +953,21 @@ lente, bandes dessinees petites a taille fixe.
     point) et sur sa partie avancee, trois graines, l'ancien code et le
     nouveau cote a cote (les guerres aboutissent comme avant). Reste : la
     fin de la grille dans le code et ses tests.
+2026-11-17 (0.31.0)
+  - "Refais un point sur la grille et sur le reste" (fait en
+    conversation), puis "finis-en avec les grilles, puis fais-moi une review
+    du projet". FAIT pour la grille (0.31.0 ; spec 2026-11-17-sans-grille-
+    la-fin.txt) : toute proximite de POINT a point (121 mesures : le
+    ravage, le siege, l'ost, les renforts, l'IA, les evenements) ; la vue,
+    la collecte, les terres d'un village en cercles autour du point ; les
+    batailles a un point ; le chemin cherche en douze directions (plus le
+    biais de l'escalier). En verifiant : le cercle etait tronque en haut et
+    en bas depuis la 0.27 (corrige), le multijoueur se desynchronisait
+    (une memoire rangee selon une adresse ; corrige). La simulation plus
+    rapide qu'avant (8,5 s l'annee de sa partie, 10 s avec la 0.30). Reste
+    dessous, dit : le monde releve par lieux (le sol, la nourriture,
+    l'influence, le brouillard), comme les pixels d'une image ; aucune
+    regle ne compte plus en cases.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -1005,7 +1020,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.30.0
+Version du jeu : 0.31.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -1041,19 +1056,11 @@ les rencontres a la distance et les croisements, les lieux a un point.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
-  DECIDE, A FAIRE EN PREMIER :
-  - SANS GRILLE  le monde en formes : 0.27 (la carte en formes, la vraie
-                distance, l'influence ronde, le glissement), 0.28 (les
-                unites a un point, la marche continue, les terres en
-                surfaces), 0.30 (le chemin redresse, les rencontres a la
-                distance, les lieux a un point) ; reste le dernier
-                chantier : la fin de la grille dans le code et les tests
-                (le chemin cherche sans lieux, la nourriture, la vue et
-                l'influence sans releve par lieu, les portees a la vraie
-                distance) :
-                2026-11-15-sans-grille-rencontres-chemins-lieux.txt,
-                section 6. B3 (points de controle) se fera avec les
-                surfaces.
+  FAIT : SANS GRILLE (0.27 a 0.31 ; le dernier point : 2026-11-17-sans-
+                grille-la-fin.txt). Reste dessous le monde releve par lieux,
+                sans regle en cases ; aller plus loin n'est pas conseille
+                (section 5 de cette spec). B3 (points de controle) se fera
+                avec l'age du bronze.
 
   En attente de SON choix, EN COURS :
   - REWORK       le rework des interfaces, serie par serie : la serie 1

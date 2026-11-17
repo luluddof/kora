@@ -70,8 +70,8 @@ def own_site_at(state, band) -> Site | None:
     """Lieu de son peuple sur la case de la bande (ou juste a cote)."""
     best = None
     for s in of_tribe(state, band.tribe_id):
-        d = state.world.distance(s.hex, band.position)
-        if d <= AT and (best is None or d < state.world.distance(best.hex, band.position)):
+        d = points.lieux(state.world, s, band)
+        if d <= AT and (best is None or d < points.lieux(state.world, best, band)):
             best = s
     return best
 
@@ -118,7 +118,7 @@ def camp_block(state, band_id: int) -> str:
     if len(mine) >= allowed:
         return f"Campements : {len(mine)}/{allowed} (abandonnez-en un)"
     for s in state.sites.values():
-        d = state.world.distance(s.hex, band.position)
+        d = points.lieux(state.world, s, band)
         if s.tribe_id == band.tribe_id and s.kind in ("camp", "village") and d < CAMP_SPACING:
             return "Un de vos campements est tout près"
         if s.tribe_id != band.tribe_id and s.kind in ("camp", "village") and d < FOREIGN_SPACING:
@@ -247,7 +247,7 @@ def update(state) -> None:
             del state.sites[site.id]
             continue
         near = sorted(
-            (b for h in world.hexes_in_radius(site.hex, AT) for b in here.get(h, ())),
+            (b for h in points.around(world, site, AT) for b in here.get(h, ())),
             key=lambda b: b.id,
         )
         mine = [b for b in near if b.tribe_id == site.tribe_id]

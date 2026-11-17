@@ -30,6 +30,7 @@ N'importe pas pygame.
 
 from __future__ import annotations
 
+from src.kora import points
 from src.kora.log import LogKind
 from src.kora.gamestate import is_human, note
 from src.kora.peoples import civ_of, culture_of, make_name
@@ -606,7 +607,7 @@ def unrest(state, vassal: int, lord: int) -> float:
     if state.tribes[lord].prestige < state.tribes[vassal].prestige:
         u += 10.0
     lord_near = any(
-        b.tribe_id == lord and b.kind == "armee" and any(state.world.distance(b.position, s.hex) <= 12 for s in _villages(state, vassal))
+        b.tribe_id == lord and b.kind == "armee" and any(points.lieux(state.world, b, s) <= 12 for s in _villages(state, vassal))
         for b in state.bands.values()
     )
     if lord_near:

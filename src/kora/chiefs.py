@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from src.kora import points
 from src.kora import chiefdom, diplo, events, influence, peoples, places, sites, systems, tech, villages
 from src.kora.log import LogKind
 from src.kora.types import Person, Tribe, stay_order
@@ -280,7 +281,7 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
         parts.append(("Pas de chef", -15.0))
     else:
         reach = bonus.chief_reach
-        d = state.world.distance(band.position, heart.position)
+        d = points.lieux(state.world, band, heart)
         if d > reach:
             parts.append((f"Loin du chef ({d} cases, emprise {reach})", -min(40.0, 0.8 * (d - reach))))
         if band.population > heart.population:
@@ -354,7 +355,7 @@ def monthly(state) -> None:
                 continue
             target = loyalty_target(state, band)
             band.loyalty += (target - band.loyalty) * DRIFT
-            if heart is not None and state.world.distance(band.position, heart.position) <= VISIT_RANGE:
+            if heart is not None and points.lieux(state.world, band, heart) <= VISIT_RANGE:
                 band.loyalty = min(100.0, band.loyalty + VISIT_GAIN)
             band.loyalty = max(0.0, min(100.0, band.loyalty))
         for band in sorted(bands, key=lambda b: b.id):
@@ -404,7 +405,7 @@ def _autonomy(state, band) -> tuple[float, list]:
         parts.append((f"Loin de vos villages (plus de {villages.NEAR} cases)", f"+{AUTONOMY_FAR:.1f}"))
     heart = chief_band(state, band.tribe_id)
     reach = tech.bonuses(state.tribes[band.tribe_id]).chief_reach
-    if heart is not None and state.world.distance(band.position, heart.position) > reach:
+    if heart is not None and points.lieux(state.world, band, heart) > reach:
         rate += AUTONOMY_REACH
         parts.append((f"Hors de l'emprise du chef ({reach} cases)", f"+{AUTONOMY_REACH:.1f}"))
     if band.loyalty < OBEY:
@@ -532,7 +533,7 @@ def can_move_chief(state, band_id: int) -> str:
     heart = chief_band(state, band.tribe_id)
     if heart is None or heart.id == band.id:
         return "Le chef est déjà ici"
-    if state.world.distance(heart.position, band.position) > 1:
+    if points.lieux(state.world, heart, band) > 1:
         return "La bande du chef doit être sur la même case"
     return ""
 

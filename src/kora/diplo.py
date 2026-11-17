@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from src.kora import points
 from src.kora import approach, battle, chiefdom, chiefs, confed, events, goods, influence, money, tech
 from src.kora.log import LogKind
 # Les donnees (contacts, relations, pactes, routes) : types.py.
@@ -211,7 +212,7 @@ def update_contacts(state) -> None:
             if (a, b) in d.contacts:
                 continue
             if getattr(state, "overlap", {}).get((a, b), 0) > 0 or any(
-                world.distance(x.position, y.position) <= CONTACT_RANGE
+                points.lieux(world, x, y) <= CONTACT_RANGE
                 for x in by_tribe[a]
                 for y in by_tribe[b]
             ):
@@ -1066,7 +1067,7 @@ def gift_carrier(state, actor: int, target: int):
         for y in state.bands.values():
             if y.tribe_id != target or y.population <= 0:
                 continue
-            d = world.distance(x.position, y.position)
+            d = points.lieux(world, x, y)
             if d <= GIFT_RANGE and (best is None or d < best[0]):
                 best = (d, x, y)
     return None if best is None else (best[1], best[2])
@@ -1231,7 +1232,7 @@ def invitable(state, actor: int, target: int) -> list:
         if state.tribes[actor].is_player and not is_visible(state, band.position, actor):
             continue
         near = influence.in_zone(state.world, band.position, actor) or any(
-            state.world.distance(band.position, p) <= INVITE_RANGE for p in mine
+            points.lieux(state.world, band, p) <= INVITE_RANGE for p in mine
         )
         if near:
             out.append(band)

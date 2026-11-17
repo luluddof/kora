@@ -44,6 +44,7 @@ Band.ravage. N'importe pas pygame.
 
 from __future__ import annotations
 
+from src.kora import points
 from src.kora import batiments, battle, chiefdom, diplo, events, guerre, places, siege, tech, troupes
 from src.kora.bands import is_shielded, set_goto, set_march_to_band, stock_max
 from src.kora.gamestate import is_human, note
@@ -87,7 +88,7 @@ def target_of(state, band):
     for site in sorted(state.sites.values(), key=lambda s: s.id):
         if not _village_at_war(state, band, site) or places.band_of(state, site) is None:
             continue
-        d = state.world.distance(band.position, site.hex)
+        d = points.lieux(state.world, band, site)
         if d <= RANGE and (best_d is None or d < best_d):
             best, best_d = site, d
     return best
@@ -104,7 +105,7 @@ def block(state, band) -> str:
     if target_of(state, band) is not None:
         return ""
     for site in sorted(state.sites.values(), key=lambda s: s.id):
-        if site.kind == "village" and site.tribe_id != band.tribe_id and state.world.distance(band.position, site.hex) <= RANGE:
+        if site.kind == "village" and site.tribe_id != band.tribe_id and points.lieux(state.world, band, site) <= RANGE:
             who = state.tribes[site.tribe_id].name if site.tribe_id in state.tribes else "?"
             return f"Vous êtes en paix avec les {who} : déclarez-leur d'abord la guerre (écran Peuples)"
     return f"Aucun village ennemi à {RANGE} cases : postez la troupe dans ses champs"
@@ -124,14 +125,14 @@ def start(state, band) -> str:
 def send(state, band, site, max_nodes: int = 2000, max_cost: int | None = None) -> bool:
     """La troupe part ravager ce village : elle va se poster a cote de lui ;
     le ravage commence a son arrivee (weekly). Rend False sans chemin."""
-    d = state.world.distance(band.position, site.hex)
+    d = points.lieux(state.world, band, site)
     if 0 < d <= RANGE:
         band.ravage = site.id
         band.order = stay_order()
         band.path = []
         return True
     spot = next(
-        (h for h in sorted(state.world.neighbors(site.hex), key=lambda h: (state.world.distance(h, band.position), h.q, h.r)) if state.world.passable(h)),
+        (h for h in sorted(state.world.neighbors(site.hex), key=lambda h: (points.lieux(state.world, h, band), h.q, h.r)) if state.world.passable(h)),
         None,
     )
     if spot is None:
@@ -164,7 +165,7 @@ def _posted(state, band, site) -> bool:
     cours la retient sans lui faire lacher son ordre)."""
     if band.kind != "armee" or band.population <= 0 or band.homebound or band.retreating or band.path:
         return False
-    if state.world.distance(band.position, site.hex) > RANGE:
+    if points.lieux(state.world, band, site) > RANGE:
         return False
     return _village_at_war(state, band, site)
 
@@ -314,7 +315,7 @@ def weekly(state) -> None:
         if b.path:
             # En route vers ses champs : l'ordre tient, le ravage attend.
             continue
-        if state.world.distance(b.position, site.hex) > RANGE:
+        if points.lieux(state.world, b, site) > RANGE:
             b.ravage = 0
             continue
         posted.setdefault(site.id, []).append(b)
@@ -357,7 +358,7 @@ def sortie_force(state, village) -> float:
     force = troupes.levy_size(village, troupes.LEVY_SHARE["masse"], state) * battle.band_quality(state, village)
     if site is not None:
         for army in troupes.armies_of(state, site):
-            if not army.homebound and state.world.distance(army.position, site.hex) <= troupes.ARMY_HOME:
+            if not army.homebound and points.lieux(state.world, army, site) <= troupes.ARMY_HOME:
                 force += battle.band_force(state, army)
     return force
 

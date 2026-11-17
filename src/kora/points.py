@@ -110,8 +110,17 @@ def point_of(world, band) -> tuple[int, int]:
     """Le point d'une unite : le sien s'il est sur sa case, sinon le centre
     de sa case (un village est au point de son lieu : villages.found le lui
     donne, persist le lui rend)."""
-    if band.fu >= 0 and band.fv >= 0 and cell_of(world, band.fu, band.fv) == band.position:
-        return band.fu, band.fv
+    fu, fv = band.fu, band.fv
+    if fu < 0 or fv < 0:
+        return center(band.position)
+    # La case sous le point, verifiee une fois (gardee sur l'unite tant que
+    # son point et sa case ne changent pas).
+    seen = band.__dict__.get("_pt_ok")
+    if seen is not None and seen[0] == fu and seen[1] == fv and seen[2] == band.position:
+        return fu, fv
+    if cell_of(world, fu, fv) == band.position:
+        band.__dict__["_pt_ok"] = (fu, fv, band.position)
+        return fu, fv
     return center(band.position)
 
 
@@ -121,6 +130,78 @@ def site_point(site) -> tuple[int, int]:
     if site.u >= 0 and site.v >= 0:
         return site.u, site.v
     return center(site.hex)
+
+
+def where(world, x) -> tuple[int, int]:
+    """Le point de n'importe quoi de pose sur le monde : une unite (son
+    point), un lieu (village, camp, cache : site_point), une bataille (la ou
+    elle se livre), ou une case (son centre)."""
+    if isinstance(x, Hex):
+        return center(x)
+    if hasattr(x, "fu"):
+        return point_of(world, x)
+    if hasattr(x, "attackers"):
+        if getattr(x, "u", -1) >= 0 and getattr(x, "v", -1) >= 0:
+            return x.u, x.v
+        return center(x.hex)
+    if hasattr(x, "kind") and hasattr(x, "u"):
+        return site_point(x)
+    if getattr(x, "u", -1) >= 0 and getattr(x, "v", -1) >= 0:
+        # Une marque de combat : le point de la bataille.
+        return x.u, x.v
+    if hasattr(x, "hex"):
+        # Une ligne du journal, une marque d'avant : leur lieu.
+        return center(x.hex)
+    return center(x)
+
+
+def lieux(world, a, b) -> int:
+    """LA PROXIMITE ENTRE DEUX CHOSES (le monde sans grille, 0.31.0) : la
+    vraie distance de point a point, en lieux (largeurs de case), arrondie ;
+    une unite, un lieu, une bataille ou une case (where). Remplace la
+    distance de centre de case a centre de case : deux unites dans le meme
+    lieu peuvent etre a pres d'un lieu l'une de l'autre, et deux unites de
+    part et d'autre d'une limite, cote a cote."""
+    return (length(world, where(world, a), where(world, b)) + FINE // 2) // FINE
+
+
+NEAR_CACHE = 20000
+
+
+def cells_near(world, pt: tuple[int, int], radius: int) -> tuple[list, list]:
+    """Les lieux dont le centre est a `radius` lieux ou moins du POINT pt (la
+    vraie distance, arrondie), et leur distance : le disque autour d'une
+    unite ou d'un lieu part de son point, plus du centre de sa case. Listes
+    partagees (memoire) : ne pas les modifier."""
+    # La memoire est gardee SUR le monde : un autre monde, meme a la meme
+    # adresse en memoire, a la sienne (le multijoueur, les essais).
+    cache = world.__dict__.get("_near")
+    if cache is None:
+        cache = world.__dict__["_near"] = {}
+    key = (pt, radius)
+    hit = cache.get(key)
+    if hit is not None:
+        return hit
+    base = cell_of(world, pt[0], pt[1])
+    around, _d = world.hexes_and_distances(base, radius + 1)
+    cells, dists = [], []
+    half = FINE // 2
+    for h in around:
+        k = (length(world, pt, center(h)) + half) // FINE
+        if k <= radius:
+            cells.append(h)
+            dists.append(k)
+    if len(cache) >= NEAR_CACHE:
+        for old in list(cache)[: NEAR_CACHE // 4]:
+            del cache[old]
+    out = cache[key] = (cells, dists)
+    return out
+
+
+def around(world, x, radius: int) -> list:
+    """Les lieux a `radius` lieux ou moins d'une unite, d'un lieu, d'une
+    bataille (de son point)."""
+    return cells_near(world, where(world, x), radius)[0]
 
 
 def apart(world, a, b) -> int:

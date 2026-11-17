@@ -15,6 +15,7 @@ import pygame
 import pygame.gfxdraw
 
 from src.kora import (
+    points,
     render_batiments,
     battle,
     chiefdom,
@@ -1168,7 +1169,7 @@ def _draw_warriors(r, state, site, band, armies, lay, ui, mx, my) -> None:
         screen.blit(_gradient_card(rw, rh, (40, 34, 30), (26, 22, 20), 6), (rx, ry))
         pygame.draw.rect(screen, GOLD_DEEP, row["row"], 1, border_radius=6)
         lead = army.leader.name if army.leader else "?"
-        d = state.world.distance(site.hex, army.position)
+        d = points.lieux(state.world, site, army)
         where = "au village" if d <= troupes.ARMY_HOME else f"à {d} cases"
         if army.homebound:
             where = f"rentre ({d} c.)"

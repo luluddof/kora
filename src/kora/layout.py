@@ -912,9 +912,12 @@ def band_heading(state, band):
 def fight_mark_screen_pos(
     mark, world, globe_yaw, globe_pitch, gcx, gcy, focal, dist
 ):
-    pos = hex_to_globe_screen(
-        mark.hex, world, globe_yaw, globe_pitch, gcx, gcy, focal, dist
-    )
+    # A son point (la ou la bataille s'est livree), ou au centre de son lieu.
+    col, row = points.to_colrow(*points.where(world, mark)) if getattr(mark, "u", -1) >= 0 else (None, None)
+    if col is None:
+        pos = hex_to_globe_screen(mark.hex, world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
+    else:
+        pos = point_to_globe_screen(col, row, world, globe_yaw, globe_pitch, gcx, gcy, focal, dist)
     if pos is None:
         return None
     return (pos[0], pos[1] - SWORD_LIFT)

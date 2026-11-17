@@ -34,6 +34,7 @@ import random
 from dataclasses import dataclass
 
 from src.kora import chiefdom, chiefs, events, goods, population, production, sites, systems, tech
+from src.kora import points
 from src.kora.log import LogKind
 from src.kora.types import Band, Season, Terrain, stay_order
 from src.kora.resources import LABELS, NAMES, PRESENT
@@ -426,7 +427,7 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
         if site.kind != "village" or site.tribe_id != band.tribe_id:
             continue
         v = float(batiments.value(site, "autel", "attachement") + batiments.value(site, "conseil", "attachement")) + (8.0 if oath_of(site) == "feu" else 0.0)
-        if v and state.world.distance(site.hex, band.position) <= NEAR:
+        if v and points.lieux(state.world, site, band) <= NEAR:
             out.append((f"Près de {name(site)} (autel, conseil, feu)", v))
     return out[:2]
 
@@ -437,7 +438,7 @@ def nearest_village(state, band, radius: int):
     for site in state.sites.values():
         if site.kind != "village" or site.tribe_id != band.tribe_id:
             continue
-        d = state.world.distance(site.hex, band.position)
+        d = points.lieux(state.world, site, band)
         if d < best_d or (d == best_d and best is not None and site.id < best.id):
             best, best_d = site, d
     return best
@@ -479,7 +480,7 @@ def stability_parts(state, site, band=None) -> list[tuple[str, float]]:
     else:
         heart = chiefs.chief_band(state, band.tribe_id)
         if heart is not None:
-            d = state.world.distance(heart.position, band.position)
+            d = points.lieux(state.world, heart, band)
             if d > 8:
                 parts.append(("Loin du chef", -min(20.0, 0.5 * d)))
     p = (tribe.prestige - 40) * 0.2
@@ -538,8 +539,8 @@ def _unrest(state, site, band) -> None:
         ]
         band.population -= moved
         band.stock -= stock
-        target = min(homes, key=lambda o: (state.world.distance(o.position, band.position), o.id)) if homes else None
-        if target is not None and state.world.distance(target.position, band.position) <= UNREST_JOIN_RANGE:
+        target = min(homes, key=lambda o: (points.lieux(state.world, o, band), o.id)) if homes else None
+        if target is not None and points.lieux(state.world, target, band) <= UNREST_JOIN_RANGE:
             target.population += moved
             target.stock = min(stock_max(target, state), target.stock + stock)
             where = name(site_of(state, target))
@@ -622,7 +623,8 @@ def choose_fields(state, site, band) -> list:
     soil = site.data.soil
     taken = _taken_by_others(state, site)
     scored = []
-    for h in world.hexes_in_radius(site.hex, FIELD_RADIUS):
+    # Les terres autour du POINT du village (points.around).
+    for h in points.around(world, site, FIELD_RADIUS):
         idx = world._index(h)
         if idx is None or idx in taken:
             continue
@@ -799,7 +801,7 @@ def found_block(state, band_id: int) -> str:
         return "Votre peuple a son village : un chef n'en tient qu'un (les autres lui sont tributaires, ou frères)"
     if band.population < MIN_FOUND_POP:
         return f"Il faut {MIN_FOUND_POP} personnes"
-    if not any(fertility(state, band.tribe_id, h) > 0.35 for h in state.world.hexes_in_radius(camp.hex, FIELD_RADIUS)):
+    if not any(fertility(state, band.tribe_id, h) > 0.35 for h in points.around(state.world, camp, FIELD_RADIUS)):
         return "Aucune terre à cultiver autour"
     return ""
 
@@ -919,9 +921,10 @@ def found_preview(state, band_id: int) -> dict:
     camp = sites.own_site_at(state, band)
     world = state.world
     center = camp.hex if camp is not None else band.position
+    lands = points.around(world, camp if camp is not None else band, FIELD_RADIUS)
     ferts = []
     forest = 0
-    for h in world.hexes_in_radius(center, FIELD_RADIUS):
+    for h in lands:
         f = fertility(state, band.tribe_id, h)
         if f > 0.1:
             ferts.append(f)
@@ -935,7 +938,7 @@ def found_preview(state, band_id: int) -> dict:
     sown = (seed / need) if need else 0.0
     harvest_guess = sum(best) * FIELD_FOOD * _bonus(state, band.tribe_id).field_yield * sown
     res = {}
-    for h in world.hexes_in_radius(center, FIELD_RADIUS):
+    for h in lands:
         for rname in ("cereales", "racines", "argile", "silex", "sel", "chevres", "aurochs", "poisson"):
             if world.resources and world.resource(h, rname) >= PRESENT:
                 res[rname] = res.get(rname, 0) + 1
@@ -950,7 +953,7 @@ def found_preview(state, band_id: int) -> dict:
         if b.tribe_id != band.tribe_id
         and b.population > 0
         and not guerre.at_peace(state, b.tribe_id, band.tribe_id)
-        and world.distance(b.position, center) <= 12
+        and points.lieux(world, b, center) <= 12
     }
     if foes:
         names = ", ".join(sorted(state.tribes[t].name for t in foes if t in state.tribes))
@@ -1018,7 +1021,7 @@ def _alert(state, site, band) -> None:
             continue
         if guerre.at_peace(state, foe.tribe_id, band.tribe_id):
             continue
-        if state.world.distance(foe.position, site.hex) <= ALERT_RANGE:
+        if points.lieux(state.world, foe, site) <= ALERT_RANGE:
             site.data.alert = state.tick_count
             who = state.tribes[foe.tribe_id].name if foe.tribe_id in state.tribes else "étrangers"
             what = "une troupe" if foe.kind == "armee" else f"{foe.population} personnes"

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import pygame
 
+from src.kora import points
 from src.kora import chiefs, diplo, places, siege, sites, theme, units, villages, wars
 from src.kora.layout import HUD_HEIGHT
 from src.kora.look import country_color
@@ -211,7 +212,7 @@ def _where(state, army) -> str:
         return "rentre au village"
     if home is None:
         return "sans village"
-    d = state.world.distance(home.hex, army.position)
+    d = points.lieux(state.world, home, army)
     return "au village" if d <= troupes.ARMY_HOME else f"à {d} cases de {places.name(home)}"
 
 

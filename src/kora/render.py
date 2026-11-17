@@ -719,7 +719,7 @@ class Renderer:
                 pygame.draw.circle(self.screen, goods.GOOD_COLORS[g], (ox, y - 14), r_)
                 pygame.draw.circle(self.screen, (20, 20, 20), (ox, y - 14), r_, 1)
                 ox += 7
-            if not own and heart_hex is not None and world.distance(site.hex, heart_hex) <= reach and site.tribe_id not in partners:
+            if not own and heart_hex is not None and points.lieux(world, site, heart_hex) <= reach and site.tribe_id not in partners:
                 # A portee de vos porteurs : un petit repere.
                 pygame.draw.circle(self.screen, (95, 176, 166), (x, y), 10, 1)
         if heart_hex is not None:

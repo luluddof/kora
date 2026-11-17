@@ -23,6 +23,7 @@ N'importe pas pygame.
 
 from __future__ import annotations
 
+from src.kora import points
 from src.kora import batiments, chiefdom, chiefs, goods, population, systems, units, villages
 from src.kora.bands import (
     _absorb,
@@ -349,7 +350,7 @@ def _home_army(state, band, site):
             if a.tribe_id == band.tribe_id
             and not a.homebound
             and not a.retreating
-            and state.world.distance(a.position, site.hex) <= ARMY_HOME
+            and points.lieux(state.world, a, site) <= ARMY_HOME
         ),
         None,
     )
@@ -426,7 +427,7 @@ def village_near(state, band):
     for site in state.sites.values():
         if site.kind != "village" or site.tribe_id != band.tribe_id or band_of(state, site) is None:
             continue
-        if state.world.distance(site.hex, band.position) <= ARMY_HOME:
+        if points.lieux(state.world, site, band) <= ARMY_HOME:
             if site.id == band.home:
                 return site
             best = best or site
@@ -453,7 +454,7 @@ def _to_clan(state, band) -> None:
     voies). Seul un peuple sans aucun village en refait un clan."""
     homes = sorted(
         (s for s in state.sites.values() if s.kind == "village" and s.tribe_id == band.tribe_id and band_of(state, s) is not None),
-        key=lambda s: (state.world.distance(s.hex, band.position), s.id),
+        key=lambda s: (points.lieux(state.world, s, band), s.id),
     )
     if homes:
         site = homes[0]
@@ -461,7 +462,7 @@ def _to_clan(state, band) -> None:
         for u in band.units:
             u[2] = site.id
         band.homebound = False
-        if state.world.distance(site.hex, band.position) <= ARMY_HOME:
+        if points.lieux(state.world, site, band) <= ARMY_HOME:
             _join_village(state, band, site)
             return
         set_goto(state, band.id, site.hex, max_nodes=8000, max_cost=40000)
@@ -490,12 +491,12 @@ def _to_clan(state, band) -> None:
 def _send_home(state, band, site) -> None:
     band.homebound = False
     set_goto(state, band.id, site.hex, max_nodes=1200, max_cost=4000)
-    if not band.path and state.world.distance(site.hex, band.position) > ARMY_HOME:
+    if not band.path and points.lieux(state.world, site, band) > ARMY_HOME:
         # Loin : on cherche plus longtemps avant de renoncer.
         set_goto(state, band.id, site.hex, max_nodes=8000, max_cost=40000)
     if band.path:
         band.homebound = True
-    elif state.world.distance(site.hex, band.position) > ARMY_HOME:
+    elif points.lieux(state.world, site, band) > ARMY_HOME:
         _to_clan(state, band)
 
 
@@ -520,7 +521,7 @@ def dissolve(state, band_id: int) -> bool:
         site = here
     if site is None:
         _to_clan(state, army)
-    elif state.world.distance(site.hex, army.position) <= ARMY_HOME:
+    elif points.lieux(state.world, site, army) <= ARMY_HOME:
         _join_village(state, army, site)
     else:
         army.home = site.id
@@ -541,7 +542,7 @@ def _go_home(state, part, home: int) -> None:
         part.tribe_id = site.tribe_id
         part.leader = chiefs.new_person(state, state.tribes[site.tribe_id])
         part.home = site.id
-    if state.world.distance(site.hex, part.position) <= ARMY_HOME:
+    if points.lieux(state.world, site, part) <= ARMY_HOME:
         _join_village(state, part, site)
     else:
         _send_home(state, part, site)
@@ -627,7 +628,7 @@ def update_armies(state) -> None:
             site = _village_alive(state, band.home)
             if site is None:
                 _to_clan(state, band)
-            elif state.world.distance(site.hex, band.position) <= ARMY_HOME:
+            elif points.lieux(state.world, site, band) <= ARMY_HOME:
                 _arrive(state, band)
             elif not band.path:
                 _send_home(state, band, site)
@@ -636,7 +637,7 @@ def update_armies(state) -> None:
             _to_clan(state, band)
             continue
         site = home_of(state, band) or next(_village_alive(state, u[2]) for u in comps if _village_alive(state, u[2]) is not None)
-        away = state.world.distance(site.hex, band.position) > 2
+        away = points.lieux(state.world, site, band) > 2
         if not away or state.tick_count - band.raised <= ARMY_TERM or state.tick_count % 4:
             continue
         gone = max(1, round(band.population * DESERTION))
@@ -658,7 +659,7 @@ def army_lines(state, band) -> list[str]:
     if band.homebound:
         out.append(f"Dissoute : elle rentre à {home}, on ne la commande plus")
     elif site is not None:
-        d = state.world.distance(site.hex, band.position)
+        d = points.lieux(state.world, site, band)
         if d > 2 and state.tick_count - band.raised > ARMY_TERM:
             out.append("Trop longtemps loin du village : des guerriers désertent")
         elif d <= ARMY_HOME:

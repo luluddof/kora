@@ -10,6 +10,7 @@ from __future__ import annotations
 import pygame
 
 from src.kora import (
+    points,
     chiefs,
     diplo,
     diplo as _diplo,
@@ -311,7 +312,7 @@ def draw_tribe(r, state, layout, ui) -> None:
                 pygame.draw.rect(r.screen, WARN, (cols["att"], y + 19, fill, 3))
             _text(r, r.tiny, f"{band.loyalty:.0f} {chiefs.mood(state, band)}", tint, cols["att"] + 86, y + 5)
             if heart is not None:
-                d = state.world.distance(band.position, heart.position)
+                d = points.lieux(state.world, band, heart)
                 _text(r, r.tiny, f"{d} c.", WARN if d > reach else SOFT, cols["dist"], y + 5)
         ax = cols["act"]
         see = (ax, y + 2, 44, 20)

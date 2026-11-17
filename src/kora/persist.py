@@ -292,6 +292,8 @@ def _fight_to_json(mark: FightMark) -> dict:
         "loser_loss": mark.loser_loss,
         "loot": mark.loot,
         "report": mark.report,
+        "u": mark.u,
+        "v": mark.v,
     }
 
 
@@ -311,6 +313,8 @@ def _fight_from_json(data: dict) -> FightMark:
         loser_loss=int(data["loser_loss"]),
         loot=float(data["loot"]),
         report=data.get("report") if isinstance(data.get("report"), dict) else None,
+        u=int(data.get("u", -1)),
+        v=int(data.get("v", -1)),
     )
 
 

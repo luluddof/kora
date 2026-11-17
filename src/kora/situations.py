@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from src.kora import points
 from src.kora import chiefdom, chiefs, diplo, goods, places, population, production, tech, villages
 from src.kora.log import LogKind
 from src.kora.types import Hex, Season, Terrain
@@ -323,7 +324,7 @@ class MalQuiCourt(Spec):
         out = []
         bands = [b for b in state.bands.values() if b.population >= 90 and b.kind != "armee"]
         for b in sorted(bands, key=lambda b: b.id):
-            near = [o for o in state.bands.values() if o.id != b.id and o.population > 0 and state.world.distance(o.position, b.position) <= 3]
+            near = [o for o in state.bands.values() if o.id != b.id and o.population > 0 and points.lieux(state.world, o, b) <= 3]
             if near:
                 tids = sorted({b.tribe_id} | {o.tribe_id for o in near})
                 out.append((b.position, 8, tids, {}))
@@ -340,7 +341,7 @@ class MalQuiCourt(Spec):
             for o in sorted(state.bands.values(), key=lambda b: b.id):
                 if o.population <= 0 or o.kind == "armee" or o.tribe_id in inst.participants:
                     continue
-                if any(world.distance(o.position, s.position) <= 4 for s in sick) and _rand(state, inst.uid, "mal", o.id) < 0.5:
+                if any(points.lieux(world, o, s) <= 4 for s in sick) and _rand(state, inst.uid, "mal", o.id) < 0.5:
                     join(state, inst, o.tribe_id)
                     inst.radius = min(16, inst.radius + 2)
         share = {0: 0.02, 1: 0.04, 2: 0.01}[min(inst.stage, 2)]
@@ -547,7 +548,7 @@ class GrandPassage(Spec):
         for b in sorted(state.bands.values(), key=lambda b: b.id):
             if b.population <= 0 or world.terrain(b.position) not in (Terrain.STEPPE, Terrain.PLAINE):
                 continue
-            tids = sorted({o.tribe_id for o in state.bands.values() if o.population > 0 and not o.village and world.distance(o.position, b.position) <= 18})
+            tids = sorted({o.tribe_id for o in state.bands.values() if o.population > 0 and not o.village and points.lieux(world, o, b) <= 18})
             if len(tids) >= 2 and not any(_has_village(state, t) for t in tids[:1]):
                 dirs = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1))
                 dq, dr = dirs[int(_rand(state, self.id, "dir", b.id) * len(dirs)) % len(dirs)]
@@ -627,7 +628,7 @@ class Rassemblement(Spec):
                 bands = _bands(state, tid, village=False)
                 if bands:
                     host = max(bands, key=lambda b: (b.population, -b.id))
-                    near = [t for t in friends if any(state.world.distance(b.position, host.position) <= 25 for b in _bands(state, t))]
+                    near = [t for t in friends if any(points.lieux(state.world, b, host) <= 25 for b in _bands(state, t))]
                     if len(near) >= 2:
                         return [(host.position, 10, sorted([tid] + near), {})]
         return []
@@ -712,7 +713,7 @@ class Rouille(Spec):
             for site in _villages(state):
                 if site.tribe_id in inst.participants:
                     continue
-                if state.world.distance(site.hex, inst.center) <= inst.radius + 6 and _rand(state, inst.uid, "rouille", site.id) < 0.35:
+                if points.lieux(state.world, site, inst.center) <= inst.radius + 6 and _rand(state, inst.uid, "rouille", site.id) < 0.35:
                     join(state, inst, site.tribe_id)
                     inst.radius += 3
         months = (state.tick_count - inst.started) // MONTH
@@ -863,7 +864,7 @@ class GrandsTravaux(Spec):
         })
         for tid in peoples:
             mine = _villages(state, tid)
-            others = [t for t in peoples if t != tid and any(state.world.distance(a.hex, b.hex) <= 40 for a in mine for b in _villages(state, t))]
+            others = [t for t in peoples if t != tid and any(points.lieux(state.world, a, b) <= 40 for a in mine for b in _villages(state, t))]
             if others:
                 return [(mine[0].hex, 40, sorted([tid] + others), {})]
         return []
@@ -984,7 +985,7 @@ class Chefferies(Spec):
         for tid in peoples:
             mine = _villages(state, tid)
             # Trois peuples a villages ou plus dans la meme vallee (30 cases).
-            rivals = [t for t in peoples if t != tid and any(state.world.distance(a.hex, b.hex) <= 30 for a in mine for b in _villages(state, t))]
+            rivals = [t for t in peoples if t != tid and any(points.lieux(state.world, a, b) <= 30 for a in mine for b in _villages(state, t))]
             if len(rivals) >= 2:
                 return [(mine[0].hex, 30, sorted([tid] + rivals), {})]
         return []
@@ -1424,7 +1425,7 @@ def _risk_mal(self, state, tid):
     for b in _bands(state, tid):
         if b.population < 75:
             continue
-        if any(o.id != b.id and o.population > 0 and state.world.distance(o.position, b.position) <= 3 for o in state.bands.values()):
+        if any(o.id != b.id and o.population > 0 and points.lieux(state.world, o, b) <= 3 for o in state.bands.values()):
             return "Des bandes nombreuses vivent serrées : une fièvre pourrait courir, surtout l'été. Scindez les grosses bandes, écartez-les."
     return ""
 

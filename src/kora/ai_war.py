@@ -20,6 +20,7 @@ Un raid en cours est annule si la cible s'est renforcee entre-temps.
 
 from __future__ import annotations
 
+from src.kora import points
 from src.kora import battle, chiefdom, chiefs, diplo, ost, villages
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
@@ -129,7 +130,7 @@ def _free(state: GameState, band: Band) -> bool:
 
 def _reachable(state: GameState, band: Band, prey: Band, max_weeks: int) -> bool:
     budget = max_weeks * MOVE_POINTS_PER_WEEK
-    if state.world.distance(band.position, prey.position) * 10 > budget:
+    if points.lieux(state.world, band, prey) * 10 > budget:
         return False
     tribe = state.tribes.get(band.tribe_id)
     water_ok = bool(tribe and tribe.cabotage)
@@ -179,7 +180,7 @@ def _helper(state: GameState, band: Band, prey: Band) -> Band | None:
             continue
         if not _free(state, ally) or ally.intent_prey not in (0, prey.id):
             continue
-        d = state.world.distance(band.position, ally.position)
+        d = points.lieux(state.world, band, ally)
         if d > (AI_CALL_RANGE if ally.tribe_id == band.tribe_id else ost.OST_RANGE):
             continue
         if not wins(state, [band, ally], prey):
@@ -202,7 +203,7 @@ def plan_raid(state: GameState, band: Band, max_weeks: int, hungry: bool = True)
             continue
         if is_shielded(state, prey):
             continue
-        if state.world.distance(band.position, prey.position) > reach:
+        if points.lieux(state.world, band, prey) > reach:
             continue
         if short_of_food(state, band, prey.position):
             continue
@@ -223,7 +224,7 @@ def plan_raid(state: GameState, band: Band, max_weeks: int, hungry: bool = True)
         ally, prey = group
         if ally.tribe_id != band.tribe_id:
             return ("ost", ally, prey)
-        near = state.world.distance(band.position, ally.position) <= AI_MERGE_RANGE
+        near = points.lieux(state.world, band, ally) <= AI_MERGE_RANGE
         return ("merge" if near else "call", ally, prey)
     return None
 
@@ -388,7 +389,7 @@ def _ev_provoke(state, inst, tribe, band) -> None:
     if band is None or inst.other not in state.tribes:
         return
     theirs = [b for b in state.bands.values() if b.tribe_id == inst.other and b.population > 0]
-    theirs.sort(key=lambda b: (state.world.distance(b.position, band.position), b.id))
+    theirs.sort(key=lambda b: (points.lieux(state.world, b, band), b.id))
     for foe in theirs[:2]:
         plan = plan_raid(state, foe, 6)
         if plan is not None:

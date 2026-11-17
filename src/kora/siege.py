@@ -28,6 +28,7 @@ besieger : le peuple qui l'investit). N'importe pas pygame.
 
 from __future__ import annotations
 
+from src.kora import points
 from src.kora import diplo, places, tech, villages
 from src.kora.bands import is_shielded
 from src.kora.gamestate import is_human, note
@@ -61,7 +62,7 @@ def _foes_at(state, site) -> list[int]:
     for b in state.bands.values():
         if b.population <= 0 or b.tribe_id == site.tribe_id or b.village:
             continue
-        if state.world.distance(b.position, site.hex) <= SIEGE_RANGE and at_war(state, b.tribe_id, site.tribe_id):
+        if points.lieux(state.world, b, site) <= SIEGE_RANGE and at_war(state, b.tribe_id, site.tribe_id):
             out.add(b.tribe_id)
     return sorted(out)
 
@@ -101,7 +102,7 @@ def besiegers(state, site) -> list:
     for b in state.bands.values():
         if b.kind != "armee" or b.population <= 0 or b.homebound or b.retreating or b.path:
             continue
-        if state.world.distance(b.position, site.hex) > SIEGE_RANGE:
+        if points.lieux(state.world, b, site) > SIEGE_RANGE:
             continue
         tribe = state.tribes.get(b.tribe_id)
         if tribe is None or not tech.bonuses(tribe).siege or not at_war(state, b.tribe_id, site.tribe_id):

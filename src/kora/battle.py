@@ -378,6 +378,11 @@ class Battle:
     units0: dict = field(default_factory=dict)
     fled: dict = field(default_factory=dict)
     intercepted: str = ""
+    # LE POINT de la bataille (le monde sans grille, 0.31.0) : la ou le
+    # defenseur a ete rejoint ; -1 : le centre de son lieu (une bataille
+    # d'avant). hex : le lieu sous ce point (le releve du monde).
+    u: int = -1
+    v: int = -1
 
 
 def battles(state) -> list:
@@ -486,6 +491,8 @@ def start(state, attacker: Band, defender: Band, h, hunted: bool = False) -> Bat
         morale0_a=a.morale, morale0_d=d.morale,
         units0={b.id: [list(u) for u in b.units] for b in a.bands + d.bands if b.kind == "armee"},
     )
+    # La bataille est la ou est le defenseur (son point).
+    bt.u, bt.v = points.point_of(state.world, defender)
     # Intercepte : le defenseur marchait lui-meme a l'attaque (ou une troupe
     # loin de chez elle).
     if defender.order.kind is OrderKind.MARCH_TO_BAND or (defender.kind == "armee" and not defender.homebound):
@@ -640,7 +647,7 @@ def _ai_retreat(state, bt, a: Side, d: Side) -> None:
             continue
         main = side.bands[0]
         homes = [s.hex for s in sites.of_tribe(state, main.tribe_id) if s.kind in ("village", "camp")]
-        far = not homes or min(state.world.distance(h, main.position) for h in homes) > AI_FAR
+        far = not homes or min(points.lieux(state.world, h, main) for h in homes) > AI_FAR
         # Rien a perdre : l'attaquant (il peut renoncer), une troupe, une bande
         # interceptee en marche, ou loin de chez elle sans familles a couvrir.
         families = main.kind != "armee" and key == "d"
@@ -775,7 +782,7 @@ def _end(state, bt, a: Side, d: Side, broken: Side, outcome: str) -> None:
     )
     bt.result = res
     if attacker is not None and defender is not None:
-        after_battle(state, attacker, defender, h, res, bt.hunted)
+        after_battle(state, attacker, defender, h, res, bt.hunted, points.where(state.world, bt))
 
 
 def fight(state, attacker: Band, defender: Band, h) -> Result:
@@ -802,7 +809,7 @@ def _nearest_kin(state, band: Band):
     for other in state.bands.values():
         if other.id == band.id or other.tribe_id != band.tribe_id or other.population <= 0 or other.kind == "armee":
             continue
-        d = state.world.distance(other.position, band.position)
+        d = points.lieux(state.world, other, band)
         if d < best_d or (d == best_d and best is not None and other.id < best.id):
             best, best_d = other, d
     return best
@@ -824,7 +831,7 @@ def place_of(state, h) -> str:
     for site in state.sites.values():
         if site.kind != "village":
             continue
-        dist = state.world.distance(site.hex, h)
+        dist = points.lieux(state.world, site, h)
         if dist <= 3 and (best is None or dist < best[0]):
             best = (dist, places.name(site))
     if best is not None:
@@ -941,6 +948,7 @@ def to_json(bt) -> dict:
         "morale0_a": bt.morale0_a, "morale0_d": bt.morale0_d,
         "units0": [[k, v] for k, v in sorted(bt.units0.items())],
         "fled": [[k, v] for k, v in sorted(bt.fled.items())], "intercepted": bt.intercepted,
+        "u": bt.u, "v": bt.v,
     }
 
 
@@ -962,6 +970,7 @@ def from_json(d: dict):
             morale0_a=float(d.get("morale0_a", 0.0)), morale0_d=float(d.get("morale0_d", 0.0)),
             units0={int(k): [list(u) for u in v] for k, v in d.get("units0", [])},
             fled={int(k): int(v) for k, v in d.get("fled", [])}, intercepted=str(d.get("intercepted", "")),
+            u=int(d.get("u", -1)), v=int(d.get("v", -1)),
         )
     except (KeyError, ValueError, TypeError):
         return None
@@ -1033,7 +1042,7 @@ def helpers_of(state: GameState, band: Band) -> list[Band]:
     for ally in pool:
         if ally.tribe_id not in friends or ally.id == band.id or ally.population <= 0:
             continue
-        if world.distance(ally.position, band.position) > reach:
+        if points.lieux(world, ally, band) > reach:
             continue
         if ally.tribe_id == tid and not chiefs.helps(state, ally):
             continue
@@ -1087,23 +1096,23 @@ def _retreat_sites(state: GameState, band: Band, winner: Band) -> list[Hex]:
         if b.tribe_id != band.tribe_id
         and b.population > 0
         and not guerre.at_peace(state, b.tribe_id, band.tribe_id)
-        and world.distance(b.position, band.position) <= span
+        and points.lieux(world, b, band) <= span
     ]
     scored: list[tuple[float, Hex]] = []
-    for h in world.hexes_in_radius(band.position, RETREAT_SEARCH_RADIUS)[::2]:
+    for h in points.around(world, band, RETREAT_SEARCH_RADIUS)[::2]:
         if h == band.position or enter_cost_for(world, h, water_ok) is None:
             continue
         if player and not is_explored(state, h, band.tribe_id):
             continue
         near = min((world.distance(h, f) for f in foes), default=RETREAT_SAFE_DIST)
-        if near < 3 or world.distance(h, winner.position) < 4:
+        if near < 3 or points.lieux(world, h, winner) < 4:
             continue
         safety = min(near, RETREAT_SAFE_DIST) / RETREAT_SAFE_DIST
         food = sum(
             food_production(world, x, world.hex_season(x), herd=herd, bonus=bonus)
             for x in world.hexes_in_radius(h, 2)
         )
-        scored.append((food * safety - 0.5 * world.distance(band.position, h), h))
+        scored.append((food * safety - 0.5 * points.lieux(world, band, h), h))
     scored.sort(key=lambda it: it[0], reverse=True)
     return [h for _score, h in scored[:6]]
 
@@ -1122,20 +1131,20 @@ def _retreat(state: GameState, loser: Band, winner: Band) -> bool:
             and b.tribe_id == loser.tribe_id
             and b.population > 0
             and not b.retreating
-            and state.world.distance(b.position, winner.position) >= 2
-            and state.world.distance(b.position, loser.position) <= RETREAT_ALLY_RANGE
+            and points.lieux(state.world, b, winner) >= 2
+            and points.lieux(state.world, b, loser) <= RETREAT_ALLY_RANGE
         ),
-        key=lambda b: state.world.distance(b.position, loser.position),
+        key=lambda b: points.lieux(state.world, b, loser),
     )
     camps = sorted(
         (
             s.hex
             for s in sites.of_tribe(state, loser.tribe_id)
             if s.kind in ("camp", "village")
-            and state.world.distance(s.hex, winner.position) >= 4
-            and state.world.distance(s.hex, loser.position) <= RETREAT_ALLY_RANGE
+            and points.lieux(state.world, s, winner) >= 4
+            and points.lieux(state.world, s, loser) <= RETREAT_ALLY_RANGE
         ),
-        key=lambda h: state.world.distance(h, loser.position),
+        key=lambda h: points.lieux(state.world, h, loser),
     )
     for goal in [a.position for a in allies] + camps + _retreat_sites(state, loser, winner):
         set_goto(state, loser.id, goal)
@@ -1225,8 +1234,9 @@ def resolve_raids(state: GameState) -> None:
             continue
         a_tribes = {state.bands[b].tribe_id for b in bt.attackers if b in state.bands}
         d_tribes = {state.bands[b].tribe_id for b in bt.defenders if b in state.bands}
-        there = [b for b in _alive(state, bt.defenders + bt.attackers) if b.position == bt.hex]
-        ref = points.point_of(world, there[0]) if there else points.center(bt.hex)
+        # Le point de la bataille (points.where) : les renforts la
+        # rejoignent a trois quarts de lieu.
+        ref = points.where(world, bt)
         arrived = {b.id: b for b in by_hex.get(bt.hex, [])}
         for h in world.neighbors(bt.hex):
             for b in by_hex.get(h, []):
@@ -1326,7 +1336,7 @@ def _meetings(state: GameState, by_hex: dict, busy: set) -> list:
             for b in free:
                 if b.id == a.id or b.village or b.tribe_id == a.tribe_id:
                     continue
-                if world.distance(a.position, b.position) > CROSS_REACH:
+                if points.lieux(world, a, b) > CROSS_REACH:
                     continue
                 if crossing(a, b):
                     add(a, b)
@@ -1334,7 +1344,7 @@ def _meetings(state: GameState, by_hex: dict, busy: set) -> list:
     return found
 
 
-def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, hunted: bool) -> None:
+def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, hunted: bool, spot=None) -> None:
     """La fin d'une bataille (_end) : le journal des joueurs, le
     prestige, les relations, la marque sur la carte."""
     a_t, d_t = attacker.tribe_id, defender.tribe_id
@@ -1372,6 +1382,8 @@ def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, 
                 loser_loss=res.loser_loss,
                 loot=res.loot,
                 report=res.report,
+                u=spot[0] if spot else -1,
+                v=spot[1] if spot else -1,
             ),
         )
     if res.building and is_human(state, loser.tribe_id):

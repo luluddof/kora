@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from src.kora import points
 from src.kora import chiefdom, diplo, places, ravage, villages
 from src.kora.vision import is_visible
 from src.kora import troupes
@@ -109,13 +110,13 @@ def _doing(state, band) -> str:
         what = places.name(site) if site is not None else f"une bande des {state.tribes[target.tribe_id].name}"
         return f"marche sur {what}"
     for site in state.sites.values():
-        if site.kind == "village" and getattr(site.data, "siege", 0) and state.world.distance(site.hex, band.position) <= 1 and site.tribe_id != band.tribe_id:
+        if site.kind == "village" and getattr(site.data, "siege", 0) and points.lieux(state.world, site, band) <= 1 and site.tribe_id != band.tribe_id:
             return f"assiège {places.name(site)}"
     ravaged = state.sites.get(band.ravage) if band.ravage else None
     if ravaged is not None:
         return f"ravage les champs de {places.name(ravaged)}" if not band.path else f"marche sur les champs de {places.name(ravaged)}"
     home = troupes.home_of(state, band)
-    if home is not None and state.world.distance(home.hex, band.position) <= troupes.ARMY_HOME:
+    if home is not None and points.lieux(state.world, home, band) <= troupes.ARMY_HOME:
         return "au village"
     return "en campagne" if not band.path else "en marche"
 

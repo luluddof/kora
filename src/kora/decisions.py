@@ -34,10 +34,12 @@ N'importe pas pygame.
 
 from __future__ import annotations
 
+import itertools
 import math
 from dataclasses import dataclass, field
 from typing import Callable
 
+from src.kora import points
 from src.kora import battle, chiefdom, chiefs, diplo, goods, grain, guerre, places, population, ravage, sites, tech, troupes, villages
 from src.kora.bands import gain_prestige, set_goto, set_march_to_band, stock_max
 from src.kora.gamestate import is_human, note
@@ -140,8 +142,17 @@ def forget() -> None:
     _MEMO.clear()
 
 
+_TOKENS = itertools.count(1)
+
+
 def _memo(state, key, fn):
-    stamp = (id(state), state.tick_count)
+    # Un jeton propre a chaque partie (jamais son adresse en memoire : une
+    # autre partie peut la reprendre et lire une memoire qui n'est pas la
+    # sienne - le multijoueur, les essais).
+    token = state.__dict__.get("_dec_token")
+    if token is None:
+        token = state.__dict__["_dec_token"] = next(_TOKENS)
+    stamp = (token, state.tick_count)
     if _MEMO.get("stamp") != stamp:
         _MEMO.clear()
         _MEMO["stamp"] = stamp
@@ -318,14 +329,14 @@ def _find_raid_targets(state, tid):
     for other in sorted(state.sites.values(), key=lambda s: s.id):
         if other.kind != "village" or other.tribe_id == tid or other.tribe_id not in state.tribes:
             continue
-        if state.world.distance(site.hex, other.hex) > RAID_RANGE:
+        if points.lieux(state.world, site, other) > RAID_RANGE:
             continue
         if places.band_of(state, other) is None:
             continue
         if guerre.may_start(state, tid, other.tribe_id) and not guerre.at_war(state, tid, other.tribe_id):
             continue
         out.append(other.id)
-    out.sort(key=lambda sid: (state.world.distance(site.hex, state.sites[sid].hex), sid))
+    out.sort(key=lambda sid: (points.lieux(state.world, site, state.sites[sid]), sid))
     return out
 
 
@@ -335,7 +346,7 @@ def _raid_name(state, tid, sid):
         return "?"
     people = state.tribes[other.tribe_id].name
     site, _b = _village(state, tid)
-    d = state.world.distance(site.hex, other.hex) if site is not None else 0
+    d = points.lieux(state.world, site, other) if site is not None else 0
     return f"{other.name or 'un village'} (les {people}, à {d} cases)"
 
 
@@ -414,8 +425,8 @@ def _route_post(state, tid, route):
     line = _route_line(state, route)
     if not line:
         return None
-    best = min(line, key=lambda h: (state.world.distance(site.hex, h), h.q, h.r))
-    return best if state.world.distance(site.hex, best) <= ROUTE_REACH else None
+    best = min(line, key=lambda h: (points.lieux(state.world, site, h), h.q, h.r))
+    return best if points.lieux(state.world, site, best) <= ROUTE_REACH else None
 
 
 def _route_targets(state, tid):
@@ -436,7 +447,7 @@ def _find_route_targets(state, tid):
             continue
         # Trop loin de toute la route (le point le plus proche est a moins
         # d'une demi-route d'un des bouts) : pas besoin de la tracer.
-        near = min(world.distance(site.hex, ends[0]), world.distance(site.hex, ends[1]))
+        near = min(points.lieux(world, site, ends[0]), points.lieux(world, site, ends[1]))
         if near - world.distance(ends[0], ends[1]) / 2 > ROUTE_REACH:
             continue
         if any(diplo.allied(state, tid, x) or diplo.has_pact(state, tid, x, "vassal") for x in (r.exporter, r.importer)):
@@ -461,7 +472,7 @@ def _route_name(state, tid, key):
     good = goods.GOOD_NAMES.get(r.good, r.good).lower()
     post = _route_post(state, tid, r)
     site, _b = _village(state, tid)
-    d = state.world.distance(site.hex, post) if post is not None and site is not None else 0
+    d = points.lieux(state.world, site, post) if post is not None and site is not None else 0
     return f"{good}, des {a.name if a else '?'} aux {b.name if b else '?'} (à {d} cases)"
 
 
@@ -503,7 +514,7 @@ def seize(state, route) -> float:
     if not raiders:
         return 0.0
     line = _route_line(state, route)
-    raiders = [b for b in raiders if any(state.world.distance(b.position, h) <= ROUTE_POST for h in line)]
+    raiders = [b for b in raiders if any(points.lieux(state.world, b, h) <= ROUTE_POST for h in line)]
     if not raiders:
         return 0.0
     thief = raiders[0].tribe_id
@@ -628,7 +639,7 @@ def _scouts_take(state, tid, _t):
     for other in sorted({b.tribe_id for b in state.bands.values() if b.population > 0}):
         if other == tid or other in diplo.contacts_of(state, tid):
             continue
-        near = min((world.distance(site.hex, b.position) for b in state.bands.values() if b.tribe_id == other and b.population > 0), default=999)
+        near = min((points.lieux(world, site, b) for b in state.bands.values() if b.tribe_id == other and b.population > 0), default=999)
         if near <= SCOUTS_CONTACT:
             diplo.make_contact(state, tid, other)
             met.append(state.tribes[other].name)

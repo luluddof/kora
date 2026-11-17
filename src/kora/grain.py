@@ -25,6 +25,7 @@ Tout passe par commands.py ("grain"). N'importe pas pygame.
 
 from __future__ import annotations
 
+from src.kora import points
 from src.kora import chiefdom, diplo, goods, money, places, siege, villages
 from src.kora.bands import stock_max
 from src.kora.gamestate import is_human, note
@@ -104,7 +105,7 @@ def spare(state, seller: int) -> float:
 
 def _near(state, site, seller: int) -> bool:
     reach = goods.trade_range(state, site.tribe_id, seller) * REACH
-    return any(state.world.distance(site.hex, s.hex) <= reach for s in goods._village_sites(state, seller))
+    return any(points.lieux(state.world, site, s) <= reach for s in goods._village_sites(state, seller))
 
 
 def _markup(state, site, take: float, have: float, planned: bool = False) -> float:

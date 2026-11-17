@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import pygame
 
-from src.kora import battle, theme
+from src.kora import battle, points, theme
 from src.kora.peoples import color_of
 from src.kora.theme import C
 from src.kora.battle import fighters_now
 from src.kora.vision import is_visible
-from src.kora.globe import hex_to_globe_screen, view_params
+from src.kora.globe import point_to_globe_screen, view_params
 from src.kora.layout import HUD_HEIGHT, TAB_W
 
 PANEL_W, PANEL_H = 600, 262
@@ -168,7 +168,9 @@ def draw_on_map(r, state, yaw, pitch, zoom) -> None:
         tids = {state.bands[b].tribe_id for b in bt.attackers + bt.defenders if b in state.bands}
         if me not in tids and not is_visible(state, bt.hex, me):
             continue
-        pos = hex_to_globe_screen(bt.hex, state.world, yaw, pitch, gcx, gcy, focal, dist)
+        # La bataille a son point (points.where), plus au centre de son lieu.
+        col, row = points.to_colrow(*points.where(state.world, bt))
+        pos = point_to_globe_screen(col, row, state.world, yaw, pitch, gcx, gcy, focal, dist)
         if pos is None:
             continue
         x, y = int(pos[0]), int(pos[1]) - 22

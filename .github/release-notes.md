@@ -1,4 +1,14 @@
-## Nouveau dans la 0.30 : le monde sans cases, encore un pas
+## Nouveau dans la 0.31 : le monde sans cases, la fin
+
+- **Toute proximité se mesure de point à point** : la vue, la collecte, les terres d'un village, le ravage, le
+  siège, les renforts, les razzias… partent du point exact d'une unité ou d'un lieu, plus du centre de sa case.
+- **Les batailles ont lieu à un point**, là où l'ennemi a été rejoint ; leurs marques y restent.
+- **Les chemins cherchés vont aussi en biais** : le trajet choisi n'a plus le biais des cases (un lac contourné
+  par où c'est vraiment plus court).
+- Corrigé : la vue d'un grand rayon perdait son haut et son bas ; une désynchronisation possible à plusieurs.
+- La simulation est un peu plus rapide.
+
+Et dans la 0.30 : le monde sans cases, encore un pas
 
 - **Les unités marchent tout droit** quand ça ne coûte pas plus cher : plus d'escalier d'un lieu à l'autre. Elles
   contournent toujours ce qui coûte (un lac, une montagne, un sol plus rude). Le chemin tracé à l'écran est celui

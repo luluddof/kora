@@ -13,6 +13,7 @@ N'importe pas pygame.
 from __future__ import annotations
 
 from src.kora import population, systems, tech, units
+from src.kora import points
 from src.kora.gamestate import GameState, is_human, note
 from src.kora.log import LogKind
 from src.kora.path import MOVE_POINTS_PER_WEEK, astar
@@ -47,7 +48,7 @@ def bands_near(state: GameState, h: Hex, radius: int) -> list[Band]:
     world = state.world
     grid = state.band_grid
     if grid is None:
-        found = [b for b in state.bands.values() if b.population > 0 and world.distance(b.position, h) <= radius]
+        found = [b for b in state.bands.values() if b.population > 0 and points.lieux(world, b, h) <= radius]
         found.sort(key=lambda b: b.id)
         return found
     idx = world._index(h)
@@ -66,7 +67,7 @@ def bands_near(state: GameState, h: Hex, radius: int) -> list[Band]:
                 continue
             seen_x.add(key_x)
             for b in grid.get((key_x, by), ()):
-                if world.distance(b.position, h) <= radius:
+                if points.lieux(world, b, h) <= radius:
                     found.append(b)
     found.sort(key=lambda b: b.id)
     return found
@@ -171,7 +172,8 @@ def stock_max(band: Band, state: GameState | None = None) -> float:
 
 
 def forage_hexes(state: GameState, band: Band) -> list[Hex]:
-    return state.world.hexes_in_radius(band.position, FORAGE_RADIUS)
+    # Autour du POINT de la bande (points.around), plus du centre de sa case.
+    return points.around(state.world, band, FORAGE_RADIUS)
 
 
 def set_goto(
@@ -199,7 +201,7 @@ def set_goto(
     ):
         band.aim_u, band.aim_v = aim if aim is not None else (-1, -1)
         return
-    dist = state.world.distance(band.position, goal_c)
+    dist = points.lieux(state.world, band, goal_c)
     if max_nodes is None:
         max_nodes = min(1200, max(180, dist * 18 + 60))
     if max_cost is None:
@@ -234,7 +236,7 @@ def set_march_to_band(state: GameState, band_id: int, target_band_id: int) -> No
     if band.retreating or band.village or band.homebound:
         return
     target = state.bands[target_band_id]
-    dist = state.world.distance(band.position, target.position)
+    dist = points.lieux(state.world, band, target)
     water_ok = _water_ok(state, band.tribe_id)
     path = astar(
         state.world,
@@ -434,9 +436,9 @@ def merge_mates(state: GameState, band: Band, radius: int = MERGE_CALL) -> list:
             and not b.homebound
             and (b.kind == "armee") == (band.kind == "armee")
             and all(systems.fn(path)(state, b) for path in systems.MERGE_ALLOWED)
-            and world.distance(b.position, band.position) <= radius
+            and points.lieux(world, b, band) <= radius
         ),
-        key=lambda b: (world.distance(b.position, band.position), b.id),
+        key=lambda b: (points.lieux(world, b, band), b.id),
     )
 
 
@@ -450,14 +452,14 @@ def merge_bands(state: GameState, band_id: int) -> int:
     mates = merge_mates(state, band)
     keep = band
     # Sur son village (ou juste a cote), c'est le village qui accueille.
-    home = next((b for b in mates if b.village and state.world.distance(b.position, band.position) <= 1), None)
+    home = next((b for b in mates if b.village and points.lieux(state.world, b, band) <= 1), None)
     if home is not None and not band.village:
         keep = home
         mates = [b for b in mates if b is not home] + [band]
     elif not band.village:
         # Loin de la case, un village ne vient pas : on ne le compte pas.
         mates = [b for b in mates if not b.village]
-    near = [m for m in mates if m.village == 0 and state.world.distance(m.position, keep.position) <= MERGE_NEAR]
+    near = [m for m in mates if m.village == 0 and points.lieux(state.world, m, keep) <= MERGE_NEAR]
     if keep is not band and band not in near:
         near.append(band)
     far = [m for m in mates if m not in near and not m.village]

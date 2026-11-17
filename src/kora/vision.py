@@ -16,6 +16,7 @@ from src.kora.gamestate import GameState, PLAYER_TRIBE_ID, humans, note, pov_of
 from src.kora.log import LogKind
 from src.kora.types import Hex
 from src.kora import places, systems, tech
+from src.kora import points
 
 VISION_RADIUS = 8
 TOWER_SIGHT = 3
@@ -64,7 +65,7 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
     vis = vis if isinstance(vis, PlayerVision) else PlayerVision()
     eyes = sharers(state, tid)
     spots = sorted(
-        (band.tribe_id, band.position.q, band.position.r)
+        (band.tribe_id, *points.point_of(state.world, band))
         for band in state.bands.values()
         if band.tribe_id in eyes and band.population > 0
     )
@@ -81,7 +82,8 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
     for band in state.bands.values():
         if band.tribe_id not in eyes or band.population <= 0:
             continue
-        visible.update(state.world.hexes_in_radius(band.position, radius[band.tribe_id]))
+        # Le cercle de la vue part du POINT de l'unite (points.around).
+        visible.update(points.around(state.world, band, radius[band.tribe_id]))
     for t, h, n in towers:
         visible.update(state.world.hexes_in_radius(h, radius[t] + TOWER_SIGHTS[min(n, len(TOWER_SIGHTS)) - 1]))
     vis.visible = visible

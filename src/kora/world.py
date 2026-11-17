@@ -154,10 +154,15 @@ def true_distance(dq: int, dr: int) -> int:
 def _radius_deltas(radius: int) -> list[tuple[int, int]]:
     deltas = _RADIUS_DELTAS.get(radius)
     if deltas is None:
+        # Les rangees sont plus serrees que les colonnes (racine de 3 sur 2) :
+        # un cercle de rayon r s'etend sur r / 0,866 rangees (0.31.0 : il
+        # s'arretait a r + 1 rangees, et la vue d'un grand rayon perdait son
+        # haut et son bas).
+        rows = (2 * radius) * 10000 // 17320 + 2
         deltas = [
             (dq, dr)
-            for dq in range(-2 * radius - 1, 2 * radius + 2)
-            for dr in range(-radius - 1, radius + 2)
+            for dr in range(-rows, rows + 1)
+            for dq in range(-2 * radius - rows, 2 * radius + rows + 1)
             if true_distance(dq, dr) <= radius
         ]
         _RADIUS_DELTAS[radius] = deltas

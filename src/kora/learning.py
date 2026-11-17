@@ -40,6 +40,7 @@ from src.kora.tech import (
 from src.kora.types import Season, Terrain
 from src.kora.world import is_inshore
 from src.kora import chiefdom, chiefs, diplo, draws, sites, turning
+from src.kora import points
 from src.kora.villages import land_profile
 
 
@@ -339,7 +340,7 @@ def update_practice(state, count: bool = True) -> None:
                 if memo in state.scan_memo:
                     continue
                 state.scan_memo.add(memo)
-                for h in world.hexes_in_radius(band.position, SEE_RADIUS):
+                for h in points.around(world, band, SEE_RADIUS):
                     if not tribe.shore_seen and is_inshore(world, h):
                         tribe.shore_seen = True
                     if not tribe.steppe_seen and world.terrain(h) in (Terrain.STEPPE, Terrain.SAVANE):
