@@ -1,0 +1,150 @@
+Kora - Regard neuf sur les interfaces (critique de la 0.31)
+==========================================================
+Date : 2026-11-19. Statut : PROPOSE (rien de code ; en attente de son choix).
+
+Sa demande : "maintenant que tu as plus de skills, dont sur les interfaces,
+apporte un regard nouveau aux interfaces du jeu."
+La methode : une critique de design en cinq angles (la premiere impression,
+l'usage, la hierarchie, la coherence, l'accessibilite), sur des captures de
+la 0.31 prises dans SES parties (docs/maquettes/regard_neuf/ : partie_an48,
+sa partie avancee ; partie_an3, sa partie neuve du 13 novembre), des
+mesures (les contrastes de la charte, les tailles de texte, les textes
+affiches), et la planche annotee regard_neuf/planche_critique.png (les
+numeros entre crochets ci-dessous).
+
+
+1. LA PREMIERE IMPRESSION
+-------------------------
+  Une direction artistique tenue : la pierre, le cuir, l'ocre, des
+  medaillons, des petites capitales ; la carte en formes est belle. Mais
+  les ecrans sont des TABLEAUX DE CHIFFRES : beaucoup de petit texte, de
+  la meme force, ou ce qui compte ne se distingue pas de ce qui ne compte
+  pas. Au debut d'une partie, l'oeil ne trouve rien a faire : une carte
+  verte presque vide, une bande minuscule au milieu [4], le seul appel est
+  "Choisir un savoir [T]".
+
+
+2. L'USAGE (CE QUI GENE POUR JOUER)
+-----------------------------------
+  GRAVE
+  - L'ESSENTIEL SE NOIE. La bande a "Stock : 0 sem." - elle va avoir faim -
+    ecrit comme "Jungle · Ete" [1]. Dans une carte d'evenement, "-1 sem. de
+    vivres" est en or, comme un gain [5]. Le jeu sait ce qui est grave ou
+    bon (il a ses couleurs : bon, mauvais, alerte) mais ne s'en sert pas
+    partout.
+    -> Une regle : un chiffre qui menace est en rouge avec un signe, un
+       gain en vert, le reste neutre ; les effets en pastilles colorees ;
+       des jauges pour les reserves (la maquette "fiche a jauges").
+  - LE DEBUT NE DIT PAS QUOI FAIRE [4]. Ses trois parties neuves du 13
+    novembre s'arretent a l'an 1 a 3.
+    -> Un fil d'objectifs discret (fonder le premier village : trouver une
+       bonne terre, camper, passer un hiver...), et la rangee d'alertes de
+       la maquette "les alertes" (la faim, un savoir a choisir, un
+       evenement).
+  - DES ECRANS QUI SE CHEVAUCHENT [7] : le bas du panneau Village ecrit
+    ses lignes les unes sur les autres (signale le 12 novembre, toujours
+    la) ; le panneau Tribu s'ouvre par-dessus la fiche de la bande et la
+    coupe ; l'icone du village couvre la premiere lettre de son nom [8].
+
+  MOYEN
+  - TROP DE CHIFFRES, PAS ASSEZ DE SENS. Le commerce : 30 lignes pour 10
+    biens [10] et un mur de texte orange [11] ; le village : "Defense
+    x2,86", "Recolte x2,42 · vivres x1,22", "force 68". Des multiplicateurs
+    bruts, pas ce qu'ils changent.
+    -> Montrer la consequence ("tient trois semaines de siege", "nourrit
+       240 personnes"), les multiplicateurs au survol ; replier le detail.
+  - DES CHIFFRES SANS NOM dans la barre du haut [3] : "18 · 42 · 14" (le
+    prestige, les gens, les vivres) ; il faut les connaitre.
+    -> Un nom au survol au moins, la tendance (une fleche), le rouge quand
+       ca va mal (la maquette "le bandeau des comptes").
+  - DES ORDRES ACTIFS ET ETEINTS PRESQUE PAREILS [2] : dix boutons sombres,
+    l'eteint a peine plus gris ; la raison au survol seulement.
+    -> L'eteint vraiment efface (ou cache), l'utile mis en avant.
+  - DES BOUTONS PETITS : "Voir", "Honorer", "Heritier" (environ 45 x 18
+    pixels), les vitesses (26 x 24), "Plus tard" [6] est un lien discret
+    loin des choix.
+
+  LEGER
+  - "Commer..." tronque sur le rail ; la legende de l'arbre ressemble a
+    des cases a cocher ; "Plus tard" pourrait etre un bouton de la carte.
+
+
+3. LA HIERARCHIE
+----------------
+  - Ce qui attire l'oeil d'abord : le titre de l'ecran (petites capitales
+    ocre) et les gros boutons orange - c'est juste.
+  - La lecture : de gauche a droite, en colonnes ; correcte dans le
+    village et le commerce, mais tout y a le meme poids (texte de 14 a 16
+    pixels, beige ou gris).
+  - Le vide mal reparti : un grand vide au milieu du panneau Village [9]
+    (un seul village) pendant que le bas deborde ; le panneau Tribu de sa
+    partie neuve : une ligne, puis un grand vide.
+  -> Trois niveaux seulement par ecran : ce qu'il faut faire (en grand,
+     colore), ce qui va (moyen), le detail (petit, replie ou au survol).
+
+
+4. LA COHERENCE
+---------------
+  | L'element | Le probleme | La correction |
+  - LE MOT "CASES" : environ 40 textes affiches parlent encore de cases ("a
+    10 cases" [12], "emprise du chef : 12 cases", "a moins de 15 cases") -
+    il n'y en a plus. -> Un mot pour la distance : la LIEUE.
+  - FERMER : orange (l'action principale) dans le village et le commerce
+    [13], gris ailleurs (tresor, pays, guerre). -> Toujours gris : l'orange
+    est pour l'action de l'ecran.
+  - LES TITRES DE SECTION : petites capitales et pointilles dans un ecran,
+    capitales simples dans un autre ("CHAMPS", "RECOLTES DES DERNIERES
+    ANNEES"). -> Un seul style (theme.section).
+  - LES EFFETS : en vert dans les decisions, en or dans les evenements. ->
+    Les memes pastilles partout.
+
+
+5. L'ACCESSIBILITE (MESUREE)
+----------------------------
+  - LES CONTRASTES (le minimum lisible pour du petit texte : 4,5) :
+      le texte principal (os, lin) : 6,6 a 14,7 - tres bien ;
+      sur le fond "pierre" des grands ecrans (plus clair) : le gris des
+      textes secondaires 3,3, l'ocre des titres de section 3,2, le ROUGE
+      DES ALERTES 3,2 - en dessous ; sur les fonds sombres, ils tiennent
+      tout juste (4,3 a 4,9).
+    -> Assombrir le fond "pierre" (ou eclaircir ces trois couleurs d'un
+       cran) : un seul reglage de la charte (theme.py).
+  - LA TAILLE : beaucoup d'information en "mini" (14 pixels, une police a
+    petit oeil) ; les lignes de 14 pixels du commerce et du village sont
+    dures a lire en 1080p, impossibles en 4K.
+    -> 15-16 pixels pour l'information, 14 pour les etiquettes ; et un
+       REGLAGE "taille de l'interface" (100 %, 125 %, 150 %).
+  - LES COULEURS SEULES : bon (vert) et mauvais (rouge) se distinguent
+    aussi par la clarte et les signes + / - : correct pour les daltoniens,
+    a garder (ne jamais coder par la couleur seule).
+
+
+6. CE QUI MARCHE BIEN
+---------------------
+  - La charte (theme.py) : une seule source pour les couleurs, les
+    panneaux, les polices ; les ecrans se ressemblent.
+  - Le rail qui grandit avec la partie (4 onglets au debut, 9 plus tard) :
+    on n'est pas noye d'entree.
+  - Les touches affichees partout ([T], [D], [Echap]), les fiches au survol
+    qui expliquent les chiffres.
+  - Les ecrans recents (les decisions, les batiments) : une liste a
+    gauche, une fiche a droite - le bon modele.
+  - La carte en formes, les champs en surfaces, les rivieres en courbes.
+
+
+7. LES PRIORITES (dans cet ordre)
+---------------------------------
+  1. LE GRAVE SE VOIT : la regle des couleurs (menace en rouge et signe,
+     gain en vert), les effets en pastilles, les jauges de vivres sur la
+     fiche d'une unite ; corriger les chevauchements [7] [8].
+  2. LE DEBUT GUIDE : un fil d'objectifs et la rangee d'alertes (rejoint
+     "le debut" de la review du 2026-11-17).
+  3. LIRE SANS EFFORT : le fond "pierre" assombri (les contrastes),
+     l'information a 15-16 pixels, un reglage de la taille de l'interface.
+  4. MOINS DE CHIFFRES : le commerce d'abord (replie, la consequence plutot
+     que le multiplicateur), puis le village.
+  5. UNE PASSE DE COHERENCE : "lieues" au lieu de "cases", Fermer toujours
+     gris, un seul style de titre, les memes pastilles d'effets.
+  Ce que j'en ferais dans la serie 1 du rework (sa planche du 12
+  novembre) : la barre du haut A avec la rangee d'alertes de B ; l'unite
+  A (les jauges) ; l'evenement A (les effets en pastilles) ; le journal A.

@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-11-17.
+Derniere mise a jour : 2026-11-19.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -977,6 +977,18 @@ lente, bandes dessinees petites a taille fixe.
     ouvertures de routes en 30 ans), 47 evenements sur 66 qui ne tombent
     jamais, l'arbre epuise ; huit propositions dans l'ordre (le debut
     d'abord).
+2026-11-19
+  - "Maintenant que tu as plus de skills, dont sur les interfaces, apporte
+    un regard nouveau aux interfaces du jeu." FAIT (propose ; spec
+    2026-11-19-critique-interfaces.txt, planche docs/maquettes/regard_neuf/
+    planche_critique.png) : une critique de design sur ses parties (la
+    premiere impression, l'usage, la hierarchie, la coherence,
+    l'accessibilite mesuree). L'essentiel se noie (une bande sans vivres
+    ecrite comme le reste, une perte en or comme un gain) ; le debut ne dit
+    pas quoi faire ; des ecrans qui se chevauchent (le bas du panneau
+    Village, toujours la) ; trop de multiplicateurs, pas assez de sens ; le
+    gris, l'ocre et le rouge sous le contraste lisible sur les grands
+    ecrans ; 40 textes parlent encore de "cases". Cinq priorites.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -1079,6 +1091,10 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 2026-11-17-review-projet.txt, section 5.
 
   En attente de SON choix, EN COURS :
+  - CRITIQUE    le regard neuf sur les interfaces (2026-11-19-critique-
+                interfaces.txt, section 7) : le grave qui se voit, le debut
+                guide, lire sans effort, moins de chiffres, une passe de
+                coherence ; avec un choix propose pour la serie 1.
   - REWORK       le rework des interfaces, serie par serie : la serie 1
                 proposee (2026-11-12-rework-interfaces-serie1.txt, planche
                 docs/maquettes/rework/planche_serie1.png) ; series 2 (les

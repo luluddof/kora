@@ -13,7 +13,7 @@ from src.kora.partie import fresh_ui
 st, play, r = commun.load(sys.argv[2], sys.argv[3])
 OUT = sys.argv[3]
 me = st.viewer
-village = next(s for s in sorted(st.sites.values(), key=lambda s: s.id) if s.kind == "village" and s.tribe_id == me)
+village = next((s for s in sorted(st.sites.values(), key=lambda s: s.id) if s.kind == "village" and s.tribe_id == me), None)
 
 
 def shot(name, side=None, **ui):
@@ -29,13 +29,18 @@ shot("01_carte")
 for i, side in enumerate(("savoirs", "tribu", "peuples", "journal")):
     shot(f"02_panneau_{side}", side)
 for page in ("village", "batiments", "metiers", "chef"):
-    shot(f"03_village_{page}", village_open=village.id, village_page=page)
+    if village is not None:
+        shot(f"03_village_{page}", village_open=village.id, village_page=page)
 for name, key in (("commerce", "trade_open"), ("tresor", "treasury_open"), ("pays", "country_open"), ("decisions", "decisions_open")):
     shot(f"04_{name}", **{key: True})
 shot("04_armee_guerres", wars_open=True, war_pick="armee")
-# Une troupe choisie : la carte de l'unite en bas.
-home = next(b for b in st.bands.values() if b.tribe_id == me and b.village)
-army = troupes.raise_army(st, home.id)
+# Une troupe choisie (ou sa bande, s'il est nomade) : la carte de l'unite.
+home = next((b for b in st.bands.values() if b.tribe_id == me and b.village), None)
+if home is not None:
+    army = troupes.raise_army(st, home.id)
+else:
+    army = max((b for b in st.bands.values() if b.tribe_id == me), key=lambda b: b.population)
+    home = army
 if army is not None:
     play.selected = army.id
     shot("05_unite_choisie")
