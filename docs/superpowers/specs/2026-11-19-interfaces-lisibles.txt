@@ -120,7 +120,13 @@ d'alertes de B, l'unite A, l'evenement A, le journal A).
   - Sur SES parties (des copies) : sa partie de l'an 48 (Utopie, le village
     d'Ilsen) et sa partie neuve du 13 novembre (an 3, une bande de 42) :
     tous les ecrans captures (docs/maquettes/source_ecrans/maq_existant.py),
-    avant et apres (docs/maquettes/lisibles/).
+    avant et apres (docs/maquettes/lisibles/) ; une image par changement,
+    agrandie, l'avant pris avec le code de la 0.31
+    (docs/maquettes/lisibles/en_grand/, maq_zooms.py).
+  - En relisant ces images, apres la publication : le commerce ne montrait
+    plus que trois peuples a qui proposer des echanges (le titre de section
+    plus haut avait pris leur place) ; corrige dans le depot, il partira
+    avec la prochaine version.
   - La simulation ne change pas (l'empreinte est la meme : seuls les textes
     affiches et l'ecran ont change).
   - Les tests (dont ceux des clics et des survols de tous les ecrans), le

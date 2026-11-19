@@ -87,10 +87,10 @@ def trade_layout(width: int, height: int, n_routes: int = 0, n_partners: int = 0
     open_r = (x0, y, rw, 30)
     y += 54
     theirs = (x0, y, rw, 24 + 16 * len(goods.GOODS))
-    y += theirs[3] + 8
+    y += theirs[3] + 4
     candidates = []
     for i in range(min(n_candidates, MAX_CANDIDATES)):
-        candidates.append({"row": (x0, y + 26 + i * 28, rw, 24), "ask": (x0 + rw - 96, y + 26 + i * 28 + 2, 96, 20)})
+        candidates.append({"row": (x0, y + 22 + i * 26, rw, 24), "ask": (x0 + rw - 96, y + 22 + i * 26 + 2, 96, 20)})
     return {
         "box": (bx, by, bw, bh),
         "close": close,
