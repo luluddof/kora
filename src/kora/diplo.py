@@ -874,7 +874,7 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
     if action == "cadeau":
         carrier = gift_carrier(state, actor, target)
         if carrier is None:
-            return Verdict(blocked=f"Aucune de vos bandes à moins de {GIFT_RANGE} cases d'eux")
+            return Verdict(blocked=f"Aucune de vos bandes à moins de {GIFT_RANGE} lieues d'eux")
         return Verdict(score=1, reasons=[("Un cadeau est toujours accepté", 1)])
     if action == "present":
         if not money.has_money(state, actor):
@@ -954,7 +954,7 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
             return Verdict(blocked="Ils n'ont pas de village : rien a échanger")
         dist, reach = goods.trade_distance(state, actor, target), goods.trade_range(state, actor, target)
         if dist > reach:
-            return Verdict(blocked=f"Trop loin : {dist} cases entre vos villages ({reach} au plus)")
+            return Verdict(blocked=f"Trop loin : {dist} lieues entre vos villages ({reach} au plus)")
         if rel < -15:
             return Verdict(blocked=f"Relation trop basse ({rel:.0f}, il faut -15)")
         out.append(("Base", -10))

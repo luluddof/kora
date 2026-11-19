@@ -34,7 +34,7 @@ from src.kora.globe_draw import (
     Planet,
     hex_screen_px,
 )
-from src.kora.log import FILTER_ALL, GameLog, LogKind
+from src.kora.log import FILTER_ALL, GameLog, LogKind, group_repeats
 from src.kora.path import travel_weeks
 from src.kora.peoples import color_of
 from src.kora.look import country_color
@@ -80,6 +80,7 @@ from src.kora.world import axial_to_offset, offset_to_axial
 from src.kora.theme import C
 from src.kora import resources
 from src.kora import render_decisions
+from src.kora import render_objectifs
 from src.kora.resources import COLORS, LABELS, NAMES
 from src.kora.batiments import palisade_state
 from src.kora.layout import panel_box
@@ -278,6 +279,11 @@ class Renderer:
         self.atlas_font = theme.font_file("sc-bold", 22)
         self.atlas_small = theme.font_file("sans-italic", 17)
         self.hud_hits = hud_layout(screen.get_width())
+        # La colonne de gauche (render_objectifs) : ses rectangles, son haut, son bas.
+        self.alert_hits: dict = {}
+        self.goal_hits: dict = {}
+        self.column_top = HUD_HEIGHT + 8
+        self.left_floor = screen.get_height() - 60
         self.menu_hits = menu_layout(screen.get_width(), screen.get_height())
         self.side_hits = side_layout(screen.get_width(), screen.get_height())
         self.decisions_hits = self.side_hits
@@ -607,9 +613,12 @@ class Renderer:
         # de la bande choisie (la souris est sur la carte du monde).
         if ui is not None and ui.get("attack_preview"):
             self.draw_attack_preview(ui["attack_preview"])
-        # Les cartes d'evenement et le bandeau des situations restent sous
-        # les panneaux ouverts.
-        render_panels.draw_event_cards(self, state, ui)
+        # La colonne de gauche (2026-11-19) : les alertes, les cartes
+        # d'evenement, le chemin du premier village ; sous les panneaux ouverts.
+        self.column_top = extra_y
+        col_y = render_objectifs.draw_alerts(self, state)
+        ev_bottom = render_panels.draw_event_cards(self, state, ui, col_y)
+        render_objectifs.draw_goal(self, state, ui, ev_bottom + 4)
         if open_fight is None:
             # La dalle de bataille d'abord : les fiches du bandeau passent dessus.
             render_battle.draw(self, state)
@@ -641,6 +650,11 @@ class Renderer:
             self.draw_menu()
 
     def draw_band_card(self, state: GameState, selected_id: int | None) -> None:
+        """La fiche de l'unite choisie (2026-11-19, la maquette "a jauges") :
+        le nom, le lieu et la saison ; des JAUGES pour ce qui fait vivre ou
+        mourir (les vivres, la collecte, l'attachement d'un clan), rouges
+        quand ca menace ; les gens et ce qu'ils font ; les alertes ; les
+        ordres (l'eteint s'efface, le village possible s'allume)."""
         band = state.bands.get(selected_id) if selected_id is not None else None
         if band is None or band.tribe_id != state.viewer or band.village:
             # Un village se gere dans son ecran (render_village.py).
@@ -648,21 +662,41 @@ class Renderer:
             return
         info = band_summary(state, band.id)
         lines = band_lines(info)
+        gauges = band_gauges(state, band, info)
+        rest = lines[3:]
         w, h = self.screen.get_size()
-        layout = band_card_layout(w, h, len(lines))
+        avoid = (self.side_hits or {}).get("box")
+        layout = band_card_layout(w, h, 1 + len(rest), avoid, extra=GAUGE_H)
+        if layout.get("hidden"):
+            # Le panneau ouvert prend la place : la fiche revient quand il se ferme.
+            self.band_hits = {}
+            return
         self.band_hits = layout
         bx, by, bw, bh = layout["box"]
         theme.panel(self.screen, layout["box"], "peau")
         color = country_color(state, band.tribe_id)
         pygame.draw.polygon(self.screen, color, theme.chamfer((bx + 10, by + 14, 5, 26), 1))
         warn_from = band_warn_from(info)
-        yy = by + 12
-        for i, line in enumerate(lines):
-            if i == 0:
-                theme.text(self.screen, line, "h3", C.os, (bx + 24, yy), bw - 40)
-                yy += 24
-                continue
-            col = C.alerte if i >= warn_from else (C.lin if i < 3 else C.ocre_jaune)
+        # Le titre, et le lieu a droite (le sol, la saison, l'hiver d'ici).
+        place = lines[2]
+        pw = min(bw // 2 - 20, theme.font("mini").size(place)[0])
+        theme.text(self.screen, lines[0], "h3", C.os, (bx + 24, by + 12), bw - 48 - pw - 12)
+        theme.text(self.screen, place, "mini", C.cendre, (bx + bw - 18 - pw, by + 15), pw)
+        # Les jauges.
+        gy = by + 42
+        gap = 16
+        gw = (bw - 48 - gap * (len(gauges) - 1)) // max(1, len(gauges))
+        for i, g in enumerate(gauges):
+            gx = bx + 24 + i * (gw + gap)
+            theme.gauge(self.screen, (gx, gy, gw, 46), g["frac"], g["label"], g["value"], g["color"], g["note"], g.get("note_color"))
+            for m in g.get("marks", ()):
+                mx_ = gx + int(gw * m)
+                pygame.draw.line(self.screen, C.os, (mx_, gy + 17), (mx_, gy + 29), 1)
+        yy = gy + GAUGE_H
+        for i, line in enumerate(rest, start=3):
+            col = C.alerte if i >= warn_from else (C.lin if i < 5 else C.ocre_jaune)
+            if i >= warn_from and info.get("hunger") == "famine":
+                col = C.mauvais
             theme.text(self.screen, line, "petit", col, (bx + 24, yy), bw - 40)
             yy += 18
         actions = orders.band_actions(state, band.id)
@@ -681,7 +715,9 @@ class Renderer:
             head, key_hint = split_hint(labels[key])
             # Le bouton "camp" d'une troupe ravage (ravage.py) : une torche.
             icon = "torche" if key == "camp" and band.kind == "armee" else BAND_ICONS.get(key)
-            theme.button(self.screen, rect, head, "second", on, hover, icon_key=icon, key_hint=key_hint, role="bouton_petit")
+            # Fonder le village, quand c'est possible : le but du debut, en avant.
+            rank = "principal" if key == "village" and on and band.kind != "armee" else "second"
+            theme.button(self.screen, rect, head, rank, on, hover, icon_key=icon, key_hint=key_hint, role="bouton_petit")
         warn = hint != BAND_HINT and hint not in hints.values()
         theme.text(self.screen, hint, "mini", C.alerte if warn else C.cendre, (bx + 16, by + bh - 10 - 18), bw - 32)
 
@@ -1170,7 +1206,7 @@ class Renderer:
         bx, by, bw, bh = layout["box"]
         theme.panel(self.screen, layout["box"], "peau")
         mx, my = pygame.mouse.get_pos()
-        theme.button(self.screen, layout["close"], "Fermer", "discret", True, _contains(layout["close"], mx, my))
+        theme.button(self.screen, layout["close"], "Fermer", "second", True, _contains(layout["close"], mx, my))
         yy = by + 10
         for i, line in enumerate(lines):
             if i == 0:
@@ -1269,8 +1305,8 @@ class Renderer:
         col = C.braise if (ready and not opened) else (C.ocre_jaune if opened else (C.os if hover else C.lin))
         isz = 28
         self.screen.blit(theme.icon(icon_key or "feu", isz, col), (tx + (tw - isz) // 2, ty + 8))
-        f = theme.font("mini_gras")
-        name = theme.fit(f, label, tw - 6)
+        f = theme.font("onglet")
+        name = theme.fit(f, label, tw - 4)
         img = f.render(name, True, col)
         self.screen.blit(img, (tx + (tw - img.get_width()) // 2, ty + th - img.get_height() - 7))
         if opened:
@@ -1482,10 +1518,13 @@ class Renderer:
         """La fiche d'une case : au survol (pres de la souris, INSPECT_MAX_W au
         plus) et epinglee (en bas a gauche)."""
         w, h = self.screen.get_size()
+        # Le bas de la colonne de gauche (render_objectifs) : la fiche epinglee.
+        self.left_floor = h - MAP_BUTTON_H - 22
         if pin_info:
             pin_lines = self._wrapped(inspect_lines(pin_info), 270)
             ph = 18 + 24 + 18 * max(0, len(pin_lines) - 1)
             self._draw_inspect_card(pin_info, 12, h - ph - 12 - MAP_BUTTON_H - 10, 270, ph, pinned=True)
+            self.left_floor = h - ph - 12 - MAP_BUTTON_H - 18
         if hover_info and (pin_info is None or hover_info.get("hex") != pin_info.get("hex")):
             mx, my = pygame.mouse.get_pos()
             lines = self._inspect_lines(hover_info)
@@ -1550,23 +1589,38 @@ class Renderer:
             lit = (not clock.paused) and n <= clock.speed
             theme.button(self.screen, rect, str(n), "principal" if lit else "second", True, _contains(rect, mx, my), role="petit_gras")
         tribe = state.tribes[state.viewer]
-        pop = sum(b.population for b in state.bands.values() if b.tribe_id == state.viewer)
-        stock = sum(b.stock for b in state.bands.values() if b.tribe_id == state.viewer)
+        # LES COMPTES DU PEUPLE (2026-11-19) : chacun son nom, sa tendance sur
+        # un mois (une pointe), sa couleur quand ca va mal ; le detail au survol.
         x = width - 16
         num = theme.font("chiffre")
-        chips = [("vivres", f"{stock:.0f}", C.lin), ("gens", str(pop), C.os)]
-        if _money.has_money(state, state.viewer):
-            # Le tresor (sicles) : un clic ou [G] ouvre l'ecran du tresor.
-            chips.append(("pieces", f"{tribe.money:.0f}", (196, 204, 222)))
-        chips.append(("prestige", str(tribe.prestige), C.ocre_jaune))
-        for key, value, col in chips:
-            img = num.render(value, True, col)
-            x -= img.get_width()
-            self.screen.blit(num.render(value, True, C.nuit), (x + 1, (HUD_HEIGHT - img.get_height()) // 2 + 2))
-            self.screen.blit(img, (x, (HUD_HEIGHT - img.get_height()) // 2))
+        lab = theme.font("etiquette")
+        tips = None
+        layout["accounts"] = {}
+        for acc in hud_accounts(state):
+            value = acc["value"]
+            img = num.render(value, True, acc["color"])
+            name_w = lab.size(acc["name"])[0]
+            arrow = 10 if acc["trend"] else 0
+            cw = max(img.get_width() + arrow, name_w)
+            x -= cw
+            rect = (x - 30, 2, cw + 34, HUD_HEIGHT - 4)
+            layout["accounts"][acc["key"]] = rect
+            over = _contains(rect, mx, my)
+            if over:
+                pygame.draw.polygon(self.screen, C.cuir_clair, theme.chamfer(rect, 4))
+            nx = x + (cw - img.get_width() - arrow) // 2
+            self.screen.blit(num.render(value, True, C.nuit), (nx + 1, 5))
+            self.screen.blit(img, (nx, 3))
+            if acc["trend"]:
+                up = acc["trend"] > 0
+                tone = C.bon if up == acc["good_up"] else C.mauvais
+                theme._arrow(self.screen, nx + img.get_width() + 3, 11, up, tone)
+            self.screen.blit(lab.render(acc["name"], True, C.cendre if not over else C.lin), (x + (cw - name_w) // 2, 28))
             x -= 28
-            self.screen.blit(theme.icon(key, 24, col), (x, (HUD_HEIGHT - 24) // 2))
-            x -= 22
+            self.screen.blit(theme.icon(acc["icon"], 24, acc["color"]), (x, 8))
+            x -= 24
+            if over:
+                tips = (acc["tip"], rect)
         # Le savoir en cours : son nom et sa barre.
         if tribe.learning and tribe.learning in tech.TECHS:
             t = tech.TECHS[tribe.learning]
@@ -1575,19 +1629,166 @@ class Renderer:
             speeds_end = max(rx + rw for rx, _ry, rw, _rh in layout["speeds"].values())
             box_w = max(110, min(190, x - speeds_end - 16))
             x -= box_w
+            layout["savoir"] = (x - 4, 4, box_w + 4, HUD_HEIGHT - 8)
+            if _contains(layout["savoir"], mx, my):
+                pygame.draw.polygon(self.screen, C.cuir_clair, theme.chamfer(layout["savoir"], 4))
             self.screen.blit(theme.icon("savoir", 22, C.savoir), (x, 8))
             theme.text(self.screen, t.name, "mini_gras", C.os, (x + 28, 7), box_w - 32)
             theme.bar(self.screen, (x + 28, 28, box_w - 34, 8), done, C.savoir)
         elif learning.available(state, state.viewer):
-            x -= 190
-            self.screen.blit(theme.icon("savoir", 22, C.braise), (x, 14))
-            theme.text(self.screen, "Choisir un savoir [T]", "petit_gras", C.braise, (x + 28, 15))
+            # Un savoir a choisir : un vrai bouton (un clic ouvre l'arbre) ;
+            # plus court si la barre est etroite (jamais sur les boutons du temps).
+            speeds_end = max(rx + rw for rx, _ry, rw, _rh in layout["speeds"].values())
+            room = x - speeds_end - 20
+            label = "Choisir un savoir" if room >= 200 else ("Un savoir" if room >= 130 else "")
+            bw_ = 192 if label == "Choisir un savoir" else (min(room, 140) if label else 44)
+            x -= bw_ + 8
+            layout["savoir"] = (x, 9, bw_, 34)
+            over = _contains(layout["savoir"], mx, my)
+            theme.glow(self.screen, layout["savoir"], C.braise, 0.3 + 0.5 * theme.pulse(pygame.time.get_ticks() / 1000.0))
+            theme.button(self.screen, layout["savoir"], label, "principal", True, over, icon_key="savoir", key_hint="T" if label else "")
+        if tips is not None:
+            theme.tooltip(self.screen, tips[0], tips[1][0] + tips[1][2] - 340, HUD_HEIGHT + 6, 340, avoid=tips[1])
         extra_y = HUD_HEIGHT + 8
         if human_dead(state, state.viewer):
             theme.text(self.screen, "Votre peuple n'est plus", "h2", C.mauvais, (16, extra_y), shadow=True)
             extra_y += 26
         if state.last_error:
             theme.text(self.screen, state.last_error, "petit", C.alerte, (16, extra_y))
+
+
+# La hauteur des jauges de la fiche d'une unite (render.draw_band_card).
+GAUGE_H = 54
+# Les vivres pleins : douze semaines (au-dela, la jauge est pleine).
+GAUGE_FOOD_WEEKS = 12.0
+
+
+def band_gauges(state, band, info) -> list[dict]:
+    """Les jauges de la fiche d'une unite : les vivres (en semaines), la
+    collecte (contre le besoin : le trait blanc), l'attachement d'un clan
+    qui n'est pas celui du chef (les traits : partir, obeir)."""
+    out = []
+    weeks = info["stock_weeks"]
+    forage, need = info["forage"], max(1, info["need"])
+    short = forage < need
+    if weeks < 1:
+        col = C.mauvais if short else C.alerte
+        note = "plus rien en réserve : la faim" if short else "rien en réserve ; la collecte nourrit"
+    elif weeks < 4:
+        col = C.alerte
+        note = f"de quoi tenir {weeks:.0f} semaine{'s' if weeks >= 2 else ''}"
+    else:
+        col = C.bon
+        note = f"de quoi tenir {weeks:.0f} semaines"
+    out.append({"label": "Vivres", "value": f"{weeks:.0f} sem.", "frac": weeks / GAUGE_FOOD_WEEKS, "color": col, "note": note, "note_color": col if col is not C.bon else None})
+    if band.kind == "armee":
+        out.append({"label": "Force", "value": f"{info.get('force', 0):.0f}", "frac": min(1.0, band.population / 200.0), "color": C.ocre_jaune, "note": f"{band.population} guerriers"})
+    else:
+        if short:
+            note, col = f"il manque {need - forage:.0f} par semaine : bougez", C.mauvais
+        else:
+            note, col = f"{forage - need:.0f} de plus que le besoin", C.bon
+        out.append({"label": "Collecte", "value": f"{forage:.0f} / {need}", "frac": forage / (2.0 * need), "color": col, "note": note, "note_color": col if short else None, "marks": (0.5,)})
+    if band.tribe_id == state.viewer and not chiefs.is_chief_band(state, band):
+        loy = band.loyalty
+        col = C.mauvais if loy < chiefs.LEAVE else C.alerte if loy < chiefs.OBEY else C.bon
+        out.append({"label": "Attachement", "value": f"{loy:.0f}", "frac": loy / 100.0, "color": col, "note": chiefs.mood(state, band), "note_color": col if col is not C.bon else None, "marks": (chiefs.LEAVE / 100.0, chiefs.OBEY / 100.0)})
+    return out
+
+
+# La memoire des comptes (pour la tendance) : rangee sur la partie elle-meme
+# (jamais selon son adresse), une valeur par semaine, les 9 dernieres.
+HUD_TREND_WEEKS = 4
+
+
+def _hud_history(state, now: dict) -> dict:
+    hist = state.__dict__.setdefault("_hud_hist", {})
+    if hist.get("viewer") != state.viewer:
+        hist.clear()
+        hist["viewer"] = state.viewer
+    weeks = hist.setdefault("weeks", {})
+    weeks[state.tick_count] = now
+    for old in sorted(weeks)[:-9]:
+        del weeks[old]
+    return weeks
+
+
+def _trend(weeks: dict, tick: int, key: str, now: float, eps: float) -> int:
+    """+1, -1 ou 0 : la valeur d'il y a HUD_TREND_WEEKS semaines (ou la plus
+    ancienne gardee, deux semaines au moins) contre celle d'aujourd'hui."""
+    past = [t for t in weeks if t <= tick - 2]
+    if not past:
+        return 0
+    far = [t for t in past if t <= tick - HUD_TREND_WEEKS]
+    then = weeks[max(far) if far else min(past)].get(key)
+    if then is None:
+        return 0
+    if now > then + eps:
+        return 1
+    if now < then - eps:
+        return -1
+    return 0
+
+
+def hud_accounts(state) -> list[dict]:
+    """Les comptes du peuple dans la barre du haut, de droite a gauche :
+    {key, name, icon, value, color, trend, good_up, tip}."""
+    me = state.viewer
+    tribe = state.tribes[me]
+    mine = [b for b in state.bands.values() if b.tribe_id == me]
+    pop = sum(b.population for b in mine)
+    stock = sum(b.stock for b in mine)
+    weeks_food = stock / max(1, pop)
+    has_money = _money.has_money(state, me)
+    now = {"vivres": stock, "gens": pop, "argent": tribe.money if has_money else 0.0, "prestige": tribe.prestige}
+    hist = _hud_history(state, now)
+    tick = state.tick_count
+
+    def word(t: int, up: str, down: str) -> str:
+        return up if t > 0 else down if t < 0 else "stable"
+
+    out = []
+    t = _trend(hist, tick, "prestige", tribe.prestige, 0.5)
+    out.append({
+        "key": "prestige", "name": "prestige", "icon": "prestige", "value": str(tribe.prestige), "color": C.ocre_jaune,
+        "trend": t, "good_up": True,
+        "tip": [("Prestige", C.os, "petit_gras"),
+                (f"{tribe.prestige} sur 100 : ce que les autres peuples pensent de votre force et de votre nom.", C.lin, "mini"),
+                (f"Sur un mois : {word(t, 'en hausse', 'en baisse')}.", C.cendre, "mini")],
+    })
+    if has_money:
+        t = _trend(hist, tick, "argent", tribe.money, max(1.0, abs(tribe.money) * 0.02))
+        col = C.mauvais if tribe.money < 0 else (196, 204, 222)
+        out.append({
+            "key": "argent", "name": "sicles", "icon": "pieces", "value": f"{tribe.money:.0f}", "color": col,
+            "trend": t, "good_up": True,
+            "tip": [("Le trésor", C.os, "petit_gras"),
+                    (f"{tribe.money:.0f} sicles d'argent. L'onglet Trésor (G) : le budget, la solde, les gages.", C.lin, "mini"),
+                    (f"Sur un mois : {word(t, 'il monte', 'il baisse')}.", C.cendre, "mini")],
+        })
+    t = _trend(hist, tick, "gens", pop, max(1.0, pop * 0.01))
+    out.append({
+        "key": "gens", "name": "gens", "icon": "gens", "value": str(pop), "color": C.os,
+        "trend": t, "good_up": True,
+        "tip": [("Vos gens", C.os, "petit_gras"),
+                (f"{pop} personnes dans vos bandes, vos villages et vos troupes.", C.lin, "mini"),
+                (f"Sur un mois : {word(t, 'plus nombreux', 'moins nombreux')}.", C.cendre, "mini")],
+    })
+    t = _trend(hist, tick, "vivres", stock, max(1.0, stock * 0.03))
+    if weeks_food < 2:
+        col, say = C.mauvais, "La faim est là, ou tout près : bougez vos bandes, rationnez, achetez du grain."
+    elif weeks_food < 4:
+        col, say = C.alerte, "C'est peu : un mauvais hiver, et la faim viendra."
+    else:
+        col, say = C.lin, "De quoi voir venir."
+    out.append({
+        "key": "vivres", "name": "vivres", "icon": "vivres", "value": f"{stock:.0f}", "color": col,
+        "trend": t, "good_up": True,
+        "tip": [("Les vivres", C.os, "petit_gras"),
+                (f"{stock:.0f} en réserve : {weeks_food:.0f} semaine{'s' if weeks_food >= 2 else ''} pour vos {pop} personnes. {say}", col, "mini"),
+                (f"Sur un mois : {word(t, 'en hausse', 'en baisse')}.", C.cendre, "mini")],
+    })
+    return out
 
 
 def _draw_age(self, state, layout, x: int) -> None:
@@ -1639,16 +1840,19 @@ def draw_journal(self, state, layout, log_filter, log_newest) -> None:
             active = not log_newest
         self._draw_chip(rect, labels[key], active)
     log = log_of(state, state.viewer) if isinstance(state.log, GameLog) else GameLog()
-    rows = log.filtered(log_filter, newest_first=log_newest)
+    # Les lignes qui se repetent (la famine, semaine apres semaine) n'en font
+    # qu'une, avec leur nombre de fois et leurs dates (log.group_repeats).
+    rows = group_repeats(log.filtered(log_filter, newest_first=log_newest))
     list_y = layout["items"]["sort_recent"][1] + 36
     theme.dotted(self.screen, (bx + 16, list_y - 8), (bx + bw - 16, list_y - 8), C.ocre_sombre, 5)
     bottom = by + bh - 12
     f, fm = theme.font("petit"), theme.font("mini")
     text_w = bw - 64
     mx, my = pygame.mouse.get_pos()
-    for entry in rows:
-        parts = theme.wrap(f, entry.text, text_w)
-        row_h = 16 + 18 * len(parts) + 6
+    for group in rows:
+        entry, first, count = group["entry"], group["first"], group["count"]
+        parts = theme.wrap(f, group["text"], text_w)
+        row_h = 18 + 18 * len(parts) + 6
         if list_y + row_h > bottom:
             break
         placed = entry.hex is not None
@@ -1656,12 +1860,19 @@ def draw_journal(self, state, layout, log_filter, log_newest) -> None:
         if placed and _contains(rect, mx, my):
             pygame.draw.polygon(self.screen, C.cuir_clair, theme.chamfer(rect, 4))
         kind = getattr(entry.kind, "value", str(entry.kind))
-        col = C.mauvais if kind == "combat" else C.ocre_jaune
+        col = C.mauvais if kind == "combat" or (kind == "survie" and "amine" in entry.text) else C.ocre_jaune
         self.screen.blit(theme.icon(KIND_ICONS.get(kind, "feu"), 18, col), (bx + 16, list_y + 2))
-        self.screen.blit(fm.render(f"an {entry.year}, semaine {entry.week}", True, C.cendre), (bx + 42, list_y))
+        if count > 1:
+            same_year = first.year == entry.year
+            a, b = (first, entry) if first.seq < entry.seq else (entry, first)
+            when = f"an {a.year}, semaines {a.week} à {b.week}" if same_year else f"an {a.year} sem. {a.week} à an {b.year} sem. {b.week}"
+            when += f"  ·  {count} fois"
+        else:
+            when = f"an {entry.year}, semaine {entry.week}"
+        self.screen.blit(fm.render(theme.fit(fm, when, text_w - (22 if placed else 0)), True, C.cendre), (bx + 42, list_y))
         if placed:
             self.screen.blit(theme.icon("voir", 15, C.lin), (bx + bw - 34, list_y))
-        yy = list_y + 16
+        yy = list_y + 18
         for part in parts:
             self.screen.blit(f.render(part, True, C.os), (bx + 42, yy))
             yy += 18

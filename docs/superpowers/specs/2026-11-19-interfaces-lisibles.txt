@@ -1,0 +1,138 @@
+Kora - Des interfaces qui se lisent : le grave se voit, le debut guide (0.32.0)
+==========================================================================
+Date : 2026-11-19. Statut : FAIT (0.32.0) ; ce qui reste, dit en section 7.
+
+Sa demande (2026-11-19), apres la critique du meme jour
+(2026-11-19-critique-interfaces.txt) : "je te laisse faire pour ameliorer,
+rendre plus original, plus comprehensible, etc., les interfaces". Je suis
+parti des cinq priorites de la critique et des choix que je lui avais
+proposes pour la serie 1 du rework (la barre du haut A avec la rangee
+d'alertes de B, l'unite A, l'evenement A, le journal A).
+
+
+1. LE GRAVE SE VOIT (la priorite 1 de la critique)
+--------------------------------------------------
+  UNE REGLE DE SENS pour tout le jeu (theme.TONES, tone_of, effect_chip,
+  effect_row) : un gain en vert avec une pointe en haut, une perte en rouge
+  avec une pointe en bas, le reste neutre ; la couleur ET la forme (jamais
+  la couleur seule).
+  - LES CARTES D'EVENEMENT : les effets d'un choix en PASTILLES ("+4 a 7
+    personnes" en vert, "-1 sem. de vivres" en rouge ; une option a issues :
+    "60 %" puis ses effets). Le sens vient de l'effet lui-meme
+    (events.effect_tone : une perte de vivres, un tribut paye, un clan qui
+    part sont des pertes ; un savoir qui avance, un campement, une contree
+    decouverte sont des gains), pas de la couleur d'un texte.
+    "Plus tard" est un vrai bouton.
+  - LES DECISIONS : ce que ca coute porte une pointe rouge, ce que ca fait
+    une pointe verte (rouge s'il s'y trouve une perte : "Relation -10").
+  - LA FICHE D'UNE UNITE (la maquette "a jauges") : des JAUGES pour les
+    vivres (en semaines ; rouge sous 2 semaines si la collecte ne suffit
+    pas, orange sous 4), la collecte contre le besoin (un trait blanc : le
+    besoin ; rouge quand elle ne suffit pas : "il manque 6 par semaine :
+    bougez"), l'attachement d'un clan (les traits : partir, obeir) ; une
+    troupe : sa force. Le lieu, la saison et l'hiver d'ici en haut a droite.
+    LES ORDRES ETEINTS s'effacent vraiment (un creux sans relief, l'ecriture
+    sombre) ; "Village [V]", quand on peut fonder, s'allume en orange.
+  - LE PANNEAU VILLAGE : le grenier dit sa CONSEQUENCE ("Avant la recolte,
+    dans 22 sem., le grain manquera 2 sem. : rationnez, achetez...") au lieu
+    d'un chiffre ; la stabilite dit ce qui la porte et ce qui la mine, en
+    pastilles (+12 prestige, -4 le prelevement du chef...).
+  - LES CHEVAUCHEMENTS corriges : le bas du panneau Village (dix biens sur
+    cinq rangs, mesures d'abord, la liste prend le reste), l'icone du
+    village qui couvrait la premiere lettre de son nom, LA FICHE DE LA BANDE
+    sous le panneau Tribu (elle se range a sa gauche, sinon au-dessus du
+    bouton des cartes, sinon elle attend qu'il se ferme), les noms du rail
+    coupes ("Commer...", "Decisio..." : tous entiers).
+
+
+2. LE DEBUT GUIDE (la priorite 2)
+---------------------------------
+  LA COLONNE DE GAUCHE, "ce qui attend" (render_objectifs.py, la logique
+  dans objectifs.py, lue dans la partie sans la changer) :
+  - LES ALERTES, en haut, les plus graves d'abord (quatre au plus) : une
+    bande ou un village qui meurt de faim, une disette en vue, un village
+    assiege ou qui s'agite, un clan qui veut partir, la solde impayee, une
+    guerre declaree. Chacune a sa couleur (rouge : grave, orange : a
+    surveiller) et un clic mene ou agir (la bande choisie et la camera sur
+    elle, l'ecran du village, le panneau Tribu, le tresor, les guerres).
+  - LES CARTES D'EVENEMENT dessous (comme avant).
+  - LE CHEMIN DU PREMIER VILLAGE, tant que le peuple n'en a pas : quatre
+    etapes cochees au fil de la partie (savoir camper ; Premieres
+    semailles ; un campement sur une terre a cultiver ; fonder), et ce qui
+    manque a l'etape en cours, en mots et en chiffres, tire des vraies
+    regles du jeu (les conditions du savoir : "Peuple 120 : 42 sur 120",
+    "4 hivers traverses : 1 sur 4", "20 sem. pres de cereales ou de racines
+    sauvages : 3 sur 20" ; la regle de la fondation : 20 personnes, une
+    terre a plus de 35 % de fertilite autour du campement). Un clic sur son
+    titre le replie. Ses trois parties neuves du 13 novembre s'etaient
+    arretees a l'an 1 a 3, faute de savoir ce qu'on cherchait.
+  - "Choisir un savoir" dans la barre du haut est un vrai bouton (il
+    respire) ; un clic ouvre l'arbre, comme sur le savoir en cours.
+  - LE JOURNAL ET LES NOUVELLES ne repetent plus : les lignes qui se suivent
+    et ne different que par leurs nombres n'en font qu'une ("Famine : 12
+    morts", an 2, semaines 3 a 14, 9 fois ; log.group_repeats) ; une
+    nouvelle qui revient met a jour sa dalle au lieu d'en empiler une autre.
+
+
+3. LA BARRE DU HAUT (la maquette "le bandeau des comptes")
+---------------------------------------------------------
+  Chaque compte a son NOM sous son chiffre (vivres, gens, sicles,
+  prestige), une POINTE de tendance sur un mois (verte en hausse, rouge en
+  baisse), et sa couleur quand ca va mal (les vivres rouges sous deux
+  semaines pour tout le peuple, orange sous quatre ; les sicles rouges
+  sous zero). Au survol, une fiche dit ce que c'est et ce que ca veut dire
+  ("14 en reserve : 0 semaine pour vos 42 personnes. La faim est la, ou
+  tout pres : bougez vos bandes..."). Un clic sur les sicles ouvre le
+  tresor. La memoire de la tendance est gardee sur la partie (jamais selon
+  son adresse), pas sauvee.
+
+
+4. LIRE SANS EFFORT (la priorite 3)
+-----------------------------------
+  - LES CONTRASTES (mesures, le minimum lisible du petit texte : 4,5) : le
+    fond "pierre" des grands ecrans assombri, le gris des textes
+    secondaires et le rouge des alertes eclaircis d'un cran. Sur la pierre :
+    le gris 4,8 (3,3 avant), le rouge 4,6 (3,2), l'ocre jaune des titres
+    6,4 ; sur les fonds sombres : 5,4 a 6,2.
+  - LA TAILLE : l'information en petit passe de 14 a 15 pixels ; les lignes
+    serrees (13 a 15 pixels d'interligne) sont remises a 15-16 dans tous
+    les ecrans (village, fondation, commerce, tresor, pays, menus).
+  - PAS FAIT : un reglage "taille de l'interface" (125 %, 150 %) : les
+    ecrans sont places au pixel ; il faudrait tout reprendre (section 7).
+
+
+5. MOINS DE CHIFFRES, UNE PASSE DE COHERENCE (les priorites 4 et 5)
+------------------------------------------------------------------
+  - LE COMMERCE : deux lignes par bien au lieu de quatre (le prix ; pourvu
+    ou non, la reserve, ce qu'on en fait) ; ce qu'on en use au survol.
+  - LA LIEUE : "cases" ne s'ecrit plus nulle part (42 textes) : une
+    distance se dit en lieues ("a 10 lieues", "emprise du chef : 12
+    lieues"), un nombre de lieux en lieux ("4 lieux de foret a defricher").
+  - FERMER est gris partout (l'orange est pour l'action de l'ecran).
+  - UN SEUL TITRE DE SECTION (theme.section : petites capitales ocre jaune,
+    des points dessous) dans tous les ecrans : le village, le commerce, le
+    tresor, les decisions (et leurs familles), les crises ; un titre ecrit
+    en capitales y est remis en petites capitales.
+
+
+6. VERIFIE
+----------
+  - Sur SES parties (des copies) : sa partie de l'an 48 (Utopie, le village
+    d'Ilsen) et sa partie neuve du 13 novembre (an 3, une bande de 42) :
+    tous les ecrans captures (docs/maquettes/source_ecrans/maq_existant.py),
+    avant et apres (docs/maquettes/lisibles/).
+  - La simulation ne change pas (l'empreinte est la meme : seuls les textes
+    affiches et l'ecran ont change).
+  - Les tests (dont ceux des clics et des survols de tous les ecrans), le
+    multijoueur avec l'exe.
+
+
+7. CE QUI RESTE (dit franchement)
+---------------------------------
+  - Un reglage de la taille de l'interface : les ecrans sont places au
+    pixel, il faudrait les reprendre un a un (ou dessiner plus petit puis
+    agrandir, ce qui floute le texte).
+  - Le village : ses multiplicateurs ("Defense x2,86", "Recolte x2,42")
+    restent ; la consequence ("tient trois semaines de siege") demande de
+    chaque systeme qu'il dise ce que son chiffre change.
+  - Les series 2 et 3 du rework (les grands ecrans) restent a proposer.

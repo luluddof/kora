@@ -229,7 +229,7 @@ LINES = {
     "vue": lambda v: f"Vue +{_num(v)} autour du village, alerte quand un ennemi approche",
     "qualite": lambda v: f"Troupes : force x{_num(v)}, moral +10",
     "compagnies": lambda v: f"{_num(v)} compagnie{'s' if v > 1 else ''} de plus sous les armes",
-    "attachement": lambda v: f"Attachement +{_num(v)} des clans à {NEAR} cases ou moins",
+    "attachement": lambda v: f"Attachement +{_num(v)} des clans à {NEAR} lieues ou moins",
     "prestige": lambda v: f"+{_num(v)} prestige à chaque fin d'hiver",
     "influence": lambda v: f"Zone d'influence du village +{_num(v)}",
     "metiers": lambda v: f"Métiers du village : production x{_num(v)}",

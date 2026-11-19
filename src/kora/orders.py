@@ -75,7 +75,7 @@ def _army_actions(state, band) -> dict[str, str]:
     elif troupes.disband_block(state, band.id) == "" or _mates(state, band):
         out["merge"] = ""
     else:
-        out["merge"] = "Aucune troupe sur cette case (au village : rentrer)"
+        out["merge"] = "Aucune troupe ici (au village : rentrer)"
     return out
 
 
@@ -111,7 +111,7 @@ def band_actions(state, band_id: int) -> dict[str, str]:
                 f"Votre civilisation est au complet : {civ_band_count(state, civ)}/{civ_band_cap(state, civ)} "
                 "bandes et villages (tous ses peuples)"
             )
-    out["merge"] = INDOCILE if not listens else retreat or ("" if _mates(state, band) else "Aucune bande de votre peuple à 5 cases")
+    out["merge"] = INDOCILE if not listens else retreat or ("" if _mates(state, band) else "Aucune bande de votre peuple à 5 lieues")
     tribe = state.tribes.get(band.tribe_id)
     if tribe is not None and tribe.flags.get("isoles", -1) > state.tick_count and not out["merge"]:
         # Le mal qui court (situations.py) : les malades vivent a part.
@@ -162,7 +162,7 @@ def hints(state, band_id: int) -> dict:
     band = state.bands.get(band_id)
     if band is not None and band.kind == "armee":
         return {
-            "honor": f"Appeler l'ost : les troupes de vos tributaires à {ost.OST_RANGE} cases viennent se fondre dans celle-ci (vous les menez, vous payez leur solde)",
+            "honor": f"Appeler l'ost : les troupes de vos tributaires à {ost.OST_RANGE} lieues viennent se fondre dans celle-ci (vous les menez, vous payez leur solde)",
             "camp": "La troupe cesse de ravager : elle reste sur place" if band.ravage else ravage.hint(state, band),
         }
     return {}
@@ -332,7 +332,7 @@ def attack_preview(state, band_id: int, prey_id: int) -> dict | None:
     if prey.kind != "armee" and not prey.village:
         rows.append(("Un clan peut fuir avant votre arrivée", "note"))
     if prey.village and band.kind == "armee" and ratio < 1.3:
-        rows.append((f"Ses murs sont trop forts ? Postez la troupe dans ses champs (à {ravage.RANGE} cases) et ravagez-les [C] : la récolte brûle, votre avantage monte", "note"))
+        rows.append((f"Ses murs sont trop forts ? Postez la troupe dans ses champs (à {ravage.RANGE} lieues) et ravagez-les [C] : la récolte brûle, votre avantage monte", "note"))
     if not out["blocked"] and diplo.peace_pact(state, me, them):
         rows.append(("Un pacte vous lie : attaquer serait une trahison (prestige -10)", "mauvais"))
     return out

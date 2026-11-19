@@ -989,6 +989,27 @@ lente, bandes dessinees petites a taille fixe.
     Village, toujours la) ; trop de multiplicateurs, pas assez de sens ; le
     gris, l'ocre et le rouge sous le contraste lisible sur les grands
     ecrans ; 40 textes parlent encore de "cases". Cinq priorites.
+  - "Je te laisse faire pour ameliorer, rendre plus original, plus
+    comprehensible, etc., les interfaces." FAIT (0.32.0 ; spec
+    2026-11-19-interfaces-lisibles.txt, planche avant/apres
+    docs/maquettes/lisibles/planche_avant_apres.png) : LE GRAVE SE VOIT (une
+    regle de sens : un gain vert pointe en haut, une perte rouge pointe en
+    bas ; les effets des evenements en pastilles ; les decisions marquees ;
+    la fiche d'une unite a jauges, rouges quand ca menace ; les ordres
+    eteints effaces ; le grain d'un village dit ce qu'il deviendra) ; LE
+    DEBUT GUIDE (a gauche : les alertes cliquables, puis les cartes
+    d'evenement, puis le chemin du premier village, ses quatre etapes et ce
+    qui manque, tire des vraies regles ; "Choisir un savoir" un vrai
+    bouton ; le journal et les nouvelles ne repetent plus "Famine : 1
+    morts") ; LA BARRE DU HAUT nommee (vivres, gens, sicles, prestige), sa
+    tendance sur un mois, rouge quand ca va mal, une fiche au survol ; LIRE
+    SANS EFFORT (les contrastes au-dessus de 4,5, le petit texte a 15
+    pixels) ; LA COHERENCE (la lieue au lieu de la case dans 42 textes,
+    Fermer gris partout, un seul titre de section ; le commerce a deux
+    lignes par bien) ; les chevauchements corriges (le bas du panneau
+    Village, l'icone sur le nom, la fiche de la bande sous le panneau
+    Tribu, les noms du rail coupes). Pas fait, dit : le reglage de la
+    taille de l'interface, les multiplicateurs du village.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -1041,7 +1062,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.31.0
+Version du jeu : 0.32.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -1074,6 +1095,10 @@ champs, la sortie, le tribut de guerre, la reddition d'un village affame ;
 l'IA qui ravage, sort et exige.
 Fait le 2026-11-15 (0.30.0) : sans grille, la suite : le chemin redresse,
 les rencontres a la distance et les croisements, les lieux a un point.
+Fait le 2026-11-17 (0.31.0) : sans grille, la fin (tout de point a point).
+Fait le 2026-11-19 (0.32.0) : des interfaces qui se lisent (la critique du
+meme jour) : le sens des chiffres, la fiche a jauges, la barre nommee, les
+alertes et le chemin du premier village, les contrastes, la lieue.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
@@ -1090,15 +1115,16 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 les interfaces, les evenements et l'arbre, la vitesse :
                 2026-11-17-review-projet.txt, section 5.
 
-  En attente de SON choix, EN COURS :
-  - CRITIQUE    le regard neuf sur les interfaces (2026-11-19-critique-
-                interfaces.txt, section 7) : le grave qui se voit, le debut
-                guide, lire sans effort, moins de chiffres, une passe de
-                coherence ; avec un choix propose pour la serie 1.
-  - REWORK       le rework des interfaces, serie par serie : la serie 1
-                proposee (2026-11-12-rework-interfaces-serie1.txt, planche
-                docs/maquettes/rework/planche_serie1.png) ; series 2 (les
-                grands ecrans) et 3 a proposer.
+  FAIT : CRITIQUE (0.32.0 ; 2026-11-19-interfaces-lisibles.txt) : ses
+                cinq priorites, et de la serie 1 du rework la barre du haut
+                A et les alertes de B, l'unite A, l'evenement A, le journal
+                (les repetitions). Reste (section 7 de la spec) : un reglage
+                de la taille de l'interface ; la consequence au lieu des
+                multiplicateurs dans le village.
+  En attente de SON choix :
+  - REWORK       les series 2 (les grands ecrans) et 3 du rework des
+                interfaces, a proposer (la serie 1 :
+                2026-11-12-rework-interfaces-serie1.txt).
 
   DEMANDE, A FAIRE ENSUITE :
   - PERSONNAGES  "des conflits de succession, ou des unions" : l'age, la

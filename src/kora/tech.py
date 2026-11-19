@@ -1490,7 +1490,7 @@ def effect_lines(tech: Tech, base: "Bonuses | None" = None, known: bool = False)
         out.append(f"{_terrain_list(terrains)} : {_pct(mult)} de nourriture")
     if e.get("water_food"):
         per = 2.0 * e["water_food"]
-        out.append(f"Eau près des rives (mer, lacs) : +{_num(per)} nourriture par case (printemps)")
+        out.append(f"Eau près des rives (mer, lacs) : +{_num(per)} nourriture par lieu (printemps)")
     if e.get("winter_hills"):
         out.append(f"Collines et montagnes en hiver : nourriture x{_num(e['winter_hills'])}")
     if e.get("combat"):
@@ -1517,13 +1517,13 @@ def effect_lines(tech: Tech, base: "Bonuses | None" = None, known: bool = False)
         now_cost = (b.move or BASE_MOVE_COST).get(terrain, BASE_MOVE_COST[terrain])
         before = 60 / now_cost
         after = 60 / min(cost, now_cost)
-        out.append(f"Marche en {_TERRAIN_FR[terrain]} : {_num(after)} cases/semaine" + was(_num(before)))
+        out.append(f"Marche en {_TERRAIN_FR[terrain]} : {_num(after)} lieues/semaine" + was(_num(before)))
     if e.get("vision"):
-        out.append(f"Vue : {b.vision + e['vision']} cases autour de vos bandes" + was(b.vision))
+        out.append(f"Vue : {b.vision + e['vision']} lieues autour de vos bandes" + was(b.vision))
     if e.get("reinforce"):
-        out.append(f"Renforts : vos bandes s'entraident jusqu'à {b.reinforce + e['reinforce']} cases" + was(b.reinforce))
+        out.append(f"Renforts : vos bandes s'entraident jusqu'à {b.reinforce + e['reinforce']} lieues" + was(b.reinforce))
     if e.get("influence_radius"):
-        out.append(f"Zone d'influence : {b.influence_radius + e['influence_radius']} cases autour de vos bandes et camps" + was(b.influence_radius))
+        out.append(f"Zone d'influence : {b.influence_radius + e['influence_radius']} lieues autour de vos bandes et camps" + was(b.influence_radius))
     if e.get("home_food"):
         out.append(f"Dans votre zone d'influence : {_pct(e['home_food'])} de nourriture")
     if e.get("recovery"):
@@ -1537,7 +1537,7 @@ def effect_lines(tech: Tech, base: "Bonuses | None" = None, known: bool = False)
     if e.get("stability"):
         out.append(f"Stabilité de vos villages : {b.stability + e['stability']:+d}" + was(f"{b.stability:+d}"))
     if e.get("chief_reach"):
-        out.append(f"Emprise du chef : {b.chief_reach + e['chief_reach']} cases" + was(b.chief_reach))
+        out.append(f"Emprise du chef : {b.chief_reach + e['chief_reach']} lieues" + was(b.chief_reach))
     if e.get("winter_prestige") or e.get("famine_prestige"):
         good = b.winter_prestige + e.get("winter_prestige", 0)
         bad = b.famine_prestige + e.get("famine_prestige", 0)

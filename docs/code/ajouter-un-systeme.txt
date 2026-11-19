@@ -48,12 +48,12 @@ bas au plus haut :
   10  la sauvegarde, le reseau, les essais
        persist, session, essai
   -  l'interface (pygame)
-       app, glisse, globe, globe_draw, layout, look, music, partie,
+       app, glisse, globe, globe_draw, layout, look, music, objectifs, partie,
        partie_carte, partie_ecrans, render, render_batiments, render_battle,
        render_country, render_decisions, render_menu, render_numbers,
-       render_panels, render_peuples, render_situations, render_tech,
-       render_trade, render_treasury, render_tutoriel, render_village,
-       render_wars, screens, theme, tree_graph, tutoriel
+       render_objectifs, render_panels, render_peuples, render_situations,
+       render_tech, render_trade, render_treasury, render_tutoriel,
+       render_village, render_wars, screens, theme, tree_graph, tutoriel
 <<< fin auto >>>
 
   - Les systemes (etage 5) s'appellent entre eux : ils s'importent alors
@@ -564,6 +564,38 @@ La carte du depot (section 4) donne cet ordre en detail.
     (0.24.1).
   - Combats : jamais de pause ni de saut de camera (P5) ; ce qui
     "interrompt" le joueur passe par les nouvelles et le journal cliquable.
+  - LE SENS DES CHIFFRES (0.32.0) : un chiffre qui menace est rouge
+    (C.mauvais) et marque d'une pointe en bas, un gain vert (C.bon) et
+    pointe en haut, le reste neutre (theme.TONES, theme.effect_chip,
+    theme.effect_row, theme._arrow) : la couleur ET la forme, jamais la
+    couleur seule. Le sens d'un effet d'evenement se dit dans
+    events.effect_tone (un nouvel effet sans nombre y prend sa place s'il
+    est un gain ou une perte) ; un texte seul : theme.tone_of.
+  - UN SEUL TITRE DE SECTION (0.32.0) : theme.section (petites capitales
+    ocre jaune, des points dessous), jamais un titre en capitales a la main.
+  - LIRE (0.32.0) : la police "mini" fait 15 pixels : un interligne de 16
+    (15 au plus serre) ; un petit texte a au moins 4,5 de contraste sur le
+    fond ou il est pose (la "pierre" des grands ecrans comprise :
+    C.cendre, C.mauvais, C.ocre_jaune y tiennent ; C.ocre non) ; un nom du
+    rail tient en entier (theme "onglet"). Une distance se dit en LIEUES
+    ("a 10 lieues"), un nombre de lieux en lieux ; jamais "cases".
+  - LES BOUTONS (0.32.0) : Fermer est gris ("second") partout, l'orange
+    ("principal") est l'action de l'ecran ; un ordre impossible est eteint
+    (on=False : un creux, l'ecriture C.eteint) et dit pourquoi au survol.
+    Une fiche posee en bas (la carte d'une unite) evite le panneau ouvert
+    (layout.band_card_layout, avoid).
+  - CE QUI ATTEND LE JOUEUR (0.32.0 ; objectifs.py, render_objectifs.py) :
+    une menace qu'il doit voir prend une ALERTE (objectifs._alertes : un
+    texte court, un ton "danger" ou "alerte", une icone, et l'action : un
+    choix de panneau de Play.side_click). Le chemin du premier
+    village lit les VRAIES regles (learning.cond_progress, les prerequis,
+    la regle de villages.found_block), jamais des chiffres recopies. Les
+    deux LISENT la partie, ne la changent jamais, et se gardent une semaine
+    sur la partie elle-meme (jamais selon son adresse).
+  - LE JOURNAL ET LES NOUVELLES regroupent les lignes qui se suivent et ne
+    different que par leurs nombres (log.group_repeats, log.repeat_key) :
+    un message qui revient chaque semaine garde UN nombre ("Famine : 3
+    morts.") pour que le groupe en fasse la somme (0.32.0).
 
 4.11 Les notes
   - Une date se LIT (la machine, git), jamais ne s'invente ; une regle
@@ -587,8 +619,8 @@ Les plus gros modules (a decouper quand un chantier y touche, et
 seulement si le decoupage rend le systeme plus simple a changer) :
 
 <<< auto : gros-modules >>>
+  render.py              ~2000 lignes
   situations.py          ~1800 lignes
-  render.py              ~1700 lignes
   tech.py                ~1700 lignes
   events.py              ~1600 lignes
   diplo.py               ~1500 lignes

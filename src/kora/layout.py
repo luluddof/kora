@@ -211,6 +211,11 @@ def hud_hit(layout: dict, mx: int, my: int):
         return "pause"
     if "age" in layout and _contains(layout["age"], mx, my):
         return "age"
+    if "savoir" in layout and _contains(layout["savoir"], mx, my):
+        return "savoir"
+    for key, rect in layout.get("accounts", {}).items():
+        if _contains(rect, mx, my):
+            return ("account", key)
     for n, rect in layout["speeds"].items():
         if _contains(rect, mx, my):
             return ("speed", n)
@@ -290,14 +295,31 @@ BAND_ROW = 5
 BAND_HINT = "Clic : aller · clic droit sur un étranger : attaquer · Maj+clic allié : rejoindre"
 
 
-def band_card_layout(width: int, height: int, n_lines: int) -> dict:
+def _overlap(a, b) -> bool:
+    return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
+
+
+def band_card_layout(width: int, height: int, n_lines: int, avoid=None, extra: int = 0) -> dict:
+    """La fiche de l'unite choisie, en bas. avoid : le panneau ouvert a
+    droite (2026-11-19 : il la coupait) ; la fiche se range a sa gauche,
+    sinon au-dessus du bouton des cartes, sinon elle se cache ("hidden").
+    extra : la hauteur des jauges (render.draw_band_card)."""
     bw = BAND_CARD_W
     rows = -(-len(BAND_BUTTONS) // BAND_ROW)
-    bh = 14 + 22 + 18 * max(0, n_lines - 1) + 12 + rows * 36 + 4 + 18 + 10
+    bh = 14 + 22 + extra + 18 * max(0, n_lines - 1) + 12 + rows * 36 + 4 + 18 + 10
     bx = max(276, (width - bw) // 2)
     if bx + bw > width - TAB_W - 8:
         bx = max(8, width - TAB_W - 8 - bw)
     by = height - bh - 12
+    hidden = False
+    if avoid and avoid[2] > 0 and _overlap((bx, by, bw, bh), avoid):
+        left = avoid[0] - bw - 10
+        if left >= 12 + MAP_BUTTON_W + 10:
+            bx = left
+        elif avoid[0] - bw - 10 >= 12:
+            bx, by = 12, height - MAP_BUTTON_H - 12 - 8 - bh
+        else:
+            hidden = True
     buttons = {}
     gap = 6
     bwidth = (bw - 28 - gap * (BAND_ROW - 1)) // BAND_ROW
@@ -305,6 +327,8 @@ def band_card_layout(width: int, height: int, n_lines: int) -> dict:
     for i, (key, _label) in enumerate(BAND_BUTTONS):
         col, row = i % BAND_ROW, i // BAND_ROW
         buttons[key] = (bx + 14 + col * (bwidth + gap), top + row * 36, bwidth, 30)
+    if hidden:
+        return {"box": (0, 0, 0, 0), "buttons": {}, "hidden": True}
     return {"box": (bx, by, bw, bh), "buttons": buttons}
 
 

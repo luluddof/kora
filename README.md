@@ -56,6 +56,20 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   autres peuples...). La fiche avance d'elle-même quand vous avez fait le geste demandé. Dans toute partie, le bouton
   **F1** rouvre sa fiche, là où vous l'aviez laissée (le tutoriel se lance de l'écran titre).
 - Au lancement, le **menu** : *Continuer* votre partie, *Nouvelle partie*, *Tutoriel*, *Multijoueur*.
+- **Ce qui vous attend est à gauche de l'écran** : en haut, les **alertes** (une bande ou un village qui a faim, une
+  disette en vue, un siège, un village qui s'agite, un clan qui veut partir, la solde impayée, une guerre déclarée ;
+  rouge : grave, orange : à surveiller), et un clic mène où agir ; dessous, les cartes d'événements ; puis, tant que
+  votre peuple n'a pas de village, **le chemin du premier village** : ses quatre étapes (savoir camper, *Premières
+  semailles*, un campement sur une terre à cultiver, fonder), cochées au fil de la partie, et ce qui manque à
+  l'étape en cours, avec vos chiffres. Un clic sur son titre le replie.
+- **La barre du haut** nomme vos comptes (vivres, gens, sicles, prestige) ; une petite pointe dit s'ils montent ou
+  baissent depuis un mois, ils rougissent quand ça va mal (les vivres sous deux semaines), et leur survol les
+  explique. **Choisir un savoir** y est un bouton.
+- **Partout, le même code** : un gain en vert avec une pointe vers le haut, une perte en rouge avec une pointe vers le
+  bas (les effets des cartes d'événements, les décisions, la stabilité d'un village). La **fiche d'une bande** a des
+  **jauges** : ses vivres (en semaines) et sa collecte (le trait blanc : ce qu'il lui faut), rouges quand la faim
+  menace ; un ordre impossible est éteint, et son survol dit pourquoi. Le journal regroupe ce qui se répète
+  (« Famine : 12 morts », de telle semaine à telle autre). Les distances se disent en **lieues**.
 - Une nouvelle partie commence par **votre peuple** : son nom (ou *Au hasard*), sa couleur, et **2 bonus de départ**
   à choisir parmi 12 (chasseurs d'aurochs, enfants du froid, conteurs, guerriers…). Ils durent **5 ans**, puis
   s'éteignent (le panneau *Tribu* dit combien de temps il leur reste).

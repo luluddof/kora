@@ -301,7 +301,7 @@ def wild_source(state, site, cid: str) -> str:
 def absent_text(cid: str) -> str:
     if cid in CRAFTS and any(r in FAR_RES for r in CRAFTS[cid].res):
         far = max(FAR_RES[r] for r in CRAFTS[cid].res if r in FAR_RES)
-        return f"Pas de filon d'argent à moins de {far} cases du village"
+        return f"Pas de filon d'argent à moins de {far} lieues du village"
     return f"Pas {de(res_label(cid))} dans les terres du village"
 
 
@@ -762,7 +762,7 @@ def open_block(state, tribe_id: int, partner: int, good: str, sell: bool, level:
         return "Ils n'ont pas de village"
     dist, reach = trade_distance(state, tribe_id, partner), trade_range(state, tribe_id, partner)
     if dist > reach:
-        return f"Trop loin : {dist} cases entre vos villages ({reach} au plus)"
+        return f"Trop loin : {dist} lieues entre vos villages ({reach} au plus)"
     exporter, importer = (tribe_id, partner) if sell else (partner, tribe_id)
     if find_route(state, exporter, importer, good) is not None:
         return "Cette route existe déjà"

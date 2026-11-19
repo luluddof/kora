@@ -148,15 +148,15 @@ def draw_country(r, state, ui) -> None:
                 eff = []
             ly = cy + 28
             for part in lines:
-                if ly + 15 > rects["btn"][1] - 2:
+                if ly + 16 > rects["btn"][1] - 2:
                     break
                 screen.blit(r.tiny.render(part, True, INK if ok else NOTE), (tx, ly))
-                ly += 15
+                ly += 16
             for e in eff[:2]:
-                if ly + 15 > rects["btn"][1]:
+                if ly + 16 > rects["btn"][1]:
                     break
                 screen.blit(r.tiny.render(theme.fit(r.tiny, e, cx + cw - tx - 10), True, GREEN), (tx, ly))
-                ly += 15
+                ly += 16
             btn = rects["btn"]
             hover = _hover(btn, mx, my)
             if mine:

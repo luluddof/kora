@@ -1,4 +1,20 @@
-## Nouveau dans la 0.31 : le monde sans cases, la fin
+## Nouveau dans la 0.32 : des interfaces qui se lisent
+
+- **Ce qui vous attend est à gauche** : les **alertes** (la faim, une disette en vue, un siège, un clan qui veut
+  partir, la solde impayée, une guerre déclarée), et un clic mène où agir ; les cartes d'événements ; et, tant que
+  vous n'avez pas de village, **le chemin du premier village**, étape par étape, avec ce qui manque.
+- **Le grave se voit** : un gain en vert avec une pointe vers le haut, une perte en rouge avec une pointe vers le bas
+  (les effets des événements en pastilles, les décisions, la stabilité d'un village). La fiche d'une bande a des
+  **jauges** (les vivres, la collecte) qui rougissent quand la faim menace ; les ordres impossibles sont éteints.
+- **La barre du haut** nomme vos comptes, montre s'ils montent ou baissent, rougit quand ça va mal ; leur survol
+  les explique ; *Choisir un savoir* est un bouton.
+- **Plus lisible** : des textes plus grands et plus contrastés, un seul style de titre, *Fermer* toujours gris
+  (l'orange est pour l'action de l'écran), les distances en **lieues** ; le commerce en deux lignes par bien ; le
+  journal et les nouvelles ne répètent plus « Famine : 1 morts » chaque semaine.
+- Corrigé : le bas du panneau Village s'écrivait sur lui-même ; le panneau Tribu cachait la fiche de la bande ;
+  l'icône d'un village couvrait son nom ; des noms d'onglets coupés.
+
+Et dans la 0.31 : le monde sans cases, la fin
 
 - **Toute proximité se mesure de point à point** : la vue, la collecte, les terres d'un village, le ravage, le
   siège, les renforts, les razzias… partent du point exact d'une unité ou d'un lieu, plus du centre de sa case.

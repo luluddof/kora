@@ -50,7 +50,7 @@ from src.kora.layout import (
     TREE_ZOOM_STEP,
     zoom_at,
 )
-from src.kora.log import FILTER_ALL, LogKind, terrain_fr
+from src.kora.log import FILTER_ALL, LogKind, merged_text, repeat_key, terrain_fr
 from src.kora.persist import (
     default_save_path,
     load_prefs,
@@ -569,6 +569,15 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         if log_of(self.state, self.state.viewer).seq > self.last_log_seq:
             fresh = [e for e in log_of(self.state, self.state.viewer).entries if e.seq > self.last_log_seq]
             for entry in fresh:
+                # Une nouvelle qui se repete (la famine de chaque semaine) :
+                # la meme dalle se met a jour, elle ne s'empile pas.
+                key = repeat_key(entry)
+                same = next((t for t in self.toasts if t.get("key") == key), None)
+                if same is not None:
+                    same["texts"].append(entry.text)
+                    count = len(same["texts"])
+                    same.update(text=f"{merged_text(same['texts'])} ({count} fois)", age=0.0, seq=entry.seq, hex=entry.hex)
+                    continue
                 self.toasts.append(
                     {
                         "text": entry.text,
@@ -577,6 +586,8 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
                         "hex": entry.hex,
                         "combat": entry.kind is LogKind.COMBAT,
                         "kind": entry.kind.value,
+                        "key": key,
+                        "texts": [entry.text],
                     }
                 )
             self.last_log_seq = log_of(self.state, self.state.viewer).seq

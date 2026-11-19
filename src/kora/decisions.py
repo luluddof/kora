@@ -347,7 +347,7 @@ def _raid_name(state, tid, sid):
     people = state.tribes[other.tribe_id].name
     site, _b = _village(state, tid)
     d = points.lieux(state.world, site, other) if site is not None else 0
-    return f"{other.name or 'un village'} (les {people}, à {d} cases)"
+    return f"{other.name or 'un village'} (les {people}, à {d} lieues)"
 
 
 def _raid_needs(state, tid, sid):
@@ -357,7 +357,7 @@ def _raid_needs(state, tid, sid):
     why = troupes.army_block(state, band.id)
     return [
         ("Une troupe à lever au village" + (f" ({why})" if why else ""), not why),
-        (f"Un village à prendre à moins de {RAID_RANGE} cases", sid is not None and sid in _raid_targets(state, tid)),
+        (f"Un village à prendre à moins de {RAID_RANGE} lieues", sid is not None and sid in _raid_targets(state, tid)),
     ]
 
 
@@ -473,7 +473,7 @@ def _route_name(state, tid, key):
     post = _route_post(state, tid, r)
     site, _b = _village(state, tid)
     d = points.lieux(state.world, site, post) if post is not None and site is not None else 0
-    return f"{good}, des {a.name if a else '?'} aux {b.name if b else '?'} (à {d} cases)"
+    return f"{good}, des {a.name if a else '?'} aux {b.name if b else '?'} (à {d} lieues)"
 
 
 def _route_needs(state, tid, key):
@@ -483,7 +483,7 @@ def _route_needs(state, tid, key):
     why = troupes.army_block(state, band.id)
     return [
         ("Une troupe à lever au village" + (f" ({why})" if why else ""), not why),
-        (f"Une route d'autres peuples à moins de {ROUTE_REACH} cases (ni alliés ni tributaires)", key is not None and key in _route_targets(state, tid)),
+        (f"Une route d'autres peuples à moins de {ROUTE_REACH} lieues (ni alliés ni tributaires)", key is not None and key in _route_targets(state, tid)),
     ]
 
 
@@ -566,7 +566,7 @@ def _hunt_needs(state, tid, _t):
         return [("Un village", False)]
     game = _hunt_game(state, site)
     return [
-        (f"Du gibier à moins de {HUNT_RADIUS} cases ({game} lieux)", game >= 3),
+        (f"Du gibier à moins de {HUNT_RADIUS} lieues ({game} lieux)", game >= 3),
         (f"{HUNT_MIN_MEN} chasseurs ({_men(band)} hommes valides)", _men(band) >= HUNT_MIN_MEN),
     ]
 
@@ -841,7 +841,7 @@ def _build() -> dict:
             "eclaireurs", "Le peuple et ses chefs", "boussole", "Envoyer des éclaireurs",
             "Dix jeunes partent vers l'horizon ; ils reviendront avec des nouvelles, ou ne reviendront pas.",
             _scouts_needs, _const(f"{SCOUTS_FOOD:.0f} vivres ; parfois un ou deux ne reviennent pas"),
-            _lines(f"La carte se découvre à {SCOUTS_RADIUS} cases", f"Les peuples à {SCOUTS_CONTACT} cases sont rencontrés"),
+            _lines(f"La carte se découvre à {SCOUTS_RADIUS} lieues", f"Les peuples à {SCOUTS_CONTACT} lieues sont rencontrés"),
             _scouts_take, repose_years=2,
         ),
         Decision(

@@ -149,7 +149,7 @@ OATHS = {
             "feu",
             "Le feu des anciens",
             "Le feu du clan brûle au centre du village : tous les clans y reviennent.",
-            (f"Attachement +8 des clans à {NEAR} cases ou moins", "+1 prestige à chaque fin d'hiver"),
+            (f"Attachement +8 des clans à {NEAR} lieues ou moins", "+1 prestige à chaque fin d'hiver"),
         ),
     )
 }
@@ -946,7 +946,7 @@ def found_preview(state, band_id: int) -> dict:
     if world.terrain(center) is _T.VALLEE:
         risks.append("Vallée : les crues du printemps peuvent noyer les champs")
     if forest and not _bonus(state, band.tribe_id).clearing:
-        risks.append(f"{forest} cases de forêt à défricher (il faut Haches polies)")
+        risks.append(f"{forest} lieux de forêt à défricher (il faut Haches polies)")
     foes = {
         b.tribe_id
         for b in state.bands.values()
@@ -957,7 +957,7 @@ def found_preview(state, band_id: int) -> dict:
     }
     if foes:
         names = ", ".join(sorted(state.tribes[t].name for t in foes if t in state.tribes))
-        risks.append(f"Voisins sans pacte à moins de 12 cases : {names}")
+        risks.append(f"Voisins sans pacte à moins de 12 lieues : {names}")
     if band.population >= DISEASE_POP:
         risks.append("Beaucoup de monde : les fièvres guettent les gros villages")
     tribe = state.tribes[band.tribe_id]

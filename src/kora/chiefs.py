@@ -283,7 +283,7 @@ def loyalty_parts(state, band) -> list[tuple[str, float]]:
         reach = bonus.chief_reach
         d = points.lieux(state.world, band, heart)
         if d > reach:
-            parts.append((f"Loin du chef ({d} cases, emprise {reach})", -min(40.0, 0.8 * (d - reach))))
+            parts.append((f"Loin du chef ({d} lieues, emprise {reach})", -min(40.0, 0.8 * (d - reach))))
         if band.population > heart.population:
             parts.append(("Plus nombreux que le clan du chef", -10.0))
     world = state.world
@@ -402,12 +402,12 @@ def _autonomy(state, band) -> tuple[float, list]:
     rate = AUTONOMY_MONTH
     if villages.nearest_village(state, band, villages.NEAR) is None:
         rate += AUTONOMY_FAR
-        parts.append((f"Loin de vos villages (plus de {villages.NEAR} cases)", f"+{AUTONOMY_FAR:.1f}"))
+        parts.append((f"Loin de vos villages (plus de {villages.NEAR} lieues)", f"+{AUTONOMY_FAR:.1f}"))
     heart = chief_band(state, band.tribe_id)
     reach = tech.bonuses(state.tribes[band.tribe_id]).chief_reach
     if heart is not None and points.lieux(state.world, band, heart) > reach:
         rate += AUTONOMY_REACH
-        parts.append((f"Hors de l'emprise du chef ({reach} cases)", f"+{AUTONOMY_REACH:.1f}"))
+        parts.append((f"Hors de l'emprise du chef ({reach} lieues)", f"+{AUTONOMY_REACH:.1f}"))
     if band.loyalty < OBEY:
         rate += AUTONOMY_INDOCILE
         parts.append(("Indocile : il n'obéit plus", f"+{AUTONOMY_INDOCILE:.1f}"))
@@ -534,7 +534,7 @@ def can_move_chief(state, band_id: int) -> str:
     if heart is None or heart.id == band.id:
         return "Le chef est déjà ici"
     if points.lieux(state.world, heart, band) > 1:
-        return "La bande du chef doit être sur la même case"
+        return "La bande du chef doit être au même endroit"
     return ""
 
 

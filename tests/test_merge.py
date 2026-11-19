@@ -151,7 +151,7 @@ def test_close_bands_merge_without_sharing_a_hex_and_nearby_ones_walk_over():
 
 def test_a_band_far_from_all_others_has_nothing_to_merge():
     st = _spread()
-    assert "5 cases" in orders.band_actions(st, 4)["merge"]
+    assert "5 lieues" in orders.band_actions(st, 4)["merge"]
 
 
 def test_the_chief_does_not_leave_his_people():

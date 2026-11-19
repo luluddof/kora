@@ -149,7 +149,7 @@ def block(state, actor: int, target: int) -> str:
     if rel < REL_MIN:
         return f"Relation trop basse ({rel:.0f}, il faut {REL_MIN})"
     if diplo.gap(state, actor, target) > GAP_MAX:
-        return f"Trop loin l'un de l'autre ({GAP_MAX} cases au plus)"
+        return f"Trop loin l'un de l'autre ({GAP_MAX} lieues au plus)"
     return ""
 
 

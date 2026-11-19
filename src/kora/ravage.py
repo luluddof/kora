@@ -108,7 +108,7 @@ def block(state, band) -> str:
         if site.kind == "village" and site.tribe_id != band.tribe_id and points.lieux(state.world, band, site) <= RANGE:
             who = state.tribes[site.tribe_id].name if site.tribe_id in state.tribes else "?"
             return f"Vous êtes en paix avec les {who} : déclarez-leur d'abord la guerre (écran Peuples)"
-    return f"Aucun village ennemi à {RANGE} cases : postez la troupe dans ses champs"
+    return f"Aucun village ennemi à {RANGE} lieues : postez la troupe dans ses champs"
 
 
 def start(state, band) -> str:

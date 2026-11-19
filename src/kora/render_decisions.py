@@ -195,7 +195,7 @@ def draw_decisions(r, state, ui) -> None:
     if not shown:
         theme.text(screen, "Aucune décision ici.", "petit", NOTE, (lx + 16, y + 4))
     for fam in families:
-        theme.text(screen, fam.upper(), "mini_gras", C.ocre, (lx + 16, y))
+        theme.section(screen, fam, lx + 16, y, LIST_W - 32)
         y += 24
         for did in shown:
             d = decisions.DECISIONS[did]
@@ -244,7 +244,7 @@ def _detail(r, state, ui, did, row, rect, lay, mx, my, tips) -> None:
         yy += 22
     yy += 12
     bottom = y + h - 64
-    theme.text(screen, "CE QU'IL FAUT", "mini_gras", C.ocre, (x + 22, yy))
+    theme.section(screen, "CE QU'IL FAUT", x + 22, yy, w - 44)
     yy += 24
     for cond, ok in row["needs"]:
         if yy > bottom - 60:
@@ -257,7 +257,7 @@ def _detail(r, state, ui, did, row, rect, lay, mx, my, tips) -> None:
     # La cible : un village, une route, un peuple.
     if d.targets is not None:
         yy += 8
-        theme.text(screen, "LA CIBLE", "mini_gras", C.ocre, (x + 22, yy))
+        theme.section(screen, "LA CIBLE", x + 22, yy, w - 44)
         yy += 24
         if row["targets"]:
             prev = (x + 22, yy, 30, 26)
@@ -274,18 +274,26 @@ def _detail(r, state, ui, did, row, rect, lay, mx, my, tips) -> None:
             theme.text(screen, "Aucune cible possible pour l'instant.", "petit", C.cendre, (x + 22, yy + 3))
         yy += 36
     yy += 6
-    theme.text(screen, "CE QUE ÇA COÛTE", "mini_gras", C.ocre, (x + 22, yy))
+    theme.section(screen, "CE QUE ÇA COÛTE", x + 22, yy, w - 44)
     yy += 22
-    for line in theme.wrap(theme.font("petit"), row["cost"], w - 44)[:3]:
-        theme.text(screen, line, "petit", C.lin, (x + 22, yy))
+    # Ce que ca coute : une pointe rouge (2026-11-19 : le meme sens que les
+    # pastilles des evenements ; "rien" reste neutre).
+    free = not row["cost"] or row["cost"].lower().startswith(("rien", "aucun", "gratuit"))
+    for k, line in enumerate(theme.wrap(theme.font("petit"), row["cost"], w - 56)[:3]):
+        if k == 0 and not free:
+            theme._arrow(screen, x + 24, yy + 7, False, C.mauvais)
+        theme.text(screen, line, "petit", C.lin, (x + 36, yy))
         yy += 22
     yy += 12
-    theme.text(screen, "CE QUE ÇA FAIT", "mini_gras", C.ocre, (x + 22, yy))
+    theme.section(screen, "CE QUE ÇA FAIT", x + 22, yy, w - 44)
     yy += 24
     for e in row["effects"]:
         if yy > bottom - 24:
             break
-        theme.text(screen, "› " + e, "petit", C.bon, (x + 30, yy), w - 52)
+        # Un gain : pointe verte ; une perte ("Relation -10...") : pointe rouge.
+        tone = theme.tone_of(e, "gain")
+        theme._arrow(screen, x + 24, yy + 7, tone == "gain", theme.TONES[tone])
+        theme.text(screen, e, "petit", C.os if tone == "gain" else C.lin, (x + 36, yy), w - 58)
         yy += 24
     if d.repose_years and yy < bottom - 20:
         yy += 6

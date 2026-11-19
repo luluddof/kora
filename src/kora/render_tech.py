@@ -867,7 +867,7 @@ def _column(r, rect, title: str, rows: list) -> None:
             elif k == 0 and kind == "manque":
                 _cross(screen, x + 7, yy + 7, 4)
             screen.blit(r.tiny.render(part, True, color), (x + indent, yy))
-            yy += 15
+            yy += 16
         yy += 2
 
 

@@ -35,6 +35,7 @@ from src.kora.layout import (  # noqa: F401
 from src.kora.layout import HUD_HEIGHT
 from src.kora import batiments
 from src.kora import guerre
+from src.kora.objectifs import WAR_NEWS, treasury_alert, wars_alert  # noqa: F401
 
 # L'icone d'un evenement : un mot de son nom, sinon son humeur.
 EVENT_WORDS = (
@@ -261,7 +262,7 @@ def draw_tribe(r, state, layout, ui) -> None:
     hw = r.tiny.size(heir)[0]
     _text(r, r.tiny, heir, NOTE, bx + bw - 24 - hw, y + 8)
     reach = know.chief_reach
-    reach_line = f"Emprise du chef : {reach} cases"
+    reach_line = f"Emprise du chef : {reach} lieues"
     _text(r, r.tiny, reach_line, NOTE, bx + bw - 24 - r.tiny.size(reach_line)[0], y + 24)
     if tribe.settled_at >= 0:
         years = max(0, state.tick_count - tribe.settled_at) // 52
@@ -313,7 +314,7 @@ def draw_tribe(r, state, layout, ui) -> None:
             _text(r, r.tiny, f"{band.loyalty:.0f} {chiefs.mood(state, band)}", tint, cols["att"] + 86, y + 5)
             if heart is not None:
                 d = points.lieux(state.world, band, heart)
-                _text(r, r.tiny, f"{d} c.", WARN if d > reach else SOFT, cols["dist"], y + 5)
+                _text(r, r.tiny, f"{d} lieues", WARN if d > reach else SOFT, cols["dist"], y + 5)
         ax = cols["act"]
         see = (ax, y + 2, 44, 20)
         items[f"tribe_see:{band.id}"] = see
@@ -386,7 +387,7 @@ def draw_tribe(r, state, layout, ui) -> None:
             nx += bwid + 6
     tip = "Obéit à 40 et plus, peut partir sous 20. Barre orange : indépendance (à 100, il part)."
     if tribe.settled_at < 0:
-        tip = "Obéit à 40 et plus · indocile de 20 à 40 · sous 20, le clan peut partir. Le chef à 3 cases : +10 par mois."
+        tip = "Obéit à 40 et plus · indocile de 20 à 40 · sous 20, le clan peut partir. Le chef à 3 lieues : +10 par mois."
     _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
     for tip in ui.pop("_tips", []):
         _tooltip(r, *tip)
@@ -452,12 +453,18 @@ def draw_villages(r, state, layout, ui) -> None:
     y = by + 60
     _chief_card(r, state, tribe, (bx + 12, y, bw - 24, 62), head_font)
     y += 72
-    cols = {"nom": bx + 20, "gens": bx + 210, "stab": bx + 256, "grenier": bx + 424, "act": bx + bw - 12 - 110}
+    # Le bas (la reserve du peuple, ses echanges) se mesure d'abord : la liste
+    # des villages prend ce qui reste (2026-11-19 : avant, le bas debordait
+    # et s'ecrivait sur lui-meme).
+    good_rows = -(-len(goods.GOODS) // 2)
+    dy = by + bh - 100 - good_rows * 18
+    cols = {"nom": bx + 20, "gens": bx + 222, "stab": bx + 268, "grenier": bx + 436, "act": bx + bw - 12 - 110}
     for key, label in (("nom", "Village"), ("gens", "Gens"), ("stab", "Stabilité"), ("grenier", "Grenier")):
         _text(r, r.tiny, label, NOTE, cols[key], y)
-    y += 18
-    row_h = 40
-    bottom = by + bh - 150
+    y += 20
+    bottom = dy - 8
+    # Peu de villages : des lignes plus hautes, qui disent la recolte a venir.
+    row_h = max(42, min(124, (bottom - y) // max(1, len(homes))))
     for site, band in homes:
         if y + row_h > bottom:
             _text(r, r.tiny, "... et d'autres villages", NOTE, cols["nom"], y + 4)
@@ -467,57 +474,88 @@ def draw_villages(r, state, layout, ui) -> None:
             pygame.draw.rect(r.screen, (45, 34, 26), row, border_radius=4)
         items[f"vil_row:{site.id}"] = row
         is_heart = chiefs.is_chief_band(state, band)
-        r.draw_village_icon(site, cols["nom"] + 5, y + 12, color, 6)
+        # L'icone a sa place, le nom a cote (avant : l'icone couvrait la
+        # premiere lettre).
+        r.draw_village_icon(site, cols["nom"] + 10, y + 12, color, 5)
         label = places.name(site) + (" (le chef)" if is_heart else "")
-        _text(r, r.small, r._fit(r.small, label, 170), TEXT, cols["nom"] + 16, y + 3)
+        _text(r, r.small, r._fit(r.small, label, cols["gens"] - cols["nom"] - 40), TEXT, cols["nom"] + 30, y + 3)
         _text(r, r.small, str(band.population), SOFT, cols["gens"], y + 3)
         stab = villages.stability(state, site, band)
         tint = GOOD if stab >= 50 else WARN if stab >= villages.UNREST else BAD
         _loyalty_bar(r, cols["stab"], y + 9, 80, stab, tint)
         _text(r, r.tiny, f"{stab:.0f} {villages.stability_word(stab)}", tint, cols["stab"] + 86, y + 5)
         weeks = band.stock / max(1, band.population)
-        _left, margin = villages.food_outlook(state, site, band)
-        grain = f"{weeks:.0f} sem." + ("  disette en vue" if margin < 0 else "")
-        _text(r, r.tiny, grain, BAD if margin < 0 else GOOD if weeks >= 8 else WARN, cols["grenier"], y + 5)
+        left, margin = villages.food_outlook(state, site, band)
+        grain = f"{weeks:.0f} sem." + (" · disette" if margin < 0 and row_h < 58 else "")
+        _text(r, r.tiny, r._fit(r.tiny, grain, cols["act"] - cols["grenier"] - 6), BAD if margin < 0 else GOOD if weeks >= 8 else WARN, cols["grenier"], y + 5)
         # Seconde ligne : rang, metiers, chantier.
         crafts = ", ".join(f"{goods.CRAFTS[c].name.lower()} {n}" for c, n in sorted(goods.teams(site).items()) if n)
         job = places.works(site)
         work = f"chantier : {batiments.BUILDINGS[job[0]].name.lower()} ({job[1]} sem.)" if job else "pas de chantier"
         second = f"{places.rank_name(band.population)}  ·  {crafts or 'aucun métier'}  ·  {work}"
-        _text(r, r.tiny, r._fit(r.tiny, second, cols["act"] - cols["nom"] - 24), NOTE, cols["nom"] + 16, y + 20)
-        see = (cols["act"], y + 7, 44, 20)
+        _text(r, r.tiny, r._fit(r.tiny, second, cols["act"] - cols["nom"] - 40), NOTE, cols["nom"] + 30, y + 21)
+        if row_h >= 96:
+            # Peu de villages, de la place : ce qui fait sa stabilite, en
+            # pastilles (ce qui la porte en vert, ce qui la mine en rouge).
+            parts = sorted(villages.stability_parts(state, site, band), key=lambda it: -abs(it[1]))
+            chips = [(f"{_signed(v)} {label.lower()}", "gain" if v > 0 else "perte") for label, v in parts if round(v) != 0 and label != "Base"][:6]
+            if chips:
+                _text(r, r.tiny, "Stabilité :", NOTE, cols["nom"] + 30, y + 60)
+                theme.effect_row(r.screen, chips, cols["nom"] + 104, y + 58, bw - 24 - 104 - 30, "mini", rows=2)
+        if row_h >= 58:
+            # Troisieme ligne : ce que le grain deviendra (la consequence,
+            # pas le chiffre seul).
+            if margin < 0:
+                fut = f"Avant la récolte (dans {left} sem.), le grain manquera {-margin:.0f} sem. : rationnez, achetez, ou des gens mourront de faim."
+                col = BAD
+            elif margin < 4:
+                fut = f"La récolte dans {left} sem. : il restera {margin:.0f} sem. de grain, c'est juste."
+                col = WARN
+            else:
+                fut = f"La récolte dans {left} sem. : il restera {margin:.0f} sem. de grain."
+                col = SOFT
+            _text(r, r.tiny, r._fit(r.tiny, fut, cols["act"] - cols["nom"] - 40), col, cols["nom"] + 30, y + 38)
+        see = (cols["act"], y + 7, 44, 22)
         items[f"vil_see:{site.id}"] = see
         _button(r, see, "Voir")
-        opn = (cols["act"] + 50, y + 7, 58, 20)
+        opn = (cols["act"] + 50, y + 7, 58, 22)
         items[f"vil_open:{site.id}"] = opn
         _button(r, opn, "Ouvrir")
         y += row_h
     # En bas : la reserve du peuple et les echanges.
-    dy = by + bh - 140
     pygame.draw.line(r.screen, (72, 53, 38), (bx + 14, dy), (bx + bw - 14, dy))
-    _text(r, r.small, "Réserve du peuple", TEXT, bx + 18, dy + 8)
+    gy = theme.section(r.screen, "Réserve du peuple", bx + 18, dy + 8, bw - 36)
     need = goods.need(state, state.viewer)
     col_w = (bw - 36) // 2
     for i, good in enumerate(goods.GOODS):
         cx = bx + 18 + (i % 2) * col_w
-        cy = dy + 32 + (i // 2) * 18
+        cy = gy + (i // 2) * 18
         have = goods.stock(state, state.viewer, good)
         ok = goods.supplied(state, state.viewer, good)
         made = goods.made(state, state.viewer, good)
         made_s = f"{made:.1f}".replace(".", ",")
-        line = f"{goods.GOOD_NAMES[good]} : {have:.0f}" + (f" (+{made_s}/sem.)" if made else "") + ("  pourvu" if ok else "  en manque")
-        _text(r, r.tiny, r._fit(r.tiny, line, col_w - 8), GOOD if ok else NOTE, cx, cy)
+        # Un point plein : pourvu ; un rond vide : en manque.
+        if ok:
+            pygame.draw.circle(r.screen, GOOD, (cx + 4, cy + 9), 4)
+        else:
+            pygame.draw.circle(r.screen, NOTE, (cx + 4, cy + 9), 4, 1)
+        name = f"{goods.GOOD_NAMES[good]}"
+        _text(r, r.tiny, r._fit(r.tiny, name, col_w - 150), TEXT if ok else SOFT, cx + 14, cy)
+        count = f"{have:.0f}" + (f"  +{made_s}/sem." if made else "")
+        cw = r.tiny.size(count)[0]
+        _text(r, r.tiny, count, GOOD if made else SOFT, cx + col_w - 30 - cw - 70, cy)
+        _text(r, r.tiny, "pourvu" if ok else "en manque", GOOD if ok else NOTE, cx + col_w - 30 - 64, cy)
     partners = [o for o in sorted(state.tribes) if o != state.viewer and _diplo.has_pact(state, state.viewer, o, "commerce")]
-    ty = dy + 32 + 2 * 18 + 6
+    ty = by + bh - 62
     if partners:
         names = ", ".join(state.tribes[o].name for o in partners[:4]) + ("..." if len(partners) > 4 else "")
         text = f"Accords commerciaux : {names}. Détail dans l'écran d'un village (Métiers et échanges)."
     else:
         text = "Aucun accord commercial : proposez-en un dans Peuples (il faut Échanges lointains)."
     _text(r, r.tiny, r._fit(r.tiny, text, bw - 36), SOFT, bx + 18, ty)
-    _text(r, r.tiny, r._fit(r.tiny, f"Besoin : {need:.1f} de chaque bien par semaine (tous vos villages). Métiers : écran du village.".replace(".", ",", 1), bw - 36), NOTE, bx + 18, ty + 16)
+    _text(r, r.tiny, r._fit(r.tiny, f"Besoin : {need:.1f} de chaque bien par semaine (tous vos villages). Métiers : écran du village.".replace(".", ",", 1), bw - 36), NOTE, bx + 18, ty + 18)
     tip = "Plus de nomades : le peuple vit dans ses villages."
-    _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 20)
+    _text(r, r.tiny, r._fit(r.tiny, tip, bw - 36), NOTE, bx + 18, by + bh - 24)
     for tip in ui.pop("_tips", []):
         _tooltip(r, *tip)
 
@@ -528,20 +566,21 @@ def draw_villages(r, state, layout, ui) -> None:
 # --- evenements -------------------------------------------------------------------------
 
 
-def draw_event_cards(r, state, ui) -> None:
+def draw_event_cards(r, state, ui, top: int | None = None) -> int:
     """Cartes "A decider" a gauche (voir events.py) ; rien s'il n'y en a pas.
-    Elles respirent : elles attendent une decision."""
+    Elles respirent : elles attendent une decision. top : sous les alertes
+    (render_objectifs) ; rend le y sous la derniere carte."""
     r.event_hits = {}
-    # Multijoueur : une carte repondue attend que l'hote applique la reponse.
-    answered = ui.get("answered", ()) if isinstance(ui, dict) else ()
-    pending = [p for p in events.pending(state, state.viewer) if p.uid not in answered]
-    if not pending:
-        return
-    x, y = 10, HUD_HEIGHT + 110
+    x, y = 10, top if top is not None else HUD_HEIGHT + 8
     # La fiche du tutoriel, ouverte, est en haut a gauche : les cartes passent dessous.
     box = (getattr(r, "tuto_hits", None) or {}).get("box")
     if box is not None:
         y = max(y, box[1] + box[3] + 10)
+    # Multijoueur : une carte repondue attend que l'hote applique la reponse.
+    answered = ui.get("answered", ()) if isinstance(ui, dict) else ()
+    pending = [p for p in events.pending(state, state.viewer) if p.uid not in answered]
+    if not pending:
+        return y
     t = pygame.time.get_ticks() / 1000.0
     for k, inst in enumerate(pending[:5]):
         ev = events.EVENTS.get(inst.event_id)
@@ -556,6 +595,7 @@ def draw_event_cards(r, state, ui) -> None:
         theme.text(r.screen, ev.title, "petit_gras", C.os, (x + 50, y + 6), 226)
         theme.text(r.screen, f"À décider  ·  {deadline_text(left, short=True)}  ·  E", "mini", C.ocre_jaune if left > 4 else C.alerte, (x + 50, y + 26), 226)
         y += 54
+    return y
 
 
 def deadline_text(left: int, short: bool = False) -> str:
@@ -606,7 +646,7 @@ def draw_event_modal(r, state, ui) -> None:
     r.screen.blit(theme.medallion(event_icon(ev), 46, MOOD_STATE.get(ev.mood, "normal")), (bx + 22, by + 22))
     theme.title(r.screen, ev.title, bx + 134, by + 20, "h1")
     mx, my = pygame.mouse.get_pos()
-    theme.button(r.screen, lay["close"], "Plus tard", "discret", True, _hover(lay["close"]))
+    theme.button(r.screen, lay["close"], "Plus tard", "second", True, _hover(lay["close"]))
     yy = by + 66
     for line in lines:
         r.screen.blit(f.render(line, True, C.os), (bx + 134, yy))
@@ -624,8 +664,12 @@ def draw_event_modal(r, state, ui) -> None:
         theme.panel(r.screen, rect, "carte_survol" if hover else ("carte" if on else "creux"))
         theme.text(r.screen, f"{i + 1}.", "h2", C.ocre if on else C.cendre, (rect[0] + 14, rect[1] + 12))
         theme.text(r.screen, opt["label"], "texte_gras", C.os if on else C.cendre, (rect[0] + 46, rect[1] + 7), rect[2] - 60)
-        summary = opt["blocked"] or opt["summary"]
-        theme.text(r.screen, summary, "petit", C.cendre if opt["blocked"] else C.ocre_jaune, (rect[0] + 46, rect[1] + 31), rect[2] - 60)
+        if opt["blocked"]:
+            theme.text(r.screen, opt["blocked"], "petit", C.cendre, (rect[0] + 46, rect[1] + 31), rect[2] - 60)
+        else:
+            # Les effets en pastilles (2026-11-19) : un gain en vert, une
+            # perte en rouge, chacun sa pointe ; le detail au survol.
+            theme.effect_row(r.screen, opt.get("chips") or [(opt["summary"], "neutre")], rect[0] + 46, rect[1] + 30, rect[2] - 60)
         if hover and opt["details"]:
             rows = [(line, C.lin) for line in opt["details"]]
             tw = 340
@@ -650,13 +694,6 @@ def commerce_ready(state) -> bool:
     return bool(sites.of_tribe(state, state.viewer, "village"))
 
 
-def treasury_alert(state) -> bool:
-    """L'onglet Tresor s'allume quand la solde ou les gages ne sont pas payes."""
-    tribe = state.tribes.get(state.viewer)
-    if tribe is None or not money.has_money(state, state.viewer):
-        return False
-    b = money.budget(tribe)
-    return "impayee" in (b.get("etat_solde"), b.get("etat_gages"))
 
 
 def commerce_alert(state) -> bool:
@@ -669,20 +706,6 @@ def wars_ready(state) -> bool:
     """L'onglet des guerres : avec la diplomatie (on declare la guerre), ou
     des qu'on est en guerre."""
     return guerre.diplomatic(state, state.viewer) or bool(guerre.wars_of(state, state.viewer))
-
-
-# On vous a declare la guerre depuis moins de WAR_NEWS semaines : l'onglet
-# respire.
-WAR_NEWS = 8
-
-
-def wars_alert(state) -> bool:
-    me = state.viewer
-    for enemy in guerre.wars_of(state, me):
-        pact = next((p for p in diplo.pacts_between(state, me, enemy) if p.kind == guerre.WAR), None)
-        if pact is not None and pact.payer != me and state.tick_count - pact.since <= WAR_NEWS:
-            return True
-    return False
 
 
 def army_ready(state) -> bool:

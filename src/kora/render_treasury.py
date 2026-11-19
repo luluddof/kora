@@ -212,10 +212,10 @@ def _draw_account(r, state, tribe, lay, month) -> None:
     ]
     for text in notes:
         for part in theme.wrap(r.tiny, text, w):
-            if yy + 15 > y + h:
+            if yy + 16 > y + h:
                 return
             screen.blit(r.tiny.render(part, True, NOTE), (x, yy))
-            yy += 15
+            yy += 16
 
 
 def _slider_texts(state, tribe, bud) -> dict:
@@ -319,10 +319,10 @@ def _draw_budget(r, state, tribe, lay, bud, tips, mx, my) -> None:
     else:
         text = "Avec Droits de passage, les convois étrangers qui traversent votre pays paieront leur passage."
     for part in theme.wrap(r.tiny, text, tw):
-        if yy + 15 > ty + th:
+        if yy + 16 > ty + th:
             break
         screen.blit(r.tiny.render(part, True, NOTE), (tx, yy))
-        yy += 15
+        yy += 16
     if yy + 40 > ty + th:
         return
     yy = _section(r, tx, yy + 8, tw, "L'ARGENT AILLEURS")
@@ -333,10 +333,10 @@ def _draw_budget(r, state, tribe, lay, bud, tips, mx, my) -> None:
         f"Le tribut de vos tributaires : {int(100 * money.VASSAL_SHARE)} % de leur trésor chaque mois.",
     ):
         for part in theme.wrap(r.tiny, text, tw):
-            if yy + 15 > ty + th:
+            if yy + 16 > ty + th:
                 return
             screen.blit(r.tiny.render(part, True, NOTE), (tx, yy))
-            yy += 15
+            yy += 16
 
 
 def _draw_graph(r, tribe, lay) -> None:

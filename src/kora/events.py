@@ -970,6 +970,7 @@ def options_for(state, inst) -> list[dict]:
                 "label": _fmt(state, inst, opt.label),
                 "blocked": blocked,
                 "summary": summarize(state, inst, opt),
+                "chips": summary_chips(state, inst, opt),
                 "details": details(state, inst, opt),
             }
         )
@@ -1005,7 +1006,7 @@ EFFECT_TEXT = {
     "chief_renown": lambda a: f"renommée du chef {'+' if a[0] >= 0 else ''}{a[0]}",
     "relation": lambda a: f"relation {'+' if a[0] >= 0 else ''}{a[0]}",
     "stop": lambda a: "la bande s'arrête",
-    "goto_far": lambda a: f"la bande part ({a[0]} à {a[1]} cases)",
+    "goto_far": lambda a: f"la bande part ({a[0]} à {a[1]} lieues)",
     "goto_warm": lambda a: "la bande part vers un hiver plus court",
     "split": lambda a: "une partie de la bande part fonder un clan",
     "secede": lambda a: "le clan quitte la tribu",
@@ -1089,6 +1090,61 @@ def effect_text(effect) -> str:
 def _effects_text(effects) -> str:
     parts = [effect_text(e) for e in effects]
     return ", ".join(p for p in parts if p)
+
+
+# Le SENS d'un effet pour le joueur (2026-11-19, les pastilles des cartes) :
+# "gain" (vert), "perte" (rouge), "neutre". Les effets a nombre suivent le
+# signe de leur nombre ; les autres sont dits ici.
+_SIGNED = {
+    "prestige", "stock", "stock_all", "stock_near", "pop", "pop_pct", "loyalty", "loyalty_all",
+    "loyalty_near", "rival_loyalty", "renown", "chief_renown", "relation", "stock_pct",
+    "seed_pct", "tech_progress", "learn_boost", "good", "craft_bonus",
+}
+_GAINS = {"camp", "steal_cache", "reveal", "tech_progress_id", "conquest", "craft_bonus"}
+_LOSSES = {"secede", "eat_seed", "burn", "lose_goods", "casus"}
+_PACT_LOSSES = {"tribut_paye", "protection", "soumission"}
+
+
+def effect_tone(effect) -> str:
+    kind, *args = effect
+    if kind == "pact":
+        return "perte" if args and args[0] in _PACT_LOSSES else "gain"
+    if kind == "good":
+        return "gain" if len(args) < 2 or args[1] >= 0 else "perte"
+    if kind in _SIGNED and args and isinstance(args[0], (int, float)):
+        if kind == "pop" and len(args) > 1:
+            return "perte" if args[0] < 0 else "gain"
+        return "gain" if args[0] > 0 else "perte" if args[0] < 0 else "neutre"
+    if kind in _GAINS:
+        return "gain"
+    if kind in _LOSSES:
+        return "perte"
+    text = effect_text(effect).strip()
+    if text.startswith("+"):
+        return "gain"
+    if text[:1] in ("-", "−") and text[1:2].isdigit():
+        return "perte"
+    return "neutre"
+
+
+def summary_chips(state, inst, opt: Option) -> list[tuple[str, str]]:
+    """Le resume d'une option en pastilles : (texte, sens). Une option a
+    issues : "60 %" (le sens "chance") puis ses effets, issue par issue."""
+    def chips_of(effects):
+        return [(effect_text(e), effect_tone(e)) for e in effects if effect_text(e)]
+
+    if opt.outcomes:
+        out = chips_of(opt.effects)
+        weights = [_chance(state, inst, o) for o in opt.outcomes]
+        total = sum(weights) or 1.0
+        for o, w in zip(opt.outcomes, weights):
+            out.append((f"{round(100 * w / total)} %", "chance"))
+            out.extend(chips_of(o.effects) or [("rien de plus", "neutre")])
+        return out
+    out = chips_of(opt.effects)
+    if not out:
+        return [("Qui sait ce qui suivra...", "neutre")] if opt.follow else [("Rien de plus", "neutre")]
+    return out
 
 
 def summarize(state, inst, opt: Option) -> str:

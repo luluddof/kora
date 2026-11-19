@@ -31,14 +31,19 @@ class C:
     pierre_clair = (78, 70, 62)
     os = (239, 228, 204)
     lin = (205, 187, 156)
-    cendre = (142, 129, 114)
+    # Le gris des textes secondaires et le rouge des alertes : eclaircis le
+    # 2026-11-19 (au moins 4,5 de contraste sur tous les fonds, la pierre
+    # comprise ; avant : 3,2 sur la pierre).
+    cendre = (160, 147, 131)
+    # Les boutons eteints : plus sombres que tout texte (on voit qu'ils dorment).
+    eteint = (104, 94, 83)
     ocre = (200, 102, 47)
     ocre_sombre = (128, 62, 28)
     braise = (242, 160, 61)
     ocre_jaune = (217, 164, 65)
     terre_cuite = (185, 88, 58)
     bon = (157, 191, 110)
-    mauvais = (217, 87, 63)
+    mauvais = (232, 108, 84)
     alerte = (232, 150, 58)
     savoir = (95, 176, 166)
     froid = (143, 180, 214)
@@ -69,8 +74,9 @@ ROLES = {
     "texte_gras": ("sans-bold", 18),
     "petit": ("sans", 16),
     "petit_gras": ("sans-bold", 16),
-    "mini": ("sans", 14),
-    "mini_gras": ("sans-bold", 14),
+    # L information en petit : 15 pixels (2026-11-19 ; 14 avant, dur a lire).
+    "mini": ("sans", 15),
+    "mini_gras": ("sans-bold", 15),
     "recit": ("sans-italic", 18),
     "recit_petit": ("sans-italic", 15),
     "bouton": ("sans-medium", 16),
@@ -78,6 +84,8 @@ ROLES = {
     "chiffre": ("sans-bold", 19),
     "chiffre_grand": ("sans-black", 26),
     "etiquette": ("sc-medium", 14),
+    # Le nom sous une pastille du rail : tous tiennent en entier ("Commerce").
+    "onglet": ("sans-bold", 13),
 }
 _FONTS: dict = {}
 
@@ -327,7 +335,8 @@ def chamfer(rect, cut: int) -> list:
 PANEL_STYLE = {
     # kind : (fond haut, fond bas, bord, fil, coupe, grain, ombre)
     "peau": (C.charbon, (19, 15, 12), C.bois, C.ocre, 10, 16, True),
-    "pierre": ((58, 51, 45), (40, 35, 31), C.pierre_clair, C.ocre, 12, 26, True),
+    # La pierre des grands ecrans : assombrie le 2026-11-19 (les contrastes).
+    "pierre": ((46, 41, 36), (33, 29, 26), C.pierre_clair, C.ocre, 12, 26, True),
     "carte": (C.cuir, (30, 23, 18), C.bois, None, 6, 12, False),
     "carte_survol": (C.cuir_clair, (40, 31, 24), C.braise, None, 6, 12, False),
     "carte_choisie": ((66, 44, 26), (48, 32, 20), C.ocre, None, 6, 12, False),
@@ -495,7 +504,7 @@ def button(surf, rect, label: str, rank: str = "second", on: bool = True, hover:
     role = role or ("bouton" if h >= 30 else "bouton_petit")
     f = font(role)
     if rank == "discret":
-        col = C.braise if hover and on else (C.lin if on else C.cendre)
+        col = C.braise if hover and on else (C.lin if on else C.eteint)
         tw = f.size(label)[0]
         surf.blit(f.render(label, True, col), (x + (w - tw) // 2, y + (h - f.get_height()) // 2))
         if hover and on:
@@ -504,9 +513,11 @@ def button(surf, rect, label: str, rank: str = "second", on: bool = True, hover:
     cut = 5 if h >= 26 else 4
     poly = chamfer((x, y, w, h), cut)
     if not on:
-        pygame.draw.polygon(surf, (30, 24, 20), poly)
-        pygame.draw.polygon(surf, (52, 42, 34), poly, 1)
-        fg = C.cendre
+        # Eteint (2026-11-19) : un creux sans relief, l'ecriture sombre ; on ne
+        # le confond plus avec un ordre possible.
+        pygame.draw.polygon(surf, (19, 15, 12), poly)
+        pygame.draw.polygon(surf, (44, 36, 29), poly, 1)
+        fg = C.eteint
     elif rank == "principal":
         if hover:
             glow(surf, rect, C.braise, 0.9)
@@ -541,7 +552,7 @@ def button(surf, rect, label: str, rank: str = "second", on: bool = True, hover:
         left += f.size(label)[0]
     if key_hint:
         hf = font("mini")
-        surf.blit(hf.render(key_hint, True, C.nuit if rank == "principal" and on else C.cendre), (left + 6, y + (h - hf.get_height()) // 2))
+        surf.blit(hf.render(key_hint, True, C.nuit if rank == "principal" and on else (C.cendre if on else C.eteint)), (left + 6, y + (h - hf.get_height()) // 2))
 
 
 def _vgrad_poly(surf, rect, poly, top, bot) -> None:
@@ -593,6 +604,110 @@ def chip(surf, x: int, y: int, label: str, color=None, icon_key: str | None = No
         tx += 16
     surf.blit(f.render(label, True, _mix(color, C.os, 0.45)), (tx, y + 2))
     return w
+
+
+def section(surf, label: str, x: int, y: int, w: int) -> int:
+    """LE titre de section de tous les ecrans (2026-11-19, la critique : un
+    seul style) : petites capitales ocre jaune, des points d'ocre dessous.
+    Rend le y de la suite. Un titre ecrit tout en capitales est remis en
+    petites capitales (sinon "CHAMPS" et "Batiments" ne se ressemblent pas)."""
+    if label == label.upper():
+        label = label[:1] + label[1:].lower()
+    text(surf, label, "etiquette", C.ocre_jaune, (x, y - 1))
+    dotted(surf, (x, y + 18), (x + w, y + 18), C.ocre_sombre, 5)
+    return y + 24
+
+
+# --- le sens des chiffres (2026-11-19) -----------------------------------------------------
+# Un chiffre qui menace est rouge et marque d'une pointe en bas, un gain vert
+# et pointe en haut, le reste neutre : la couleur ET la forme (jamais la
+# couleur seule, pour qui voit mal les couleurs).
+TONES = {
+    "gain": C.bon,
+    "perte": C.mauvais,
+    "neutre": C.lin,
+    "chance": C.ocre_jaune,
+}
+
+
+def tone_of(label: str, default: str = "neutre") -> str:
+    """Le sens d'un texte d'effet quand on n'a que lui : "+3 ..." est un gain,
+    "-2 ..." ou "−2 ..." une perte ; sinon `default`."""
+    s = label.strip()
+    if s.startswith("+"):
+        return "gain"
+    if s[:1] in ("-", "−") and s[1:2].strip()[:1].isdigit():
+        return "perte"
+    for word in (" -", " −"):
+        i = s.find(word)
+        if i >= 0 and s[i + 2:i + 3].isdigit():
+            return "perte"
+    return default
+
+
+def _arrow(surf, x: int, y: int, up: bool, color) -> None:
+    """Une petite pointe (le sens d'un chiffre, sans compter sur la couleur)."""
+    if up:
+        pts = [(x, y + 6), (x + 7, y + 6), (x + 3.5, y)]
+    else:
+        pts = [(x, y), (x + 7, y), (x + 3.5, y + 6)]
+    pygame.draw.polygon(surf, color, pts)
+
+
+def effect_chip(surf, x: int, y: int, label: str, tone: str = "neutre", role: str = "mini_gras", max_w: int | None = None) -> int:
+    """Une pastille d'effet (cartes d'evenement, decisions) : teintee de son
+    sens, une pointe pour un gain ou une perte. Rend sa largeur."""
+    f = font(role)
+    color = TONES.get(tone, C.lin)
+    mark = 11 if tone in ("gain", "perte") else 0
+    if max_w is not None:
+        label = fit(f, label, max(20, max_w - 14 - mark))
+    w = f.size(label)[0] + 14 + mark
+    h = f.get_height() + 5
+    poly = chamfer((x, y, w, h), 3)
+    pygame.draw.polygon(surf, _mix(C.charbon, color, 0.20 if tone != "neutre" else 0.10), poly)
+    pygame.draw.polygon(surf, _mix(color, C.charbon, 0.15 if tone != "neutre" else 0.55), poly, 1)
+    tx = x + 7
+    if mark:
+        _arrow(surf, tx, y + (h - 6) // 2, tone == "gain", color)
+        tx += mark
+    surf.blit(f.render(label, True, _mix(color, C.os, 0.30 if tone != "neutre" else 0.0)), (tx, y + 2))
+    return w
+
+
+def effect_row(surf, chips, x: int, y: int, width: int, role: str = "mini_gras", rows: int = 1) -> int:
+    """Des pastilles a la suite (texte, sens) ; a la ligne s'il le faut,
+    `rows` lignes au plus (la derniere pastille est coupee, jamais perdue en
+    silence). Rend la hauteur prise."""
+    f = font(role)
+    h = f.get_height() + 5
+    cx, cy, line = x, y, 1
+    for i, (label, tone) in enumerate(chips):
+        if not label:
+            continue
+        mark = 11 if tone in ("gain", "perte") else 0
+        need = f.size(label)[0] + 14 + mark
+        if cx > x and cx + need > x + width:
+            if line >= rows:
+                left = len(chips) - i
+                effect_chip(surf, cx, cy, f"+{left}…" if left > 1 else "…", "neutre", role)
+                return line * (h + 4)
+            cx, cy, line = x, cy + h + 4, line + 1
+        cx += effect_chip(surf, cx, cy, label, tone, role, max_w=x + width - cx) + 5
+    return line * (h + 4)
+
+
+def gauge(surf, rect, frac: float, label: str, value: str, color, note: str = "", note_color=None) -> None:
+    """Une jauge nommee (la fiche d'une unite) : le nom au-dessus a gauche,
+    la valeur a droite, la rainure remplie dessous ; une note sous la valeur."""
+    x, y, w, h = (int(v) for v in rect)
+    text(surf, label, "etiquette", C.cendre, (x, y))
+    vf = font("petit_gras")
+    vw = vf.size(value)[0]
+    surf.blit(vf.render(value, True, color), (x + w - vw, y - 2))
+    bar(surf, (x, y + 19, w, 9), frac, color)
+    if note:
+        text(surf, note, "mini", note_color or C.cendre, (x, y + 31), w)
 
 
 def tooltip(surf, lines, x: int, y: int, width: int = 360, avoid=None) -> None:

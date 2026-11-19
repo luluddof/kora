@@ -245,7 +245,7 @@ def draw_settings(r, volume: float, on: bool, listening: bool) -> None:
     theme.button(screen, lay["plus"], "+", "second", True, _hover(lay["plus"], mx, my))
     theme.button(screen, lay["toggle"], "Couper la musique" if on else "Remettre la musique", "second", True, _hover(lay["toggle"], mx, my))
     theme.button(screen, lay["listen"], "Arrêter l'écoute" if listening else "Écouter", "second", on, on and _hover(lay["listen"], mx, my))
-    theme.button(screen, lay["close"], "Fermer [Échap]", "principal", True, _hover(lay["close"], mx, my))
+    theme.button(screen, lay["close"], "Fermer [Échap]", "second", True, _hover(lay["close"], mx, my))
 
 
 # --- charger une partie ----------------------------------------------------------
@@ -466,16 +466,16 @@ def draw_setup(r, setup: dict, t: float, save_info: dict | None, hint: str = "")
         yy = y + 30
         for part in _wrap(r.tiny, bonus.about, cw - 54)[:2]:
             screen.blit(r.tiny.render(part, True, SOFT), (x + 46, yy))
-            yy += 13
+            yy += 15
         yy += 3
         for line in tech.start_bonus_lines(bonus):
             for k, part in enumerate(_wrap(r.tiny, line, cw - 30)[:3]):
-                if yy + 13 > y + ch - 4:
+                if yy + 15 > y + ch - 4:
                     break
                 if k == 0:
                     pygame.draw.polygon(screen, (178, 205, 140), [(x + 12, yy + 3), (x + 18, yy + 7), (x + 12, yy + 11)])
                 screen.blit(r.tiny.render(part, True, (178, 205, 140)), (x + 24, yy))
-                yy += 13
+                yy += 15
         if chosen:
             pygame.draw.circle(screen, GOLD, (x + cw - 14, y + 14), 8)
             pygame.draw.lines(screen, (40, 30, 14), False, [(x + cw - 18, y + 14), (x + cw - 15, y + 17), (x + cw - 10, y + 11)], 2)
@@ -753,9 +753,9 @@ def draw_mp_menu(r, scene, resume_info: dict | None, t: float, message: str = ""
         screen.blit(s_, (x + (bw - s_.get_width()) // 2, y + bh - 17))
     hx, hy = lay["help"]
     for i, line in enumerate(MP_HELP):
-        screen.blit(r.tiny.render(line, True, SOFT if i else (200, 196, 180)), (hx, hy + i * 15))
+        screen.blit(r.tiny.render(line, True, SOFT if i else (200, 196, 180)), (hx, hy + i * 16))
     if message:
-        screen.blit(r.small.render(_fit(r.small, message, 520), True, (236, 170, 90)), (hx, hy + len(MP_HELP) * 15 + 10))
+        screen.blit(r.small.render(_fit(r.small, message, 520), True, (236, 170, 90)), (hx, hy + len(MP_HELP) * 16 + 10))
 
 
 # --- le salon ------------------------------------------------------------------------------------
@@ -841,7 +841,7 @@ def draw_lobby(r, mp, t: float, chat_text, hint: str = "", status: str = "") -> 
         yy = y + 36
         for part in _wrap(r.tiny, session.SLOT_NOTE[tid], cw - 24)[:2]:
             screen.blit(r.tiny.render(part, True, NOTE), (x + 12, yy))
-            yy += 13
+            yy += 15
         yy += 8
         pygame.draw.line(screen, (70, 64, 50), (x + 12, yy), (x + cw - 12, yy))
         yy += 10
@@ -865,7 +865,7 @@ def draw_lobby(r, mp, t: float, chat_text, hint: str = "", status: str = "") -> 
             if bonus is None:
                 continue
             screen.blit(r.tiny.render(_fit(r.tiny, "+ " + bonus.name, cw - 24), True, (178, 205, 140)), (x + 12, yy))
-            yy += 15
+            yy += 16
     # La discussion.
     cx, cy, cw, chh = lay["chat"]
     screen.blit(r.tiny.render("DISCUSSION  ·  Entrée pour écrire", True, GOLD_DIM), (cx, cy - 16))

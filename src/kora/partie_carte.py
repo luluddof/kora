@@ -55,6 +55,7 @@ from src.kora.layout import (
 )
 from src.kora.render_panels import army_ready, commerce_ready, wars_ready
 from src.kora.render_situations import banner_hit
+from src.kora import render_objectifs
 from src.kora.sim import hex_inspect
 from src.kora.types import Hex
 from src.kora.vision import is_explored, is_visible, vision_of
@@ -431,10 +432,15 @@ class MapInput:
             if sit_uid is not None:
                 self.open_situation(sit_uid)
                 return None
-            if ui_hit == "age":
-                # Le marqueur d'age : l'arbre des savoirs.
+            if ui_hit in ("age", "savoir"):
+                # Le marqueur d'age, le savoir en cours ou a choisir : l'arbre.
                 self.side_panel = "savoirs"
                 screens.close_all(self.ui)
+                return None
+            if isinstance(ui_hit, tuple) and ui_hit[0] == "account":
+                # Les sicles : l'ecran du tresor.
+                if ui_hit[1] == "argent":
+                    self.open_screen("tresor")
                 return None
             if ui_hit == "bar":
                 return None
@@ -479,6 +485,15 @@ class MapInput:
             if self.renderer.mode_menu_open:
                 # Un clic ailleurs referme la liste des modes.
                 self.renderer.mode_menu_open = False
+                return None
+            # La colonne de gauche (render_objectifs) : une alerte mene ou agir ;
+            # le titre du chemin du premier village le replie ou le deplie.
+            act = render_objectifs.alert_hit(self.renderer, mx, my)
+            if act is not None:
+                self.side_click(act)
+                return None
+            if render_objectifs.goal_hit(self.renderer, mx, my) is not None:
+                self.ui["goal_folded"] = not self.ui.get("goal_folded")
                 return None
             card_uid = next(
                 (uid for uid, rect in self.renderer.event_hits.items() if isinstance(uid, int)

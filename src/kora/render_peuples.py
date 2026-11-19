@@ -244,7 +244,7 @@ def draw_peoples(r, state, layout, ui) -> None:
     tips.clear()
     if not peoples:
         theme.text(s, "Vous ne connaissez encore aucun autre peuple.", "texte", C.lin, (bx + 30, by + 80))
-        theme.text(s, "Explorez : à 16 cases d'une de leurs bandes, vous les rencontrez.", "petit", C.cendre, (bx + 30, by + 110))
+        theme.text(s, "Explorez : à 16 lieues d'une de leurs bandes, vous les rencontrez.", "petit", C.cendre, (bx + 30, by + 110))
         r.people_list = None
         return
     # Les filtres.

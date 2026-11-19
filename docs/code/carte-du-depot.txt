@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.31.0
+A jour pour la version : 0.32.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -141,7 +141,7 @@ ETAGE 1  le temps, les fiches
     (LogKind : combat, survie, saison, decouverte, politique - "Peuples" a
     l'ecran), avec la case ou elles se passent (un clic y emmene la camera).
     classes : LogKind, LogEntry, GameLog
-    fonctions : season_fr, terrain_fr
+    fonctions : repeat_key, merged_text, group_repeats, season_fr, terrain_fr
     constantes : LOG_CAP, FILTER_ALL, FILTERS
 
   resources.py
@@ -630,9 +630,10 @@ ETAGE 5  LES SYSTEMES
     Evenements en chaines (voir la spec 2026-09-24, section 8).
     classes : Follow, Outcome, Option, Event, Instance, Book
     fonctions : names, check, conds_ok, apply, options_for, vocabulary,
-      effect_kinds, condition_kinds, effect_text, summarize, details, fire,
-      resolve, choose, default_index, decide_default, find, pending, text_for,
-      hook, monthly, weekly, copy_book, to_json, from_json
+      effect_kinds, condition_kinds, effect_text, effect_tone, summary_chips,
+      summarize, details, fire, resolve, choose, default_index,
+      decide_default, find, pending, text_for, hook, monthly, weekly,
+      copy_book, to_json, from_json
     constantes : PLAYER_GAP, AI_GAP, PULSE_CAP, MAX_PENDING, MOOD_COLORS,
       EVENTS, EFFECT_TEXT, OFFERS
 
@@ -827,6 +828,12 @@ ETAGE -  l'interface (pygame)
     fonctions : wants_war_music
     constantes : WAR_TRACK, FADE_IN, FADE_OUT, DEFAULT_VOLUME, HOLD, CHECK
 
+  objectifs.py
+    CE QUI ATTEND LE JOUEUR (2026-11-19, la critique des interfaces : "le
+    debut ne dit pas quoi faire", "l'essentiel se noie").
+    fonctions : chemin, treasury_alert, wars_alert, alertes
+    constantes : CAMP_TECH, VILLAGE_TECH, MAX_ALERTS, GRAVITY, WAR_NEWS
+
   partie.py
     LA PARTIE A L'ECRAN : la classe Play (une partie qu'on joue, seul ou a
     plusieurs) et la fenetre des reglages.
@@ -853,9 +860,10 @@ ETAGE -  l'interface (pygame)
     LE DESSIN DE LA PARTIE (pygame) : Renderer, la planete et tout ce qui
     se pose dessus, la barre du haut, les onglets lateraux, les fiches.
     classes : Renderer
-    fonctions : draw_age_tip, draw_journal
+    fonctions : band_gauges, hud_accounts, draw_age_tip, draw_journal
     constantes : TAB_ICONS, SEASON_ICONS, KIND_ICONS, BAND_ICONS,
-      MAP_MODE_ICONS, SEASON_FR, INSPECT_MAX_W
+      MAP_MODE_ICONS, SEASON_FR, INSPECT_MAX_W, GAUGE_H, GAUGE_FOOD_WEEKS,
+      HUD_TREND_WEEKS
 
   render_batiments.py
     LA PAGE "LES BATIMENTS" de la fenetre du village (2026-10-18 : la
@@ -932,15 +940,20 @@ ETAGE -  l'interface (pygame)
     fonctions : draw
     constantes : GREEN
 
+  render_objectifs.py
+    LA COLONNE DE GAUCHE : ce qui attend le joueur (2026-11-19).
+    fonctions : column_top, draw_alerts, draw_goal, alert_hit, goal_hit
+    constantes : COL_X, COL_W, ALERT_H, TONE_COLOR
+
   render_panels.py
     Panneaux Tribu (chef, clans, attachement) et Peuples (diplomatie),
     cartes d'evenements.
     fonctions : event_icon, tribe_alert, has_nomads, tribe_tab_label,
       start_bonus_text, draw_tribe, draw_villages, draw_event_cards,
       deadline_text, event_modal_layout, draw_event_modal, commerce_ready,
-      treasury_alert, commerce_alert, wars_ready, wars_alert, army_ready
+      commerce_alert, wars_ready, army_ready
     constantes : EVENT_WORDS, MOOD_ICONS, MOOD_STATE, BG, EDGE, TEXT, SOFT,
-      NOTE, GOLD, GOOD, BAD, WARN, WAR_NEWS
+      NOTE, GOLD, GOOD, BAD, WARN
 
   render_peuples.py
     LE CONSEIL DES PEUPLES (onglet Peuples ; 2026-10-18, la maquette A
@@ -1050,8 +1063,10 @@ ETAGE -  l'interface (pygame)
     classes : C
     fonctions : data_dir, font_file, font, reset, icon, medallion, grain,
       chamfer, panel_surface, panel, glow, pulse, dotted, stroke, fit, wrap,
-      text, title, button, icon_button, bar, chip, tooltip, veil
-    constantes : FONT_FILES, ROLES, ICON_FILES, PANEL_CACHE, PANEL_STYLE
+      text, title, button, icon_button, bar, chip, section, tone_of,
+      effect_chip, effect_row, gauge, tooltip, veil
+    constantes : FONT_FILES, ROLES, ICON_FILES, PANEL_CACHE, PANEL_STYLE,
+      TONES
 
   tree_graph.py
     LE PLACEMENT DE L'ARBRE DES SAVOIRS, comme un graphe (a la Victoria 3).
@@ -1147,6 +1162,15 @@ ETAGE -  l'interface (pygame)
   (jetons)                            render._draw_hunger, _draw_hostile,
                                       Renderer._band_marks
   Un compte a rebours affiche         render_panels.deadline_text
+  Ce qui attend le joueur (les        objectifs.py (alertes, chemin) ; la
+  alertes, le chemin du premier       colonne de gauche : render_objectifs.py ;
+  village)                            le clic : partie_carte.py
+  Le sens des chiffres (gain, perte)  theme.TONES, theme.effect_chip,
+                                      theme.effect_row ; les evenements :
+                                      events.effect_tone, events.summary_chips
+  Les comptes de la barre du haut     render.hud_accounts, Renderer.draw_hud
+  La fiche d'une unite (jauges)       Renderer.draw_band_card, render.band_gauges
+  Un titre de section                 theme.section
   L'approche des chefs de l'IA        approach.PROFILES, approach.ACCEPT
   L'IA (bandes, villages, troupes)    ai.py ; quand elle attaque : ai_war.py
   Chefferie, tributaires, revoltes    chiefdom.py
@@ -1176,7 +1200,8 @@ ETAGE -  l'interface (pygame)
   Le brouillard et sa memoire         vision.py, memory.py
   La fiche d'une case                 sim.hex_inspect, sim.inspect_lines,
                                       Renderer.draw_inspect
-  Le journal, les nouvelles           gamestate.note, log.py, Renderer.draw_toasts
+  Le journal, les nouvelles           gamestate.note, log.py, Renderer.draw_toasts ;
+                                      les lignes repetees : log.group_repeats
   Le menu, la creation du peuple,     render_menu.py ; app.title_screen ;
   le salon                            session.py
   Le multijoueur                      session.py, net.py ; verifier :
@@ -1362,6 +1387,8 @@ ETAGE -  l'interface (pygame)
                               (tools/notes.py) : les dates, la
   test_numbers_money.py       Les nombres et l'argent (0.7.0) : comptage,
                               nombres additifs et base,
+  test_objectifs.py           Des interfaces qui se lisent (0.32.0) : ce qui
+                              attend le joueur
   test_one_village.py         Un village par peuple (les autres lui sont
                               tributaires, ou freres), les
   test_ost_siege.py           L'ost (les troupes des tributaires rejoignent
@@ -1675,6 +1702,10 @@ ETAGE -  l'interface (pygame)
   specs/2026-11-19-critique-interfaces.txt
     Regard neuf sur les interfaces (critique de la 0.31)
     Statut : PROPOSE (rien de code ; en attente de son choix).
+  specs/2026-11-19-interfaces-lisibles.txt
+    Des interfaces qui se lisent : le grave se voit, le debut guide
+    (0.32.0)
+    Statut : FAIT (0.32.0) ; ce qui reste, dit en section 7.
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

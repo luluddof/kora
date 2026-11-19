@@ -128,7 +128,7 @@ STEPS = (
     ),
     Step(
         "marcher", "Marcher",
-        "Une bande choisie, un clic sur la carte l'y envoie. La marche est lente : quatre cases de plaine "
+        "Une bande choisie, un clic sur la carte l'y envoie. La marche est lente : quatre lieues de plaine "
         "par semaine, moins en forêt et en montagne ; le long d'une rivière, le courant aide.",
         "Envoyez votre bande quelque part (clic gauche sur la carte).",
         _walking,
@@ -143,9 +143,9 @@ STEPS = (
     ),
     Step(
         "manger", "Manger",
-        "La fiche de la bande dit ce qu'elle a en réserve (Stock), ce qu'elle trouve autour d'elle "
-        "(Collecte) et ce qu'il lui faut (besoin). Une terre trop cueillie s'épuise : il faut bouger. "
-        "Survolez une case : ce qu'elle donne, ce que coûte la marche.",
+        "La fiche de la bande montre deux jauges : ses Vivres (sa réserve, en semaines) et sa Collecte "
+        "(ce qu'elle trouve autour d'elle ; le trait blanc, ce qu'il lui faut). En rouge, la faim menace : "
+        "une terre trop cueillie s'épuise, il faut bouger. Survolez un lieu : ce qu'il donne, ce que coûte la marche.",
     ),
     Step(
         "hiver", "L'hiver",

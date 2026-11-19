@@ -213,7 +213,7 @@ def _where(state, army) -> str:
     if home is None:
         return "sans village"
     d = points.lieux(state.world, home, army)
-    return "au village" if d <= troupes.ARMY_HOME else f"à {d} cases de {places.name(home)}"
+    return "au village" if d <= troupes.ARMY_HOME else f"à {d} lieues de {places.name(home)}"
 
 
 def _draw_army(r, state, me, area, lay, ui, mx, my, tips) -> None:

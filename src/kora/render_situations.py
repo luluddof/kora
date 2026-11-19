@@ -282,7 +282,7 @@ def draw_window(r, state, ui) -> None:
     else:
         st_line = spec.stage_name(inst)
     theme.text(r.screen, st_line, "petit", C.ocre_jaune, (bx + 128, by + 82), bw - 160)
-    theme.button(r.screen, lay["close"], "Fermer", "discret", True, _hover(lay["close"]))
+    theme.button(r.screen, lay["close"], "Fermer", "second", True, _hover(lay["close"]))
     yy = lay["story_y"]
     for ln in lines:
         r.screen.blit(f_story.render(ln, True, C.lin), (bx + 32, yy))
@@ -291,8 +291,7 @@ def draw_window(r, state, ui) -> None:
     my_ = lay["mid_y"]
     half = (bw - 84) // 2
     lx, rx = bx + 32, bx + 52 + half
-    theme.text(r.screen, "CE QUI PÈSE" if crisis else "LE PRIX DU PREMIER", "etiquette", C.ocre, (lx, my_))
-    theme.dotted(r.screen, (lx, my_ + 20), (lx + half, my_ + 20), C.bois_clair)
+    theme.section(r.screen, "CE QUI PÈSE" if crisis else "LE PRIX DU PREMIER", lx, my_, half)
     ly = my_ + 28
     if crisis:
         eff = situations.effect_lines(inst) if not inst.outcome else []
@@ -314,8 +313,7 @@ def draw_window(r, state, ui) -> None:
             theme.text(r.screen, e, "petit", C.bon, (lx, ly), half)
             ly += 20
         theme.text(r.screen, "Seulement si plusieurs peuples y prennent part.", "mini", C.cendre, (lx, ly + 2), half)
-    theme.text(r.screen, "RÉSOLUTION" if crisis else "LE CLASSEMENT", "etiquette", C.ocre, (rx, my_))
-    theme.dotted(r.screen, (rx, my_ + 20), (rx + half, my_ + 20), C.bois_clair)
+    theme.section(r.screen, "RÉSOLUTION" if crisis else "LE CLASSEMENT", rx, my_, half)
     ry = my_ + 30
     if crisis:
         theme.bar(r.screen, (rx, ry, half, 14), inst.progress / 100.0, C.bon)
@@ -346,7 +344,8 @@ def draw_window(r, state, ui) -> None:
             theme.text(r.screen, part, "mini", C.cendre, (rx, ry + 4))
             ry += 17
     # --- les actions
-    theme.text(r.screen, "QUE FAIRE", "etiquette", C.ocre, (bx + 32, lay["actions"][0][1] - 26) if lay["actions"] else (bx + 32, by + bh - 80))
+    qx, qy = (bx + 32, lay["actions"][0][1] - 26) if lay["actions"] else (bx + 32, by + bh - 80)
+    theme.section(r.screen, "QUE FAIRE", qx, qy, bw - 64)
     tip = None
     for i, action in enumerate(spec.actions):
         rect = lay["actions"][i]

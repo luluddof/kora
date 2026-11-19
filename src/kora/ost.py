@@ -73,7 +73,7 @@ def call_block(state, army_id: int) -> str:
         coming = sum(1 for b in state.bands.values() if b.ost == army.id)
         if coming:
             return f"L'ost est en route : {coming} troupe{'s' if coming > 1 else ''}"
-        return f"Aucune troupe de vos tributaires à {OST_RANGE} cases"
+        return f"Aucune troupe de vos tributaires à {OST_RANGE} lieues"
     return ""
 
 
