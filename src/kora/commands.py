@@ -112,13 +112,18 @@ def _goto(state, tid, band_id, q, r, u=None, v=None):
         return _out(orders.HOMEBOUND + ".")
     if battle.in_battle(state, band):
         return _out(IN_BATTLE + ".")
+    if band.retreating:
+        return _out("La bande est en repli.")
+    # Le point clique (points.py) : la bande va la, pas au centre du lieu.
+    aim = (int(u), int(v)) if u is not None and v is not None else None
+    if not set_goto(state, band.id, Hex(int(q), int(r)), aim=aim, wide=True):
+        # Pas de chemin (l'eau, un lieu trop loin pour la recherche) : le
+        # dire, au lieu d'un ordre ignore sans un mot (revue du 2026-11-27).
+        return _out("Pas de chemin jusque-là.")
     # Un ordre de marche retient la troupe appelee a l'ost (ost.py).
     band.ost = 0
     # Elle part : elle ne ravage plus (ravage.py).
     band.ravage = 0
-    # Le point clique (points.py) : la bande va la, pas au centre du lieu.
-    aim = (int(u), int(v)) if u is not None and v is not None else None
-    set_goto(state, band.id, Hex(int(q), int(r)), aim=aim)
     return _out()
 
 
@@ -136,11 +141,11 @@ def _march(state, tid, band_id, target_id):
     if band.homebound:
         return _out(orders.HOMEBOUND + ".")
     if target.tribe_id != tid:
-        why = guerre.may_start(state, tid, target.tribe_id)
+        # La regle de la bataille (guerre.attack_block = battle._will_fight) :
+        # un ordre accepte est une bataille qui aura lieu.
+        why = guerre.attack_block(state, tid, target.tribe_id)
         if why:
-            return _out(why + ".")
-        if guerre.needs_declaration(state, tid, target.tribe_id) and not guerre.declared_war(state, tid, target.tribe_id) and not guerre.at_war(state, tid, target.tribe_id):
-            return _out(f"Vous êtes en paix avec les {state.tribes[target.tribe_id].name} : déclarez-leur d'abord la guerre (écran Peuples)")
+            return _out(why if why.endswith(")") else why + ".")
     band.ost = 0
     # Elle part : elle ne ravage plus (ravage.py).
     band.ravage = 0

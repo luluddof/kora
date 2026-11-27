@@ -51,8 +51,8 @@ FORD_BIG_PCT = 160
 # boueuse. Elle varie doucement d'une case a sa voisine (un bruit lisse,
 # tire des coordonnees : le meme sur toutes les machines), pour que les
 # chemins suivent le pays et pas les rangees d'hexagones. Le cout reste un
-# entier (cout * pct // 100) : le plus petit cout (plaine 10) devient 9,
-# l'heuristique d'A* (path.py) compte 9 par case.
+# entier (cout * pct // 100) : le plus petit cout (plaine 10) devient 9 ;
+# l'heuristique d'A* en tient compte (path.heuristic_rate).
 COST_VAR_MIN = 90
 COST_VAR_MAX = 112
 # La taille des taches du bruit (en cases), et le poids de chaque octave.
@@ -134,10 +134,12 @@ class AtlasLabel:
 
 
 # Deux caches de disques : petits rayons (collecte, rayon 2) et grands
-# rayons (vision 16, recherches de l'IA), chacun borne en nombre d'entrees.
+# rayons (vision 16, recherches de l'IA), chacun borne par le NOMBRE DE
+# LIEUX gardes (revue du 2026-11-27 : borne en entrees, un disque de rayon 50
+# pesant 9 000 lieux, ils prenaient 68 Mo en un an de sa partie, sans fin).
 RADIUS_CACHE_MAX = 4
-RADIUS_CACHE_SIZE = 40000
-BIG_RADIUS_CACHE_SIZE = 3000
+RADIUS_CACHE_CELLS = 150000
+BIG_RADIUS_CACHE_CELLS = 400000
 _RADIUS_DELTAS: dict[int, list[tuple[int, int]]] = {}
 
 
@@ -420,12 +422,20 @@ class World:
             else:
                 dists.append(true_distance(dq, dr))
             found.append(h)
-        limit = RADIUS_CACHE_SIZE if small else BIG_RADIUS_CACHE_SIZE
-        if len(cache) >= limit:
-            # On oublie le quart le plus ancien (vider tout d'un coup faisait
-            # tout recalculer au tick suivant).
-            for old in list(cache)[: limit // 4]:
-                del cache[old]
+        limit = RADIUS_CACHE_CELLS if small else BIG_RADIUS_CACHE_CELLS
+        which = "small" if small else "big"
+        kept_all = self.__dict__.setdefault("_radius_kept", {})
+        kept = kept_all.get(which, 0) + len(found)
+        if kept > limit:
+            # On oublie les plus anciens jusqu'aux trois quarts (vider tout
+            # d'un coup faisait tout recalculer au tick suivant).
+            for old in list(cache):
+                kept -= len(cache.pop(old)[0])
+                if kept <= limit * 3 // 4:
+                    break
+            if not cache:
+                kept = len(found)
+        kept_all[which] = kept
         cache[key] = (found, dists)
         return found, dists
 

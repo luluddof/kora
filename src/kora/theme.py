@@ -125,6 +125,7 @@ def reset() -> None:
     _ICONS.clear()
     _PANELS.clear()
     _GRAIN.clear()
+    _FIT.clear()
 
 
 # --- les icones -----------------------------------------------------------------------
@@ -448,12 +449,34 @@ def stroke(surf, x: int, y: int, w: int, color=None, thick: int = 3) -> None:
 # --- les textes -------------------------------------------------------------------------------
 
 
+_FIT: dict = {}
+
+
 def fit(f, text: str, width: int) -> str:
+    """Le texte coupe pour tenir dans width (avec "…"). Par moitie, et garde
+    (2026-11-27 : l'arbre des savoirs tournait a 8 images/s, une ligne de 188
+    lettres mesuree lettre par lettre a chaque image). Meme resultat
+    qu'avant : la plus longue tete qui tient."""
+    key = (id(f), text, width)
+    hit = _FIT.get(key)
+    if hit is not None:
+        return hit
     if f.size(text)[0] <= width:
-        return text
-    while text and f.size(text + "…")[0] > width:
-        text = text[:-1]
-    return text.rstrip() + "…"
+        out = text
+    else:
+        lo, hi = 0, len(text)
+        # La plus longue tete text[:n] telle que tete + "…" tienne.
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if f.size(text[:mid] + "…")[0] <= width:
+                lo = mid
+            else:
+                hi = mid - 1
+        out = text[:lo].rstrip() + "…"
+    if len(_FIT) > 4000:
+        _FIT.clear()
+    _FIT[key] = out
+    return out
 
 
 def wrap(f, text: str, width: int) -> list[str]:

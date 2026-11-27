@@ -14,7 +14,10 @@ from __future__ import annotations
 
 from src.kora.events import Event, Follow, Option, Outcome
 
-HUNT_LAND = ("foret", "plaine", "colline", "steppe")
+# Les terres de chasse (les loups, la troupe suivie par les loups) : tous les
+# sols ou l'on chasse, ceux des planetes de la 0.20 compris (savane, toundra,
+# jungle : avant, une bande en jungle ne recevait presque aucune carte).
+HUNT_LAND = ("foret", "plaine", "colline", "steppe", "savane", "toundra", "jungle")
 
 EVENTS: dict[str, Event] = {
     e.id: e
@@ -190,7 +193,9 @@ EVENTS: dict[str, Event] = {
             "troupeau",
             "Le grand troupeau",
             "Un immense troupeau traverse le pays près de {band}. La terre tremble sous les sabots depuis l'aube.",
-            conds=(("not_village",), ("season", "printemps", "automne"), ("terrain", "plaine", "steppe")),
+            # Les grands troupeaux : bisons et chevaux des plaines et des
+            # steppes, gnous de la savane, rennes de la toundra.
+            conds=(("not_village",), ("season", "printemps", "automne"), ("terrain", "plaine", "steppe", "savane", "toundra")),
             weight=0.05,
             cooldown=52,
             mood="chance",
@@ -804,9 +809,10 @@ EVENTS: dict[str, Event] = {
         Event(
             "grotte",
             "La grotte ornée",
-            "Les chasseurs de {band} ont trouve une grotte profonde. Sur les parois, des bêtes peintes "
+            "Les chasseurs de {band} ont trouvé une grotte profonde. Sur les parois, des bêtes peintes "
             "par des hommes d'avant.",
-            conds=(("terrain", "colline", "montagne"),),
+            # Les collines, la montagne, et les abris sous roche du desert.
+            conds=(("terrain", "colline", "montagne", "desert"),),
             weight=0.015,
             once=True,
             mood="esprit",
@@ -952,7 +958,9 @@ EVENTS: dict[str, Event] = {
             "jeunes_partent",
             "Les jeunes veulent partir",
             "Des jeunes de {band} veulent partir fonder leur propre clan, au-delà des collines.",
-            conds=(("season", "printemps"), ("pop_ge", 45), ("can_split",)),
+            # Une bande NOMADE seulement : un village ne se coupe pas en deux
+            # (un peuple = un village ; un peuple fixe ne refait pas de bande).
+            conds=(("not_village",), ("season", "printemps"), ("pop_ge", 45), ("can_split",)),
             weight=0.03,
             cooldown=104,
             mood="peuple",
@@ -1036,11 +1044,37 @@ EVENTS: dict[str, Event] = {
                 Option("Les renvoyer", text="La famille repart, seule."),
             ),
         ),
+        # --- le rivage (la cote n'avait aucune carte de bande) -----------------
+        Event(
+            "baleine",
+            "La baleine échouée",
+            "La mer a jeté sur la grève une bête immense, plus longue que dix hommes couchés. "
+            "Les oiseaux tournent déjà au-dessus de {band}.",
+            conds=(("not_village",), ("terrain", "cote")),
+            weight=0.03,
+            cooldown=156,
+            mood="chance",
+            options=(
+                Option(
+                    "La dépecer : tout le monde au travail",
+                    effects=(("stock", 5), ("prestige", 1)),
+                    text="Graisse, viande, os : {band} a de quoi tenir longtemps.",
+                    ai=1.5,
+                ),
+                Option(
+                    "Faire venir les clans pour la partager",
+                    effects=(("stock", 2), ("loyalty_all", 4)),
+                    text="Les clans viennent de loin ; on mange ensemble sur la grève.",
+                    ai=1.0,
+                ),
+                Option("La laisser à la mer", text="On ne touche pas à ce que la mer a rejeté."),
+            ),
+        ),
         Event(
             "source",
             "La source chaude",
-            "Au fond d'une vallée, les enfants de {band} ont trouve une source chaude. La vapeur monte dans l'air froid.",
-            conds=(("terrain", "vallee", "foret", "colline"),),
+            "Au creux du pays, les enfants de {band} ont trouvé une source chaude. La vapeur monte dans l'air du matin.",
+            conds=(("terrain", "vallee", "foret", "colline", "jungle", "marais", "toundra"),),
             weight=0.012,
             once=True,
             mood="esprit",
@@ -1053,7 +1087,7 @@ EVENTS: dict[str, Event] = {
             "orage",
             "L'orage",
             "Un orage terrible a frappe {band} : la foudre a mis le feu aux herbes sèches, le vent pousse les flammes vers le camp.",
-            conds=(("not_village",), ("season", "ete"), ("terrain", "plaine", "steppe", "foret")),
+            conds=(("not_village",), ("season", "ete"), ("terrain", "plaine", "steppe", "foret", "savane")),
             weight=0.03,
             cooldown=104,
             mood="danger",
@@ -1145,11 +1179,23 @@ EVENTS: dict[str, Event] = {
                 ),
                 Option(
                     "Envoyer une partie du village camper au loin",
-                    effects=(("split", 8, 14), ("pop_pct", -0.02)),
-                    requires=(("can_split",),),
-                    text="Une partie du village part vivre à l'air libre.",
+                    # Une petite part (un dixieme) seulement, et elle revient
+                    # quand la fievre est passee : le village ne se coupe pas
+                    # en deux (avant : la moitie partait en bande nomade).
+                    effects=(("camp_out", 0.10), ("pop_pct", -0.02)),
+                    follow=(Follow("fievre_retour", 1.0, (6, 10)),),
+                    text="Une partie du village part vivre à l'air libre, loin des malades.",
                 ),
             ),
+        ),
+        Event(
+            "fievre_retour",
+            "Ils reviennent du camp",
+            "La fièvre est passée. Les {campeurs} qui campaient au loin rentrent à {village}, amaigris mais vivants.",
+            trigger="follow",
+            conds=(("village",),),
+            mood="peuple",
+            options=(Option("Les accueillir", effects=(("camp_back",),), text="Les maisons se remplissent de nouveau.", ai=1.0),),
         ),
         Event(
             "bonne_recolte",

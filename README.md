@@ -93,7 +93,9 @@ gardée ailleurs (voir plus bas), vous la retrouvez.
   combats sont durs) ; un **clic gauche** sur un autre peuple ouvre sa diplomatie. La **diplomatie** vient avec les
   villages (le savoir **Messagers et serments**) : avant, des bandes qui s'accrochent ; entre deux peuples qui la
   connaissent, on ne s'attaque qu'après avoir **déclaré la guerre** (écran Peuples) : les
-  pays (tributaires, confédérés) et les alliés suivent ; une trêve (la paix blanche) y met fin. Plus une guerre
+  pays (tributaires, confédérés) et les alliés suivent ; une trêve (la paix blanche) y met fin, pour les deux pays entiers (traiter avec un tributaire,
+  c'est traiter avec son suzerain) ; tant qu'un tribut, une trêve ou une alliance vous lie à un pays, on ne peut pas
+  lui déclarer la guerre, et un simple motif n'est pas une guerre. Plus une guerre
   dure, plus les deux camps sont **las** et prêts à la paix blanche (celui qui mène la guerre résiste davantage). La guerre a un **but** : les
   **soumettre** (prendre leur village, ou **exiger leur soumission** quand vous avez l'avantage). On ne sert qu'un
   suzerain : soumettre un tributaire, c'est le prendre à son suzerain, et la guerre est contre tout son pays (ou

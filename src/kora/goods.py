@@ -61,10 +61,11 @@ WORKSHOP = 1.25
 # Consommation : charges par 100 villageois et par semaine.
 NEED = 0.5
 CAP = 80.0
-# Ce qu'un peuple garde pour lui avant de vendre (semaines de besoin) ;
-# celui qui a choisi de vendre ne garde que SELL_KEEP_WEEKS.
+# Ce qu'un peuple garde pour lui avant de vendre (semaines de besoin), quel
+# que soit celui qui a ouvert la route : une route du vendeur gardait 4
+# semaines, celle de l'acheteur 12 ; la premiere videait le stock, les autres
+# restaient vides, etaient fermees, rouvertes (les routes qui clignotaient).
 RESERVE_WEEKS = 12
-SELL_KEEP_WEEKS = 4
 # Un acheteur qui n'a rien demande n'achete pas au-dela de BUY_UP_TO fois
 # sa reserve ; celui qui a ouvert la route achete jusqu'au plein (CAP).
 BUY_UP_TO = 1.5
@@ -73,9 +74,9 @@ TRADE_RANGE = 40
 LOAD = 2.0
 MAX_LEVEL = 3
 CONVOYS_BASE = 1
-CONVOYS_PLACE = 2
 CONVOYS_ROUTES = 2
-PLACE_PRICE = 1.1
+# La Place d'echange (ses convois, son prix) : batiments.VALUES["place"], lu
+# par batiments.value (ce que l'ecran affiche est ce que le jeu compte).
 # Prix : x1,6 quand on n'en a pas, x0,5 quand on en a trop.
 PRICE_HIGH = 1.6
 PRICE_LOW = 0.5
@@ -714,6 +715,28 @@ def trade_ends(state, a: int, b: int):
     return None if best is None else (best[1], best[2])
 
 
+def route_line(state, route) -> list:
+    """Les cases d'une route : la ligne entre ses deux villages, par le plus
+    court (elle passe la couture du monde). Les pillards s'y postent
+    (decisions), le peage s'y paie (money.toll_owner)."""
+    ends = trade_ends(state, route.exporter, route.importer)
+    if ends is None:
+        return []
+    world = state.world
+    (ca, ra), (cb, rb) = axial_to_offset(ends[0]), axial_to_offset(ends[1])
+    dc = cb - ca
+    if world.wrap_x and abs(dc) > world.width / 2:
+        dc -= world.width if dc > 0 else -world.width
+    steps = max(1, world.distance(ends[0], ends[1]))
+    out = []
+    for i in range(steps + 1):
+        t = i / steps
+        h = world.canonicalize(offset_to_axial(int(round(ca + dc * t)) % world.width, int(round(ra + (rb - ra) * t))))
+        if h is not None and (not out or out[-1] != h):
+            out.append(h)
+    return out
+
+
 def _routes_tech(state, a: int, b: int) -> bool:
     ta, tb = state.tribes.get(a), state.tribes.get(b)
     return any(t is not None and tech.bonuses(t).trade for t in (ta, tb))
@@ -738,7 +761,8 @@ def convoys(state, tribe_id: int) -> int:
     tribe = state.tribes.get(tribe_id)
     if tribe is None:
         return 0
-    n = CONVOYS_BASE + len(_village_sites(state, tribe_id)) + CONVOYS_PLACE * trading_places(state, tribe_id)
+    sites = _village_sites(state, tribe_id)
+    n = CONVOYS_BASE + len(sites) + sum(batiments.value(s, "place", "convois") for s in sites)
     if tech.bonuses(tribe).trade:
         n += CONVOYS_ROUTES
     return n
@@ -807,18 +831,39 @@ def close_route(state, tribe_id: int, route) -> bool:
     if route not in routes or tribe_id not in (route.exporter, route.importer):
         return False
     routes.remove(route)
+    _shut(state, route)
     other = route.importer if tribe_id == route.exporter else route.exporter
     if route.by == other:
         diplo.add_mod(state, tribe_id, other, "route_fermee", -3, actor=tribe_id)
     return True
 
 
+# Une route fermee (vide IDLE_CLOSE mois, ou fermee par l'un des deux) : l'IA
+# ne la rouvre pas avant REOPEN_WEEKS semaines, ni d'un cote ni de l'autre
+# (le vendeur fermait, l'acheteur rouvrait le mois suivant). Le souvenir est
+# chez les deux (Tribe.trade["shut"] : "vendeur,acheteur,bien" -> la
+# semaine), donc dans la sauvegarde.
+REOPEN_WEEKS = 26
+
+
+def _shut(state, route) -> None:
+    for tid in (route.exporter, route.importer):
+        tribe = state.tribes.get(tid)
+        if tribe is not None:
+            tribe.trade.setdefault("shut", {})[f"{route.exporter},{route.importer},{route.good}"] = state.tick_count
+
+
+def _shut_lately(state, tribe_id: int, exporter: int, importer: int, good: str) -> bool:
+    tribe = state.tribes.get(tribe_id)
+    at = tribe.trade.get("shut", {}).get(f"{exporter},{importer},{good}") if tribe is not None else None
+    return at is not None and state.tick_count - at < REOPEN_WEEKS
+
+
 def route_price(state, route) -> float:
     """Prix d'une charge sur cette route : le prix moyen des deux marches,
     +10 % si le vendeur a une Place d'echange."""
     p = (price(state, route.exporter, route.good) + price(state, route.importer, route.good)) / 2.0
-    if trading_places(state, route.exporter):
-        p *= PLACE_PRICE
+    p *= max((batiments.value(s, "place", "prix", 1.0) for s in _village_sites(state, route.exporter)), default=1.0)
     # Le marche refuge vend plus cher ; l'effondrement du commerce fait tout baisser.
     exp = state.tribes.get(route.exporter)
     if exp is not None:
@@ -834,8 +879,7 @@ def _flow(state, route) -> tuple[float, str]:
         return 0.0, "plus de village d'un côté"
     if trade_distance(state, exp, imp) > trade_range(state, exp, imp):
         return 0.0, "villages trop loin"
-    keep = (SELL_KEEP_WEEKS if route.by == exp else RESERVE_WEEKS) * need(state, exp)
-    have = stock(state, exp, route.good) - keep
+    have = stock(state, exp, route.good) - reserve(state, exp)
     if have < 0.25:
         return 0.0, "le vendeur n'a rien de trop"
     if route.by == imp:
@@ -975,10 +1019,17 @@ def monthly(state) -> None:
     for tribe in state.tribes.values():
         trade = getattr(tribe, "trade", None)
         if trade is not None:
-            for key in [k for k in trade if k not in ("month", "hist")]:
+            for key in [k for k in trade if k not in ("month", "hist", "shut")]:
                 # Anciennes sauvegardes (echanges automatiques) : oubliees.
                 del trade[key]
             trade["month"] = {}
+            shut = trade.get("shut")
+            if shut:
+                # Les routes fermees depuis REOPEN_WEEKS : oubliees.
+                for key in [k for k, at in shut.items() if state.tick_count - at >= REOPEN_WEEKS]:
+                    del shut[key]
+                if not shut:
+                    del trade["shut"]
     delivered = set()
     by_pair: dict = {}
     for r in sorted(d.routes, key=lambda r: (r.exporter, r.importer, r.good)):
@@ -1135,12 +1186,13 @@ def ai_crafts(state, site, band, weeks: float) -> None:
       - un metier n'a des bras que si les champs gardent tous les leurs (les
         adultes valides, pas les enfants ni les anciens : field_hands_mult) ;
       - les champs manquent de bras, ou une disette est en vue (le grenier ne
-        tiendra pas jusqu'a la recolte : villages.food_outlook) : un metier
-        qui ne nourrit pas rend une equipe, chaque fois qu'il decide (les gens
-        de metier retournent aux champs, a la chasse, a la cueillette) ;
-      - les pecheurs (un metier qui nourrit) viennent quand la marge avant la
+        tiendra pas jusqu'a la recolte, a son creux : villages.food_low) : un
+        metier qui ne nourrit pas rend une equipe, chaque fois qu'il decide
+        (les gens de metier retournent aux champs, a la chasse, a la
+        cueillette) ;
+      - les pecheurs (un metier qui nourrit) viennent quand le creux avant la
         recolte est sous villages.FOOD_SAFE_WEEKS."""
-    _left, margin = villages.food_outlook(state, site, band)
+    _at, margin = villages.food_low(state, site, band)
     short = margin < villages.FOOD_SAFE_WEEKS
     if villages.field_hands_mult(site, band, state) < 1.0 or margin < 0:
         for cid in reversed(AI_ORDER):
@@ -1162,16 +1214,24 @@ def ai_crafts(state, site, band, weeks: float) -> None:
 def ai_routes(state, tribe_id: int) -> None:
     """Un peuple IA gere ses routes : il ferme celles qui ne portent plus
     rien, vend ce qu'il a de trop a qui en manque (joueur compris), achete
-    ce qui lui manque chez qui en a trop, ajoute un convoi a une route pleine."""
+    ce qui lui manque chez qui en a trop, ajoute un convoi a une route pleine.
+    Le trop et le manque sont NETS (_carried : ce que ses autres routes du
+    bien portent deja) ; une route qu'il a fermee ne se rouvre pas avant
+    REOPEN_WEEKS semaines (_shut_lately)."""
     if not has_village(state, tribe_id):
         return
     mine = [r for r in routes_of(state, tribe_id) if r.by == tribe_id]
     for r in mine:
         if r.idle >= IDLE_CLOSE:
             all_routes(state).remove(r)
+            _shut(state, r)
     for r in [r for r in routes_of(state, tribe_id) if r.by == tribe_id]:
-        full = r.units >= r.level * trade_load(state, r.exporter, r.importer) - 1e-6
-        if full and r.level < MAX_LEVEL and not level_block(state, tribe_id, r, r.level + 1):
+        load = trade_load(state, r.exporter, r.importer)
+        full = r.units >= r.level * load - 1e-6
+        # Un convoi de plus si le vendeur a de quoi le remplir sans vider ses
+        # autres routes de ce bien (son surplus net).
+        more = spare(state, r.exporter, r.good) - _carried(state, r.exporter, r.good, True) >= load
+        if full and more and r.level < MAX_LEVEL and not level_block(state, tribe_id, r, r.level + 1):
             r.level += 1
     for other in partners(state, tribe_id):
         if not has_village(state, other):
@@ -1179,10 +1239,31 @@ def ai_routes(state, tribe_id: int) -> None:
         for good in GOODS:
             if convoys(state, tribe_id) - convoys_used(state, tribe_id) <= 0:
                 return
-            if spare(state, tribe_id, good) >= 2.0 and wants(state, other, good) >= 1.0:
+            # Le surplus NET : moins ce que les routes de ce bien emportent
+            # deja chaque mois (celles ouvertes a l'instant comprises) ; le
+            # manque net : moins ce qu'elles apportent deja.
+            if (
+                spare(state, tribe_id, good) - _carried(state, tribe_id, good, True) >= 2.0
+                and wants(state, other, good) - _carried(state, other, good, False) >= 1.0
+                and not _shut_lately(state, tribe_id, tribe_id, other, good)
+            ):
                 open_route(state, tribe_id, other, good, sell=True)
-            elif wants(state, tribe_id, good) >= 1.0 and spare(state, other, good) >= 2.0:
+            elif (
+                wants(state, tribe_id, good) - _carried(state, tribe_id, good, False) >= 1.0
+                and spare(state, other, good) - _carried(state, other, good, True) >= 2.0
+                and not _shut_lately(state, tribe_id, other, tribe_id, good)
+            ):
                 open_route(state, tribe_id, other, good, sell=False)
+
+
+def _carried(state, tribe_id: int, good: str, out: bool) -> float:
+    """Ce que les routes de ce bien emportent de chez ce peuple (out) ou lui
+    apportent, chaque mois, au plus (leurs convois)."""
+    return sum(
+        r.level * trade_load(state, r.exporter, r.importer)
+        for r in all_routes(state)
+        if r.good == good and (r.exporter if out else r.importer) == tribe_id
+    )
 
 
 # --- lecture -----------------------------------------------------------------------

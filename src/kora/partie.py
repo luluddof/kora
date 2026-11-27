@@ -67,6 +67,8 @@ from src.kora.sim import TickRunner, fight_at, hex_inspect
 
 TOAST_LIFE = 4.0
 MAX_TOASTS = 4
+# Au plus une sauvegarde automatique toutes ces secondes reelles.
+AUTOSAVE_SECONDS = 30.0
 
 
 def view_dict(camera_x, camera_y, zoom, selected, globe_yaw=0.0, globe_pitch=0.0):
@@ -226,6 +228,10 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         # En multijoueur, seul l'hote sauvegarde (a part : la partie solo reste).
         self.save_path = multi_save_path() if self.mp is not None else (save_path or default_save_path())
         self.last_auto = -1
+        # La sauvegarde automatique : toutes les 8 semaines de jeu, mais pas
+        # plus d'une fois toutes les AUTOSAVE_SECONDS reelles (2026-11-27 : a la
+        # vitesse 5, 80 a 95 ms figees plus d'une fois par seconde).
+        self.last_auto_time = time.perf_counter()
         # Multijoueur : le message qu'on ecrit (Entree), None sinon.
         self.chat_text = None
         self.menu_open = False
@@ -254,16 +260,26 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         if tuto:
             tutoriel.guide_open(self, 0)
 
+    def _autosave_due(self) -> bool:
+        tick = self.state.tick_count
+        return tick > 0 and tick >= self.last_auto + 8 and time.perf_counter() - self.last_auto_time >= AUTOSAVE_SECONDS
+
     def persist(self) -> None:
         if self.mp is not None and self.mp.role != "host":
             return
         # jamais une partie a moitie de sa semaine
         self.runner.finish()
-        save_game(
-            self.state,
-            self.save_path,
-            view_dict(self.camera_x, self.camera_y, self.zoom, self.selected, self.globe_yaw, self.globe_pitch),
-        )
+        self.last_auto_time = time.perf_counter()
+        try:
+            save_game(
+                self.state,
+                self.save_path,
+                view_dict(self.camera_x, self.camera_y, self.zoom, self.selected, self.globe_yaw, self.globe_pitch),
+            )
+        except OSError as err:
+            # Disque plein, fichier tenu par un antivirus... : le jeu continue,
+            # l'ancienne sauvegarde reste entiere (save_game), on le dit.
+            self.toast(f"La partie n'a pas pu être sauvegardée ({err.strerror or err}). Réessayez avec F5.")
 
     def leave(self) -> None:
         self.persist()
@@ -286,6 +302,9 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
             then(commands.apply(self.state, cmd))
         else:
             self.mp.issue(cmd, then)
+        # Les alertes et le chemin du premier village (objectifs.py) se gardent
+        # une semaine : un ordre (honorer un clan, en pause) les fait relire.
+        self.state.__dict__.pop("_objectifs", None)
 
     def engine_lines(self) -> list:
         """La fiche du moteur (F3) : ce que coutent l'image et la semaine, et
@@ -358,7 +377,19 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
         if event.type == pygame.QUIT:
             self.leave()
             return "quit", ""
-        elif self.settings.handle(self.renderer, event):
+        if event.type == pygame.MOUSEBUTTONUP and (self.menu_open or self.ui["event_open"] is not None or self.ui["found"] is not None):
+            # Une fenetre s'est ouverte pendant un glissement (Echap, E, V) :
+            # elle avale le relachement ; la carte ne doit pas rester collee a
+            # la souris (2026-11-27).
+            if event.button == self.drag_button:
+                self.dragging = False
+            if event.button == 3:
+                self.right_press = None
+            if event.button == 1:
+                self.slider_drag = None
+            if event.button == self.tech_drag:
+                self.tech_drag = 0
+        if self.settings.handle(self.renderer, event):
             return None
         elif event.type == pygame.KEYDOWN and self.chat_text is not None:
             # La discussion (multijoueur) : Entree envoie, Echap renonce.
@@ -543,7 +574,7 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
             if self.mp.ended:
                 self.leave()
                 return "menu", self.mp.ended
-            if self.mp.role == "host" and self.state.tick_count > 0 and self.state.tick_count % 8 == 0 and self.state.tick_count != self.last_auto:
+            if self.mp.role == "host" and self._autosave_due():
                 self.persist()
                 self.last_auto = self.state.tick_count
         else:
@@ -552,12 +583,7 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
             # camera et n'arrete pas le temps : toast + journal + epee.
             self.runner.frame(dt, hold=self.menu_open or human_dead(self.state, self.state.viewer))
             self.selected = partie_carte.refresh_selection(self.state, self.selected)
-            if (
-                not self.runner.busy
-                and self.state.tick_count > 0
-                and self.state.tick_count % 8 == 0
-                and self.state.tick_count != self.last_auto
-            ):
+            if not self.runner.busy and self._autosave_due():
                 self.persist()
                 self.last_auto = self.state.tick_count
         if self.ui["event_open"] is not None and events.find(self.state, self.ui["event_open"]) is None:
@@ -607,6 +633,7 @@ class Play(partie_carte.MapInput, partie_ecrans.ScreenClicks):
             or screens.under_mouse(self.renderer, self.ui, mx, my)
             or my < HUD_HEIGHT
             or band_card_hit(self.renderer.band_hits, mx, my) is not None
+            or self.renderer.covered(mx, my)
         )
         if not blocked and side_hit(self.renderer.side_hits, mx, my) is None:
             gcx, gcy, focal, dist = view_params(self.zoom, self.sw, self.sh, HUD_HEIGHT)

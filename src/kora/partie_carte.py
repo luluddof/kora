@@ -59,6 +59,7 @@ from src.kora import render_objectifs
 from src.kora.sim import hex_inspect
 from src.kora.types import Hex
 from src.kora.vision import is_explored, is_visible, vision_of
+from src.kora.world import enter_cost_for
 
 
 # Deux clics sur la meme bande d'un peuple ami en moins de ce temps : on
@@ -341,6 +342,10 @@ class MapInput:
             else:
                 self.persist()
                 self.toast("Partie sauvegardée.")
+        elif event.key == pygame.K_l and self.ui.get("village_open") is not None:
+            # L'ecran d'un village ouvert : [L] fait ce que dit son bouton
+            # « Lever la compagnie [L] » (la levee choisie, de CE village).
+            self.village_click("vraise")
         elif event.key in ACTION_KEYS:
             self.band_action(ACTION_KEYS[event.key])
         elif event.key in PANEL_KEYS:
@@ -411,7 +416,14 @@ class MapInput:
         if event.button in (2, 3):
             mx, my = event.pos
             on_card = render_tutoriel.tuto_hit(self.renderer.tuto_hits, mx, my) is not None
-            if side_hit(self.renderer.side_hits, mx, my) is None and not screens.under_mouse(self.renderer, self.ui, mx, my) and not on_card:
+            # Rien sous l'interface (2026-11-27) : un clic droit sur la barre, une
+            # fiche, la colonne de gauche n'attaque pas l'etranger dessine dessous.
+            if (
+                side_hit(self.renderer.side_hits, mx, my) is None
+                and not screens.under_mouse(self.renderer, self.ui, mx, my)
+                and not on_card
+                and not self.renderer.covered(mx, my)
+            ):
                 self.dragging = True
                 self.drag_button = event.button
                 self.last_mouse = event.pos
@@ -486,11 +498,19 @@ class MapInput:
                 # Un clic ailleurs referme la liste des modes.
                 self.renderer.mode_menu_open = False
                 return None
+            # La fiche d'un combat est dessinee par-dessus la colonne de gauche :
+            # elle prend le clic d'abord.
+            if self.open_fight is not None:
+                fhit = fight_panel_hit(self.renderer.fight_hits, mx, my)
+                if fhit == "close" or fhit == "panel":
+                    if fhit == "close":
+                        self.open_fight = None
+                    return None
             # La colonne de gauche (render_objectifs) : une alerte mene ou agir ;
             # le titre du chemin du premier village le replie ou le deplie.
             act = render_objectifs.alert_hit(self.renderer, mx, my)
             if act is not None:
-                self.side_click(act)
+                self.alert_click(act)
                 return None
             if render_objectifs.goal_hit(self.renderer, mx, my) is not None:
                 self.ui["goal_folded"] = not self.ui.get("goal_folded")
@@ -524,12 +544,11 @@ class MapInput:
                 return None
             if card == "card":
                 return None
-            if self.open_fight is not None:
-                fhit = fight_panel_hit(self.renderer.fight_hits, mx, my)
-                if fhit == "close" or fhit == "panel":
-                    if fhit == "close":
-                        self.open_fight = None
-                    return None
+            if self.renderer.covered(mx, my):
+                # Dessine par-dessus la carte sans etre un bouton (une nouvelle
+                # sans lieu, une fiche, une legende, le corps du chemin) : le
+                # clic s'arrete la, il ne donne pas d'ordre sur la carte.
+                return None
             sword = fight_at_pixel(self.state, mx, my, self.zoom, self.globe_yaw, self.globe_pitch, self.sw, self.sh)
             if sword is not None:
                 self.open_fight = sword
@@ -578,8 +597,14 @@ class MapInput:
                         if hit is not None:
                             col, row = colrow_of_lonlat(hit[0], hit[1], self.state.world)
                             u, v = points.from_colrow(col, row)
-                            if points.cell_of(self.state.world, u, v) == self.state.world.canonicalize(hx):
+                            under = points.cell_of(self.state.world, u, v)
+                            if under == self.state.world.canonicalize(hx):
                                 aim = (u, v)
+                            elif under is not None and enter_cost_for(self.state.world, under, False) is not None:
+                                # La forme dessinee deborde un peu sur le lieu voisin
+                                # (globe.warp) : le point clique gagne, son lieu devient
+                                # le but (avant : le point se perdait une fois sur quatre).
+                                hx, aim = under, (u, v)
                         self.order_move(hx, aim)
                     else:
                         other = self._country_at(hx)

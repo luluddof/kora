@@ -1,7 +1,7 @@
 Kora - Revue de code : les bugs et ce qui est mal fait (0.32.0)
 ==============================================================
-Date : 2026-11-27. Statut : PROPOSE (rien corrige ; en attente de son
-feu vert).
+Date : 2026-11-27. Statut : FAIT (corrige en 0.33.0 :
+2026-11-27-corrections-revue.txt).
 
 Sa demande : "lance des sous-agents pour analyser et faire des reviews,
 trouver des bugs ou des trucs mal faits dans ce projet".

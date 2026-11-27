@@ -280,8 +280,10 @@ class Renderer:
         self.atlas_small = theme.font_file("sans-italic", 17)
         self.hud_hits = hud_layout(screen.get_width())
         # La colonne de gauche (render_objectifs) : ses rectangles, son haut, son bas.
-        self.alert_hits: dict = {}
+        self.alert_hits: list = []
         self.goal_hits: dict = {}
+        self.goal_box = None
+        self.cover: list = []
         self.column_top = HUD_HEIGHT + 8
         self.left_floor = screen.get_height() - 60
         self.menu_hits = menu_layout(screen.get_width(), screen.get_height())
@@ -512,6 +514,8 @@ class Renderer:
     ) -> None:
         self.screen.fill((14, 11, 9))
         w, h = self.screen.get_size()
+        # Ce que l'interface couvre de la carte cette image (covered).
+        self.cover = []
         # L'arbre de cette partie : sans les savoirs que le sort a ecartes.
         set_tree_hidden(draws.hidden(state))
         self._draw_sphere(state, globe_yaw, globe_pitch, zoom)
@@ -649,6 +653,34 @@ class Renderer:
         if menu_open:
             self.draw_menu()
 
+    def covered(self, mx: int, my: int) -> bool:
+        """L'interface est-elle sous la souris (2026-11-27, la revue : des
+        clics traversaient la barre, la fiche de l'unite, la colonne de
+        gauche, les nouvelles, les legendes et donnaient un ordre sur la
+        carte) ? Tout ce qui est dessine par-dessus la carte : la barre du
+        haut, les cartes et fiches, les nouvelles, les legendes, le bouton
+        des cartes, la fiche du tutoriel. Les panneaux et grands ecrans ont
+        leur propre test (side_hit, screens.under_mouse)."""
+        if my < HUD_HEIGHT:
+            return True
+
+        def inside(rect) -> bool:
+            return bool(rect) and rect[2] > 0 and rect[0] <= mx <= rect[0] + rect[2] and rect[1] <= my <= rect[1] + rect[3]
+
+        rects = list(getattr(self, "cover", ()))
+        rects.append((getattr(self, "band_hits", None) or {}).get("box"))
+        rects.extend(rect for rect, _act in getattr(self, "alert_hits", ()) or ())
+        rects.append(getattr(self, "goal_box", None))
+        rects.extend(rect for key, rect in (getattr(self, "event_hits", None) or {}).items() if isinstance(key, int))
+        rects.extend((getattr(self, "situation_hits", None) or {}).values())
+        rects.append((getattr(self, "fight_hits", None) or {}).get("box"))
+        rects.append((getattr(self, "battle_hits", None) or {}).get("box"))
+        rects.append((getattr(self, "tuto_hits", None) or {}).get("box"))
+        modes = getattr(self, "mode_hits", None) or {}
+        rects.append(modes.get("button"))
+        rects.extend((modes.get("items") or {}).values())
+        return any(inside(r) for r in rects)
+
     def draw_band_card(self, state: GameState, selected_id: int | None) -> None:
         """La fiche de l'unite choisie (2026-11-19, la maquette "a jauges") :
         le nom, le lieu et la saison ; des JAUGES pour ce qui fait vivre ou
@@ -673,6 +705,10 @@ class Renderer:
             return
         self.band_hits = layout
         bx, by, bw, bh = layout["box"]
+        if bx < 310:
+            # La fiche s'est rangee a gauche (un panneau ouvert, petit ecran) :
+            # la colonne de gauche s'arrete au-dessus d'elle.
+            self.left_floor = min(getattr(self, "left_floor", h), by - 8)
         theme.panel(self.screen, layout["box"], "peau")
         color = country_color(state, band.tribe_id)
         pygame.draw.polygon(self.screen, color, theme.chamfer((bx + 10, by + 14, 5, 26), 1))
@@ -1025,6 +1061,7 @@ class Renderer:
                 names = list(NAMES)
             bh = 14 + 18 * ((len(names) + 1) // 2)
             theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
+            self.cover.append((x0, y, bw, bh))
             for i, name in enumerate(names):
                 cx = x0 + 12 + (i % 2) * (bw // 2)
                 cy = y + 8 + (i // 2) * 18
@@ -1039,6 +1076,7 @@ class Renderer:
         bx, by, bw, _bh = layout["button"]
         first = min(r_[1] for r_ in layout["items"].values())
         theme.panel(self.screen, (bx - 4, first - 6, bw + 8, by - first + 4), "infobulle")
+        self.cover.append((bx - 4, first - 6, bw + 8, by - first + 4))
         for key, label in MAP_MODES:
             head, hint = split_hint(label)
             rect = layout["items"][key]
@@ -1070,6 +1108,7 @@ class Renderer:
         pick = self.shown_turning(state)
         bh = 12 + 18 + 22 * len(turns) + 18 * 3
         theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
+        self.cover.append((x0, y, bw, bh))
         theme.text(self.screen, "Les grands tournants : qui les a découverts, où ils arrivent (cliquez pour choisir)", "mini", C.os, (x0 + 12, y + 6), bw - 24)
         yy = y + 28
         mx, my = pygame.mouse.get_pos()
@@ -1109,6 +1148,7 @@ class Renderer:
         realms = [(root, m) for root, m in realms if known & set(m)][:10]
         rows = 1 + max(1, len(realms)) + 2
         theme.panel(self.screen, (x0, y, bw, 12 + 18 * rows), "infobulle")
+        self.cover.append((x0, y, bw, 12 + 18 * rows))
         theme.text(self.screen, "Les grands pays que vous connaissez", "mini", C.os, (x0 + 12, y + 6), bw - 24)
         yy = y + 26
         if not realms:
@@ -1156,6 +1196,7 @@ class Renderer:
             ]
         bh = 14 + 18 * ((len(rows) + 1) // 2) + 16 * (len(notes) + len(extra)) + 12
         theme.panel(self.screen, (x0, y, bw, bh), "infobulle")
+        self.cover.append((x0, y, bw, bh))
         for i, (color, label) in enumerate(rows):
             cx = x0 + 12 + (i % 2) * (bw // 2)
             cy = y + 8 + (i // 2) * 18
@@ -1269,7 +1310,11 @@ class Renderer:
             pygame.draw.circle(self.screen, C.nuit, (ex, ey), 7)
             pygame.draw.circle(self.screen, C.braise, (ex, ey), 6, 2)
             tribe = state.tribes.get(band.tribe_id)
-            weeks = travel_weeks(state.world, band.position, band.path, water_ok=bool(tribe and tribe.cabotage))
+            # Les couts du peuple (ses savoirs de marche), comme la vraie marche.
+            weeks = travel_weeks(
+                state.world, band.position, band.path, water_ok=bool(tribe and tribe.cabotage), costs=costs_of(state, band.tribe_id),
+                point=points.point_of(state.world, band), aim=points.aim_of(state.world, band),
+            )
             unit = "semaine" if weeks <= 1 else "semaines"
             self._outlined_text(theme.font("petit_gras"), f"{weeks} {unit}", C.os, ex + 10 + theme.font("petit_gras").size(f"{weeks} {unit}")[0] / 2, ey - 12)
 
@@ -1356,7 +1401,7 @@ class Renderer:
             draw_journal(self, state, layout, log_filter, log_newest)
         player = state.tribes.get(state.viewer)
         idle = player is not None and not player.learning
-        ready = idle and bool(learning.available(state, state.viewer))
+        ready = idle and learnable_now(state)
         tabs = layout["tabs"]
         self._draw_tab(tabs["savoirs"], "Savoirs", panel == "savoirs", ready, "savoir")
         if player is not None and player.learning and player.learning in tech.TECHS:
@@ -1491,6 +1536,7 @@ class Renderer:
                 layer.blit(theme.icon("voir", 16, C.lin), (cw - 18, 9))
             layer.set_alpha(int(255 * fade))
             self.screen.blit(layer, (x - 6, y - 3))
+            self.cover.append((x, y, cw, th))
             if placed:
                 self.toast_hits.append(((x, y, cw, th), toast))
             y -= 6
@@ -1524,6 +1570,7 @@ class Renderer:
             pin_lines = self._wrapped(inspect_lines(pin_info), 270)
             ph = 18 + 24 + 18 * max(0, len(pin_lines) - 1)
             self._draw_inspect_card(pin_info, 12, h - ph - 12 - MAP_BUTTON_H - 10, 270, ph, pinned=True)
+            self.cover.append((12, h - ph - 12 - MAP_BUTTON_H - 10, 270, ph))
             self.left_floor = h - ph - 12 - MAP_BUTTON_H - 18
         if hover_info and (pin_info is None or hover_info.get("hex") != pin_info.get("hex")):
             mx, my = pygame.mouse.get_pos()
@@ -1627,15 +1674,21 @@ class Renderer:
             done = tribe.progress.get(tribe.learning, 0.0) / max(1.0, t.cost)
             # Jamais sur les boutons du temps (petites fenetres).
             speeds_end = max(rx + rw for rx, _ry, rw, _rh in layout["speeds"].values())
-            box_w = max(110, min(190, x - speeds_end - 16))
+            room = x - speeds_end - 16
+            # Peu de place (1024 x 640) : l'icone et la barre seules, jamais sur
+            # les boutons du temps (2026-11-27 : il couvrait les vitesses 4 et 5).
+            box_w = min(190, room) if room >= 110 else max(28, room)
             x -= box_w
             layout["savoir"] = (x - 4, 4, box_w + 4, HUD_HEIGHT - 8)
             if _contains(layout["savoir"], mx, my):
                 pygame.draw.polygon(self.screen, C.cuir_clair, theme.chamfer(layout["savoir"], 4))
             self.screen.blit(theme.icon("savoir", 22, C.savoir), (x, 8))
-            theme.text(self.screen, t.name, "mini_gras", C.os, (x + 28, 7), box_w - 32)
-            theme.bar(self.screen, (x + 28, 28, box_w - 34, 8), done, C.savoir)
-        elif learning.available(state, state.viewer):
+            if box_w >= 110:
+                theme.text(self.screen, t.name, "mini_gras", C.os, (x + 28, 7), box_w - 32)
+                theme.bar(self.screen, (x + 28, 28, box_w - 34, 8), done, C.savoir)
+            else:
+                theme.bar(self.screen, (x, 34, max(20, box_w - 4), 6), done, C.savoir)
+        elif learnable_now(state):
             # Un savoir a choisir : un vrai bouton (un clic ouvre l'arbre) ;
             # plus court si la barre est etroite (jamais sur les boutons du temps).
             speeds_end = max(rx + rw for rx, _ry, rw, _rh in layout["speeds"].values())
@@ -1647,8 +1700,9 @@ class Renderer:
             over = _contains(layout["savoir"], mx, my)
             theme.glow(self.screen, layout["savoir"], C.braise, 0.3 + 0.5 * theme.pulse(pygame.time.get_ticks() / 1000.0))
             theme.button(self.screen, layout["savoir"], label, "principal", True, over, icon_key="savoir", key_hint="T" if label else "")
-        if tips is not None:
-            theme.tooltip(self.screen, tips[0], tips[1][0] + tips[1][2] - 340, HUD_HEIGHT + 6, 340, avoid=tips[1])
+        # La fiche d'un compte se dessine a la fin de l'image (draw_age_tip) :
+        # sinon les legendes et les onglets passaient dessus.
+        self.account_tip = tips
         extra_y = HUD_HEIGHT + 8
         if human_dead(state, state.viewer):
             theme.text(self.screen, "Votre peuple n'est plus", "h2", C.mauvais, (16, extra_y), shadow=True)
@@ -1671,12 +1725,14 @@ def band_gauges(state, band, info) -> list[dict]:
     weeks = info["stock_weeks"]
     forage, need = info["forage"], max(1, info["need"])
     short = forage < need
+    shown = round(weeks)
     if weeks < 1:
         col = C.mauvais if short else C.alerte
         note = "plus rien en réserve : la faim" if short else "rien en réserve ; la collecte nourrit"
     elif weeks < 4:
-        col = C.alerte
-        note = f"de quoi tenir {weeks:.0f} semaine{'s' if weeks >= 2 else ''}"
+        # Rouge sous deux semaines si la collecte ne suffit pas (la faim vient).
+        col = C.mauvais if short and weeks < 2 else C.alerte
+        note = f"de quoi tenir {shown} semaine{'s' if shown >= 2 else ''}"
     else:
         col = C.bon
         note = f"de quoi tenir {weeks:.0f} semaines"
@@ -1694,6 +1750,21 @@ def band_gauges(state, band, info) -> list[dict]:
         col = C.mauvais if loy < chiefs.LEAVE else C.alerte if loy < chiefs.OBEY else C.bon
         out.append({"label": "Attachement", "value": f"{loy:.0f}", "frac": loy / 100.0, "color": col, "note": chiefs.mood(state, band), "note_color": col if col is not C.bon else None, "marks": (chiefs.LEAVE / 100.0, chiefs.OBEY / 100.0)})
     return out
+
+
+def learnable_now(state) -> bool:
+    """Un savoir peut-il etre choisi ? Lu deux fois par image (l'onglet et le
+    bouton de la barre), 2 ms chacun a l'an 48 : garde une semaine sur la
+    partie (et tant que le peuple n'a rien appris ou choisi de nouveau)."""
+    tribe = state.tribes.get(state.viewer)
+    if tribe is None:
+        return False
+    key = (state.tick_count, state.viewer, tribe.learning, len(tribe.knowledge))
+    memo = state.__dict__.get("_learnable")
+    if memo is None or memo[0] != key:
+        memo = (key, bool(learning.available(state, state.viewer)))
+        state.__dict__["_learnable"] = memo
+    return memo[1]
 
 
 # La memoire des comptes (pour la tendance) : rangee sur la partie elle-meme
@@ -1785,7 +1856,7 @@ def hud_accounts(state) -> list[dict]:
         "key": "vivres", "name": "vivres", "icon": "vivres", "value": f"{stock:.0f}", "color": col,
         "trend": t, "good_up": True,
         "tip": [("Les vivres", C.os, "petit_gras"),
-                (f"{stock:.0f} en réserve : {weeks_food:.0f} semaine{'s' if weeks_food >= 2 else ''} pour vos {pop} personnes. {say}", col, "mini"),
+                (f"{stock:.0f} en réserve : {round(weeks_food)} semaine{'s' if round(weeks_food) >= 2 else ''} pour vos {pop} personnes. {say}", col, "mini"),
                 (f"Sur un mois : {word(t, 'en hausse', 'en baisse')}.", C.cendre, "mini")],
     })
     return out
@@ -1810,7 +1881,12 @@ def _draw_age(self, state, layout, x: int) -> None:
 
 
 def draw_age_tip(self, state) -> None:
-    """Au survol du marqueur d'age : l'age du peuple, sa voie, le monde."""
+    """Au survol du marqueur d'age : l'age du peuple, sa voie, le monde ;
+    au survol d'un compte de la barre : sa fiche (par-dessus tout)."""
+    tips = getattr(self, "account_tip", None)
+    if tips is not None:
+        theme.tooltip(self.screen, tips[0], tips[1][0] + tips[1][2] - 340, HUD_HEIGHT + 6, 340, avoid=tips[1])
+        self.account_tip = None
     rect = (self.hud_hits or {}).get("age")
     if not rect or state.viewer not in state.tribes:
         return
@@ -1842,7 +1918,13 @@ def draw_journal(self, state, layout, log_filter, log_newest) -> None:
     log = log_of(state, state.viewer) if isinstance(state.log, GameLog) else GameLog()
     # Les lignes qui se repetent (la famine, semaine apres semaine) n'en font
     # qu'une, avec leur nombre de fois et leurs dates (log.group_repeats).
-    rows = group_repeats(log.filtered(log_filter, newest_first=log_newest))
+    # Garde sur le journal lui-meme tant qu'il ne change pas (refait a chaque
+    # image avant) ; jamais selon une adresse.
+    jkey = (log.seq, len(log.entries), log_filter, log_newest)
+    jmemo = log.__dict__.get("_ui_rows")
+    if jmemo is None or jmemo[0] != jkey:
+        jmemo = log.__dict__["_ui_rows"] = (jkey, group_repeats(log.filtered(log_filter, newest_first=log_newest)))
+    rows = jmemo[1]
     list_y = layout["items"]["sort_recent"][1] + 36
     theme.dotted(self.screen, (bx + 16, list_y - 8), (bx + bw - 16, list_y - 8), C.ocre_sombre, 5)
     bottom = by + bh - 12

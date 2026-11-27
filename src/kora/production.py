@@ -10,7 +10,7 @@ Avec les villages seulement. Chaque genre de production a son efficacite
 
 Elle monte lentement, un peu chaque mois, quand le peuple a BESOIN de
 produire plus : pour la nourriture, quand le grenier sera presque vide a la
-prochaine recolte (moins de FOOD_TIGHT_WEEKS semaines, villages.food_outlook) ; pour un bien, quand ce qu'on
+prochaine recolte (moins de FOOD_TIGHT_WEEKS semaines au creux, villages.food_low) ; pour un bien, quand ce qu'on
 en fait ne suffit pas a ce qu'on en use et a ce que les routes voudraient
 vendre (la reserve est sous son niveau ou une route de vente part a vide).
 Sans besoin, elle ne bouge pas : le savoir-faire durement gagne reste, sauf
@@ -123,7 +123,8 @@ def food_pressure(state, tid: int) -> float:
         band = places.band_of(state, site)
         if band is None or band.population <= 0:
             continue
-        _weeks, margin = villages.food_outlook(state, site, band)
+        # Le creux avant la recolte (villages.food_low), comme les decisions.
+        _weeks, margin = villages.food_low(state, site, band)
         lack = max(0.0, min(1.0, (FOOD_TIGHT_WEEKS - margin) / villages.FOOD_SAFE_WEEKS))
         total += lack * band.population
         weight += band.population

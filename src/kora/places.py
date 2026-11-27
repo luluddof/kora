@@ -196,5 +196,12 @@ def watch_spots(state, tribe_id: int) -> list:
     ]
 
 
+# La Pierre dressee : des lieues d'influence de plus, par niveau. La table
+# est ICI (places ne lit pas batiments, plus haut) et batiments.VALUES la
+# reprend telle quelle : l'ecran affiche ce que le jeu compte.
+STONE_INFLUENCE = (1,)
+
+
 def influence_radius(site, base: int) -> int:
-    return base + (1 if has(site, "pierre") else 0)
+    n = level(site, "pierre")
+    return base + (STONE_INFLUENCE[min(n, len(STONE_INFLUENCE)) - 1] if n > 0 else 0)

@@ -1027,6 +1027,19 @@ lente, bandes dessinees petites a taille fixe.
     conjonctures bloquees ; deux regles de paix ; la duree d'un trajet en
     montagne. Une trentaine de moyens et legers, la cause de chaque
     evenement qui ne tombe jamais. Rien corrige : son feu vert attendu.
+  - "Oui, corrige", puis "utilise des sous-agents pour aller plus vite si
+    besoin". FAIT (0.33.0 ; spec 2026-11-27-corrections-revue.txt) : les
+    13 graves et la plupart des moyens et legers, par quatre agents en
+    parallele (la marche, la faim, la guerre, le contenu) et ici
+    (l'interface, la sauvegarde) ; chaque correction prouvee sur ses
+    parties et gardee par un test. L'ordre de marche perdu 55 % -> 0,2 % ;
+    les clics ne traversent plus l'interface ; sur 2 ans de sa partie de
+    l'an 48, 331 -> 90 semaines de faim de village, 1 608 -> 553 morts de
+    faim ; plus de bande dans les deux camps, de village soumis libere, de
+    guerre dans un pays ; une seule paix ; l'arc et l'epieu a portee des
+    peuples fixes (et l'arc en savane, un choix dit) ; les cartes de bande
+    sur tous les sols ; les conjonctures qui naissent ; une partie
+    rechargee qui fait la meme suite ; la sauvegarde ecrite d'un coup.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -1079,7 +1092,7 @@ lente, bandes dessinees petites a taille fixe.
 (Tenu a jour a la fin de chaque chantier. Les REGLES DU CODE nees des
 chantiers sont dans docs/code/ajouter-un-systeme.txt, section 4.)
 
-Version du jeu : 0.32.0
+Version du jeu : 0.33.0
 
 Fait le 2026-10-16 (0.21.0) : notes justes et tenues (tools/notes.py),
 decoupage (troupes, batiments, guerre, partie*), moteur du temps (semaine en
@@ -1116,6 +1129,9 @@ Fait le 2026-11-17 (0.31.0) : sans grille, la fin (tout de point a point).
 Fait le 2026-11-19 (0.32.0) : des interfaces qui se lisent (la critique du
 meme jour) : le sens des chiffres, la fiche a jauges, la barre nommee, les
 alertes et le chemin du premier village, les contrastes, la lieue.
+Fait le 2026-11-27 (0.33.0) : la revue de code (six relecteurs) et ses
+corrections (quatre agents) : la marche, les clics, la faim, la guerre, le
+contenu, la sauvegarde.
 
 LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
 
@@ -1138,10 +1154,10 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 (les repetitions). Reste (section 7 de la spec) : un reglage
                 de la taille de l'interface ; la consequence au lieu des
                 multiplicateurs dans le village.
-  En attente de SON feu vert :
-  - BUGS        la revue du 2026-11-27 : 13 graves, ~30 moyens et legers,
-                un ordre de correction propose (2026-11-27-revue-bugs.txt,
-                section 7).
+  FAIT : BUGS (0.33.0 ; 2026-11-27-corrections-revue.txt) : la revue du
+                2026-11-27 corrigee. Reste (section 8) : une paix pendant
+                une bataille ne l'arrete pas ; les cercles en ellipses sur
+                le globe (un choix) ; des peuples fixes sans voisin qui sait.
   En attente de SON choix :
   - REWORK       les series 2 (les grands ecrans) et 3 du rework des
                 interfaces, a proposer (la serie 1 :

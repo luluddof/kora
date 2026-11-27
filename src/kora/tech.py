@@ -360,7 +360,10 @@ TECHS: dict[str, Tech] = {
             "arc", "Arc et flèches", 2, 0,
             "Tuer de loin : le petit gibier des forêts, et l'ennemi avant qu'il n'approche.",
             prereqs=("epieu",),
-            conds=(Cond("pop", 80), _weeks(12, _T.FORET, _T.JUNGLE, label="forêt ou jungle")),
+            # La savane aussi (2026-11-27, la revue : 33 des 34 peuples fixes
+            # sans foret vivent en savane ou a cote, le sien compris ; les
+            # chasseurs des savanes africaines tiraient a l'arc).
+            conds=(Cond("pop", 80), _weeks(12, _T.FORET, _T.JUNGLE, _T.SAVANE, label="forêt, jungle ou savane")),
             effects={"combat": 1.15, "food": {_T.FORET: 1.06, _T.JUNGLE: 1.06}},
         ),
         Tech(

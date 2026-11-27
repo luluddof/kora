@@ -511,6 +511,20 @@ class ScreenClicks:
         self.side_panel = "peuples"
         self.ui["people_pick"] = tid
 
+    def alert_click(self, action: str) -> None:
+        """Une alerte de la colonne de gauche (render_objectifs) : elle OUVRE
+        ce qu'elle nomme (un panneau, un ecran), sans le refermer s'il l'est
+        deja (side_click bascule les onglets) ; le reste comme un panneau."""
+        if action.startswith("tab_"):
+            key = action[4:]
+            if key in screens.BY_NAME:
+                self.open_screen(key)
+            else:
+                self.side_panel = key
+                screens.close_all(self.ui)
+            return
+        self.side_click(action)
+
     def side_click(self, choice) -> bool:
         """Clic dans un panneau lateral ; True si traite."""
         if not isinstance(choice, str):

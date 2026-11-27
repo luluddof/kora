@@ -230,8 +230,12 @@ class Tribe:
     # la sienne (ou celle du peuple dont il est ne).
     civ: int = 0
     # Biens du peuple (goods.py) : bien -> charges en reserve ; derniers
-    # echanges : peuple (texte) -> {"in": {bien: n}, "out": {...}, "vivres": v}.
-    goods: dict[str, float] = field(default_factory=dict, metadata={"round": 3})
+    # echanges (trade) : "month", "hist", et "shut" (les routes fermees que
+    # l'IA ne rouvre pas encore : goods.REOPEN_WEEKS). Les biens se sauvent
+    # sans arrondi (2026-11-27) : arrondis a 3 decimales, la partie relue
+    # n'etait plus celle en memoire ; une vieille partie arrondie se relit
+    # telle quelle.
+    goods: dict[str, float] = field(default_factory=dict)
     trade: dict = field(default_factory=dict, metadata={"decode": _trade})
     # Bonus de depart choisis a la creation (tech.START_BONUSES), jusqu'a la
     # semaine start_bonus_until (-1 : aucun).

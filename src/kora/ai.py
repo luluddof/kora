@@ -16,7 +16,7 @@ meilleure collecte (_pick_hex), raider (ai_war.py : jamais un combat perdu
 d'avance). Un village (_village_ai) : batir au printemps sur le surplus
 (batiments.ai_choice : ce qui loge, puis les niveaux d'AI_PLAN), jamais
 sans marge de vivres (AI_FOOD_MARGIN :
-villages.food_outlook), lever une troupe si une menace ou une proie est la
+villages.food_low, le creux avant la recolte), lever une troupe si une menace ou une proie est la
 (AI_THREAT), appeler l'ost. Une troupe (_army_ai) : defendre, raider en
 guerre, assieger (_besiege), ravager les champs d'un village qu'elle ne
 peut pas prendre (_ravage, ravage.py), rentrer avant la faim
@@ -300,10 +300,13 @@ def find_new_land(state: GameState, band: Band):
     """Une terre ou fonder un village, loin de tout village (pour un clan qui
     part). Pays plein : on cherche plus loin, puis on se contente de moins
     de place (jamais au pied d'un village : CROWDED_SPACING)."""
-    # La reponse ne depend que de l'endroit, du defrichage et des villages
-    # du monde : un clan qui campe et redemande chaque mois (pays plein) ne
-    # refait pas la recherche (memo de la carte, vide quand un village nait
-    # ou disparait).
+    # La reponse ne depend que du POINT de la bande (_new_land mesure de
+    # lui), du defrichage et de l'irrigation de son peuple (la fertilite) et
+    # des villages du monde : un clan qui campe et redemande chaque mois
+    # (pays plein) ne refait pas la recherche (memo de la carte, vide quand
+    # un village nait ou disparait). Revue du 2026-11-27 : la cle n'avait
+    # ni le point ni l'irrigation, la reponse dependait de qui demandait le
+    # premier.
     world = state.world
     memo = getattr(world, "_lands", None)
     if memo is None:
@@ -312,7 +315,12 @@ def find_new_land(state: GameState, band: Band):
     known = memo.get("new_land")
     if known is None or known[0] != homes:
         known = memo["new_land"] = (homes, {})
-    key = (world._index(band.position), bool(bonus_of(state, band.tribe_id).clearing))
+    tribe = state.tribes.get(band.tribe_id)
+    key = (
+        points.point_of(world, band),
+        bool(bonus_of(state, band.tribe_id).clearing),
+        bool(tribe and "irrigation" in tribe.knowledge),
+    )
     if key in known[1]:
         return known[1][key]
     found = None
@@ -335,13 +343,18 @@ FOUND_GOOD_HEXES = 2
 
 def _good_count(state: GameState, tribe_id: int, h) -> int:
     """Bonnes terres (fertilite 0,6) a portee d'un village fonde ici. Ne
-    depend que de la carte et du defrichage : memorise."""
+    depend que de la carte, du defrichage et de l'irrigation (ce que lit
+    villages.fertility ; revue du 2026-11-27 : sans l'irrigation dans la cle,
+    la reponse dependait du peuple qui avait demande le premier) :
+    memorise."""
     world = state.world
     clearing = bool(bonus_of(state, tribe_id).clearing)
+    tribe = state.tribes.get(tribe_id)
+    irrigated = bool(tribe and "irrigation" in tribe.knowledge)
     memo = getattr(world, "_lands", None)
     if memo is None:
         memo = world._lands = {}
-    key = ("good", world._index(h), clearing)
+    key = ("good", world._index(h), clearing, irrigated)
     hit = memo.get(key)
     if hit is None:
         if MOVE_COST.get(world.terrain(h)) is None or villages.fertility(state, tribe_id, h) <= FOUND_GOOD:
@@ -461,10 +474,10 @@ def _village_ai(state: GameState, band: Band, weeks: float) -> None:
     site = places.site_of(state, band)
     if site is not None:
         goods.ai_crafts(state, site, band, weeks)
-    # L'intendant : de quoi tenir jusqu'a la recolte (villages.food_outlook).
-    # Sans la marge, ni chantier ni troupe levee de son plein gre ; se
-    # defendre d'une menace, toujours.
-    margin = villages.food_outlook(state, site, band)[1] if site is not None else 0.0
+    # L'intendant : de quoi tenir jusqu'a la recolte, au creux de l'hiver
+    # compris (villages.food_low). Sans la marge, ni chantier ni troupe levee
+    # de son plein gre ; se defendre d'une menace, toujours.
+    margin = villages.food_low(state, site, band)[1] if site is not None else 0.0
     safe = margin >= AI_FOOD_MARGIN
     warm = state.world.hex_season(band.position).value in ("printemps", "ete")
     # Entasse, un village loge ses gens des que le grenier tient jusqu'a la
@@ -615,8 +628,15 @@ def _army_ai(state: GameState, band: Band, weeks: float) -> None:
         # elle battrait ceux qui menacent son village.
         if not band.ravage or wins(state, [band], foe, edge=AI_SORTIE_EDGE):
             ravage.stop(band)
+            band.raid_route = ""
             set_goto(state, band.id, home.hex, max_nodes=500, max_cost=1000)
             return
+    if band.raid_route:
+        # Postee sur une route de commerce (la decision "piller_routes") :
+        # elle y reste ; decisions._route_raiders la rappelle quand la faim
+        # est passee ou que la route n'est plus (avant, elle etait renvoyee
+        # au village des son arrivee : 17 pillages pour 37 decisions).
+        return
     culture = culture_of(state.tribes[band.tribe_id])
     reach_weeks = max(6, culture.raid_weeks)
     if guerre.wars_of(state, band.tribe_id):

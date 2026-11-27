@@ -37,9 +37,10 @@ from src.kora.world import (
 from src.kora.gamestate import PLAYER_TRIBE_ID, note
 from src.kora.types import stay_order
 from src.kora.vision import vision_of
-from src.kora import chiefdom, chiefs, confed, diplo, goods, places, sites, systems, tech, villages
+from src.kora import chiefdom, chiefs, confed, diplo, draws, goods, places, sites, systems, tech, villages
 from src.kora.bands import gain_prestige, max_bands_of, set_goto, split_band, stock_max, tribe_band_count
 from src.kora import guerre
+from src.kora import battle as _battle
 
 # Semaines minimum entre deux evenements "au hasard" pour un peuple.
 PLAYER_GAP = 16
@@ -603,18 +604,51 @@ def _eff_chief_trait(state, inst, tribe, band, *args) -> None:
         chief.traits = chief.traits + (args[0],)
 
 
+# La raison que pose une carte (une cle de diplo.MOD_TEXT) : "accueil" ou
+# "chasses" par defaut, la sienne quand elle en a une (un present, l'entraide,
+# un pillage). Deux gestes de meme raison S'ADDITIONNENT, bornes
+# (RELATION_BOUNDS, comme les raisons qui s'additionnent dans diplo) : avant,
+# diplo.add_mod gardait la plus forte et une carte "relation +12" ne faisait
+# rien apres un premier accueil de +15 (revue du 2026-11-27).
+RELATION_KEYS = {
+    "nomades": "cadeau",
+    "represailles": "cadeau",
+    "porteurs_perdus": "entraide",
+    "cache_trouvee": "pillage",
+}
+RELATION_BOUNDS = (-60.0, 40.0)
+
+
+def relation_key(event_id: str, value: float) -> str:
+    key = RELATION_KEYS.get(event_id, "")
+    if key == "pillage":
+        return key if value < 0 else "accueil"
+    if key and value > 0:
+        return key
+    return "accueil" if value > 0 else "chasses"
+
+
 def _eff_relation(state, inst, tribe, band, *args) -> None:
     if inst.other in state.tribes:
-        key = "accueil" if args[0] > 0 else "chasses"
+        value = float(args[0])
+        key = relation_key(inst.event_id, value)
         diplo.make_contact(state, tribe.id, inst.other, quiet=True)
-        diplo.add_mod(state, tribe.id, inst.other, key, args[0], actor=tribe.id)
+        mods = diplo.of(state).mods.get(diplo.pair(tribe.id, inst.other), [])
+        same = next((m for m in mods if m.key == key and m.actor == tribe.id), None)
+        if same is None:
+            diplo.add_mod(state, tribe.id, inst.other, key, value, actor=tribe.id)
+        else:
+            lo, hi = RELATION_BOUNDS
+            same.value = max(lo, min(hi, same.value + value))
+            same.year = state.clock.year
 
 
 def _eff_pact(state, inst, tribe, band, *args) -> None:
     if inst.other in state.tribes and _alive(state, inst.other):
         what = args[0]
         if what == "treve":
-            diplo.add_pact(state, tribe.id, inst.other, "treve", diplo.TRUCE_WEEKS)
+            # La paix des deux pays, comme a l'ecran Peuples (guerre.make_peace).
+            guerre.make_peace(state, tribe.id, inst.other)
         elif what == "alliance":
             diplo.add_pact(state, tribe.id, inst.other, "alliance")
             diplo.add_mod(state, tribe.id, inst.other, "mariage", 15)
@@ -649,6 +683,13 @@ def _eff_casus(state, inst, tribe, band, *args) -> None:
 def _eff_tech_progress(state, inst, tribe, band, *args) -> None:
     other = state.tribes.get(inst.other)
     pool = sorted(other.knowledge - tribe.knowledge) if other is not None else []
+    # Jamais un savoir que le sort a ecarte (draws), un grand tournant (il
+    # arrive par sa presence : turning) ni un savoir d'une voie fermee : des
+    # points n'y servent a rien (learning.status ; revue du 2026-11-27).
+    pool = [
+        t for t in pool
+        if t in tech.TECHS and not tech.TECHS[t].turning and not tech.closed(tribe, tech.TECHS[t]) and not draws.absent(state, tribe.id, t)
+    ]
     pool = [t for t in pool if not [p for p in tech.TECHS[t].prereqs if p not in tribe.knowledge]] or pool
     if pool:
         tid = state.story_rng.choice(pool)
@@ -773,6 +814,35 @@ def _eff_split(state, inst, tribe, band, *args) -> None:
             set_goto(state, nid, spot, max_nodes=800, max_cost=1500)
 
 
+def camp_out_count(band, share: float) -> int:
+    """Combien partent camper au loin (camp_out) : une part, au moins un, et
+    jamais tout le village."""
+    if band is None or band.population < 2:
+        return 0
+    return max(1, min(band.population - 1, int(round(band.population * share))))
+
+
+def _eff_camp_out(state, inst, tribe, band, *args) -> None:
+    """Une petite part du village part camper loin des malades (la fievre) :
+    elle n'est plus comptee au village, et revient avec la suite
+    "fievre_retour" (camp_back). Le village ne se coupe pas en deux : pas de
+    bande nouvelle (un peuple fixe ne refait pas de bande nomade)."""
+    n = camp_out_count(band, args[0])
+    if n <= 0:
+        return
+    band.population -= n
+    band.wounded = min(getattr(band, "wounded", 0), band.population)
+    inst.data["campeurs"] = int(inst.data.get("campeurs", 0)) + n
+
+
+def _eff_camp_back(state, inst, tribe, band, *args) -> None:
+    """Ceux qui campaient au loin reviennent (les parts de chacun gardees)."""
+    n = int(inst.data.get("campeurs", 0) or 0)
+    if n > 0:
+        band.population += n
+        inst.data["campeurs"] = 0
+
+
 def _eff_secede(state, inst, tribe, band, *args) -> None:
     chiefs.secede(state, band.id, hostile=bool(args and args[0]))
 
@@ -849,6 +919,8 @@ _BAND_EFFECTS = {
     "goto_far": _eff_goto_far,
     "goto_warm": _eff_goto_warm,
     "split": _eff_split,
+    "camp_out": _eff_camp_out,
+    "camp_back": _eff_camp_back,
     "secede": _eff_secede,
     "camp": _eff_camp,
     "stock_pct": _eff_stock_pct,
@@ -1009,6 +1081,8 @@ EFFECT_TEXT = {
     "goto_far": lambda a: f"la bande part ({a[0]} à {a[1]} lieues)",
     "goto_warm": lambda a: "la bande part vers un hiver plus court",
     "split": lambda a: "une partie de la bande part fonder un clan",
+    "camp_out": lambda a: f"{round(a[0] * 100)} % du village part camper au loin (il reviendra)",
+    "camp_back": lambda a: "ceux du camp reviennent au village",
     "secede": lambda a: "le clan quitte la tribu",
     "heir": lambda a: "il devient l'héritier",
     "crown": lambda a: "il devient chef",
@@ -1081,10 +1155,28 @@ def effect_text(effect) -> str:
     if kind in ("trait", "chief_trait"):
         who = "le chef de bande" if kind == "trait" else "le chef"
         return f"{who} devient {_trait_name(args[0])}"
-    if kind in ("flag", "unflag"):
+    if kind == "flag":
+        # Un drapeau que le jeu lit dit ce qu'il fait ; les autres (un
+        # souvenir, une carte deja vue) ne se montrent pas.
+        fn = FLAG_TEXT.get(args[0]) if args else None
+        return fn(args[1:]) if fn else ""
+    if kind == "unflag":
         return ""
     fn = EFFECT_TEXT.get(kind) or vocabulary()[2].get(kind)
     return fn(args) if fn else ""
+
+
+def _guard_text(args) -> str:
+    weeks = f" {args[0]} sem." if args and args[0] > 0 else ""
+    return f"sur vos gardes{weeks} : moral +{_battle.GUARD_MORALE:.0f} si l'on vous attaque"
+
+
+# Les drapeaux d'evenement que lit le jeu (le combat : battle, "sur_gardes" ;
+# les savoirs : la condition "tame" des Chiens de chasse) : leur texte.
+FLAG_TEXT = {
+    "sur_gardes": _guard_text,
+    "louveteaux": lambda a: "des louveteaux apprivoisés : la condition des Chiens de chasse est remplie",
+}
 
 
 def _effects_text(effects) -> str:
@@ -1100,13 +1192,23 @@ _SIGNED = {
     "loyalty_near", "rival_loyalty", "renown", "chief_renown", "relation", "stock_pct",
     "seed_pct", "tech_progress", "learn_boost", "good", "craft_bonus",
 }
-_GAINS = {"camp", "steal_cache", "reveal", "tech_progress_id", "conquest", "craft_bonus"}
-_LOSSES = {"secede", "eat_seed", "burn", "lose_goods", "casus"}
+_GAINS = {
+    "camp", "steal_cache", "reveal", "tech_progress_id", "conquest", "craft_bonus",
+    # Une equipe de metier de plus (goods), un grand tournant ou une voie qui
+    # arrive plus vite (turning), ceux du camp qui reviennent.
+    "craft_team", "tournant", "voie", "camp_back",
+}
+# Payer le tribut de guerre (ravage : "Payer pour qu'ils partent"), une
+# vengeance possible (ai_war : "provoke").
+_LOSSES = {"secede", "eat_seed", "burn", "lose_goods", "casus", "war_tribute", "provoke"}
 _PACT_LOSSES = {"tribut_paye", "protection", "soumission"}
+_FLAG_GAINS = {"sur_gardes", "louveteaux"}
 
 
 def effect_tone(effect) -> str:
     kind, *args = effect
+    if kind == "flag":
+        return "gain" if args and args[0] in _FLAG_GAINS else "neutre"
     if kind == "pact":
         return "perte" if args and args[0] in _PACT_LOSSES else "gain"
     if kind == "good":
@@ -1127,11 +1229,33 @@ def effect_tone(effect) -> str:
     return "neutre"
 
 
+def _chip_text(state, inst, effect) -> str:
+    """Le texte d'une pastille : celui de l'effet, avec le chiffre de la
+    bande quand il en depend (combien partent camper, combien reviennent)."""
+    kind = effect[0]
+    if kind in ("camp_out", "camp_back"):
+        if kind == "camp_out":
+            n = camp_out_count(_band(state, inst), effect[1])
+        else:
+            n = int(inst.data.get("campeurs", 0) or 0)
+        if n > 0:
+            many = n > 1
+            if kind == "camp_out":
+                return f"{n} personne{'s' if many else ''} part{'ent' if many else ''} camper au loin (reviendr{'ont' if many else 'a'})"
+            return f"+{n} personne{'s' if many else ''} de retour au village"
+    return effect_text(effect)
+
+
 def summary_chips(state, inst, opt: Option) -> list[tuple[str, str]]:
     """Le resume d'une option en pastilles : (texte, sens). Une option a
     issues : "60 %" (le sens "chance") puis ses effets, issue par issue."""
     def chips_of(effects):
-        return [(effect_text(e), effect_tone(e)) for e in effects if effect_text(e)]
+        out = []
+        for e in effects:
+            text = _chip_text(state, inst, e)
+            if text:
+                out.append((text, effect_tone(e)))
+        return out
 
     if opt.outcomes:
         out = chips_of(opt.effects)

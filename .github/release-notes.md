@@ -1,4 +1,28 @@
-## Nouveau dans la 0.32 : des interfaces qui se lisent
+## Nouveau dans la 0.33 : une revue du code, et ses corrections
+
+Six relecteurs ont passé le jeu au crible ; voici ce qui est corrigé.
+
+- **Vos ordres de marche ne se perdent plus** : un clic vers un lieu lointain (18 à 25 lieues) était ignoré une fois
+  sur deux, sans un mot. Il part maintenant (et s'il n'y a vraiment pas de chemin, le jeu le dit).
+- **Les clics ne traversent plus l'interface** : un clic droit sur la barre, la fiche d'une bande ou la colonne de
+  gauche n'attaque plus l'étranger dessiné dessous ; un clic gauche ne fait plus marcher la bande.
+- **La durée d'un trajet est juste**, montagne comprise (avant : « 1 semaine » annoncée pour 21).
+- **Moins de faim** : la semaine de la récolte, on récolte avant de manger ; la prévision voit le creux de l'hiver
+  (le rationnement, le grain, la soudure s'y fient). Sur deux ans d'une partie avancée : 3 fois moins de semaines
+  de faim, 3 fois moins de morts de faim dans les villages.
+- **La guerre** : plus de peuple dans les deux camps d'une bataille, plus de village soumis libéré la semaine même,
+  plus de guerre entre deux peuples d'un même pays ; une seule paix, qui lie les deux pays ; on ne redéclare plus la
+  guerre pendant un tribut ou une trêve ; un motif n'est pas une guerre (l'ordre d'attaque le dit).
+- **Le début** : les cartes de la vie de bande sur tous les sols (jungle, savane, côte, marais, toundra, désert),
+  une carte nouvelle pour la côte ; la grande chasse et les éclaireurs dès l'âge tribal.
+- **Les savoirs** : un village apprend de toute sa zone, et d'un voisin qui sait ; l'arc s'apprend aussi en savane.
+- **Le monde** : les grands travaux, la route du sel et l'essor des chefferies naissent enfin ; les routes de commerce
+  ne s'ouvrent et ne se ferment plus en boucle.
+- **La sauvegarde** s'écrit d'un coup (jamais un fichier à moitié écrit) ; un disque plein ne ferme plus le jeu ; une
+  partie rechargée continue exactement comme si on ne l'avait pas quittée.
+- Et une vingtaine de petites choses (des textes, l'arbre des savoirs plus fluide, la touche L dans le village…).
+
+Et dans la 0.32 : des interfaces qui se lisent
 
 - **Ce qui vous attend est à gauche** : les **alertes** (la faim, une disette en vue, un siège, un clan qui veut
   partir, la solde impayée, une guerre déclarée), et un clic mène où agir ; les cartes d'événements ; et, tant que

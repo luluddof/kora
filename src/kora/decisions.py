@@ -6,7 +6,10 @@ remplies (certaines remplacent des evenements qui tombaient au hasard). Elle
 a un nom, une famille, un texte, des CONDITIONS lisibles (avec les chiffres
 du peuple), un COUT, des EFFETS, un REPOS (on ne la reprend pas avant N
 ans), parfois une CIBLE (un village, une route, un peuple). L'IA prend aussi
-les siennes (ai_monthly), avec les memes regles.
+les siennes (ai_monthly), avec les memes regles ; celles qui coutent des
+vivres attendent que le creux avant la recolte le permette (_spare). Sans
+village (l'age tribal), la bande du chef chasse, envoie des eclaireurs, paie
+la dot (_seat).
 
   La soudure (les semaines avant la recolte, quand le grenier ne tiendra
   pas) : RATIONNER (chacun mange RATION de sa part : moins de naissances, un
@@ -46,7 +49,6 @@ from src.kora.gamestate import is_human, note
 from src.kora.log import LogKind
 from src.kora.resources import GAME, PRESENT
 from src.kora.vision import vision_of
-from src.kora.world import axial_to_offset, offset_to_axial
 
 WEEKS_PER_YEAR = 52
 # La soudure : la part de chacun quand on rationne ; les naissances.
@@ -69,6 +71,11 @@ ROUTE_CASUS_WEEKS = 104
 HUNT_RADIUS = 6
 HUNT_MIN_MEN = 40
 HUNT_WEEKS = (2.0, 5.0)
+# Sans village (l'age tribal), la bande du chef chasse : ses hommes (une
+# bande de 30 en a 5 a 8) ; l'IA y pense quand ses reserves tombent sous tant
+# de semaines.
+HUNT_BAND_MEN = 5
+HUNT_BAND_HUNGRY = 4.0
 # L'envie de l'IA, chaque mois ou elle le peut (dans la soudure).
 HUNT_AI = 0.8
 ROUTE_AI = 0.25
@@ -76,10 +83,17 @@ ROUTE_AI = 0.25
 COUNCIL_FOOD_WEEKS = 2.0
 COUNCIL_LOYALTY = 10.0
 SCOUTS_POP = 60
+# Sans village : la bande du chef (les jeunes partent d'elle).
+SCOUTS_BAND_POP = 30
 SCOUTS_FOOD = 80.0
 SCOUTS_RADIUS = 22
 SCOUTS_CONTACT = 34
 DEAD_FEAST_FOOD_WEEKS = 1.0
+# L'IA fait la fete des morts quand son village, sans le culte des ancetres
+# qu'elle exige, ne serait pas florissant (75 : villages.stability_word) : le
+# seuil compte ce que le culte donne deja. Sous 50, ou meme 60, jamais : a
+# l'an 48 de sa partie, les 64 villages qui ont le culte sont a 62 ou plus.
+DEAD_AI_STABILITY = 75 + tech.TECHS["ancetres"].effects.get("stability", 0)
 MARRIAGE_FOOD_WEEKS = 2.0
 MARRIAGE_RELATION = 20.0
 # L'IA y pense un mois sur MARRIAGE_EVERY (decale d'un peuple a l'autre :
@@ -174,6 +188,33 @@ def _find_village(state, tid: int):
     return None, None
 
 
+def _seat(state, tid: int):
+    """(lieu, bande) d'ou part une decision : le village du peuple ; sans
+    village (l'age tribal), (None, la bande du chef) : la grande chasse, les
+    eclaireurs, la dot d'un mariage se font aussi entre nomades (avant, les
+    13 decisions etaient fermees a l'age tribal : revue du 2026-11-27)."""
+    site, band = _village(state, tid)
+    if band is not None:
+        return site, band
+    chief = chiefs.chief_band(state, tid)
+    if chief is not None and chief.population > 0 and chief.kind != "armee" and not chief.village:
+        return None, chief
+    return None, None
+
+
+def _spare(state, site, band, weeks: float) -> bool:
+    """L'IA peut-elle payer `weeks` semaines de vivres sans tomber dans la
+    soudure ? (regle 4.5 : une decision IA qui coute des vivres regarde
+    d'abord la prevision.) Un village : son CREUX avant la recolte
+    (villages.food_low), moins ce qu'elle coute, garde LEAN_MARGIN ; une bande
+    nomade : ses reserves."""
+    if band is None:
+        return False
+    if site is not None:
+        return _low(state, site, band) - weeks >= LEAN_MARGIN
+    return _weeks(band) - weeks >= LEAN_MARGIN
+
+
 def _weeks(band) -> float:
     return band.stock / max(1, band.population)
 
@@ -182,23 +223,16 @@ def _to_harvest(state, site, band) -> int:
     return villages.food_outlook(state, site, band)[0]
 
 
-def _margin(state, site, band) -> float:
-    """Les semaines de vivres qui resteront a la recolte (negatif : il en
-    manquera)."""
-    return villages.food_outlook(state, site, band)[1]
-
-
 def _lean(state, site, band) -> bool:
     """La soudure : le grenier ne tiendra pas (ou tout juste) jusqu'a la
-    recolte."""
-    return _margin(state, site, band) < LEAN_MARGIN
+    recolte. Au CREUX (villages.food_low, 2026-11-27) : un hiver vide que
+    l'ete rattrape est une soudure ; il ouvre le grain, les semences, la chasse."""
+    return _low(state, site, band) < LEAN_MARGIN
 
 
 def _margin_text(state, site, band) -> str:
-    m = _margin(state, site, band)
-    if m < 0:
-        return f"il manquera {-m:.0f} sem. de vivres à la récolte"
-    return f"il restera {m:.1f} sem. de vivres à la récolte"
+    # Ce que dit la soudure : le creux (_low_text), pas le jour de la recolte.
+    return _low_text(state, site, band)
 
 
 def _now(state) -> int:
@@ -248,11 +282,32 @@ def _ration_needs(state, tid, _t):
     if band is None:
         return [("Un village", False)]
     left = _to_harvest(state, site, band)
+    # Le creux (food_low) dit seul quand rationner : des la recolte, si elle
+    # ne suffira pas (on attendait 40 semaines avant la recolte : un village
+    # qui savait manquer de 22 semaines a l'automne attendait l'hiver).
     return [
-        (f"Avant la récolte (dans {left} sem.)", 0 < left < 40),
-        (f"Un grenier trop juste pour la récolte, moins de {LEAN_MARGIN:.0f} sem. de marge ({_margin_text(state, site, band)})", _lean(state, site, band)),
+        (f"Avant la récolte (dans {left} sem.)", 0 < left),
+        (f"Un grenier trop juste avant la récolte, moins de {LEAN_MARGIN:.0f} sem. de vivres au plus bas ({_low_text(state, site, band)})", _low(state, site, band) < LEAN_MARGIN),
         ("Pas déjà en rationnement", not rationing(state, tid)),
     ]
+
+
+def _low(state, site, band) -> float:
+    """Le CREUX avant la recolte (villages.food_low) : les semaines de vivres
+    au point le plus bas du grenier (negatif : la faim). Le rationnement le
+    lit, pas la marge du jour de la recolte (un hiver vide que l'ete
+    rattrape n'y passe plus pour sur)."""
+    return villages.food_low(state, site, band)[1]
+
+
+def _low_text(state, site, band) -> str:
+    at, m = villages.food_low(state, site, band)
+    when = "dès maintenant" if at <= 0 else f"dans {at} sem."
+    if m <= -0.5:
+        return f"au plus bas, {when}, il manquera {-m:.0f} sem. de vivres"
+    if m < 0:
+        return f"au plus bas, {when}, il manquera quelques jours de vivres"
+    return f"au plus bas, {when}, il restera {m:.1f} sem. de vivres"
 
 
 def _ration_take(state, tid, _t):
@@ -268,7 +323,7 @@ def _ration_take(state, tid, _t):
 
 def _ration_ai(state, tid):
     site, band = _village(state, tid)
-    return 1.0 if band is not None and _margin(state, site, band) < 0 else 0.0
+    return 1.0 if band is not None and _low(state, site, band) < 0 else 0.0
 
 
 def _grain_needs(state, tid, _t):
@@ -398,23 +453,9 @@ def _route_key(route) -> str:
 
 
 def _route_line(state, route) -> list:
-    """Les cases d'une route (la ligne entre ses deux villages)."""
-    ends = goods.trade_ends(state, route.exporter, route.importer)
-    if ends is None:
-        return []
-    world = state.world
-    (ca, ra), (cb, rb) = axial_to_offset(ends[0]), axial_to_offset(ends[1])
-    dc = cb - ca
-    if world.wrap_x and abs(dc) > world.width / 2:
-        dc -= world.width if dc > 0 else -world.width
-    steps = max(1, world.distance(ends[0], ends[1]))
-    out = []
-    for i in range(steps + 1):
-        t = i / steps
-        h = world.canonicalize(offset_to_axial(int(round(ca + dc * t)) % world.width, int(round(ra + (rb - ra) * t))))
-        if h is not None and (not out or out[-1] != h):
-            out.append(h)
-    return out
+    """Les cases d'une route (la ligne entre ses deux villages) : goods.route_line,
+    la meme que celle du peage (money.toll_owner)."""
+    return goods.route_line(state, route)
 
 
 def _route_post(state, tid, route):
@@ -544,42 +585,50 @@ def _lean_ai(state, tid) -> bool:
 
 
 def _hunt_ai(state, tid):
+    site, band = _seat(state, tid)
+    if band is not None and site is None:
+        # Une bande nomade chasse quand ses reserves baissent.
+        return HUNT_AI if _weeks(band) < HUNT_BAND_HUNGRY else 0.0
     return HUNT_AI if _lean_ai(state, tid) else 0.0
 
 
 def _route_ai(state, tid):
     """Piller une route : seulement affame, et sans grain a acheter."""
     site, band = _village(state, tid)
-    if band is None or _margin(state, site, band) >= 0:
+    if band is None or _low(state, site, band) >= 0:
         return 0.0
     return ROUTE_AI if grain.quote(state, tid, site.id)["why"] else 0.0
 
 
-def _hunt_game(state, site) -> int:
+def _hunt_game(state, where) -> int:
+    """Les lieux a gibier autour du village, ou de la bande du chef (de son
+    point : points.around)."""
     world = state.world
-    return sum(1 for h in world.hexes_in_radius(site.hex, HUNT_RADIUS) if any(world.resource(h, g) >= PRESENT for g in GAME))
+    return sum(1 for h in points.around(world, where, HUNT_RADIUS) if any(world.resource(h, g) >= PRESENT for g in GAME))
 
 
 def _hunt_needs(state, tid, _t):
-    site, band = _village(state, tid)
+    site, band = _seat(state, tid)
     if band is None:
-        return [("Un village", False)]
-    game = _hunt_game(state, site)
+        return [("Un village, ou la bande du chef", False)]
+    game = _hunt_game(state, site or band)
+    men = HUNT_MIN_MEN if site is not None else HUNT_BAND_MEN
     return [
         (f"Du gibier à moins de {HUNT_RADIUS} lieues ({game} lieux)", game >= 3),
-        (f"{HUNT_MIN_MEN} chasseurs ({_men(band)} hommes valides)", _men(band) >= HUNT_MIN_MEN),
+        (f"{men} chasseurs ({_men(band)} hommes valides)", _men(band) >= men),
     ]
 
 
 def _hunt_take(state, tid, _t):
-    site, band = _village(state, tid)
+    site, band = _seat(state, tid)
     lo, hi = HUNT_WEEKS
-    rich = min(1.0, _hunt_game(state, site) / 20.0)
+    rich = min(1.0, _hunt_game(state, site or band) / 20.0)
     weeks = lo + (hi - lo) * (0.5 * rich + 0.5 * state.rng.random())
-    got = weeks * band.population
+    got = min(weeks * band.population, max(0.0, stock_max(band, state) - band.stock))
     band.stock = min(stock_max(band, state), band.stock + got)
     hurt = population.kill(band, max(0, int(state.rng.random() * 3)))
-    _log(state, tid, f"La grande chasse rapporte {got:.0f} vivres" + (f" ; {hurt} chasseurs ne reviennent pas." if hurt else "."), site.hex, LogKind.SURVIE)
+    where = site.hex if site is not None else band.position
+    _log(state, tid, f"La grande chasse rapporte {got:.0f} vivres" + (f" ; {hurt} chasseurs ne reviennent pas." if hurt else "."), where, LogKind.SURVIE)
     return "Les chasseurs reviennent."
 
 
@@ -619,27 +668,38 @@ def _council_take(state, tid, _t):
 
 def _council_ai(state, tid):
     clans = [b for b in _clans(state, tid) if not chiefs.is_chief_band(state, b)]
-    return 1.0 if clans and min(b.loyalty for b in clans) < 50 else 0.0
+    if not clans or min(b.loyalty for b in clans) >= 50:
+        return 0.0
+    # Chaque clan paie COUNCIL_FOOD_WEEKS : pas en pleine soudure (regle 4.5).
+    for b in _clans(state, tid):
+        site = places.site_of(state, b)
+        if not _spare(state, site, b, COUNCIL_FOOD_WEEKS):
+            return 0.0
+    return 1.0
 
 
 def _scouts_needs(state, tid, _t):
-    site, band = _village(state, tid)
-    pop = band.population if band is not None else max((b.population for b in _clans(state, tid)), default=0)
-    return [(f"{SCOUTS_POP} personnes au moins ({pop})", pop >= SCOUTS_POP), (f"{SCOUTS_FOOD:.0f} vivres", (band.stock if band else 0) >= SCOUTS_FOOD)]
+    site, band = _seat(state, tid)
+    if band is None:
+        return [("Un village, ou la bande du chef", False)]
+    need = SCOUTS_POP if site is not None else SCOUTS_BAND_POP
+    return [(f"{need} personnes au moins ({band.population})", band.population >= need), (f"{SCOUTS_FOOD:.0f} vivres ({band.stock:.0f})", band.stock >= SCOUTS_FOOD)]
 
 
 def _scouts_take(state, tid, _t):
-    site, band = _village(state, tid)
+    site, band = _seat(state, tid)
     band.stock -= SCOUTS_FOOD
     world = state.world
+    # Ils partent du village, ou de la bande du chef (de son point).
+    origin = site if site is not None else band
     vis = vision_of(state, tid)
     if vis is not None:
-        vis.explored.update(world.hexes_in_radius(site.hex, SCOUTS_RADIUS))
+        vis.explored.update(points.around(world, origin, SCOUTS_RADIUS))
     met = []
     for other in sorted({b.tribe_id for b in state.bands.values() if b.population > 0}):
         if other == tid or other in diplo.contacts_of(state, tid):
             continue
-        near = min((points.lieux(world, site, b) for b in state.bands.values() if b.tribe_id == other and b.population > 0), default=999)
+        near = min((points.lieux(world, origin, b) for b in state.bands.values() if b.tribe_id == other and b.population > 0), default=999)
         if near <= SCOUTS_CONTACT:
             diplo.make_contact(state, tid, other)
             met.append(state.tribes[other].name)
@@ -649,7 +709,7 @@ def _scouts_take(state, tid, _t):
         text += " Ils ont rencontré les " + ", ".join(met) + "."
     if lost:
         text += f" {lost} ne sont pas revenus."
-    _log(state, tid, text, site.hex, LogKind.DECOUVERTE)
+    _log(state, tid, text, site.hex if site is not None else band.position, LogKind.DECOUVERTE)
     return "Les éclaireurs sont revenus."
 
 
@@ -676,9 +736,11 @@ def _dead_take(state, tid, _t):
 
 def _dead_ai(state, tid):
     site, band = _village(state, tid)
-    if band is None:
+    if band is None or not _spare(state, site, band, DEAD_FEAST_FOOD_WEEKS):
         return 0.0
-    return 1.0 if villages.stability(state, site) < 50 else 0.0
+    # Le culte des ancetres, qu'il faut pour la fete, donne deja sa stabilite :
+    # le seuil la compte (sous 50 seulement, l'IA ne la prenait jamais).
+    return 1.0 if villages.stability(state, site) < DEAD_AI_STABILITY else 0.0
 
 
 def _tales_needs(state, tid, _t):
@@ -715,16 +777,16 @@ def _marriage_name(state, tid, o):
 
 
 def _marriage_needs(state, tid, o):
-    _site, band = _village(state, tid)
+    _site, band = _seat(state, tid)
     return [
         ("Mariages entre clans", "mariages" in state.tribes[tid].knowledge),
         ("Un peuple cordial (relation 20)", o is not None and o in _marriage_targets(state, tid)),
-        ("Un village (la dot)", band is not None),
+        ("Un village ou la bande du chef (la dot)", band is not None),
     ]
 
 
 def _marriage_take(state, tid, o):
-    _site, band = _village(state, tid)
+    _site, band = _seat(state, tid)
     _feed(band, MARRIAGE_FOOD_WEEKS)
     diplo.add_mod(state, tid, o, "mariage", MARRIAGE_RELATION, actor=tid)
     diplo.add_mod(state, o, tid, "mariage", MARRIAGE_RELATION, actor=tid)
@@ -737,6 +799,11 @@ def _marriage_take(state, tid, o):
 
 def _marriage_ai(state, tid):
     if "mariages" not in state.tribes[tid].knowledge or (state.tick_count // 4 + tid) % MARRIAGE_EVERY:
+        return 0.0
+    # La dot coute des vivres : pas en pleine soudure (regle 4.5 ; avant, 31
+    # mariages sur 78 se faisaient dans la soudure).
+    site, band = _seat(state, tid)
+    if not _spare(state, site, band, MARRIAGE_FOOD_WEEKS):
         return 0.0
     return MARRIAGE_AI if _marriage_targets(state, tid) else 0.0
 
@@ -814,7 +881,9 @@ def _build() -> dict:
             "Les porteurs des autres passent près de chez vous, chargés. Une troupe postée sur leur chemin prend sa part.",
             _route_needs, _const("Une troupe part (le quart des hommes) ; les deux peuples de la route vous en voudront, et auront un motif de guerre"),
             _lines("Chaque mois, la moitié de ce qui passe sur la route", f"Relation {ROUTE_RELATION} avec les deux peuples, à chaque pillage"),
-            _route_take, targets=_route_targets, target_name=_route_name, ai=_route_ai,
+            # Un an de repos : l'IA en reprenait une chaque mois de faim (37
+            # decisions pour 17 pillages en 6 ans).
+            _route_take, repose_years=1, targets=_route_targets, target_name=_route_name, ai=_route_ai,
         ),
         Decision(
             "grande_chasse", "Les vivres", "chasse", "Organiser une grande chasse",

@@ -2,7 +2,9 @@
 
 Les bandes proches (grille de l'IA), un nouvel id, les reserves (stock_max),
 le prestige gagne (gain_prestige), les savoirs d'un peuple (bonus_of), les
-chemins (set_goto, set_march_to_band), combien de bandes un peuple peut
+chemins (set_goto, set_march_to_band, pursuit_path : aux plafonds de
+path.search_limits ; ils rendent False quand l'ordre n'est pas donne),
+combien de bandes un peuple peut
 avoir (max_bands_of), se scinder (split_band), se reunir (merge_bands), les
 combattants d'une bande (fighters).
 Etage 5 (tools/dependances.py) : il n'importe que plus bas ; ce que les
@@ -16,7 +18,7 @@ from src.kora import population, systems, tech, units
 from src.kora import points
 from src.kora.gamestate import GameState, is_human, note
 from src.kora.log import LogKind
-from src.kora.path import MOVE_POINTS_PER_WEEK, astar
+from src.kora.path import MOVE_POINTS_PER_WEEK, astar, search_limits
 from src.kora.peoples import MINOR_BAND_CUT, civ_of, civ_villages
 from src.kora.types import Band, Hex, Order, OrderKind, stay_order
 from src.kora.world import enter_cost_for, food_production
@@ -57,7 +59,14 @@ def bands_near(state: GameState, h: Hex, radius: int) -> list[Band]:
     col, row = idx
     nbx = -(-world.width // GRID)
     found = []
-    for by in range((row - radius) // GRID, (row + radius) // GRID + 1):
+    # Les rangees sont plus serrees que les colonnes (racine de 3 sur 2) : un
+    # cercle de `radius` lieux (arrondis), autour d'une bande dont le point
+    # est a 0,58 lieu au plus du centre de sa case, s'etend sur
+    # (radius + 1,08) / 0,866 rangees (revue du 2026-11-27 : la grille n'en
+    # cherchait que radius, l'IA ne voyait pas le haut et le bas du cercle ;
+    # le meme defaut que la vue, corrige en 0.31 : world._radius_deltas).
+    rows = (2 * radius + 3) * 1000 // 1732
+    for by in range((row - rows) // GRID, (row + rows) // GRID + 1):
         if by < 0 or by * GRID >= world.height:
             continue
         seen_x = set()
@@ -183,29 +192,36 @@ def set_goto(
     max_nodes: int | None = None,
     max_cost: int | None = None,
     aim: tuple[int, int] | None = None,
-) -> None:
+    wide: bool = False,
+) -> bool:
     """Un ordre de marche vers `goal` ; `aim` : le point vise dans ce lieu
-    (points.py ; le clic du joueur), sinon son centre."""
+    (points.py ; le clic du joueur), sinon son centre. Rend False si l'ordre
+    n'est pas donne (pas de chemin, but infranchissable, bande qui ne peut
+    pas partir) : l'ordre du joueur le dit (commands._goto). Sans plafond
+    donne, ceux de path.search_limits (l'aire du disque explore : un ordre
+    lointain se perdait sans un mot, revue du 2026-11-27) ; wide : ceux,
+    plus larges, de l'ordre du joueur."""
     band = state.bands.get(band_id)
     if band is None or band.retreating or band.village or band.homebound:
-        return
+        return False
     goal_c = state.world.canonicalize(goal)
     water_ok = _water_ok(state, band.tribe_id)
     costs = costs_of(state, band.tribe_id)
     if goal_c is None or enter_cost_for(state.world, goal_c, water_ok, costs) is None:
-        return
+        return False
     if (
         band.order.kind is OrderKind.GOTO
         and band.order.target_hex == goal_c
         and band.path
     ):
         band.aim_u, band.aim_v = aim if aim is not None else (-1, -1)
-        return
+        return True
     dist = points.lieux(state.world, band, goal_c)
+    limit_cost, limit_nodes = search_limits(dist, wide)
     if max_nodes is None:
-        max_nodes = min(1200, max(180, dist * 18 + 60))
+        max_nodes = limit_nodes
     if max_cost is None:
-        max_cost = dist * 30 + 120
+        max_cost = limit_cost
     path = astar(
         state.world,
         band.position,
@@ -216,44 +232,62 @@ def set_goto(
         costs=costs,
     )
     if path is None:
-        return
+        return False
     if not path and aim is not None:
         # Deja dans ce lieu : quelques pas vers le point vise.
         path = [goal_c]
     band.order = Order(kind=OrderKind.GOTO, target_hex=goal_c)
     band.path = path
     band.aim_u, band.aim_v = aim if aim is not None else (-1, -1)
+    return True
 
 
-def set_march_to_band(state: GameState, band_id: int, target_band_id: int) -> None:
+def pursuit_path(state: GameState, band: Band, target: Band) -> list | None:
+    """Le chemin d'une poursuite (set_march_to_band, sim.apply_movement) :
+    jusqu'au lieu de la proie, aux plafonds de path.search_limits. Deja dans
+    son lieu : [ce lieu] (la marche va a son point ; revue du 2026-11-27 :
+    un chemin vide arretait la poursuite pour toujours a plus de MEET).
+    None : pas de chemin."""
+    world = state.world
+    max_cost, max_nodes = search_limits(points.lieux(world, band, target))
+    path = astar(
+        world,
+        band.position,
+        target.position,
+        max_cost=max_cost,
+        max_nodes=max_nodes,
+        water_ok=_water_ok(state, band.tribe_id),
+        costs=costs_of(state, band.tribe_id),
+    )
+    if path is None:
+        return None
+    return path or [world.canonicalize(target.position) or target.position]
+
+
+def set_march_to_band(state: GameState, band_id: int, target_band_id: int) -> bool:
+    """Un ordre de poursuite (ou de rejoindre une bande amie) ; False s'il
+    n'est pas donne (pas de chemin)."""
     if (
         band_id not in state.bands
         or target_band_id not in state.bands
         or band_id == target_band_id
     ):
-        return
+        return False
     band = state.bands[band_id]
     if band.retreating or band.village or band.homebound:
-        return
+        return False
     target = state.bands[target_band_id]
-    dist = points.lieux(state.world, band, target)
-    water_ok = _water_ok(state, band.tribe_id)
-    path = astar(
-        state.world,
-        band.position,
-        target.position,
-        max_cost=dist * 30 + 120,
-        max_nodes=min(800, max(180, dist * 18 + 60)),
-        water_ok=water_ok,
-        costs=costs_of(state, band.tribe_id),
-    )
+    path = pursuit_path(state, band, target)
     if path is None:
-        return
+        return False
     band.order = Order(kind=OrderKind.MARCH_TO_BAND, target_band_id=target_band_id)
     band.path = path
+    # On vise la bande elle-meme (sim.apply_movement le refait chaque semaine).
+    band.aim_u, band.aim_v = points.point_of(state.world, target)
     if target.tribe_id != band.tribe_id:
         # Choisir d'attaquer met fin au repit d'apres-combat.
         band.shield_until = 0
+    return True
 
 
 def tribe_band_count(state: GameState, tribe_id: int) -> int:

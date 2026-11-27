@@ -25,6 +25,8 @@ Tout passe par commands.py ("grain"). N'importe pas pygame.
 
 from __future__ import annotations
 
+import math
+
 from src.kora import points
 from src.kora import chiefdom, diplo, goods, money, places, siege, villages
 from src.kora.bands import stock_max
@@ -35,11 +37,11 @@ from src.kora import guerre
 
 DEARTH_WEEKS = 3
 AI_DEARTH_WEEKS = 1
-# LA DISETTE EN VUE : le grenier ne tiendra pas jusqu'a la recolte
-# (villages.food_outlook). On achete AVANT la crise, moins cher
-# (PLANNED_MARKUP au lieu de MARKUP : on n'est pas aux abois), de quoi
-# arriver a la recolte avec PLAN_MARGIN semaines d'avance. L'IA le fait une
-# fois par PLAN_EVERY semaines.
+# LA DISETTE EN VUE : le grenier ne tiendra pas jusqu'a la recolte, a son
+# CREUX (villages.food_low : le point le plus bas avant la recolte). On
+# achete AVANT la crise, moins cher (PLANNED_MARKUP au lieu de MARKUP : on
+# n'est pas aux abois), de quoi passer le creux avec PLAN_MARGIN semaines
+# d'avance. L'IA le fait une fois par PLAN_EVERY semaines.
 PLANNED_MARKUP = 1.15
 PLAN_MARGIN = 2.0
 PLAN_EVERY = 4
@@ -55,14 +57,16 @@ REACH = 2
 
 
 def shortfall(state, band) -> float:
-    """La disette en vue : les semaines de vivres qui manqueront a la
-    prochaine recolte (0 : le grenier tiendra)."""
+    """La disette en vue : les semaines de vivres qui manqueront au CREUX,
+    le point le plus bas du grenier avant la prochaine recolte
+    (villages.food_low ; 0 : le grenier tiendra). sim.band_hunger et l'ecran
+    du village la lisent."""
     if band is None or not band.village or band.population <= 0:
         return 0.0
     site = places.site_of(state, band)
     if site is None:
         return 0.0
-    return max(0.0, -villages.food_outlook(state, site, band)[1])
+    return max(0.0, -villages.food_low(state, site, band)[1])
 
 
 def in_dearth(state, band) -> bool:
@@ -96,11 +100,16 @@ def sellers(state, tid: int) -> list[int]:
 
 def spare(state, seller: int) -> float:
     """Ce que le vendeur peut ceder (au-dela de KEEP_WEEKS semaines)."""
-    total = 0.0
-    for band in goods._food_spare(state, seller):
-        if not in_dearth(state, band) and not shortfall(state, band):
-            total += max(0.0, band.stock - KEEP_WEEKS * band.population)
-    return total
+    return sum(_can_give(state, band) for band in goods._food_spare(state, seller))
+
+
+def _can_give(state, band) -> float:
+    """Ce qu'un village vendeur cede : au-dela de KEEP_WEEKS semaines ; rien
+    s'il est en disette, ou s'il la voit venir (shortfall : son creux). Le
+    meme filtre pour spare (ce qu'on annonce) et buy (ce qu'on prend)."""
+    if in_dearth(state, band) or shortfall(state, band) > 0:
+        return 0.0
+    return max(0.0, band.stock - KEEP_WEEKS * band.population)
 
 
 def _near(state, site, seller: int) -> bool:
@@ -130,9 +139,10 @@ def quote(state, tid: int, site_id: int) -> dict:
     room = stock_max(band, state) - band.stock
     planned = not in_dearth(state, band)
     if planned:
-        # La soudure en vue : de quoi arriver a la recolte avec PLAN_MARGIN
-        # semaines de vivres (decisions.py : "Acheter du grain").
-        margin = villages.food_outlook(state, site, band)[1]
+        # La soudure en vue : de quoi passer le creux d'avant la recolte
+        # (villages.food_low) avec PLAN_MARGIN semaines de vivres
+        # (decisions.py : "Acheter du grain").
+        margin = villages.food_low(state, site, band)[1]
         if margin >= PLAN_MARGIN:
             out["why"] = f"Pas de disette : le village a plus de {DEARTH_WEEKS} semaines de vivres, et tiendra jusqu'à la récolte"
             return out
@@ -172,7 +182,9 @@ def quote(state, tid: int, site_id: int) -> dict:
             out["why"] = "Personne à portée n'a de grain de trop"
         return out
     _key, other, take, cost, rate = best
-    out.update(seller=other, vivres=round(take, 1), sicles=round(cost, 2), per_sicle=round(rate, 1))
+    # Arrondis vers le bas, bornes : jamais plus que le tresor (un achat
+    # limite par le tresor le laissait a -0,003), ni plus que le vendeur n'a.
+    out.update(seller=other, vivres=math.floor(take * 10) / 10, sicles=min(round(cost, 2), tribe.money), per_sicle=round(rate, 1))
     return out
 
 
@@ -188,9 +200,11 @@ def buy(state, tid: int, site_id: int) -> str:
     # Le grain quitte les greniers du vendeur, les mieux pourvus d'abord.
     left = take
     for b in sorted(goods._food_spare(state, seller), key=lambda b: (-(b.stock - KEEP_WEEKS * b.population), b.id)):
-        if in_dearth(state, b):
+        # Le meme filtre que spare : pas un village en disette, ni qui la
+        # voit venir (son creux), ni au-dela de ce qu'il peut ceder.
+        give = min(left, _can_give(state, b))
+        if give <= 0:
             continue
-        give = min(left, max(0.0, b.stock - KEEP_WEEKS * b.population))
         b.stock -= give
         left -= give
         if left <= 1e-9:
@@ -198,6 +212,10 @@ def buy(state, tid: int, site_id: int) -> str:
     got = take - max(0.0, left)
     band.stock = min(stock_max(band, state), band.stock + got)
     buyer = state.tribes[tid]
+    # On ne paie que ce qui est venu, jamais plus que le tresor.
+    if got < take:
+        cost = cost * got / take if take > 0 else 0.0
+    cost = min(cost, buyer.money)
     buyer.money -= cost
     money.book(state, tid, "grain", -cost)
     money.earn(state, seller, "grain", cost)

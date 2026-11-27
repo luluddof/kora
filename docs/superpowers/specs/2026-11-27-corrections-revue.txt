@@ -1,0 +1,181 @@
+Kora - Les corrections de la revue du 2026-11-27 (0.33.0)
+=======================================================
+Date : 2026-11-27. Statut : FAIT (0.33.0).
+
+Sa demande, apres la revue (2026-11-27-revue-bugs.txt) : "oui, corrige",
+puis "utilise des sous-agents pour aller plus vite si besoin". Quatre
+agents en parallele, chacun ses fichiers (la marche et le monde ; la faim
+et l'economie ; la guerre et la diplomatie ; le debut et le contenu),
+l'interface et la sauvegarde faites ici. Chaque correction a sa preuve
+(l'essai de la revue relance, avant / apres, sur SES parties copiees) et
+son test (66 tests nouveaux : tests/test_corrections_interface, _marche,
+_faim, _guerre, _contenu ; ceux qui montrent un bug echouent sur la 0.32 et
+passent sur la 0.33).
+
+
+1. L'EMPREINTE VOIT TOUT (d'abord)
+----------------------------------
+  tools/empreinte.py hache maintenant la sauvegarde entiere
+  (session.sync_digest) : l'argent, les lois, les decisions, les points
+  des unites, les sieges, les buts de guerre n'y echappaient pas. Elle a
+  ete re-enregistree AVANT toute correction, pour que les corrections de
+  l'ecran seules soient prouvees sans effet sur le jeu ; puis apres (le
+  jeu change, voulu).
+
+
+2. CE QU'IL SUBISSAIT EN JOUANT
+-------------------------------
+  - L'ORDRE DE MARCHE PERDU (G1) : la recherche de chemin a un plafond a
+    l'aire du disque (path.search_limits ; un ordre du joueur cherche plus
+    large que l'IA). Ordres perdus vers un lieu atteignable, a 3-9 / 10-17
+    / 18-25 lieues : 7 / 26 / 55 % avant ; 0 / 0 / 0,2 % apres (l'IA : 1 /
+    2 / 1 %). Sans chemin, l'ordre le DIT ("Pas de chemin jusque-la.") ;
+    set_goto et set_march_to_band rendent un booleen.
+  - LES CLICS QUI TRAVERSAIENT L'INTERFACE (G2, G3) : une seule question,
+    Renderer.covered ("l'interface est-elle sous la souris ?"), nourrie par
+    tout ce qui est dessine par-dessus la carte (la barre, la fiche de
+    l'unite, la colonne de gauche entiere, les nouvelles, la fiche epinglee,
+    les legendes, le bouton des cartes, la fiche du tutoriel, la dalle de
+    bataille). Le clic droit, le clic gauche et le survol la lisent : un clic
+    droit sur l'interface n'attaque plus, un clic gauche ne fait plus
+    marcher. La fiche d'un combat prend son clic avant la colonne ; deux
+    alertes au meme geste se cliquent toutes deux (une liste) ; une alerte
+    OUVRE son panneau sans le refermer.
+  - LA DUREE D'UN TRAJET (G13) : path.travel_weeks rejoue la vraie marche
+    (le chemin redresse, l'elan) : 400 durees sur 400 exactes (avant : la
+    montagne "1 semaine" pour 21) ; l'etiquette du trajet part du point
+    exact de l'unite, avec les couts de son peuple.
+  - Une unite ne finit plus sa semaine dans l'eau ni sur un sommet (avant :
+    2 bandes en 5 ans de sa partie neuve), un chemin valide n'est plus
+    annule ; une poursuite ne se fige plus dans le lieu de sa proie ; un
+    clic de marche garde son point exact (perdu 1 fois sur 4).
+  - Le glissement de la carte ne reste plus colle apres Echap ; la touche
+    L fait ce que dit le bouton "Lever la compagnie [L]".
+
+
+3. LA FAIM
+----------
+  - LA RECOLTE AVANT LES REPAS (G7) : villages.turn_seasons, une phase de
+    la semaine juste apres la propagation des saisons (les semailles, la
+    crue, la recolte), avant collect_food.
+  - LE CREUX DE L'HIVER (G8) : villages.food_low (les semaines jusqu'au
+    point le plus bas du grenier avant la recolte, et ce qui restera alors)
+    est lu par tout ce qui decide : le rationnement (permis des la recolte
+    si le creux est sous 2 semaines), l'achat de grain, la soudure des
+    decisions, le secours du chef, les metiers, les chantiers de l'IA, la
+    croissance, la pression sur les vivres, la disette annoncee, et l'ecran
+    (le panneau Village : "Au plus bas (dans N sem.), le grain manquera...").
+  - MESURE, sa partie de l'an 48, 2 ans, toutes les corrections ensemble :
+    semaines de faim de village 331 -> 90 ; morts de faim dans les villages
+    1 608 -> 553 ; villageois au bout de 2 ans 32 987 -> 34 561 ; semaines de
+    faim que la prevision de la veille disait sures : 226 -> 18.
+  - Les routes commerciales : une meme reserve quel que soit l'ouvreur,
+    le surplus net de ce que les autres routes emportent, pas de
+    reouverture avant 26 semaines (le souvenir est sauve) : routes ouvertes
+    en 2 ans 118 -> 88, rouvertes moins de 6 mois apres 28 -> 1.
+  - L'ecran du village annonce la recolte a la bonne semaine
+    (villages.next_step lit harvest_in, sow_in) ; la fenetre de fondation
+    promet la vraie premiere recolte et dit "l'an prochain" en automne.
+  - Le tresor ne passe plus sous zero apres un achat de grain ; on n'achete
+    plus le grain d'un village qui verra venir la disette ; une recolte qui
+    deborde du grenier le dit ; le peage d'une route qui passe la couture du
+    monde ; quatre effets de batiments lus dans leur table ; les biens ne
+    sont plus arrondis a la sauvegarde.
+
+
+4. LA GUERRE
+------------
+  Sa partie de l'an 48 jouee 10 ans, la 0.32 et les corrections cote a cote :
+  - QUI AIDE QUI (G4) : une regle, battle.may_help (pas un peuple du pays
+    de l'ennemi, ni en guerre avec la bande aidee, ni en paix avec
+    l'ennemi), au depart, pour les renforts et dans l'apercu. Batailles avec
+    une bande dans les deux camps : 14 sur 63 -> 0 sur 43.
+  - LE SERMENT TIENT (G5) : diplo.on_fight ne fait jamais tomber un serment
+    de tributaire, ni un pacte ne pendant le combat. Villages pris et
+    soumis : 1 sur 4 libere la semaine meme -> 3 sur 3 restent soumis.
+  - PAS DE GUERRE DANS UN PAYS (G6) : guerre.end_inner_wars, a chaque
+    soumission et confederation : 80 paires-semaines -> 0.
+  - UNE SEULE PAIX (G12) : guerre.make_peace (la guerre des deux pays finit,
+    une treve de 2 ans entre chaque paire de leurs peuples), pour l'ecran
+    Peuples, la carte d'evenement, le tribut de guerre ; traiter la paix
+    avec un tributaire, c'est traiter avec son suzerain
+    (diplo.peace_partner).
+  - Ce qui lie au pays vise (guerre.bond : un tribut, une treve, une
+    alliance) empeche de declarer : redeclarations malgre un tribut 13 -> 0 ;
+    une alliance ne tombe plus en silence. Un ordre d'attaque se juge comme
+    la bataille (guerre.attack_block) : "un motif n'est pas une guerre"
+    est dit, la troupe n'attend plus sans fin. Le tribut ne se perd plus.
+  - En 10 ans : declarations de guerre 47 -> 27, batailles 63 -> 43
+    (une paix lie maintenant les deux pays 2 ans).
+  - UNE PARTIE RECHARGEE FAIT LA MEME SUITE : la diplomatie se sauve dans
+    son ordre d'arrivee (avant : ecart a la 14e semaine) ; avec les biens
+    non arrondis, identique sur 40 semaines.
+
+
+5. LE DEBUT ET LE CONTENU
+-------------------------
+  - LES SAVOIRS D'UN PEUPLE FIXE (G9) : un village vit de toute sa zone
+    d'influence (learning.range_profile), et une condition de lieu est
+    remplie quand un voisin sait le savoir. Peuples fixes sans foret qui
+    ont l'arc en 6 ans : 0 sur 34 -> 15 ; sans plaine qui ont l'epieu : 0
+    sur 15 -> 10. ET L'ARC S'APPREND AUSSI EN SAVANE (un choix, dit : 33 des
+    34 peuples fixes sans foret vivent en savane ou a cote, LE SIEN compris,
+    a 198 lieues du premier peuple qui sait l'arc).
+  - LES CARTES DE BANDE (G10) : la savane, la toundra, la jungle, le marais,
+    le desert y sont ; une carte nouvelle pour la cote ("La baleine
+    echouee"). Sa bande de l'an 3, en jungle : 4 cartes possibles -> 8.
+  - LES CONJONCTURES (G11) : tous les candidats, le premier qui n'est pas au
+    repos. Grands travaux, route du sel, essor des chefferies : 0 en 6 ans
+    -> nees.
+  - L'age tribal a ses decisions (la grande chasse, les eclaireurs, le
+    mariage partent de la bande du chef) ; deux cartes ne coupent plus un
+    village en deux (la fievre : un dixieme part camper et revient) ; un
+    point de progres ne contourne plus le sort ni un grand tournant ; les
+    decisions de l'IA qui coutent des vivres regardent le creux (mariages
+    en pleine soudure 31 sur 78 -> 0 sur 54) ; la troupe de pillage reste a
+    son poste ; la fete des morts est prise ; "relation +12" s'applique ;
+    le sens des pastilles ; le prestige des situations par gain_prestige.
+
+
+6. L'ECRAN ET LA SAUVEGARDE
+---------------------------
+  - Des textes : "Agitation a Ilsen" (l'outil des accents avait ecrit
+    "s'agité") ; les pluriels sur le nombre arrondi ; la jauge des vivres
+    rouge sous 2 semaines quand la collecte ne suffit pas ; la fiche d'un
+    compte de la barre dessinee par-dessus tout.
+  - En 1024 x 640 : le savoir en cours ne couvre plus les boutons du temps ;
+    la colonne de gauche s'arrete au-dessus de la fiche rangee a gauche.
+  - Le cout par image : theme.fit coupe par moitie et garde (l'arbre des
+    savoirs : 8-10 images/s a l'an 3) ; l'ecran Peuples lit chaque relation
+    une fois par image ; le savoir a choisir et le journal regroupe se
+    gardent tant que rien ne change.
+  - LA SAUVEGARDE s'ecrit d'un coup (un fichier .tmp renomme : jamais un
+    fichier tronque) ; une erreur de disque le dit au lieu de fermer le
+    jeu ; la sauvegarde automatique, au plus une fois toutes les 30
+    secondes reelles (a la vitesse 5, elle figeait l'ecran plus d'une fois
+    par seconde).
+  - Deux memoires rangees selon une adresse, contre la regle : la vue
+    (vision.py, un jeton du monde) ; la memoire des terres de l'IA (la cle
+    ne dependait pas du peuple). Les memoires de cercles bornees par leur
+    taille (~100 Mo en 3 ans -> ~65).
+
+
+7. VERIFIE
+----------
+  - Les 66 tests nouveaux, puis toute la suite (dont test_balance sur
+    quatre graines, test_notes, test_architecture).
+  - Sur SES parties : les mesures ci-dessus ; les ecrans captures.
+  - L'empreinte re-enregistree (le jeu change, voulu) ; l'essai en reseau
+    avec l'exe.
+
+
+8. CE QUI RESTE
+---------------
+  - Une paix signee pendant une bataille n'arrete pas cette bataille (le
+    pacte ne tombe plus ; arreter la bataille est un choix de conception).
+  - chiefdom._pay_vassal perd un tribut quand le suzerain n'a pas de
+    village (rare).
+  - Le joueur a l'an 48 : l'arc par la savane ; d'autres peuples fixes
+    restent bloques tant qu'aucun voisin ne sait (19 pour l'arc).
+  - Les cercles du jeu restent des ellipses sur le globe (un choix a faire,
+    revue section 3).

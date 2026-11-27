@@ -176,6 +176,10 @@ def _ai_wars(state) -> None:
                 continue
             if diplo.gap(state, tid, other) > AI_CONQUEST_GAP:
                 continue
+            # Un tribut (de guerre) qu'ils paient encore, une treve : on ne
+            # redeclare pas (guerre.bond).
+            if _bound(state, tid, other):
+                continue
             theirs = country_power(state, other) + sum(country_power(state, t) for t in guerre.war_allies(state, other, tid))
             if mine < WEAK_RATIO * max(1.0, theirs):
                 continue
@@ -198,6 +202,17 @@ def _ai_wars(state) -> None:
                 continue
             guerre.declare_war(state, tid, other, other)
             break
+
+
+def _bound(state, tid: int, other: int) -> bool:
+    """Un pacte lie tid au pays de other (une alliance, une treve, un tribut :
+    guerre.bond refuserait la guerre), hors son alliance avec other lui-meme,
+    qu'un conquerant rompt (une trahison)."""
+    for t in [other] + sorted(chiefdom.country(state, other) - {other}):
+        for p in diplo.pacts_between(state, tid, t):
+            if p.kind in guerre.BONDS and not (t == other and p.kind == "alliance"):
+                return True
+    return False
 
 
 def _ai_submissions(state) -> None:

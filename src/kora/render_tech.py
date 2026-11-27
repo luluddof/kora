@@ -341,8 +341,10 @@ def _status_line(state, tribe, tid: str, st: str) -> tuple[str, tuple]:
         if t.turning and turning.presence(tribe, tid) > 0:
             text += f" · chez vous {turning.presence(tribe, tid):.0f} %"
         return text, STYLE["verrouille"]["text"]
+    # Un voisin qui sait vous l'apprend (learning.cond_progress, eased).
+    eased = bool(learning._neighbors_know(state, state.viewer, tid))
     for cond in t.conds:
-        have, need, label = learning.cond_progress(state, tribe, cond)
+        have, need, label = learning.cond_progress(state, tribe, cond, eased)
         if have < need:
             shown = f"{label} ({min(have, need)}/{need})" if cond.kind not in ("seen", "flag") else label
             return shown, STYLE["attente"]["text"]

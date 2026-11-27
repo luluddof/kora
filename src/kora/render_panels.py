@@ -485,7 +485,9 @@ def draw_villages(r, state, layout, ui) -> None:
         _loyalty_bar(r, cols["stab"], y + 9, 80, stab, tint)
         _text(r, r.tiny, f"{stab:.0f} {villages.stability_word(stab)}", tint, cols["stab"] + 86, y + 5)
         weeks = band.stock / max(1, band.population)
-        left, margin = villages.food_outlook(state, site, band)
+        # Le CREUX avant la recolte (villages.food_low, 2026-11-27) : le point
+        # le plus bas du grenier, celui ou l'on meurt de faim.
+        left, margin = villages.food_low(state, site, band)
         grain = f"{weeks:.0f} sem." + (" · disette" if margin < 0 and row_h < 58 else "")
         _text(r, r.tiny, r._fit(r.tiny, grain, cols["act"] - cols["grenier"] - 6), BAD if margin < 0 else GOOD if weeks >= 8 else WARN, cols["grenier"], y + 5)
         # Seconde ligne : rang, metiers, chantier.
@@ -505,14 +507,15 @@ def draw_villages(r, state, layout, ui) -> None:
         if row_h >= 58:
             # Troisieme ligne : ce que le grain deviendra (la consequence,
             # pas le chiffre seul).
+            when = "dès maintenant" if left <= 0 else f"dans {left} sem."
             if margin < 0:
-                fut = f"Avant la récolte (dans {left} sem.), le grain manquera {-margin:.0f} sem. : rationnez, achetez, ou des gens mourront de faim."
+                fut = f"Au plus bas ({when}), le grain manquera {max(1, round(-margin))} sem. : rationnez, achetez, ou des gens mourront de faim."
                 col = BAD
             elif margin < 4:
-                fut = f"La récolte dans {left} sem. : il restera {margin:.0f} sem. de grain, c'est juste."
+                fut = f"Au plus bas ({when}), il restera {round(margin)} sem. de grain : c'est juste."
                 col = WARN
             else:
-                fut = f"La récolte dans {left} sem. : il restera {margin:.0f} sem. de grain."
+                fut = f"D'ici la récolte, le grain ne descendra pas sous {round(margin)} sem."
                 col = SOFT
             _text(r, r.tiny, r._fit(r.tiny, fut, cols["act"] - cols["nom"] - 40), col, cols["nom"] + 30, y + 38)
         see = (cols["act"], y + 7, 44, 22)
@@ -582,10 +585,14 @@ def draw_event_cards(r, state, ui, top: int | None = None) -> int:
     if not pending:
         return y
     t = pygame.time.get_ticks() / 1000.0
+    # Le bas de la colonne (la fiche epinglee, la fiche d'unite rangee a gauche).
+    floor = getattr(r, "left_floor", r.screen.get_height() - 60)
     for k, inst in enumerate(pending[:5]):
         ev = events.EVENTS.get(inst.event_id)
         if ev is None:
             continue
+        if y + 48 > floor:
+            break
         left = max(0, inst.deadline - state.tick_count)
         rect = (x, y, 286, 48)
         r.event_hits[inst.uid] = rect

@@ -8,7 +8,9 @@ kora.json) ; "Continuer" reprend la plus recente qui se lit (latest_save),
 supprimer = la corbeille (trash_save, CORBEILLE_KEEP). La partie a
 plusieurs de l'hote : kora-multi.json ; les reglages du joueur :
 reglages.json (load_prefs / save_prefs). Une sauvegarde illisible n'est
-jamais ecrasee (set_aside_save : kora-ancienne-<date>.json).
+jamais ecrasee : chaque partie a son fichier (set_aside_save, qui la met de
+cote, n'est plus appele par le jeu) ; une sauvegarde s'ecrit d'un coup (un
+fichier .tmp renomme : save_game).
 
 game_to_json / game_from_json : l'etat entier ; Tribe, Band, Site et la
 fiche du village passent par records.py (d'apres leurs types) ; une partie
@@ -319,10 +321,16 @@ def _fight_from_json(data: dict) -> FightMark:
 
 
 def save_game(state: GameState, path: Path, view: dict | None = None) -> None:
+    """Ecrit la partie d'un coup (2026-11-27) : dans un fichier a cote, puis
+    renomme par-dessus l'ancien ; une coupure ou un disque plein pendant
+    l'ecriture laisse l'ancienne sauvegarde entiere, jamais un fichier
+    tronque. Leve OSError si le disque refuse (Play.persist le dit)."""
     payload = game_to_json(state, view)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload), encoding="utf-8")
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(payload), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def dumps_game(state: GameState, view: dict | None = None) -> str:

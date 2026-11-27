@@ -322,7 +322,13 @@ def draw_found(r, state, ui) -> None:
     y = _section(r, x, y, lw, "LE LIEU")
     rows = [
         (f"Champs : {info['fields']} sur les {info['fields_max']} voulus  ·  fertilité {100 * info['fertility']:.0f} %", SOFT),
-        (f"Première récolte : ~{info['harvest']:.0f} vivres (semences {100 * info['seed_ratio']:.0f} %)", SOFT),
+        (
+            ("Première récolte : l'an prochain" if info["next_year"] else "Première récolte : cette année")
+            + f", dans ~{info['harvest_in']} sem. : ~{info['harvest']:.0f} vivres"
+            + (" (semailles d'été, tardives : moitié moins)" if info["late_sow"] else "" if info["sow_now"] else " (rien n'est semé avant le printemps)")
+            + f"  ·  semences {100 * info['seed_ratio']:.0f} %",
+            SOFT,
+        ),
     ]
     if info["resources"]:
         rows.append(("Autour : " + ", ".join(info["resources"]), SOFT))

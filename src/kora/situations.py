@@ -328,7 +328,9 @@ class MalQuiCourt(Spec):
             if near:
                 tids = sorted({b.tribe_id} | {o.tribe_id for o in near})
                 out.append((b.position, 8, tids, {}))
-        return out[:1]
+        # Tous les foyers possibles : monthly prend le premier qui n'est pas
+        # au repos (avant : le premier seul ; au repos, plus rien au monde).
+        return out
 
     def chance(self, state):
         return 0.12
@@ -517,9 +519,10 @@ class GrandHiver(Spec):
             best = min(sorted(losses), key=lambda t: losses[t])
             tribe = state.tribes.get(best)
             if tribe is not None:
-                tribe.prestige = min(100, tribe.prestige + 5)
+                # Tout prestige gagne passe par gain_prestige (ses bonus).
+                got = gain_prestige(state, tribe, 5)
                 for t in inst.participants:
-                    _note(state, t, LogKind.DECOUVERTE, f"Le grand hiver est fini. Les {tribe.name} sont ceux qui l'ont le mieux traversé (prestige +5).")
+                    _note(state, t, LogKind.DECOUVERTE, f"Le grand hiver est fini. Les {tribe.name} sont ceux qui l'ont le mieux traversé (prestige +{got}).")
 
 
 PASSAGE_MEAT = 300.0
@@ -545,6 +548,7 @@ class GrandPassage(Spec):
         if state.clock.week not in (10, 11, 12, 36, 37, 38):
             return []
         world = state.world
+        out = []
         for b in sorted(state.bands.values(), key=lambda b: b.id):
             if b.population <= 0 or world.terrain(b.position) not in (Terrain.STEPPE, Terrain.PLAINE):
                 continue
@@ -552,8 +556,10 @@ class GrandPassage(Spec):
             if len(tids) >= 2 and not any(_has_village(state, t) for t in tids[:1]):
                 dirs = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1))
                 dq, dr = dirs[int(_rand(state, self.id, "dir", b.id) * len(dirs)) % len(dirs)]
-                return [(b.position, 6, tids, {"dq": dq, "dr": dr})]
-        return []
+                out.append((b.position, 6, tids, {"dq": dq, "dr": dr}))
+        # Tous les lieux possibles : monthly prend le premier qui n'est pas au
+        # repos (avant : le premier seul).
+        return out
 
     def chance(self, state):
         return 0.2
@@ -595,7 +601,7 @@ class GrandPassage(Spec):
         if not win:
             return
         tribe = state.tribes[win]
-        tribe.prestige = min(100, tribe.prestige + 8)
+        gain_prestige(state, tribe, 8)
         grant_effect(tribe, "sit:passage:prix", state.tick_count + 5 * YEAR)
         for t in inst.participants:
             _note(state, t, LogKind.DECOUVERTE, f"Le grand passage est fini : les {tribe.name} ont été les meilleurs chasseurs (Maîtres de la chasse, 5 ans).")
@@ -620,6 +626,7 @@ class Rassemblement(Spec):
     def candidates(self, state):
         if state.clock.week not in range(30, 34):
             return []
+        out = []
         for tid in sorted(state.tribes):
             if not _alive(state, tid) or _has_village(state, tid):
                 continue
@@ -630,8 +637,10 @@ class Rassemblement(Spec):
                     host = max(bands, key=lambda b: (b.population, -b.id))
                     near = [t for t in friends if any(points.lieux(state.world, b, host) <= 25 for b in _bands(state, t))]
                     if len(near) >= 2:
-                        return [(host.position, 10, sorted([tid] + near), {})]
-        return []
+                        out.append((host.position, 10, sorted([tid] + near), {}))
+        # Tous les hotes possibles : monthly prend le premier qui n'est pas au
+        # repos (avant : le premier seul).
+        return out
 
     def chance(self, state):
         return 0.4
@@ -660,6 +669,22 @@ class Rassemblement(Spec):
 def _villages(state, tid=None):
     out = [s for s in state.sites.values() if s.kind == "village" and (tid is None or s.tribe_id == tid)]
     return sorted(out, key=lambda s: s.id)
+
+
+def _villages_by_people(state) -> dict:
+    """Les villages de chaque peuple (une seule lecture des lieux : les
+    conjonctures qui cherchent TOUS leurs groupes possibles)."""
+    out: dict = {}
+    for s in _villages(state):
+        out.setdefault(s.tribe_id, []).append(s)
+    return out
+
+
+def _villages_near(state, by: dict, tid: int, peoples, reach: int) -> list:
+    """Les peuples (parmi `peoples`) qui ont un village a `reach` lieues ou
+    moins d'un village de `tid`."""
+    mine = by.get(tid, [])
+    return [t for t in peoples if t != tid and any(points.lieux(state.world, a, b) <= reach for a in mine for b in by.get(t, []))]
 
 
 def _village_band(state, site):
@@ -862,12 +887,15 @@ class GrandsTravaux(Spec):
             s.tribe_id for s in _villages(state)
             if "ancetres" in state.tribes[s.tribe_id].knowledge and not state.tribes[s.tribe_id].flags.get("monument")
         })
+        out = []
+        by = _villages_by_people(state)
         for tid in peoples:
-            mine = _villages(state, tid)
-            others = [t for t in peoples if t != tid and any(points.lieux(state.world, a, b) <= 40 for a in mine for b in _villages(state, t))]
+            others = _villages_near(state, by, tid, peoples, 40)
             if others:
-                return [(mine[0].hex, 40, sorted([tid] + others), {})]
-        return []
+                out.append((by[tid][0].hex, 40, sorted([tid] + others), {}))
+        # Tous les groupes : monthly prend le premier dont personne n'est au
+        # repos (avant : le premier seul, au repos 15 ans, et plus rien).
+        return out
 
     def chance(self, state):
         return 0.25
@@ -936,11 +964,14 @@ class RouteDuSel(Spec):
         if not 29 <= state.clock.week <= 32:
             return []
         traders = sorted({t for t in state.tribes if _has_village(state, t)})
+        out = []
         for tid in traders:
             linked = [o for o in traders if o != tid and diplo.has_pact(state, tid, o, "commerce")]
             if len(linked) >= 2:
-                return [(_villages(state, tid)[0].hex, 0, sorted([tid] + linked), {})]
-        return []
+                out.append((_villages(state, tid)[0].hex, 0, sorted([tid] + linked), {}))
+        # Tous les carrefours : monthly prend le premier libre (avant : le
+        # premier seul).
+        return out
 
     def chance(self, state):
         return 0.3
@@ -954,7 +985,7 @@ class RouteDuSel(Spec):
         if not win:
             return
         tribe = state.tribes[win]
-        tribe.prestige = min(100, tribe.prestige + 12)
+        gain_prestige(state, tribe, 12)
         grant_effect(tribe, "sit:sel:prix", state.tick_count + 5 * YEAR)
         for t in inst.participants:
             if t != win:
@@ -982,13 +1013,16 @@ class Chefferies(Spec):
         if not 25 <= state.clock.week <= 28:
             return []
         peoples = sorted({s.tribe_id for s in _villages(state)})
+        out = []
+        by = _villages_by_people(state)
         for tid in peoples:
-            mine = _villages(state, tid)
             # Trois peuples a villages ou plus dans la meme vallee (30 cases).
-            rivals = [t for t in peoples if t != tid and any(points.lieux(state.world, a, b) <= 30 for a in mine for b in _villages(state, t))]
+            rivals = _villages_near(state, by, tid, peoples, 30)
             if len(rivals) >= 2:
-                return [(mine[0].hex, 30, sorted([tid] + rivals), {})]
-        return []
+                out.append((by[tid][0].hex, 30, sorted([tid] + rivals), {}))
+        # Toutes les vallees : monthly prend la premiere libre (avant : la
+        # premiere seule).
+        return out
 
     def chance(self, state):
         return 0.25
@@ -1014,7 +1048,7 @@ class Chefferies(Spec):
         if not win:
             return
         tribe = state.tribes[win]
-        tribe.prestige = min(100, tribe.prestige + 15)
+        gain_prestige(state, tribe, 15)
         grant_effect(tribe, "sit:chefferies:prix", state.tick_count + 10 * YEAR)
         for t in inst.participants:
             if t != win:

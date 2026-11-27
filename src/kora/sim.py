@@ -9,7 +9,8 @@ _restore), se met en pause et garde l'erreur (state.last_error) : ne pas
 avaler l'exception ailleurs.
 
 L'ORDRE D'UNE SEMAINE (_week ; le changer change le jeu : empreinte) :
-l'horloge, la saison qui avance par rangees, les marches, les ralliements,
+l'horloge, la saison qui avance par rangees, les semailles et la recolte
+(villages.turn_seasons : avant les repas), les marches, les ralliements,
 systems.WEEKLY (ost, sieges, grain, vivres des troupes), le vecu des
 savoirs, les combats (battle), l'epuisement, la collecte et la faim, les
 morts, les lieux (sites.update : villages, chantiers, troupes) ; puis
@@ -69,7 +70,7 @@ from src.kora import (
 )
 from src.kora.clock import Clock
 from src.kora.log import GameLog, LogKind, season_fr, terrain_fr
-from src.kora.path import MOVE_POINTS_PER_WEEK, astar, travel_weeks
+from src.kora.path import MOVE_POINTS_PER_WEEK, travel_weeks
 from src.kora.types import Band, FightMark, Hex, Order, OrderKind, Season, Terrain, Tribe, stay_order
 from src.kora.world import (
     World,
@@ -147,6 +148,7 @@ from src.kora.bands import (  # noqa: F401
     max_bands_of,
     merge_text,
     new_band_id,
+    pursuit_path,
     set_goto,
     stock_max,
     tribe_band_count,
@@ -691,20 +693,27 @@ def apply_movement(state: GameState) -> None:
                 band.path = []
                 continue
             target = state.bands[tid]
+            if (
+                target.tribe_id != band.tribe_id
+                and guerre.needs_declaration(state, band.tribe_id, target.tribe_id)
+                and not guerre.declared_war(state, band.tribe_id, target.tribe_id)
+            ):
+                # Plus de guerre declaree (une paix, ou jamais declaree) : la
+                # bataille n'aurait pas lieu (battle._will_fight), la marche
+                # s'arrete au lieu d'attendre sans fin.
+                band.order = stay_order()
+                band.path = []
+                if is_human(state, band.tribe_id) and target.tribe_id in state.tribes:
+                    note(state, LogKind.COMBAT, f"Pas de guerre déclarée avec les {state.tribes[target.tribe_id].name} : vos guerriers s'arrêtent.", where=band.position, to=band.tribe_id)
+                continue
             need = (not band.path) or (
                 state.world.canonicalize(band.path[-1]) != target.position
             )
             if need:
-                dist = points.lieux(state.world, band, target)
-                path = astar(
-                    state.world,
-                    band.position,
-                    target.position,
-                    max_cost=dist * 30 + 120,
-                    max_nodes=min(1200, max(150, dist * 20 + 80)),
-                    water_ok=water_ok,
-                    costs=costs,
-                )
+                # Les plafonds suivent l'aire du disque explore, et dans le
+                # lieu de la proie le chemin est ce lieu (bands.pursuit_path :
+                # un chemin vide arretait la poursuite pour toujours).
+                path = pursuit_path(state, band, target)
                 band.path = [] if path is None else path
             # On vise la bande elle-meme, pas le centre de son lieu.
             band.aim_u, band.aim_v = points.point_of(state.world, target)
@@ -1171,6 +1180,10 @@ def _week_steps(state: GameState, battle_days: int):
             f"{season_fr(state.clock.season())} commence.",
         )
     apply_season_spread(state)
+    yield
+    # Les saisons des champs (semailles, recolte) AVANT les repas : la
+    # semaine de la moisson, on recolte puis on mange.
+    villages.turn_seasons(state)
     yield
     apply_movement(state)
     yield

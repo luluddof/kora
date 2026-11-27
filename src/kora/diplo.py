@@ -441,8 +441,14 @@ def status_line(state, a: int, b: int) -> str:
 # --- raids -----------------------------------------------------------------------
 
 
-def on_fight(state, attacker: int, defender: int, attacker_won: bool, hunted: bool) -> None:
-    """Appele apres chaque combat entre deux peuples."""
+def on_fight(state, attacker: int, defender: int, attacker_won: bool, hunted: bool, since: int | None = None) -> None:
+    """Appele apres chaque combat entre deux peuples. Leurs pactes d'avant le
+    combat tombent (un pacte de paix rompu : une trahison, sauf motif), sauf
+    le serment d'un tributaire : il ne tombe que par guerre.rebel ou
+    guerre.free (se battre malgre lui reste une trahison). Un pacte ne
+    pendant le combat (since : la semaine ou la bataille a commence ; le
+    village pris et soumis, chiefdom.village_taken, fait son serment avant
+    cet appel, la semaine meme) ne tombe pas et ne compte pas."""
     if attacker == defender:
         return
     make_contact(state, attacker, defender)
@@ -462,13 +468,27 @@ def on_fight(state, attacker: int, defender: int, attacker_won: bool, hunted: bo
         drop_for_war(state, x, y)
     # L'avantage dans la guerre (la soumission se demande au vainqueur).
     guerre.add_score(state, attacker, defender, guerre.WIN_SCORE if attacker_won else -guerre.WIN_SCORE)
-    if has_pact(state, attacker, defender):
-        excused = d.casus.get((attacker, defender), -1) >= state.tick_count
-        # Rompre un accord commercial n'est pas une trahison (P4).
-        sworn = peace_pact(state, attacker, defender)
-        d.pacts.pop(pair(attacker, defender), None)
-        if sworn and not excused:
-            betray(state, attacker, defender)
+    k = pair(attacker, defender)
+    pacts = d.pacts.get(k, [])
+    # Les pactes d'avant le combat : un pacte de la semaine ou il a commence
+    # en est (signe avant lui), sauf un serment : celui de cette semaine est
+    # ne du combat (le village pris et soumis).
+    old = [
+        p for p in pacts
+        if p.kind != guerre.WAR and (since is None or p.since < since or (p.since == since and p.kind != "vassal"))
+    ]
+    falls = [p for p in old if p.kind != "vassal"]
+    if falls:
+        kept = [p for p in pacts if not any(p is f for f in falls)]
+        if kept:
+            d.pacts[k] = kept
+        else:
+            d.pacts.pop(k, None)
+    # Rompre un accord commercial n'est pas une trahison (P4) ; se battre
+    # contre son suzerain ou son tributaire, si (le serment reste).
+    sworn = any(p.kind in PEACE_PACTS for p in old)
+    if sworn and d.casus.get((attacker, defender), -1) < state.tick_count:
+        betray(state, attacker, defender)
 
 
 def betray(state, traitor: int, victim: int) -> None:
@@ -629,18 +649,26 @@ def _pay_tribute(state, pact: Pact, a: int, b: int) -> None:
     recv_bands = [x for x in state.bands.values() if x.tribe_id == receiver and x.population > 0]
     if not payer_bands or not recv_bands:
         return
-    due = float(sum(x.population for x in payer_bands))
+    # On ne paie que ce que les bandes qui recoivent peuvent porter (le
+    # reste se serait perdu, alors que le journal annoncait la somme).
+    room = {x.id: max(0.0, stock_max(x, state) - x.stock) for x in recv_bands}
+    due = min(float(sum(x.population for x in payer_bands)), sum(room.values()))
     paid = 0.0
     for band in sorted(payer_bands, key=lambda x: -x.stock):
+        if paid >= due:
+            break
         take = min(due - paid, max(0.0, band.stock - band.population))
         band.stock -= take
         paid += take
-        if paid >= due:
-            break
     if paid <= 0:
         return
-    target = max(recv_bands, key=lambda x: (stock_max(x, state) - x.stock, -x.id))
-    target.stock = min(stock_max(target, state), target.stock + paid)
+    left = paid
+    for target in sorted(recv_bands, key=lambda x: (-room[x.id], x.id)):
+        give = min(left, room[target.id])
+        target.stock += give
+        left -= give
+        if left <= 0:
+            break
     if state.tribes[receiver].is_player:
         _note(state, LogKind.POLITIQUE, f"Tribut des {state.tribes[payer].name} : {paid:.0f} vivres.", to=receiver)
     if state.tribes[payer].is_player:
@@ -911,6 +939,15 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
     if action == "treve":
         if guerre.at_peace(state, actor, target):
             return Verdict(blocked="Vous êtes déjà en paix")
+        lord = peace_partner(state, actor, target)
+        if lord != target:
+            # La paix vaut pour les deux pays (guerre.make_peace) : c'est le
+            # grand suzerain qui repond.
+            seen = evaluate(state, actor, lord, "treve")
+            if seen.blocked:
+                return seen
+            why = (f"Ils sont tributaires des {state.tribes[lord].name} : leur suzerain répond pour tout leur pays", 0)
+            return Verdict(score=seen.score, reasons=[why] + seen.reasons)
         out.append(("Base", -10))
         out.append(("Relation", round(rel * 0.5)))
         if ratio > 1.3:
@@ -1057,6 +1094,17 @@ def evaluate(state, actor: int, target: int, action: str) -> Verdict:
     return Verdict(score=sum(v for _l, v in out), reasons=out)
 
 
+def peace_partner(state, actor: int, target: int) -> int:
+    """Avec qui actor traite la paix quand il la propose a target : le grand
+    suzerain de target, si son pays est en guerre avec actor (traiter avec un
+    tributaire, c'est traiter avec son suzerain : guerre.make_peace) ; sinon
+    target lui-meme."""
+    lord = chiefdom.top_lord(state, target)
+    if lord != target and lord != actor and in_contact(state, actor, lord) and not guerre.at_peace(state, actor, lord):
+        return lord
+    return target
+
+
 def gift_carrier(state, actor: int, target: int):
     """(bande qui porte, bande qui recoit) : les plus proches, a portee."""
     world = state.world
@@ -1107,7 +1155,11 @@ HUMAN_OFFERS = {
 
 def perform(state, actor: int, target: int, action: str, amount: float = 0.0) -> str:
     """Executer une proposition ; rend le texte du resultat. Si `target` est
-    un autre joueur, il decide lui-meme (carte d'evenement)."""
+    un autre joueur, il decide lui-meme (carte d'evenement). Une treve
+    proposee a un tributaire se traite avec son grand suzerain
+    (peace_partner)."""
+    if action == "treve" and target in state.tribes and actor in state.tribes and not guerre.at_peace(state, actor, target):
+        target = peace_partner(state, actor, target)
     verdict = evaluate(state, actor, target, action)
     if verdict.blocked:
         return verdict.blocked
@@ -1184,8 +1236,8 @@ def perform(state, actor: int, target: int, action: str, amount: float = 0.0) ->
             add_mod(state, actor, target, "confed_refusee", -5, actor=target)
         return f"Les {names} refusent."
     if action == "treve":
-        guerre.end_war(state, actor, target)
-        add_pact(state, actor, target, "treve", TRUCE_WEEKS)
+        # La paix des deux pays (guerre.make_peace : une seule regle).
+        guerre.make_peace(state, actor, target)
         return f"Trêve conclue avec les {names} (2 ans)."
     if action == "alliance":
         add_pact(state, actor, target, "alliance")
@@ -1493,24 +1545,28 @@ def _propose_to_player(state, ai: int, player: int) -> None:
 
 
 def to_json(d: Diplomacy) -> dict:
+    # L'ORDRE D'ARRIVEE, pas un tri : la partie parcourt ces dicts dans cet
+    # ordre (monthly : les tributs se paient pacte apres pacte) ; une partie
+    # rechargee doit faire la meme suite qu'une partie jamais sauvee. Une
+    # liste JSON le garde ; une vieille sauvegarde (triee) se relit pareil.
     return {
         "contacts": sorted([list(k) for k in d.contacts]),
-        "mods": [[list(k), [[m.key, m.value, m.actor, m.year] for m in v]] for k, v in sorted(d.mods.items())],
+        "mods": [[list(k), [[m.key, m.value, m.actor, m.year] for m in v]] for k, v in d.mods.items()],
         "pacts": [
-            [list(k), [[p.kind, p.since, p.until, p.payer, p.paid] for p in v]] for k, v in sorted(d.pacts.items())
+            [list(k), [[p.kind, p.since, p.until, p.payer, p.paid] for p in v]] for k, v in d.pacts.items()
         ],
         "cooldown": dict(d.cooldown),
-        "casus": [[a, b, v] for (a, b), v in sorted(d.casus.items())],
+        "casus": [[a, b, v] for (a, b), v in d.casus.items()],
         "betrayed": {str(k): v for k, v in d.betrayed.items()},
-        "raids": [[a, b, t, won] for (a, b), (t, won) in sorted(d.raids.items())],
+        "raids": [[a, b, t, won] for (a, b), (t, won) in d.raids.items()],
         "neighbors": {str(k): v for k, v in d.neighbors.items()},
         "routes": [
             [r.exporter, r.importer, r.good, r.level, r.by, r.since, round(r.units, 3), round(r.paid, 2), r.status, r.idle]
             for r in d.routes
         ],
-        "casus_why": [[a, b, v] for (a, b), v in sorted(d.casus_why.items())],
-        "goals": [[a, b, v] for (a, b), v in sorted(d.goals.items())],
-        "scores": [[a, b, round(v, 2)] for (a, b), v in sorted(d.scores.items())],
+        "casus_why": [[a, b, v] for (a, b), v in d.casus_why.items()],
+        "goals": [[a, b, v] for (a, b), v in d.goals.items()],
+        "scores": [[a, b, round(v, 2)] for (a, b), v in d.scores.items()],
     }
 
 

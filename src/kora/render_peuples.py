@@ -61,14 +61,14 @@ ROW_FILL = {False: "carte", True: "carte_choisie"}
 def known_peoples(state) -> list[int]:
     alive = living_tribe_ids(state)
     out = [t for t in diplo.contacts_of(state, state.viewer) if t in alive]
-    out.sort(key=lambda t: (not diplo.allied(state, state.viewer, t), -diplo.relation(state, state.viewer, t), t))
+    out.sort(key=lambda t: (not diplo.allied(state, state.viewer, t), -_rel(state, state.viewer, t), t))
     return out
 
 
 def in_filter(state, tid: int, key: str) -> bool:
     if key == "guerre":
         return guerre.declared_war(state, state.viewer, tid)
-    rel = diplo.relation(state, state.viewer, tid)
+    rel = _rel(state, state.viewer, tid)
     if key == "cordiaux":
         return rel >= 15 or diplo.allied(state, state.viewer, tid)
     if key == "mefiants":
@@ -231,7 +231,21 @@ def _relevant(state, pick: int, action: str) -> bool:
     return True
 
 
+# Les relations lues pendant UNE image (2026-11-27 : diplo.relation etait
+# recalculee ~93 fois par image, 48 ms ; une image les lit une fois).
+_REL: dict = {}
+
+
+def _rel(state, a: int, b: int) -> float:
+    key = (a, b)
+    hit = _REL.get(key)
+    if hit is None:
+        hit = _REL[key] = diplo.relation(state, a, b)
+    return hit
+
+
 def draw_peoples(r, state, layout, ui) -> None:
+    _REL.clear()
     s = r.screen
     items = layout["items"]
     lay = peoples_layout(layout["box"])
@@ -291,7 +305,7 @@ def draw_peoples(r, state, layout, ui) -> None:
         pygame.draw.circle(s, C.nuit, (x + 18, y + 25), 9, 1)
         name = t.name + ("  (joueur)" if t.is_player else "")
         theme.text(s, name, "petit_gras", C.os, (x + 36, y + 5), w - 110)
-        rel = diplo.relation(state, me, tid)
+        rel = _rel(state, me, tid)
         val = signed(rel)
         f = theme.font("chiffre")
         s.blit(f.render(val, True, rel_color(rel)), (x + w - 12 - f.size(val)[0], y + 3))
@@ -389,7 +403,7 @@ def _draw_card(r, state, lay, items, pick: int, known: set, tips: list) -> None:
         for tr in traits[:3]:
             cx_ += theme.chip(s, cx_, hy + hh - 30, tr, C.ocre_jaune) + 6
     # Trois cartes.
-    rel = diplo.relation(state, me, pick)
+    rel = _rel(state, me, pick)
     c0, c1, c2 = lay["cards"]
     big = c0[3] >= 140
     # 1. Entre vous.

@@ -1,7 +1,7 @@
 CARTE DU DEPOT - KORA
 (doc de code, pas de design de jeu)
 
-A jour pour la version : 0.32.0
+A jour pour la version : 0.33.0
 Mise a jour : 2026-10-16 (refaite : elle avait derive depuis 0.10 ; ses
 sections 4, 8, 9 et 11 sont maintenant TIREES DU CODE).
 
@@ -173,7 +173,7 @@ ETAGE 2  la planete
       FORD_PCT, FORD_BIG_PCT, COST_VAR_MIN, COST_VAR_MAX, COST_VAR_CELLS,
       COST_VAR_WEIGHTS, MOVE_COST, BIOME_INDEX, NEIGHBOR_DELTAS, WIDTH,
       HEIGHT, CHAR_TO_TERRAIN, TERRAIN_TO_CHAR, RADIUS_CACHE_MAX,
-      RADIUS_CACHE_SIZE, BIG_RADIUS_CACHE_SIZE, SEASONS_BY_CODE, SPAWN_SEP,
+      RADIUS_CACHE_CELLS, BIG_RADIUS_CACHE_CELLS, SEASONS_BY_CODE, SPAWN_SEP,
       SPAWN_CONTINENT_MIN, SPAWN_STEP
 
 
@@ -182,8 +182,12 @@ ETAGE 3  ce qui s'y pose
   path.py
     LES CHEMINS : A* sur le sol releve par lieux (astar) et la duree d'un
     trajet en semaines (travel_weeks).
-    fonctions : astar, travel_weeks
-    constantes : MOVE_POINTS_PER_WEEK, DIAGONAL_PER_MILLE
+    fonctions : search_limits, heuristic_rate, astar, travel_weeks
+    constantes : MOVE_POINTS_PER_WEEK, DIAGONAL_PER_MILLE,
+      SEARCH_NODES_PER_D2, SEARCH_NODES_BASE, SEARCH_NODES_MAX,
+      SEARCH_COST_PER_LIEU, SEARCH_COST_BASE, WIDE_NODES_PER_D2,
+      WIDE_NODES_BASE, WIDE_NODES_MAX, WIDE_COST_PER_LIEU, WIDE_COST_BASE,
+      WEEKS_MEMO
 
   points.py
     LES POINTS ET LA MARCHE (le monde sans grille, 0.28.0 ; sa demande du
@@ -192,8 +196,8 @@ ETAGE 3  ce qui s'y pose
     peuvent varier").
     fonctions : center, cell_of, delta, length, point_of, site_point, where,
       lieux, cells_near, around, apart, before, crossed, to_colrow,
-      from_colrow, aim_of, route, march
-    constantes : FINE, STEP, MEET, NEAR, LOOK, NEAR_CACHE
+      from_colrow, aim_of, route, march, weeks_along
+    constantes : FINE, STEP, MEET, NEAR, LOOK, NEAR_CACHE_CELLS
 
   atlas.py
     L'ATLAS : les noms au dezoom (continents, banquises, bassins des grands
@@ -246,7 +250,7 @@ ETAGE 3  ce qui s'y pose
     classes : VillageData, Site
     fonctions : site_of, band_of, name, rank_name, oath_of, built, level, has,
       monument_stages, works, watch_spots, influence_radius
-    constantes : RANKS, NEAR
+    constantes : RANKS, NEAR, STONE_INFLUENCE
 
 
 ETAGE 4  les savoirs, les gens
@@ -299,20 +303,21 @@ ETAGE 5  LES SYSTEMES
 
   learning.py
     COMMENT UN PEUPLE APPREND : les conditions d'un savoir, son etat, le rythme.
-    fonctions : missing_lines, cond_progress, conditions_met, status,
+    fonctions : missing_lines, settled, cond_progress, conditions_met, status,
       kept_points, available, base_rate, diffusion_bonus, learn_rate,
       weeks_left, choose, auto_choose, town_pop, preferred_voie,
-      update_practice, trade_goods_for, count_winter, update_learning,
-      voie_lines, world_ages, age_lines, detail_lines
+      range_profile, update_practice, trade_goods_for, count_winter,
+      update_learning, voie_lines, world_ages, age_lines, detail_lines
+    constantes : PLACE_KINDS, SCAN_MEMO_MAX
 
   bands.py
     LES BANDES ET LEURS PEUPLES : les outils que tous les systemes partagent.
     fonctions : build_band_grid, bands_near, new_band_id, is_shielded,
       gain_prestige, bonus_of, costs_of, weeks_between, food_weeks,
-      campaign_weeks, stock_max, forage_hexes, set_goto, set_march_to_band,
-      tribe_band_count, can_split, civ_band_cap, civ_band_count, max_bands_of,
-      settler_people, split_band, welded_left, merge_mates, merge_bands,
-      merge_text, is_army, fighters
+      campaign_weeks, stock_max, forage_hexes, set_goto, pursuit_path,
+      set_march_to_band, tribe_band_count, can_split, civ_band_cap,
+      civ_band_count, max_bands_of, settler_people, split_band, welded_left,
+      merge_mates, merge_bands, merge_text, is_army, fighters
     constantes : FORAGE_RADIUS, STOCK_MAX_FACTOR, SPLIT_MIN_POP,
       MAX_BANDS_PER_TRIBE, GRID, WALK_COST, CAMPAIGN_EAT, WELD_WEEKS,
       WELD_MIN, MERGE_NEAR, MERGE_CALL, CLAN_SHARE
@@ -369,9 +374,9 @@ ETAGE 5  LES SYSTEMES
       relation, level_of, level, status_line, on_fight, betray,
       hostile_intent, alliance_bound, alliance_left, add_pact, drop_for_war,
       break_pact, monthly, teachers, diffusion_bonus, power, gap, pop_of,
-      evaluate, gift_carrier, gift_sizes, present_sizes, present_value,
-      gift_value, perform, invitable, invite_chance, invite, on_cooldown,
-      absorb, forget, ai_monthly, to_json, from_json
+      evaluate, peace_partner, gift_carrier, gift_sizes, present_sizes,
+      present_value, gift_value, perform, invitable, invite_chance, invite,
+      on_cooldown, absorb, forget, ai_monthly, to_json, from_json
     constantes : CONTACT_RANGE, NEIGHBOR_RANGE, TRUCE_WEEKS, TRIBUTE_WEEKS,
       TRIBUTE_EVERY, GIFT_RANGE, GIFT_SIZES, PRESENT_SIZES, PRESENT_NO_MONEY,
       AI_PRESENT, INVITE_COST, BETRAYAL_PRESTIGE, DIFFUSE_NEIGHBOR,
@@ -383,16 +388,18 @@ ETAGE 5  LES SYSTEMES
     LA GUERRE DECLAREE : qui est en paix, qui est en guerre, pourquoi, et
     comment elle finit.
     fonctions : migrate, diplomatic, needs_declaration, declared_war,
-      at_peace, at_war, hostiles, hostile, may_start, set_casus,
+      at_peace, at_war, hostiles, hostile, may_start, attack_block, set_casus,
       motive_against, casus_of, add_score, score, weariness, long_war,
       truce_mood, goal_of, goals_of, submit, goal_done, submit_verdict,
-      fade_wars, war_allies, war_pairs, war_verdict, declare_war, end_war,
-      tribute_peace, wars_of, vassal_pact, oath_weeks, oath_left, revolt_odds,
-      revolt_verdict, rebel, free_verdict, free
+      fade_wars, war_allies, bond, war_pairs, war_verdict, declare_war,
+      end_war, make_peace, tribute_peace, end_inner_wars, wars_of,
+      vassal_pact, oath_weeks, oath_left, revolt_odds, revolt_verdict, rebel,
+      free_verdict, free
     constantes : WAR, WAR_FADE_WEEKS, DECLARE_RELATION, DECLARE_PRESTIGE,
       WAR_WEEKS, WIN_SCORE, VILLAGE_SCORE, SIEGE_SCORE, SCORE_CAP,
       SUBMIT_BASE, WEARY_SEASON, WEARY_STEP, WEARY_CAP, LEAD_PER, LEAD_CAP,
-      PERJURY_PRESTIGE, HOSTAGES_PRESTIGE, REBEL_MOTIVE_WEEKS, FREED_RELATION
+      BONDS, PERJURY_PRESTIGE, HOSTAGES_PRESTIGE, REBEL_MOTIVE_WEEKS,
+      FREED_RELATION
 
   goods.py
     Metiers des villages, marche du peuple, routes commerciales.
@@ -404,17 +411,18 @@ ETAGE 5  LES SYSTEMES
       stability_parts, yield_mult, army_mult, build_mult, winter_prestige,
       forage_mult, village_tribes, has_village, reserve, spare, wants, offers,
       price, price_word, all_routes, routes_of, partners, find_route,
-      trade_distance, trade_ends, trade_range, trade_load, trading_places,
-      convoys, convoys_used, open_block, open_route, level_block, set_level,
-      close_route, route_price, preview, monthly, history, last_month,
-      summary, route_text, ai_crafts, ai_routes, lines, tech_lines
+      trade_distance, trade_ends, route_line, trade_range, trade_load,
+      trading_places, convoys, convoys_used, open_block, open_route,
+      level_block, set_level, close_route, route_price, preview, monthly,
+      history, last_month, summary, route_text, ai_crafts, ai_routes, lines,
+      tech_lines
     constantes : TEAM, TEAM_POP, MAX_TEAMS, OUTPUT, WORKSHOP, NEED, CAP,
-      RESERVE_WEEKS, SELL_KEEP_WEEKS, BUY_UP_TO, TRADE_RANGE, LOAD, MAX_LEVEL,
-      CONVOYS_BASE, CONVOYS_PLACE, CONVOYS_ROUTES, PLACE_PRICE, PRICE_HIGH,
-      PRICE_LOW, PRICE_NONE, IDLE_CLOSE, HISTORY, FORAGE_LOSS, FISH_NETS,
-      PAY_KEEP_WEEKS, REVEAL_WIDTH, CRAFTS, CRAFT_ORDER, GOODS, GOOD_NAMES,
-      GOOD_CRAFT, GOOD_COLORS, GOOD_SOME, FAR_RES, AI_ORDER, EVENT_CONDITIONS,
-      EVENT_EFFECTS, EVENT_TEXTS
+      RESERVE_WEEKS, BUY_UP_TO, TRADE_RANGE, LOAD, MAX_LEVEL, CONVOYS_BASE,
+      CONVOYS_ROUTES, PRICE_HIGH, PRICE_LOW, PRICE_NONE, IDLE_CLOSE, HISTORY,
+      FORAGE_LOSS, FISH_NETS, PAY_KEEP_WEEKS, REVEAL_WIDTH, CRAFTS,
+      CRAFT_ORDER, GOODS, GOOD_NAMES, GOOD_CRAFT, GOOD_COLORS, GOOD_SOME,
+      FAR_RES, REOPEN_WEEKS, AI_ORDER, EVENT_CONDITIONS, EVENT_EFFECTS,
+      EVENT_TEXTS
 
   money.py
     L'ARGENT d'un peuple : son tresor et son budget.
@@ -500,17 +508,17 @@ ETAGE 5  LES SYSTEMES
   villages.py
     Villages : une bande qui s'installe.
     classes : Oath
-    fonctions : stock_weeks, store_weeks, rot_mult, harvest_in,
-      weeks_to_harvest, note_forage, food_outlook, granary_growth,
+    fonctions : stock_weeks, store_weeks, rot_mult, harvest_in, sow_in,
+      weeks_to_harvest, note_forage, food_outlook, food_low, granary_growth,
       growth_mult, crowd_share, crowd_growth, herd_mult, food_mult,
       winter_famine_mult, yield_mult, wall_parts, defense_parts, defense_mult,
       winter_prestige, loyalty_parts, nearest_village, stability_parts,
       stability, stability_word, stability_growth, fertility, land_profile,
       choose_fields, hands_mult, field_hands_mult, expected_harvest, sow,
       harvest, found_block, propose_name, found, seat_chiefs, ai_oath,
-      found_preview, leave_block, leave, update, eat_seed, pillaged, lost,
-      field_site, soil_avg, next_step, lines, occupations, free_for_craft,
-      occupation_lines
+      found_preview, leave_block, leave, turn_seasons, update, eat_seed,
+      pillaged, lost, field_site, soil_avg, next_step, lines, occupations,
+      free_for_craft, occupation_lines
     constantes : FIELD_WORKERS, MAX_FIELDS, FIELD_RADIUS, FIELD_FOOD, SEED,
       LATE_SOW, STORE_WEEKS, GROWTH, SOIL_LOSS, SOIL_REST, GRAIN_ROT, BURNED,
       DISEASE_POP, FLOOD_CHANCE, MIN_FOUND_POP, FIELD_HANDS, HISTORY,
@@ -557,9 +565,9 @@ ETAGE 5  LES SYSTEMES
     fonctions : cover_parts, start_morale, fighters_in, pursuit_rate, battles,
       battle_of, in_battle, involves_human, slow, general, fighters_now,
       start, join, day, advance, ask_retreat, fight, place_of, headline,
-      log_suffix, to_json, from_json, band_quality, band_force, helpers_of,
-      side_force, defense_force, prune_fight_marks, add_fight_mark,
-      resolve_raids, after_battle
+      log_suffix, to_json, from_json, band_quality, band_force, friends_of,
+      may_help, helpers_of, side_force, defense_force, prune_fight_marks,
+      add_fight_mark, resolve_raids, after_battle
     constantes : ROUNDS, KILL, ROUT, SHOCK, PRESSURE, MAX_RATIO, MORALE_BASE,
       ARMY_MORALE, KIN_MORALE, VILLAGE_MORALE, HOME_MORALE, HUNGER_MORALE,
       GUARD_MORALE, MARCH_MORALE, LEADER_MORALE, WELD_MORALE, COVER, ESCAPE,
@@ -629,13 +637,13 @@ ETAGE 5  LES SYSTEMES
   events.py
     Evenements en chaines (voir la spec 2026-09-24, section 8).
     classes : Follow, Outcome, Option, Event, Instance, Book
-    fonctions : names, check, conds_ok, apply, options_for, vocabulary,
-      effect_kinds, condition_kinds, effect_text, effect_tone, summary_chips,
-      summarize, details, fire, resolve, choose, default_index,
-      decide_default, find, pending, text_for, hook, monthly, weekly,
-      copy_book, to_json, from_json
+    fonctions : names, check, conds_ok, relation_key, camp_out_count, apply,
+      options_for, vocabulary, effect_kinds, condition_kinds, effect_text,
+      effect_tone, summary_chips, summarize, details, fire, resolve, choose,
+      default_index, decide_default, find, pending, text_for, hook, monthly,
+      weekly, copy_book, to_json, from_json
     constantes : PLAYER_GAP, AI_GAP, PULSE_CAP, MAX_PENDING, MOOD_COLORS,
-      EVENTS, EFFECT_TEXT, OFFERS
+      EVENTS, RELATION_KEYS, RELATION_BOUNDS, EFFECT_TEXT, FLAG_TEXT, OFFERS
 
   decisions.py
     LES DECISIONS (l'onglet Decisions, a la Crusader Kings 3, Europa
@@ -647,9 +655,10 @@ ETAGE 5  LES SYSTEMES
     constantes : WEEKS_PER_YEAR, RATION, LEAN_MARGIN, RATION_GROWTH,
       RATION_STABILITY, RAID_RANGE, ROUTE_REACH, ROUTE_POST, ROUTE_SEIZE,
       ROUTE_RELATION, ROUTE_CASUS_WEEKS, HUNT_RADIUS, HUNT_MIN_MEN,
-      HUNT_WEEKS, HUNT_AI, ROUTE_AI, COUNCIL_FOOD_WEEKS, COUNCIL_LOYALTY,
-      SCOUTS_POP, SCOUTS_FOOD, SCOUTS_RADIUS, SCOUTS_CONTACT,
-      DEAD_FEAST_FOOD_WEEKS, MARRIAGE_FOOD_WEEKS, MARRIAGE_RELATION,
+      HUNT_WEEKS, HUNT_BAND_MEN, HUNT_BAND_HUNGRY, HUNT_AI, ROUTE_AI,
+      COUNCIL_FOOD_WEEKS, COUNCIL_LOYALTY, SCOUTS_POP, SCOUTS_BAND_POP,
+      SCOUTS_FOOD, SCOUTS_RADIUS, SCOUTS_CONTACT, DEAD_FEAST_FOOD_WEEKS,
+      DEAD_AI_STABILITY, MARRIAGE_FOOD_WEEKS, MARRIAGE_RELATION,
       MARRIAGE_EVERY, MARRIAGE_AI, FRIEND, HIGH_CHIEF_VASSALS,
       HIGH_CHIEF_PRESTIGE, HIGH_CHIEF_COST, TALES_WINTERS, FOREVER, FAMILIES,
       EFFECTS, DECISIONS, REPLACED
@@ -839,7 +848,7 @@ ETAGE -  l'interface (pygame)
     plusieurs) et la fenetre des reglages.
     classes : Settings, Play
     fonctions : view_dict, fresh_ui
-    constantes : TOAST_LIFE, MAX_TOASTS
+    constantes : TOAST_LIFE, MAX_TOASTS, AUTOSAVE_SECONDS
 
   partie_carte.py
     LA PARTIE A L'ECRAN, COTE CARTE : la souris sur la planete, le clavier,
@@ -860,7 +869,8 @@ ETAGE -  l'interface (pygame)
     LE DESSIN DE LA PARTIE (pygame) : Renderer, la planete et tout ce qui
     se pose dessus, la barre du haut, les onglets lateraux, les fiches.
     classes : Renderer
-    fonctions : band_gauges, hud_accounts, draw_age_tip, draw_journal
+    fonctions : band_gauges, learnable_now, hud_accounts, draw_age_tip,
+      draw_journal
     constantes : TAB_ICONS, SEASON_ICONS, KIND_ICONS, BAND_ICONS,
       MAP_MODE_ICONS, SEASON_FR, INSPECT_MAX_W, GAUGE_H, GAUGE_FOOD_WEEKS,
       HUD_TREND_WEEKS
@@ -1165,6 +1175,16 @@ ETAGE -  l'interface (pygame)
   Ce qui attend le joueur (les        objectifs.py (alertes, chemin) ; la
   alertes, le chemin du premier       colonne de gauche : render_objectifs.py ;
   village)                            le clic : partie_carte.py
+  L'interface sous la souris (un      Renderer.covered, Renderer.cover ;
+  clic ne traverse pas)               le clic : partie_carte.py
+  La prevision des vivres (le creux)  villages.food_low (et food_outlook pour
+                                      l'ecran) ; la semaine des champs :
+                                      villages.turn_seasons
+  Qui aide qui, la paix, le pays      battle.may_help, guerre.make_peace,
+                                      diplo.peace_partner, guerre.end_inner_wars,
+                                      guerre.bond, guerre.attack_block
+  Les plafonds d'une recherche de     path.search_limits ; la duree d'un trajet :
+  chemin                              path.travel_weeks
   Le sens des chiffres (gain, perte)  theme.TONES, theme.effect_chip,
                                       theme.effect_row ; les evenements :
                                       events.effect_tone, events.summary_chips
@@ -1333,6 +1353,16 @@ ETAGE -  l'interface (pygame)
                               d'ordre fait ce que
   test_confed.py              La confederation (confed.py) : deux peuples, un
                               seul pays au dehors.
+  test_corrections_contenu.py Les corrections du debut et du contenu (revue du
+                              2026-11-27,
+  test_corrections_faim.py    Les corrections de la faim et de l'economie
+                              (revue du 2026-11-27) :
+  test_corrections_guerre.py  Les corrections de la guerre et de la diplomatie
+                              (revue du 2026-11-27) :
+  test_corrections_interface.pyLes corrections de l'interface (revue du
+                              2026-11-27) : un clic sur ce qui
+  test_corrections_marche.py  Les corrections de la marche et du monde (revue
+                              du 2026-11-27) : l'ordre
   test_corrections_moteur.py  Les corrections du moteur (0.25.2) : le memo de
                               la semaine partage entre
   test_decisions.py           Les decisions (decisions.py, l'onglet Decisions)
@@ -1706,9 +1736,12 @@ ETAGE -  l'interface (pygame)
     Des interfaces qui se lisent : le grave se voit, le debut guide
     (0.32.0)
     Statut : FAIT (0.32.0) ; ce qui reste, dit en section 7.
+  specs/2026-11-27-corrections-revue.txt
+    Les corrections de la revue du 2026-11-27 (0.33.0)
+    Statut : FAIT (0.33.0).
   specs/2026-11-27-revue-bugs.txt
     Revue de code : les bugs et ce qui est mal fait (0.32.0)
-    Statut : PROPOSE (rien corrige ; en attente de son
+    Statut : FAIT (corrige en 0.33.0 :
   plans/2026-08-14-proto-tribal-kora.txt
     PROTO TRIBAL KORA — PLAN D'IMPLEMENTATION
   plans/2026-08-15-cabotage.txt

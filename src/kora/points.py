@@ -23,6 +23,12 @@ rejoint sans payer plus qu'en suivant l'escalier (_far) : droit quand ca
 ne coute pas plus, sinon elle contourne comme le chemin. route : le trajet
 qu'elle fera (le chemin trace a l'ecran) ; `trail`, note sur la bande (pas sauve) : celui
 qu'elle vient de faire (le glissement).
+LA LIGNE DROITE SE VERIFIE PAR ECHANTILLONS (tous les STEP) ; revue du
+2026-11-27 : l'unite ne s'arrete que dans un lieu verifie (_leg), et une
+ligne coupee par un coin d'eau se rabat sur les centres du chemin (_relink,
+un court A* si l'unite n'y touche plus) avant d'annuler l'ordre. Une unite
+restee dans l'eau (une vieille partie) en sort (path.astar part de partout).
+weeks_along : la duree d'un trajet, la marche rejouee (path.travel_weeks).
 LES RENCONTRES (0.30.0) : deux unites se rencontrent a MEET ou moins l'une
 de l'autre (apart), plus "dans le meme lieu" ; crossed : deux unites qui se
 sont croisees pendant la semaine (Band.pu, pv : son point au debut de la
@@ -41,6 +47,9 @@ from __future__ import annotations
 
 import math
 
+# points et path s'appellent l'un l'autre (la marche coupee cherche un
+# detour ; la duree d'un trajet rejoue la marche) : modules entiers.
+from src.kora import path as paths
 from src.kora.types import Hex
 from src.kora.world import axial_to_offset, enter_cost_for, offset_to_axial, step_cost
 
@@ -165,7 +174,10 @@ def lieux(world, a, b) -> int:
     return (length(world, where(world, a), where(world, b)) + FINE // 2) // FINE
 
 
-NEAR_CACHE = 20000
+# La memoire des disques autour d'un point est bornee par le NOMBRE DE LIEUX
+# gardes, pas d'entrees (revue du 2026-11-27 : des disques de rayon 16 a
+# plusieurs centaines de lieux chacun, 68 Mo en un an avec ceux du monde).
+NEAR_CACHE_CELLS = 150000
 
 
 def cells_near(world, pt: tuple[int, int], radius: int) -> tuple[list, list]:
@@ -178,6 +190,7 @@ def cells_near(world, pt: tuple[int, int], radius: int) -> tuple[list, list]:
     cache = world.__dict__.get("_near")
     if cache is None:
         cache = world.__dict__["_near"] = {}
+        world.__dict__["_near_cells"] = 0
     key = (pt, radius)
     hit = cache.get(key)
     if hit is not None:
@@ -191,9 +204,17 @@ def cells_near(world, pt: tuple[int, int], radius: int) -> tuple[list, list]:
         if k <= radius:
             cells.append(h)
             dists.append(k)
-    if len(cache) >= NEAR_CACHE:
-        for old in list(cache)[: NEAR_CACHE // 4]:
-            del cache[old]
+    kept = world.__dict__.get("_near_cells", 0) + len(cells)
+    if kept > NEAR_CACHE_CELLS:
+        # On oublie les plus anciens jusqu'aux trois quarts (vider tout d'un
+        # coup faisait tout recalculer a la semaine suivante).
+        for old in list(cache):
+            kept -= len(cache.pop(old)[0])
+            if kept <= NEAR_CACHE_CELLS * 3 // 4:
+                break
+        if not cache:
+            kept = len(cells)
+    world.__dict__["_near_cells"] = kept
     out = cache[key] = (cells, dists)
     return out
 
@@ -283,13 +304,17 @@ def _leg(world, cur, cell, stay, target, water_ok, costs, left):
         seg = total * k // n - done
         need = c * seg
         if left is not None and need > left - spent:
-            # Le reste de l'elan : un bout du pas.
+            # Le reste de l'elan : un bout du pas. On ne s'arrete que dans un
+            # lieu deja verifie (le courant ou le suivant) : entre deux
+            # echantillons, la ligne peut couper le coin d'un lac ou d'un
+            # sommet, et l'unite y finissait sa semaine (revue du
+            # 2026-11-27) ; sinon elle reste au dernier echantillon sur.
             rest = left - spent
             if need > 0 and rest > 0:
-                cur = (cur[0] + (nu - cur[0]) * rest // need, cur[1] + (nv - cur[1]) * rest // need)
-                landed = cell_of(world, cur[0], cur[1])
-                if landed != cell:
-                    cell = landed
+                stop = (cur[0] + (nu - cur[0]) * rest // need, cur[1] + (nv - cur[1]) * rest // need)
+                landed = cell_of(world, stop[0], stop[1])
+                if landed == cell or landed == nxt:
+                    cur, cell = stop, landed
             return left, cur, cell, stay, "arret"
         spent += need
         done += seg
@@ -330,6 +355,24 @@ def _far(world, cur, cell, stay, corners, i: int, water_ok, costs) -> int:
     return i
 
 
+def _relink(world, path, cell, i: int, water_ok, costs):
+    """Le repli d'une marche coupee : le chemin de lieu en lieu depuis le
+    lieu de l'unite (`cell`) : path[i:] s'il part de son lieu ou d'un voisin,
+    sinon un court chemin (A*) jusqu'a path[i], puis la suite. None : rien
+    ne passe (le chemin est vraiment coupe)."""
+    rest = list(path[i:])
+    if not rest:
+        return None
+    first = world.canonicalize(rest[0]) or rest[0]
+    if first == cell or first in world.neighbors(cell):
+        return rest
+    max_cost, max_nodes = paths.search_limits(world.distance(cell, first))
+    link = paths.astar(world, cell, first, max_cost=max_cost, max_nodes=max_nodes, water_ok=water_ok, costs=costs)
+    if not link:
+        return None
+    return link + rest[1:]
+
+
 def _corners(world, band) -> list:
     corners = [center(h) for h in band.path]
     aim = aim_of(world, band)
@@ -351,7 +394,14 @@ def route(world, band, water_ok: bool, costs) -> list:
     i = 0
     while i < len(corners):
         j = _far(world, cur, cell, stay, corners, i, water_ok, costs)
+        was = cell
         _spent, cur, cell, stay, state = _leg(world, cur, cell, stay, corners[j], water_ok, costs, None)
+        if state == "coupe":
+            # La marche s'y rabat sur les centres du chemin (march) : le
+            # trace aussi.
+            out.append(center(was))
+            out.extend(corners[i:])
+            break
         out.append(cur)
         if state:
             break
@@ -372,10 +422,34 @@ def march(world, band, budget: int, water_ok: bool, costs) -> bool:
     trail = [cur]
     i = 0
     cut = False
+    # Le repli de la semaine : de centre en centre, sans redresser.
+    stairs = False
     while i < len(corners) and left > 0:
         # Tout droit vers le coin le plus lointain qui ne coute pas plus.
-        j = _far(world, cur, cell, stay, corners, i, water_ok, costs)
-        spent, cur, cell, stay, state = _leg(world, cur, cell, stay, corners[j], water_ok, costs, left)
+        j = i if stairs else _far(world, cur, cell, stay, corners, i, water_ok, costs)
+        out = _leg(world, cur, cell, stay, corners[j], water_ok, costs, left)
+        if out[4] == "coupe" and not stairs:
+            # Les echantillons d'une ligne droite tombent ailleurs d'une
+            # semaine a l'autre : le coin d'un lac evite la semaine d'avant
+            # coupe celle-ci, et un chemin valide etait annule (revue du
+            # 2026-11-27). On se rabat sur les CENTRES du chemin (rejoint
+            # depuis son lieu s'il n'y touche pas) avant de l'annuler.
+            stairs_path = _relink(world, band.path, cell, i, water_ok, costs)
+            if stairs_path is not None:
+                band.path = stairs_path
+                corners = _corners(world, band)
+                i = 0
+                stairs = True
+                # D'abord au centre de son lieu : tout droit dans son lieu,
+                # rien a couper ; de la, de centre en centre (deux lieux
+                # voisins : la ligne ne passe que par eux).
+                spent, cur, cell, stay, state = _leg(world, cur, cell, stay, center(cell), water_ok, costs, left)
+                left -= spent
+                trail.append(cur)
+                if state:
+                    break
+                continue
+        spent, cur, cell, stay, state = out
         left -= spent
         trail.append(cur)
         if state == "coupe":
@@ -399,3 +473,33 @@ def march(world, band, budget: int, water_ok: bool, costs) -> bool:
     if not band.path:
         band.aim_u = band.aim_v = -1
     return cut
+
+
+class _Walker:
+    """Une unite fictive qui rejoue une marche (weeks_along)."""
+
+    def __init__(self, position, path, point, aim):
+        self.position = position
+        self.path = list(path)
+        self.fu, self.fv = point if point is not None else (-1, -1)
+        self.aim_u, self.aim_v = aim if aim is not None else (-1, -1)
+
+
+def weeks_along(world, start, path, budget: int, water_ok, costs, point=None, aim=None) -> int:
+    """LA DUREE D'UN TRAJET (path.travel_weeks) : la marche rejouee semaine
+    par semaine (march, `budget` points par semaine) sur une unite fictive
+    partie de `point` (le centre de `start` sinon) : le trajet redresse,
+    l'elan garde, un pas plus cher qu'une semaine fait en plusieurs. Un
+    chemin coupe : les semaines faites jusque-la."""
+    walker = _Walker(world.canonicalize(start) or start, path, point, aim)
+    weeks = 0
+    # Au pire (une montagne a contre-courant) : moins de 3 semaines par lieu.
+    limit = 4 * len(path) + 8
+    while walker.path and weeks < limit:
+        before = point_of(world, walker)
+        cut = march(world, walker, budget, water_ok, costs)
+        if not cut or point_of(world, walker) != before:
+            weeks += 1
+        if cut:
+            break
+    return weeks

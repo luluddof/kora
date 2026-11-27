@@ -249,8 +249,10 @@ def fighters_in(band: Band, attacker: bool) -> float:
     return fighters_now(band, attacker)
 
 
-def _side(state, main: Band, attacker: bool, h, by: int = 0) -> Side:
-    bands = [main] + helpers_of(state, main)
+def _side(state, main: Band, attacker: bool, h, by: int = 0, foe: int = 0, skip=()) -> Side:
+    """Un camp : la bande et ses renforts (helpers_of contre foe), sauf ceux
+    de `skip` et ceux qui livrent deja une autre bataille."""
+    bands = [main] + [b for b in helpers_of(state, main, foe) if b.id not in skip and not in_battle(state, b)]
     start = {b.id: fighters_in(b, attacker) for b in bands}
     quality = {b.id: band_quality(state, b) for b in bands}
     mods: list[tuple[str, str]] = []
@@ -466,9 +468,11 @@ def _now(state, bt, attacker: bool) -> Side:
 
 def start(state, attacker: Band, defender: Band, h, hunted: bool = False) -> Battle:
     """La bataille commence : deux camps (la bande et ses renforts), leur
-    moral, leurs generaux. Les bandes sur la case ne marchent plus."""
-    a = _side(state, attacker, True, h)
-    d = _side(state, defender, False, h, attacker.tribe_id)
+    moral, leurs generaux. Les bandes sur la case ne marchent plus. Une
+    bande n'est jamais dans les deux camps : le defenseur et ses renforts
+    d'abord, l'attaquant ne prend que les autres."""
+    d = _side(state, defender, False, h, attacker.tribe_id, foe=attacker.tribe_id, skip={attacker.id})
+    a = _side(state, attacker, True, h, foe=defender.tribe_id, skip={b.id for b in d.bands})
     for side in (a, d):
         for b in side.bands:
             side.start[b.id] = fighters_now(b, side.attacker)
@@ -782,7 +786,7 @@ def _end(state, bt, a: Side, d: Side, broken: Side, outcome: str) -> None:
     )
     bt.result = res
     if attacker is not None and defender is not None:
-        after_battle(state, attacker, defender, h, res, bt.hunted, points.where(state.world, bt))
+        after_battle(state, attacker, defender, h, res, bt.hunted, points.where(state.world, bt), since=bt.started)
 
 
 def fight(state, attacker: Band, defender: Band, h) -> Result:
@@ -1020,12 +1024,10 @@ def band_force(state: GameState, band: Band) -> float:
     return force
 
 
-def helpers_of(state: GameState, band: Band) -> list[Band]:
-    """Bandes qui viendraient en renfort : les clans soeurs obeissants et les
-    bandes des peuples allies, a portee de renfort."""
-    out = []
-    tid = band.tribe_id
-    reach = bonus_of(state, tid).reinforce
+def friends_of(state: GameState, tid: int) -> set:
+    """Les peuples qui viennent en renfort de tid : lui-meme, ses allies, son
+    pays (confederes, suzerain, tributaires : chiefdom.country) et, avec
+    Villages freres, ses freres (chiefdom.kin_of)."""
     friends = {tid}
     for a, b in state.diplo.pacts:
         if tid in (a, b) and diplo.allied(state, a, b):
@@ -1037,6 +1039,39 @@ def helpers_of(state: GameState, band: Band) -> list[Band]:
     # Tout le pays se soutient a la guerre : les confederes, le suzerain et
     # ses tributaires (chiefdom.country).
     friends.update(chiefdom.country(state, tid))
+    return friends
+
+
+def may_help(state: GameState, helper: int, tid: int, foe: int = 0, friends=None, foes=None) -> bool:
+    """QUI AIDE QUI, une seule regle (le depart d'une bataille : helpers_of ;
+    les renforts qui arrivent : resolve_raids ; l'apercu) : un ami de tid
+    (friends_of), jamais du pays de l'ennemi `foe` ni en guerre declaree avec
+    tid ; un autre peuple que tid ne vient que s'il se battrait lui-meme
+    contre l'ennemi (pas en paix avec lui : un pacte, ou la diplomatie sans
+    guerre declaree). foe 0 : l'ennemi n'est pas connu (une estimation).
+    friends, foes : friends_of(tid) et le pays de foe, deja calcules."""
+    if helper == tid:
+        return True
+    if helper not in (friends if friends is not None else friends_of(state, tid)):
+        return False
+    if guerre.declared_war(state, helper, tid):
+        return False
+    if not foe:
+        return True
+    if helper in (foes if foes is not None else chiefdom.country(state, foe) | {foe}):
+        return False
+    return not guerre.at_peace(state, helper, foe)
+
+
+def helpers_of(state: GameState, band: Band, foe: int = 0) -> list[Band]:
+    """Bandes qui viendraient en renfort : les clans soeurs obeissants et les
+    bandes des peuples amis (may_help), a portee de renfort. foe : le peuple
+    qu'elle combat (0 : une estimation, sans ennemi connu)."""
+    out = []
+    tid = band.tribe_id
+    reach = bonus_of(state, tid).reinforce
+    friends = friends_of(state, tid)
+    foes = chiefdom.country(state, foe) | {foe} if foe else set()
     world = state.world
     pool = bands_near(state, band.position, reach) if state.band_grid is not None else state.bands.values()
     for ally in pool:
@@ -1046,30 +1081,33 @@ def helpers_of(state: GameState, band: Band) -> list[Band]:
             continue
         if ally.tribe_id == tid and not chiefs.helps(state, ally):
             continue
+        if not may_help(state, ally.tribe_id, tid, foe, friends, foes):
+            continue
         out.append(ally)
     return out
 
 
-def side_force(state: GameState, band: Band) -> float:
-    # La bande + les bandes amies (rayon de renfort). Seule la bande
-    # engagee subit les pertes.
+def side_force(state: GameState, band: Band, foe: int = 0) -> float:
+    # La bande + les bandes amies (rayon de renfort) ; foe : contre qui
+    # (helpers_of). Seule la bande engagee subit les pertes.
     memo = state.force_memo
+    key = (band.id, foe) if foe else band.id
     if memo is not None:
-        hit = memo.get(band.id)
+        hit = memo.get(key)
         if hit is not None:
             return hit
     force = band_force(state, band)
-    for ally in helpers_of(state, band):
+    for ally in helpers_of(state, band, foe):
         force += band_force(state, ally)
     if memo is not None:
-        memo[band.id] = force
+        memo[key] = force
     return force
 
 
 def defense_force(state: GameState, band: Band, by: int = 0) -> float:
     """Force estimee d'une bande attaquee chez elle (pour l'IA) : renforts,
     abri (terrain, palissade, pays connu) et moral ; by : qui attaque."""
-    force = side_force(state, band)
+    force = side_force(state, band, by)
     if band.village and band.kind != "armee":
         # Au mur : les hommes valides, et une part des femmes (WALL_WOMEN).
         force += WALL_WOMEN * population.women_force(band) * band_quality(state, band)
@@ -1232,8 +1270,14 @@ def resolve_raids(state: GameState) -> None:
     for bt in sorted(battles(state), key=lambda b: b.uid):
         if bt.outcome:
             continue
-        a_tribes = {state.bands[b].tribe_id for b in bt.attackers if b in state.bands}
-        d_tribes = {state.bands[b].tribe_id for b in bt.defenders if b in state.bands}
+        # Qui aide qui : la meme regle qu'au depart (may_help, contre le
+        # peuple de l'autre camp).
+        a_main = next((state.bands[b].tribe_id for b in bt.attackers if b in state.bands), 0)
+        d_main = next((state.bands[b].tribe_id for b in bt.defenders if b in state.bands), 0)
+        if not a_main or not d_main:
+            continue
+        a_friends, d_friends = friends_of(state, a_main), friends_of(state, d_main)
+        a_foes, d_foes = chiefdom.country(state, a_main) | {a_main}, chiefdom.country(state, d_main) | {d_main}
         # Le point de la bataille (points.where) : les renforts la
         # rejoignent a trois quarts de lieu.
         ref = points.where(world, bt)
@@ -1245,17 +1289,17 @@ def resolve_raids(state: GameState) -> None:
         for band in sorted(arrived.values(), key=lambda b: b.id):
             if band.id in busy or is_shielded(state, band) or band.retreating:
                 continue
-            if band.position != bt.hex and (
-                band.tribe_id in a_tribes | d_tribes or any(diplo.allied(state, band.tribe_id, t) for t in a_tribes | d_tribes)
-            ):
+            if may_help(state, band.tribe_id, a_main, d_main, a_friends, d_foes):
+                side = True
+            elif may_help(state, band.tribe_id, d_main, a_main, d_friends, a_foes):
+                side = False
+            else:
+                continue
+            if band.position != bt.hex:
                 band.position = bt.hex
                 band.fu, band.fv = ref
-            if band.tribe_id in a_tribes or any(diplo.allied(state, band.tribe_id, t) for t in a_tribes):
-                join(state, bt, band, True)
-                busy.add(band.id)
-            elif band.tribe_id in d_tribes or any(diplo.allied(state, band.tribe_id, t) for t in d_tribes):
-                join(state, bt, band, False)
-                busy.add(band.id)
+            join(state, bt, band, side)
+            busy.add(band.id)
     # LES RENCONTRES A LA DISTANCE (points.py) : celle qui est venue attaquer
     # livre sa bataille d'abord (sinon une bande soeur toute proche la
     # livrerait a sa place), puis les autres, dans l'ordre des bandes.
@@ -1344,9 +1388,10 @@ def _meetings(state: GameState, by_hex: dict, busy: set) -> list:
     return found
 
 
-def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, hunted: bool, spot=None) -> None:
+def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, hunted: bool, spot=None, since: int | None = None) -> None:
     """La fin d'une bataille (_end) : le journal des joueurs, le
-    prestige, les relations, la marque sur la carte."""
+    prestige, les relations (diplo.on_fight ; since : la semaine ou elle a
+    commence), la marque sur la carte."""
     a_t, d_t = attacker.tribe_id, defender.tribe_id
     told = [t for t in humans(state) if t in (a_t, d_t) or is_visible(state, h, t)]
     winner, loser = res.winner, res.loser
@@ -1358,7 +1403,7 @@ def after_battle(state: GameState, attacker: Band, defender: Band, h: Hex, res, 
     lt.prestige = max(0, lt.prestige - (8 if res.wiped else 4))
     winner.last_raid_tick = state.tick_count
     loser.last_raid_tick = state.tick_count
-    diplo.on_fight(state, a_t, d_t, winner is attacker, hunted)
+    diplo.on_fight(state, a_t, d_t, winner is attacker, hunted, since)
     if winner.leader is not None:
         winner.leader.renown += 10 if res.wiped else 5
     if winner.order.kind is OrderKind.MARCH_TO_BAND:

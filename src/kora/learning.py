@@ -2,7 +2,9 @@
 
 tech.py porte l'arbre (les savoirs, leurs effets, les bonus) ; ici, ce qui
 le fait avancer : ce qu'un peuple a vecu (update_practice : terrains,
-ressources, hivers), ce qu'il remplit (cond_progress), l'etat de chaque
+ressources, hivers ; un village, toute sa zone : range_profile), ce qu'il
+remplit (cond_progress ; un peuple FIXE apprend d'un voisin qui sait ce que
+son pays ne montre pas : PLACE_KINDS, settled), l'etat de chaque
 savoir (status, available), le rythme (learn_rate : population a l'ecoute,
 chef, voisins qui savent), et la semaine (update_learning). Les VOIES de
 l'age du bronze : la voie qui va a un peuple (preferred_voie : l'IA, le
@@ -41,6 +43,9 @@ from src.kora.types import Season, Terrain
 from src.kora.world import is_inshore
 from src.kora import chiefdom, chiefs, diplo, draws, sites, turning
 from src.kora import points
+from src.kora.influence import VILLAGE_RADIUS, projection
+from src.kora.places import influence_radius, site_of
+from src.kora.resources import NAMES as RESOURCE_NAMES, PRESENT as RESOURCE_PRESENT
 from src.kora.villages import land_profile
 
 
@@ -92,9 +97,50 @@ def missing_lines(state, tribe_id: int, tech_id: str) -> list[str]:
     return [text.strip() for text, kind in detail_lines(state, tribe_id, tech_id) if kind == "manque"]
 
 
+# Les conditions de LIEU : des semaines sur un sol, pres d'une ressource,
+# l'hiver, le rivage ou la steppe en vue. Un peuple FIXE (rien que des
+# villages) ne va plus les vivre ailleurs que dans sa zone : un voisin qui
+# sait le savoir le lui apprend (P2 : on apprend en vivant, et en vivant a
+# cote de ceux qui savent ; sans cela, 49 peuples fixes sur 102 n'avaient
+# jamais l'arc, 15 jamais l'epieu : revue du 2026-11-27).
+PLACE_KINDS = ("weeks", "res", "tame", "seen")
+
+
+def settled(state, tribe_id: int) -> bool:
+    """Le peuple est FIXE : un village au moins, et plus aucune bande nomade
+    (les troupes ne comptent pas : elles rentrent au village)."""
+    memo = tick_memo()
+    if memo is not None:
+        found = memo.get("settled")
+        if found is None:
+            found = memo["settled"] = _settled_all(state)
+        return tribe_id in found
+    return tribe_id in _settled_all(state)
+
+
+def _settled_all(state) -> frozenset:
+    village, roaming = set(), set()
+    for b in state.bands.values():
+        if b.population <= 0:
+            continue
+        if b.village:
+            village.add(b.tribe_id)
+        elif b.kind != "armee":
+            roaming.add(b.tribe_id)
+    return frozenset(village - roaming)
+
+
 def cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, int, str]:
     """(valeur, besoin, libelle) d'une condition pour cette tribu.
-    eased : savoir vu chez un voisin, les semaines vecues comptent double."""
+    eased : savoir vu chez un voisin, les semaines vecues comptent double ;
+    et pour un peuple fixe, une condition de lieu est remplie (PLACE_KINDS)."""
+    have, need, label = _cond_progress(state, tribe, cond, eased)
+    if have < need and eased and cond.kind in PLACE_KINDS and settled(state, tribe.id):
+        return need, need, f"{label} : un voisin qui le sait vous l'apprend"
+    return have, need, label
+
+
+def _cond_progress(state, tribe, cond: Cond, eased: bool = False) -> tuple[int, int, str]:
     kind = cond.kind
     if kind == "pop":
         # Les peuples nes du votre (clans partis fonder le leur) comptent :
@@ -205,13 +251,14 @@ def status(state, tribe_id: int, tech_id: str) -> str:
     # absorbe, un evenement, un arbre d'une autre version) ne les
     # remplacent pas ; ils sont gardes pour plus tard (kept_points).
     blocked = bool(missing_prereqs(tribe, tech))
-    if not blocked:
+    if not blocked and tribe.learning == tech_id:
         # Un savoir commence se finit : les conditions (terrains, bandes...)
         # ne comptent que pour le commencer.
-        if tribe.learning == tech_id:
-            return "en_cours"
-        if tribe.progress.get(tech_id, 0.0) > 0:
-            return "disponible"
+        return "en_cours"
+    # Le sort et l'arrivee des grands tournants AVANT les points deja la : un
+    # seul point (une carte, un peuple absorbe) ne rend pas "disponible" un
+    # savoir que le sort a ecarte, ni un tournant pas encore arrive (revue
+    # du 2026-11-27).
     if draws.absent(state, tribe_id, tech_id):
         return "absent"
     if blocked:
@@ -219,6 +266,9 @@ def status(state, tribe_id: int, tech_id: str) -> str:
     if tech.turning:
         # Un grand tournant s'adopte quand il est arrive chez soi.
         return "disponible" if turning.presence(tribe, tech_id) >= 100.0 else "attente"
+    if tribe.progress.get(tech_id, 0.0) > 0:
+        # Des points deja la : on le reprend sans en remplir les conditions.
+        return "disponible"
     if not conditions_met(state, tribe, tech):
         return "attente"
     return "disponible"
@@ -321,6 +371,34 @@ def preferred_voie(state, tribe) -> str:
     return "steppe" if steppe > cite else "cite"
 
 
+# La memoire des regards (GameState.scan_memo) : vide au-dela (elle se refait).
+SCAN_MEMO_MAX = 100_000
+
+
+def range_profile(world, site) -> tuple:
+    """Les sols et les ressources (0,4 et plus) de la ZONE d'un village : la
+    ou portent sa chasse, son bois, ses betes (influence.projection, au rayon
+    de sa zone : VILLAGE_RADIUS, plus avec la pierre levee). Plus large que
+    ses champs (villages.land_profile) : un village vit de tout son pays. La
+    carte ne change pas : memorise sur le monde, par lieu et par rayon."""
+    radius = influence_radius(site, VILLAGE_RADIUS)
+    memo = world.__dict__.get("_range_lands")
+    if memo is None:
+        memo = world.__dict__["_range_lands"] = {}
+    key = (world._index(site.hex), radius)
+    hit = memo.get(key)
+    if hit is not None:
+        return hit
+    hexes, _costs = projection(world, site.hex, radius)
+    terrains, found = set(), set()
+    for x in hexes:
+        terrains.add(world.terrain(x))
+        if world.resources:
+            found.update(n for n in RESOURCE_NAMES if world.resource(x, n) >= RESOURCE_PRESENT)
+    hit = memo[key] = (frozenset(terrains), frozenset(found))
+    return hit
+
+
 def update_practice(state, count: bool = True) -> None:
     """Ce que chaque tribu a vecu cette semaine : terrains sous ses bandes,
     hiver local, rivage et steppe en vue, ressources du pays."""
@@ -334,19 +412,35 @@ def update_practice(state, count: bool = True) -> None:
         bands = by_tribe.get(tribe.id, [])
         if not tribe.shore_seen or not tribe.steppe_seen:
             for band in bands:
-                # La carte ne change pas : une position deja examinee n'a
-                # rien de neuf a montrer.
-                memo = (tribe.id, band.position)
+                # La carte ne change pas : d'un POINT deja examine (le regard
+                # part du point : points.around), avec ce que le peuple a
+                # deja vu, rien de neuf a montrer. Ce qu'il a vu est dans la
+                # cle : un retour en arriere (sim.snapshot) qui le lui fait
+                # oublier fait regarder de nouveau (revue du 2026-11-27).
+                seen_before = (tribe.shore_seen, tribe.steppe_seen)
+                memo = (tribe.id, points.point_of(world, band)) + seen_before
                 if memo in state.scan_memo:
                     continue
-                state.scan_memo.add(memo)
+                if band.village:
+                    # Un village voit toute sa zone (range_profile).
+                    site = site_of(state, band)
+                    if site is not None:
+                        zone = range_profile(world, site)[0]
+                        if Terrain.COTE in zone:
+                            tribe.shore_seen = True
+                        if Terrain.STEPPE in zone or Terrain.SAVANE in zone:
+                            tribe.steppe_seen = True
                 for h in points.around(world, band, SEE_RADIUS):
+                    if tribe.shore_seen and tribe.steppe_seen:
+                        break
                     if not tribe.shore_seen and is_inshore(world, h):
                         tribe.shore_seen = True
                     if not tribe.steppe_seen and world.terrain(h) in (Terrain.STEPPE, Terrain.SAVANE):
                         tribe.steppe_seen = True
-                    if tribe.shore_seen and tribe.steppe_seen:
-                        break
+                if (tribe.shore_seen, tribe.steppe_seen) == seen_before:
+                    if len(state.scan_memo) >= SCAN_MEMO_MAX:
+                        state.scan_memo.clear()
+                    state.scan_memo.add(memo)
         if not count:
             continue
         seen = set()
@@ -355,11 +449,18 @@ def update_practice(state, count: bool = True) -> None:
         for band in bands:
             if band.village:
                 # Un village vit de ses terres : chasse, peche, cueillette et
-                # glaise de tout son pays (villages.FIELD_RADIUS).
+                # glaise de tout son pays, ses champs (villages.FIELD_RADIUS)
+                # et toute sa zone (range_profile : la ou vont ses chasseurs).
                 terrains, found = land_profile(world, band.position)
                 seen |= terrains
                 if has_res:
                     near |= found
+                site = site_of(state, band)
+                if site is not None:
+                    terrains, found = range_profile(world, site)
+                    seen |= terrains
+                    if has_res:
+                        near |= found
             else:
                 seen.add(world.terrain(band.position))
                 if has_res:
@@ -575,7 +676,10 @@ def detail_lines(state, tribe_id: int, tech_id: str) -> list[tuple[str, str]]:
     if teachers:
         names = ", ".join(state.tribes[t].name for t in teachers[:3])
         bonus = round(100 * diffusion_bonus(state, tribe_id, tech_id))
-        out.append((f"Connu de : {names}  -  apprentissage +{bonus} %, semaines vécues divisées par 2", "ok"))
+        if settled(state, tribe_id):
+            out.append((f"Connu de : {names}  -  apprentissage +{bonus} %, ils vous apprennent ce que votre pays ne montre pas", "ok"))
+        else:
+            out.append((f"Connu de : {names}  -  apprentissage +{bonus} %, semaines vécues divisées par 2", "ok"))
     if st in ("disponible", "en_cours"):
         done = tribe.progress.get(tech_id, 0.0)
         out.append(

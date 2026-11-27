@@ -290,19 +290,18 @@ def attack_preview(state, band_id: int, prey_id: int) -> dict | None:
         out["blocked"] = "Un village ne bouge pas : formez une bande [S] pour attaquer"
     elif band.homebound:
         out["blocked"] = HOMEBOUND
-    elif guerre.may_start(state, me, them):
-        out["blocked"] = guerre.may_start(state, me, them)
-    elif guerre.needs_declaration(state, me, them) and not guerre.declared_war(state, me, them) and not guerre.at_war(state, me, them):
-        out["blocked"] = f"Vous êtes en paix avec les {who} : déclarez-leur d'abord la guerre (écran Peuples)"
+    elif guerre.attack_block(state, me, them):
+        # La regle de la bataille (battle._will_fight) : un motif ne suffit pas.
+        out["blocked"] = guerre.attack_block(state, me, them)
     ratio, word = ai_war.odds_at(state, band, prey)
     out["ratio"], out["word"] = ratio, word
     rows = out["rows"]
     tone = "bon" if ratio >= 1.3 else "mauvais" if ratio < 0.85 else "alerte"
     rows.append((f"Rapport de force : {_fmt(ratio)} contre 1, {word}", tone))
-    helpers = ai_war.helpers_at(state, [band], prey.position)
+    helpers = ai_war.helpers_at(state, [band], prey.position, them)
     mine = round(battle.fighters_now(band, True) + sum(battle.fighters_now(b, True) for b in helpers))
     rows.append((f"Vos combattants : {mine}" + (f" (dont {len(helpers)} bande{'s' if len(helpers) > 1 else ''} en renfort près d'eux)" if helpers else ""), "note"))
-    guards = battle.helpers_of(state, prey)
+    guards = battle.helpers_of(state, prey, me)
     theirs = round(battle.fighters_now(prey, False) + sum(battle.fighters_now(b, False) for b in guards))
     rows.append((f"Les leurs : {theirs}" + (f" (dont {len(guards)} bande{'s' if len(guards) > 1 else ''} en renfort)" if guards else ""), "note"))
     cover = battle.cover_parts(state, prey, prey.position, me)

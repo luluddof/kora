@@ -40,7 +40,6 @@ N'importe pas pygame.
 from __future__ import annotations
 
 from src.kora.log import LogKind
-from src.kora.types import Hex
 from src.kora.gamestate import is_human, note
 from src.kora import chiefdom, chiefs, goods, influence, laws, tech
 
@@ -311,16 +310,15 @@ def pay_route(state, payer: int, receiver: int, vivres: float) -> float:
 
 def toll_owner(state, route) -> int:
     """Le peuple qui tient le passage d'une route : celui qui domine le
-    milieu du chemin entre les deux villages (Droits de passage)."""
-    ends = goods.trade_ends(state, route.exporter, route.importer)
-    if ends is None:
+    milieu du chemin entre les deux villages (Droits de passage). Le chemin
+    est la ligne de la route (goods.route_line, celle des pillards) :
+    elle passe la couture du monde par le plus court (le milieu "a plat"
+    tombait a l'autre bout de la planete)."""
+    line = goods.route_line(state, route)
+    if not line:
         return 0
-    a, b = ends
     for frac in (0.5, 0.33, 0.67):
-        h = Hex(round(a.q + (b.q - a.q) * frac), round(a.r + (b.r - a.r) * frac))
-        h = state.world.canonicalize(h)
-        if h is None:
-            continue
+        h = line[round((len(line) - 1) * frac)]
         tid, v = influence.dominant(state.world, h)
         if tid and tid not in (route.exporter, route.importer) and v >= influence.ZONE_MIN:
             other = state.tribes.get(tid)

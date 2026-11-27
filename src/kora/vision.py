@@ -10,6 +10,7 @@ dessine (sinon : fuite d'information) ; note_seen ecrit au journal de ceux
 qui voient la case. N'importe pas pygame.
 """
 
+import itertools
 from dataclasses import dataclass, field
 
 from src.kora.gamestate import GameState, PLAYER_TRIBE_ID, humans, note, pov_of
@@ -17,6 +18,16 @@ from src.kora.log import LogKind
 from src.kora.types import Hex
 from src.kora import places, systems, tech
 from src.kora import points
+
+_TOKENS = itertools.count(1)
+
+
+def _world_token(world) -> int:
+    """Un jeton propre a chaque monde (la memoire de la vue s'y fie)."""
+    tok = world.__dict__.get("_vis_token")
+    if tok is None:
+        tok = world.__dict__["_vis_token"] = next(_TOKENS)
+    return tok
 
 VISION_RADIUS = 8
 TOWER_SIGHT = 3
@@ -75,7 +86,9 @@ def _recompute_for(state: GameState, tid: int, vis) -> PlayerVision:
     towers: list = []
     if state.sites:
         towers = [(t, h, n) for t in eyes for h, n in places.watch_spots(state, t)]
-    key = (id(state.world), tuple(sorted(radius.items())), tuple(spots), tuple((t, h.q, h.r, n) for t, h, n in towers))
+    # Le monde par son jeton, jamais son adresse (un autre monde peut la
+    # reprendre : la regle 4.1).
+    key = (_world_token(state.world), tuple(sorted(radius.items())), tuple(spots), tuple((t, h.q, h.r, n) for t, h, n in towers))
     if vis.key == key:
         return vis
     visible: set[Hex] = set()

@@ -5,7 +5,8 @@ Avant de toucher au code :
 Apres :
     .venv/Scripts/python.exe tools/empreinte.py check empreinte.json
 Deux parties (robot de tests/test_balance.py 8 ans, joueur immobile 6 ans)
-sont rejouees ; l'etat complet est compare semaine par semaine. Une
+sont rejouees ; l'etat complet est compare semaine par semaine (la
+sauvegarde entiere comprise : session.sync_digest). Une
 difference = le jeu a change (voulu ou non). Recuire la carte change aussi
 l'empreinte : l'enregistrer de nouveau apres.
 """
@@ -103,6 +104,12 @@ def digest(st) -> str:
     parts.append(str([(tid, st.tribes[tid].levy_rate, round(st.tribes[tid].granary, 6), st.tribes[tid].families) for tid in sorted(st.tribes)]))
     # Savoir-faire et surproduction (production.py).
     parts.append(str([(tid, sorted(st.tribes[tid].efficiency.items()), sorted(st.tribes[tid].glut.items())) for tid in sorted(st.tribes)]))
+    # TOUT L'ETAT (2026-11-27, la revue : l'empreinte ne voyait ni l'argent,
+    # ni les lois, ni les decisions, ni les points des unites) : la
+    # sauvegarde entiere, comme l'empreinte du multijoueur.
+    from src.kora.session import sync_digest
+
+    parts.append(sync_digest(st))
     return hashlib.sha1("\n".join(parts).encode()).hexdigest()
 
 

@@ -32,7 +32,8 @@ from src.kora.persist import dumps_game, game_to_json, loads_game
 
 PROTO = 1
 LAG = 6
-# L'empreinte coute ~50 ms en fin de partie : deux fois par an suffit.
+# L'empreinte coute ~150 ms a l'an 48 (120 peuples ; mesure du 2026-11-27) :
+# deux fois par an suffit.
 DIGEST_EVERY = 26
 # Au plus tant de semaines par image chez un joueur en retard (il rattrape
 # sans figer son ecran).

@@ -99,7 +99,9 @@ def kin_villages(state, tid: int) -> int:
 def kin_of(state, tid: int) -> set:
     """Les peuples freres d'un peuple qui connait Villages freres : ceux de
     sa civilisation qui ne se sont pas razzies l'un l'autre depuis un an, et
-    ses tributaires. (Pas la relation : elle compte deja les freres.)"""
+    ses tributaires ; jamais un peuple en guerre declaree avec lui (il se
+    battrait dans les deux camps : battle.helpers_of). (Pas la relation :
+    elle compte deja les freres.)"""
     tribe = state.tribes.get(tid)
     if tribe is None or not tech.bonuses(tribe).kin:
         return set()
@@ -111,7 +113,7 @@ def kin_of(state, tid: int) -> set:
             continue
         if diplo._recent_raid(state, tid, t, 52) is None and diplo._recent_raid(state, t, tid, 52) is None:
             out.add(t)
-    return out
+    return {t for t in out if not guerre.declared_war(state, tid, t)}
 
 
 def is_kin(state, tid: int, other: int) -> bool:
@@ -119,9 +121,12 @@ def is_kin(state, tid: int, other: int) -> bool:
     relation (diplo._base) le demande pour chaque paire de peuples, des
     milliers de fois par mois. Le meme resultat : un tributaire de tid (le
     pacte "vassal" a toujours pour payeur l'un des deux), ou un peuple vivant
-    de sa civilisation qui ne s'est pas razzie avec lui depuis un an."""
+    de sa civilisation qui ne s'est pas razzie avec lui depuis un an ; jamais
+    en guerre declaree avec lui."""
     tribe = state.tribes.get(tid)
     if tribe is None or not tech.bonuses(tribe).kin:
+        return False
+    if guerre.declared_war(state, tid, other):
         return False
     if any(p.kind == "vassal" and p.payer == other and p.payer != tid for p in diplo.pacts_between(state, tid, other)):
         return True
@@ -528,6 +533,9 @@ def make_vassal(state, lord: int, vassal: int, how: str = "force") -> None:
     # Un tributaire ne parle plus pour lui-meme : sa confederation est rompue.
     confed.on_vassal(state, vassal)
     diplo.add_pact(state, lord, vassal, "vassal", 0, payer=vassal)
+    # Un seul pays : plus de guerre entre ses peuples (deux tributaires du
+    # meme suzerain ne se ravagent pas).
+    guerre.end_inner_wars(state, lord)
     if how == "force":
         diplo.add_mod(state, lord, vassal, "soumis", -15, actor=lord)
     elif how == "fondation":
@@ -652,12 +660,13 @@ def monthly(state) -> None:
         # Le grenier se gate un peu (moins avec son garde).
         if tribe.granary > 0 and not holder(state, tid, "grenier"):
             tribe.granary *= 1.0 - GRANARY_ROT
-        # Il nourrit les villages qui vont manquer.
+        # Il nourrit les villages qui vont manquer : au creux d'avant la
+        # recolte (villages.food_low), pas seulement le jour de la recolte.
         for band in _village_bands(state, tid):
             site = places.site_of(state, band)
             if site is None or tribe.granary <= 0:
                 continue
-            _weeks, margin = villages.food_outlook(state, site, band)
+            _weeks, margin = villages.food_low(state, site, band)
             if margin < RELIEF_WEEKS:
                 give = min(tribe.granary, RELIEF_GIVE * band.population)
                 if give > 1:

@@ -3,7 +3,7 @@ croissance qui suit les vivres a venir ; onglet des villages."""
 
 import os
 
-from src.kora import chiefs, diplo, goods, learning, sites, tech, villages
+from src.kora import batiments, chiefs, diplo, goods, learning, sites, tech, villages
 from src.kora.clock import Clock
 from src.kora.bands import stock_max
 from src.kora.gamestate import GameState
@@ -307,7 +307,8 @@ def test_a_trade_place_and_workshops():
     goods.set_teams(st, site, "potiers", 1)
     made = goods.output(st, site, "potiers")
     site.data.buildings = {"place": 1, "atelier": 1}
-    assert goods.convoys(st, 1) == before + goods.CONVOYS_PLACE
+    # Ce que l'ecran affiche (batiments.VALUES) est ce que le jeu compte.
+    assert goods.convoys(st, 1) == before + batiments.value(site, "place", "convois") == before + 2
     assert abs(goods.output(st, site, "potiers") - made * goods.WORKSHOP) < 1e-9
 
 

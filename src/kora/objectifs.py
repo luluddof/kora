@@ -212,7 +212,7 @@ def _alertes(state, tribe) -> list[dict]:
             elif hunger == "disette":
                 out.append({"key": f"faim:{band.id}", "text": f"Disette en vue à {name}", "tone": "alerte", "icon": "grenier", "action": f"vil_open:{site.id}"})
             if villages.stability(state, site, band) < villages.UNREST:
-                out.append({"key": f"agite:{site.id}", "text": f"{name} s'agité", "tone": "alerte", "icon": "danger", "action": f"vil_open:{site.id}"})
+                out.append({"key": f"agite:{site.id}", "text": f"Agitation à {name}", "tone": "alerte", "icon": "danger", "action": f"vil_open:{site.id}"})
             continue
         who = band.leader.name if band.leader is not None else f"bande {band.id}"
         what = "La troupe" if band.kind == "armee" else ("La bande" if chiefs.is_chief_band(state, band) else "Le clan")

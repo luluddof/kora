@@ -20,6 +20,10 @@ Le rythme est celui des saisons LOCALES :
     recolte ;
   - chaque recolte epuise le sol ; un champ laisse en repos se refait :
     le village deplace ses champs de lui-meme.
+Semailles et recolte se font en debut de semaine (turn_seasons, avant les
+repas). Prevoir les vivres : food_outlook (ce qui restera le jour de la
+recolte : l'ecran), food_low (LE CREUX avant la recolte : ceux qui
+decident) ; la date des champs : harvest_in, sow_in, next_step.
 Ses batiments, ses chantiers, le grand monument : batiments.py ; ses
 troupes (levee, milice, retour) : troupes.py. Un village ne fuit pas : pille, il perd son grain,
 ses champs brulent, parfois un batiment. Les fievres de la promiscuite et
@@ -220,7 +224,18 @@ AUTUMN_WEEK = 27
 def harvest_in(state, site) -> int:
     """Les semaines (les pas du jeu) jusqu'a la prochaine recolte : l'automne
     arrive ici AUTUMN_WEEK + son retard de latitude (1 a 52)."""
-    at = AUTUMN_WEEK + state.world.season_lag(site.hex, True)
+    return _season_in(state, site.hex, AUTUMN_WEEK, True)
+
+
+def sow_in(state, h) -> int:
+    """Les semaines jusqu'aux prochaines semailles sur ce lieu : le
+    printemps part de l'equateur a la semaine 1 et gagne les poles
+    (World.season_lag) (1 a 52)."""
+    return _season_in(state, h, 1, False)
+
+
+def _season_in(state, h, week: int, from_poles: bool) -> int:
+    at = week + state.world.season_lag(h, from_poles)
     left = (at - state.clock.week) % 52
     return left or 52
 
@@ -284,11 +299,58 @@ def food_outlook(state, site, band) -> tuple[int, float]:
     return total, food / pop
 
 
+def food_low(state, site, band) -> tuple[int, float]:
+    """LE CREUX avant la recolte : (semaines jusqu'au point le plus bas du
+    grenier, semaines de vivres qui resteront alors ; negatif : il en
+    manquera, la faim). food_outlook dit ce qui restera LE JOUR de la
+    recolte : un hiver vide que l'ete rattrape y passait pour sur (68 % des
+    semaines de faim avaient une marge positive la veille). Ici, semaine par
+    semaine : la collecte de chaque saison (note_forage), la peche, le
+    rationnement, les semailles du printemps prises au grenier, le grain qui
+    se gate et le grenier qui deborde. La recolte se fait avant le repas de
+    sa semaine (turn_seasons) : le dernier repas compte est celui de la
+    veille. 0 semaine : le creux est maintenant. Ceux qui DECIDENT le lisent
+    (rationnement, achat de grain, secours du chef, metiers, chantiers et
+    levees de l'IA, croissance, la disette en vue de grain.shortfall)."""
+    pop = max(1, band.population)
+    memo = site.data.forage
+    memo = memo if isinstance(memo, dict) else {}
+    now = state.world.hex_season(site.hex)
+    here = memo.get(now.value, float(pop))
+    fish = goods.output(state, site, "pecheurs")
+    tribe = state.tribes.get(band.tribe_id)
+    rationed = max(0, tribe.ration_until - state.tick_count) if tribe is not None else 0
+    cap = stock_max(band, state)
+    keep = 1.0 - GRAIN_ROT * rot_mult(state, site)
+    # Les semences qui manqueront au printemps : prises au grenier (sow), qui
+    # garde SOW_KEEP_WEEKS semaines de vivres.
+    lack = max(0.0, SEED * min(MAX_FIELDS, max(1, math.ceil(pop / FIELD_WORKERS))) - site.data.seed)
+    meals = harvest_in(state, site) - 1
+    food = low = band.stock
+    week = at = 0
+    for season, weeks in _to_harvest(state, site):
+        if week >= meals:
+            break
+        if season is Season.PRINTEMPS and season is not now and lack > 0:
+            food -= min(lack, max(0.0, food - SOW_KEEP_WEEKS * pop))
+        gain = memo.get(season.value, here) + fish
+        for _w in range(min(weeks, meals - week)):
+            week += 1
+            food += gain - pop * (RATION if rationed > 0 else 1.0)
+            rationed -= 1
+            if food < low:
+                low, at = food, week
+            if food > 0:
+                food = min(cap, food) * keep
+    return at, low / pop
+
+
 def granary_growth(state, band) -> float:
     site = site_of(state, band)
     if site is None:
         return 1.0
-    _left, margin = food_outlook(state, site, band)
+    # Le creux avant la recolte (food_low), pas la marge du jour de la recolte.
+    _at, margin = food_low(state, site, band)
     return max(FOOD_LOW_GROWTH, min(1.0, FOOD_LOW_GROWTH + (1.0 - FOOD_LOW_GROWTH) * margin / FOOD_SAFE_WEEKS))
 
 
@@ -753,7 +815,10 @@ def harvest(state, site, band) -> float:
     site.data.seed = site.data.seed + keep
     # La part du chef part au grenier commun (chiefdom.py).
     left = chiefdom.take_from_harvest(state, band, crop - keep)
-    band.stock = min(stock_max(band, state), band.stock + left)
+    cap = stock_max(band, state)
+    # Ce qui ne tient pas dans le grenier plein est perdu : le journal le dit.
+    spilled = max(0.0, band.stock + left - cap)
+    band.stock = min(cap, band.stock + left)
     ravaged = site.data.ravaged
     site.data.fields = []
     site.data.sown_ratio = 0.0
@@ -765,9 +830,11 @@ def harvest(state, site, band) -> float:
     if state.tribes[band.tribe_id].is_player and crop > 0:
         text = f"{name(site)} : récolte de {crop:.0f} vivres."
         if short < 1.0:
-            text += " Il manquait des bras : une part est restee aux champs."
+            text += " Il manquait des bras : une part est restée aux champs."
         if ravaged > 0:
             text += f" Les champs ravagés ont donné {round(100 * ravaged)} % de moins."
+        if spilled >= 1:
+            text += f" Le grenier est plein : {spilled:.0f} vivres n'y ont pas tenu, perdus."
         _note(state, LogKind.SURVIE, text, site.hex, to=band.tribe_id)
     if crop > 0 and luck >= 1.15:
         events.hook(state, "bonne_recolte", tribe_id=band.tribe_id, band_id=band.id)
@@ -933,10 +1000,26 @@ def found_preview(state, band_id: int) -> dict:
     ferts.sort(reverse=True)
     want = min(MAX_FIELDS, max(1, math.ceil(band.population / FIELD_WORKERS)))
     best = ferts[:want]
-    need = SEED * want
-    seed = min(need, (band.stock + (camp.store if camp else 0.0)) * 0.5)
-    sown = (seed / need) if need else 0.0
-    harvest_guess = sum(best) * FIELD_FOOD * _bonus(state, band.tribe_id).field_yield * sown
+    # Les semences comme found puis sow les comptent : la moitie du stock
+    # (SEED par champ voulu, au plus), rapportee aux champs qu'on aura (pas a
+    # ceux qu'on voudrait), completee du grenier puis des graines sauvages.
+    stock = band.stock + (camp.store if camp else 0.0)
+    seed = min(SEED * want, stock * 0.5)
+    need = SEED * len(best)
+    if seed < need:
+        seed += min(need - seed, max(0.0, stock - seed - SOW_KEEP_WEEKS * band.population))
+    if seed < SEED and best:
+        found_here = goods.riches(world, center)
+        seed += min(SEED if found_here.get("cereales") or found_here.get("racines") else 0.0, need - seed)
+    sown = min(1.0, seed / need) if need else 0.0
+    # Ce que found fera : au printemps on seme ; en ete on seme tard (LATE_SOW,
+    # la moitie de la recolte) ; en automne et en hiver, rien avant le
+    # printemps : la premiere recolte est celle de l'an prochain.
+    season = world.hex_season(center)
+    sow_now = season in (Season.PRINTEMPS, Season.ETE)
+    late = season is Season.ETE
+    harvest_guess = sum(best) * FIELD_FOOD * _bonus(state, band.tribe_id).field_yield * sown * (LATE_SOW if late else 1.0)
+    first_in = _season_in(state, center, AUTUMN_WEEK, True)
     res = {}
     for h in lands:
         for rname in ("cereales", "racines", "argile", "silex", "sel", "chevres", "aurochs", "poisson"):
@@ -969,6 +1052,13 @@ def found_preview(state, band_id: int) -> dict:
         "fertility": (sum(best) / len(best)) if best else 0.0,
         "harvest": harvest_guess,
         "seed_ratio": sown,
+        # La premiere recolte : dans combien de semaines ; semee des la
+        # fondation (printemps, ete) ou pas avant le printemps ; semee tard
+        # (l'ete : la moitie) ; l'an prochain (au calendrier).
+        "harvest_in": first_in,
+        "sow_now": sow_now,
+        "late_sow": late,
+        "next_year": state.clock.week + first_in > 52,
         "resources": [LABELS[k] for k, _n in sorted(res.items(), key=lambda it: -it[1])][:5],
         "risks": risks,
         "first": not sites.of_tribe(state, band.tribe_id, "village") and "age_villages" not in tribe.flags,
@@ -1032,9 +1122,41 @@ def _alert(state, site, band) -> None:
 # --- chaque semaine --------------------------------------------------------------------
 
 
+def turn_seasons(state) -> None:
+    """LES SAISONS DES CHAMPS (sim._week, une phase a part juste apres la
+    propagation des saisons, AVANT les repas de collect_food) : la saison
+    locale qui change seme (printemps) ou recolte (automne). On mangeait
+    d'abord : un village au grenier vide mourait de faim la semaine meme de
+    sa moisson (351 morts en deux ans dans sa partie de l'an 48)."""
+    for site in sorted(state.sites.values(), key=lambda s: s.id):
+        if site.kind != "village":
+            continue
+        band = band_of(state, site)
+        if band is None:
+            continue
+        site.tribe_id = band.tribe_id
+        _turn_season(state, site, band)
+
+
+def _turn_season(state, site, band) -> None:
+    season = state.world.hex_season(site.hex)
+    if site.data.season == season.value:
+        return
+    site.data.season = season.value
+    site.data.season_at = state.tick_count
+    if season is Season.PRINTEMPS:
+        sow(state, site, band)
+        if state.world.terrain(site.hex) is _T.VALLEE and state.story_rng.random() < FLOOD_CHANCE:
+            events.hook(state, "crue", tribe_id=band.tribe_id, band_id=band.id)
+    elif season is Season.AUTOMNE:
+        harvest(state, site, band)
+
+
 def update(state) -> None:
-    """Saisons locales (semailles, recolte), grain qui se perd, chantiers,
-    semences en temps de famine, fievres, crues, troupes, tours de guet."""
+    """Grain qui se perd, chantiers, semences en temps de famine, fievres,
+    crues, troupes, tours de guet. Les saisons des champs (semailles,
+    recolte) se font avant, dans turn_seasons ; un village qui ne les a pas
+    eues (une partie relue, un essai qui n'appelle que update) les a ici."""
     for site in sorted(state.sites.values(), key=lambda s: s.id):
         if site.kind != "village":
             continue
@@ -1048,17 +1170,7 @@ def update(state) -> None:
             # villages commence maintenant pour ce peuple.
             tribe.settled_at = state.tick_count
         bonus = _bonus(state, site.tribe_id)
-        season = state.world.hex_season(site.hex)
-        last = site.data.season
-        if last != season.value:
-            site.data.season = season.value
-            site.data.season_at = state.tick_count
-            if season is Season.PRINTEMPS:
-                sow(state, site, band)
-                if state.world.terrain(site.hex) is _T.VALLEE and state.story_rng.random() < FLOOD_CHANCE:
-                    events.hook(state, "crue", tribe_id=band.tribe_id, band_id=band.id)
-            elif season is Season.AUTOMNE:
-                harvest(state, site, band)
+        _turn_season(state, site, band)
         if band.stock > 0:
             band.stock *= 1.0 - GRAIN_ROT * rot_mult(state, site)
         batiments.advance_works(state, site, band)
@@ -1140,17 +1252,13 @@ def soil_avg(site) -> float:
 
 def next_step(state, site) -> tuple[str, int]:
     """Prochaine etape des champs (semailles ou recolte) et dans combien de
-    semaines, a peu pres (saisons locales : 13 semaines chacune)."""
+    semaines : la saison LOCALE (la recolte : harvest_in ; les semailles :
+    sow_in, le retard de latitude du printemps), jamais 13 semaines par
+    saison au calendrier (2 a 7 semaines trop tot, regle 4.1)."""
     season = state.world.hex_season(site.hex)
-    week = (state.clock.week - 1) % 13
-    left = 13 - week
-    if season is Season.PRINTEMPS:
-        return "Récolte à l'automne", left + 13
-    if season is Season.ETE:
-        return "Récolte à l'automne", left
-    if season is Season.AUTOMNE:
-        return "Semailles au printemps", left + 13
-    return "Semailles au printemps", left
+    if season in (Season.PRINTEMPS, Season.ETE):
+        return "Récolte à l'automne", harvest_in(state, site)
+    return "Semailles au printemps", sow_in(state, site.hex)
 
 
 def lines(state, band) -> list[str]:

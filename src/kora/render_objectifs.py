@@ -5,7 +5,7 @@ clan qui part... chacune un clic vers ou agir), les cartes d'evenement
 (render_panels.draw_event_cards, dessous), puis LE CHEMIN DU PREMIER
 VILLAGE (objectifs.chemin), qui se replie d'un clic sur son titre.
 
-Les rectangles cliquables : r.alert_hits {action: rect} (l'action est un
+Les rectangles cliquables : r.alert_hits [(rect, action)] (l'action est un
 choix de panneau : Play.side_click, partie_ecrans.py) et r.goal_hits {"toggle": rect}.
 """
 
@@ -40,13 +40,16 @@ def column_top(r) -> int:
 
 def draw_alerts(r, state) -> int:
     """Les alertes ; rend le y sous elles."""
-    r.alert_hits = {}
+    # Une liste (2026-11-27) : deux alertes peuvent mener au meme endroit.
+    r.alert_hits = []
     y = column_top(r)
     items = objectifs.alertes(state)
     if not items:
         return y
     t = pygame.time.get_ticks() / 1000.0
     shown = items[: objectifs.MAX_ALERTS]
+    floor = getattr(r, "left_floor", r.screen.get_height() - 60)
+    shown = [a for i, a in enumerate(shown) if y + (i + 1) * (ALERT_H + 4) <= floor]
     for k, a in enumerate(shown):
         rect = (COL_X, y, COL_W, ALERT_H)
         col = TONE_COLOR.get(a["tone"], C.alerte)
@@ -59,7 +62,7 @@ def draw_alerts(r, state) -> int:
         r.screen.blit(theme.icon(a["icon"], 18, col), (COL_X + 12, y + (ALERT_H - 18) // 2))
         theme.text(r.screen, a["text"], "petit_gras" if a["tone"] == "danger" else "petit", C.os if over else theme._mix(col, C.os, 0.55), (COL_X + 38, y + 5), COL_W - 60)
         r.screen.blit(theme.icon("voir", 14, C.cendre if not over else C.braise), (COL_X + COL_W - 22, y + 8))
-        r.alert_hits[a["action"]] = rect
+        r.alert_hits.append((rect, a["action"]))
         y += ALERT_H + 4
     if len(items) > len(shown):
         more = len(items) - len(shown)
@@ -71,6 +74,7 @@ def draw_alerts(r, state) -> int:
 def draw_goal(r, state, ui, top: int) -> None:
     """Le chemin du premier village, sous les cartes d'evenement."""
     r.goal_hits = {}
+    r.goal_box = None
     goal = objectifs.chemin(state)
     if goal is None:
         return
@@ -90,6 +94,8 @@ def draw_goal(r, state, ui, top: int) -> None:
         if top + h > floor:
             return
     rect = (COL_X, top, COL_W, h)
+    # Toute la fiche prend le clic (seul le titre agit) : rien ne passe a la carte.
+    r.goal_box = rect
     theme.panel(r.screen, rect, "carte")
     head = (COL_X, top, COL_W, 30)
     r.goal_hits["toggle"] = head
@@ -131,7 +137,7 @@ def draw_goal(r, state, ui, top: int) -> None:
 
 
 def alert_hit(r, mx: int, my: int):
-    for action, (x, y, w, h) in (getattr(r, "alert_hits", None) or {}).items():
+    for (x, y, w, h), action in getattr(r, "alert_hits", None) or ():
         if x <= mx <= x + w and y <= my <= y + h:
             return action
     return None

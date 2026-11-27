@@ -46,7 +46,7 @@ from dataclasses import dataclass
 
 from src.kora import chiefdom, goods, situations, systems, tech, villages, vision
 from src.kora.log import LogKind
-from src.kora.places import band_of, has, level, monument_stages, name, NEAR, oath_of, site_of, works
+from src.kora.places import band_of, has, level, monument_stages, name, NEAR, oath_of, site_of, works, STONE_INFLUENCE
 
 
 PALISADE_WEEKS = 12
@@ -169,7 +169,7 @@ VALUES = {
     "guerriers": {"qualite": (1.25, 1.35), "compagnies": (1, 2)},
     "foyer": {"stabilite": (3, 5)},
     "autel": {"attachement": (6, 9), "prestige": (1, 2), "stabilite": (8, 12)},
-    "pierre": {"prestige": (2, 4, 6), "influence": (1,), "stabilite": (10, 15, 20)},
+    "pierre": {"prestige": (2, 4, 6), "influence": STONE_INFLUENCE, "stabilite": (10, 15, 20)},
     "conseil": {"stabilite": (8,), "attachement": (4,), "prestige": (1,)},
     "atelier": {"metiers": (1.25, 1.35, 1.45)},
     "place": {"convois": (2, 4), "prix": (1.1,)},

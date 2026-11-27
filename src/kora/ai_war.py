@@ -44,13 +44,16 @@ AI_PLAN_WEEKS = 8
 RAID_REACH_PER_WEEK = MOVE_POINTS_PER_WEEK // 10
 
 
-def helpers_at(state: GameState, bands: list[Band], spot) -> list[Band]:
+def helpers_at(state: GameState, bands: list[Band], spot, foe: int = 0) -> list[Band]:
     """Les bandes qui viendraient en renfort de `bands` si elles combattent
-    sur `spot` : de leur tribu (qui obeissent), de leurs allies, de leur
-    pays, deja a portee de renfort de ce point."""
+    sur `spot` contre foe : de leur tribu (qui obeissent), et des peuples
+    amis selon la regle de la bataille (battle.may_help : allies, pays,
+    freres), deja a portee de renfort de ce point."""
     tribe_id = bands[0].tribe_id
     ids = {b.id for b in bands}
     reach = bonus_of(state, tribe_id).reinforce
+    friends = battle.friends_of(state, tribe_id)
+    foes = chiefdom.country(state, foe) | {foe} if foe else set()
     out = []
     for ally in bands_near(state, spot, reach):
         if ally.id in ids:
@@ -58,17 +61,17 @@ def helpers_at(state: GameState, bands: list[Band], spot) -> list[Band]:
         if ally.tribe_id == tribe_id:
             if not chiefs.helps(state, ally):
                 continue
-        elif not (diplo.allied(state, ally.tribe_id, tribe_id) or ally.tribe_id in chiefdom.country(state, tribe_id)):
+        elif not battle.may_help(state, ally.tribe_id, tribe_id, foe, friends, foes):
             continue
         out.append(ally)
     return out
 
 
-def force_at(state: GameState, bands: list[Band], spot) -> float:
-    """Force de `bands` si elles combattent sur `spot`, avec les bandes de
-    leur tribu deja a portee de renfort de ce point."""
+def force_at(state: GameState, bands: list[Band], spot, foe: int = 0) -> float:
+    """Force de `bands` si elles combattent sur `spot` (contre foe), avec
+    les bandes amies deja a portee de renfort de ce point."""
     force = sum(band_force(state, b) for b in bands)
-    for ally in helpers_at(state, bands, spot):
+    for ally in helpers_at(state, bands, spot, foe):
         force += band_force(state, ally)
     return force
 
@@ -79,7 +82,7 @@ def odds_at(state: GameState, band: Band, prey: Band) -> tuple[float, str]:
     renforts et le moral, contre la defense de la proie (abri, renforts,
     moral). (rapport, mot)."""
     morale, _parts = battle.start_morale(state, band, attacker=True, h=prey.position)
-    mine = force_at(state, [band], prey.position) * min(1.1, morale / battle.MORALE_BASE)
+    mine = force_at(state, [band], prey.position, prey.tribe_id) * min(1.1, morale / battle.MORALE_BASE)
     ratio = mine / max(0.1, defense_force(state, prey, band.tribe_id))
     if ratio >= 2.0:
         word = "écrasant"
@@ -97,7 +100,7 @@ def wins(state: GameState, bands: list[Band], prey: Band, edge: float = AI_RAID_
     # pays se battent moins bien ; une troupe, mieux.
     morale, _parts = battle.start_morale(state, bands[0], attacker=True, h=prey.position)
     # Prudente : un bon moral ne lui fait pas oublier sa marge.
-    mine = force_at(state, bands, prey.position) * min(1.1, morale / battle.MORALE_BASE)
+    mine = force_at(state, bands, prey.position, prey.tribe_id) * min(1.1, morale / battle.MORALE_BASE)
     return mine > edge * defense_force(state, prey, bands[0].tribe_id)
 
 

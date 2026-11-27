@@ -293,6 +293,17 @@ La carte du depot (section 4) donne cet ordre en detail.
     morceaux, images, profil) ; apres, prouver que le jeu n'a pas change
     (empreinte, parties du joueur relues et jouees).
 
+  - Les semailles, la crue et la recolte se font dans villages.turn_seasons,
+    une phase de la semaine juste apres la propagation des saisons, AVANT
+    les repas (collect_food) ; la date des champs se lit par
+    villages.harvest_in, sow_in, next_step (jamais au calendrier) (0.33.0).
+  - Une memoire se borne par sa TAILLE (le nombre de lieux gardes), pas
+    par son nombre d'entrees ; une memoire de la vue ou de la carte se fie
+    a un jeton du monde (vision._world_token), jamais a son adresse
+    (0.33.0).
+  - tools/empreinte.py hache la sauvegarde entiere (session.sync_digest) :
+    l'enregistrer AVANT un chantier qui ne doit rien changer au jeu
+    (0.33.0).
 4.2 Les ordres, les joueurs, le multijoueur
   - Tout changement de la partie par l'interface passe par commands.py (un
     ordre) ; l'interface lit state.viewer, jamais PLAYER_TRIBE_ID ; un
@@ -304,6 +315,10 @@ La carte du depot (section 4) donne cet ordre en detail.
     0.14.0).
   - La vue d'un joueur se partage avec son pays par systems.SIGHT (0.9.1).
 
+  - Un ordre du joueur qui ne se fait pas le DIT (set_goto et
+    set_march_to_band rendent un booleen ; commands._goto : "Pas de chemin
+    jusque-la.") ; un ordre d'attaque se juge comme la bataille
+    (guerre.attack_block) (0.33.0).
 4.3 Les donnees, la sauvegarde, l'exe
   - Un champ nouveau = un champ TYPE de types.py (Tribe, Band) ou de
     places.VillageData (un etat de village) : la sauvegarde s'en deduit
@@ -316,6 +331,12 @@ La carte du depot (section 4) donne cet ordre en detail.
     chargement (resources.derive_silver, hasard fixe) sans recuire la carte
     (0.7.0).
 
+  - Une sauvegarde s'ecrit d'un coup (persist.save_game : un fichier .tmp
+    renomme) ; Play.persist attrape OSError et le dit ; la sauvegarde
+    automatique, au plus toutes les AUTOSAVE_SECONDS reelles. Un dict de la
+    simulation que l'on parcourt dans son ordre d'arrivee se sauve dans cet
+    ordre (diplo.to_json) : sinon une partie rechargee ne fait pas la meme
+    suite ; un test "sauver, relire, N semaines" le garde (0.33.0).
 4.4 Les savoirs
   - Un savoir qui ne vient que d'un evenement ne vient a personne : lui
     donner aussi un chemin par la vie du peuple (la condition "tame" : le
@@ -357,6 +378,11 @@ La carte du depot (section 4) donne cet ordre en detail.
     un style dans render_tech (ERA_STYLE, BRANCH_ICONS) ; la banniere et
     le marqueur suivent seuls (0.25.0).
 
+  - Un peuple fixe vit de toute sa zone d'influence (learning.range_profile)
+    et une condition de lieu est remplie quand un voisin sait le savoir : un
+    savoir ne doit jamais etre a jamais hors d'atteinte d'un village ; un
+    point de progres ne contourne ni le sort ni un grand tournant
+    (learning.status) (0.33.0).
 4.5 Les gens, les villages, les troupes
   - La population d'une classe change par population.py (grow, take_men,
     kill, kill_fighters, wound, lose_wounded, mix ; 0.5.0).
@@ -400,6 +426,11 @@ La carte du depot (section 4) donne cet ordre en detail.
     (batiments.house_everyone) : un changement de regle ne punit pas une
     partie en cours (0.24.0).
 
+  - Une decision ou une regle qui regarde les vivres d'un village lit le
+    CREUX avant la recolte (villages.food_low : le point le plus bas du
+    grenier), jamais la seule marge du jour de la recolte (food_outlook,
+    gardee pour l'ecran) : 68 % des semaines de faim n'etaient pas
+    annoncees (0.33.0).
 4.6 La diplomatie et la guerre
   - Un tributaire ne rompt pas son serment : il se revolte (guerre.rebel ;
     l'action "revolte", guerre.revolt_verdict), pas avant guerre.oath_left,
@@ -464,6 +495,14 @@ La carte du depot (section 4) donne cet ordre en detail.
     (AI_RAVAGE_REACH) : un village levait pour un ennemi a 28 cases, sa
     troupe n'en cherchait qu'a 14 et rentrait aussitot (0.29.0).
 
+  - QUI AIDE QUI : une seule regle, battle.may_help (au depart, pour les
+    renforts et dans l'apercu) ; LA PAIX : guerre.make_peace seulement (les
+    deux pays, une treve entre chaque paire) ; traiter avec un tributaire,
+    c'est traiter avec son suzerain (diplo.peace_partner) ; pas de guerre a
+    l'interieur d'un pays (guerre.end_inner_wars, a chaque soumission et
+    confederation) ; ce qui lie au pays vise (guerre.bond) empeche de
+    declarer ; diplo.on_fight ne fait jamais tomber un serment ni un pacte
+    ne pendant le combat (0.33.0).
 4.7 L'argent, le prestige, les effets
   - Tout prestige GAGNE passe par bands.gain_prestige (bonus prestige_gain ;
     0.4.0).
@@ -513,6 +552,9 @@ La carte du depot (section 4) donne cet ordre en detail.
     sa nature en son centre (un etang d'une case reste un etang). Shapes.
     check le mesure : un changement de formes.py garde test_formes vert.
 
+  - Les plafonds d'une recherche de chemin viennent de path.search_limits
+    (jamais un "18 d" ecrit a la main) ; la duree d'un trajet se lit par
+    path.travel_weeks, qui rejoue la marche (0.33.0).
 4.10 L'interface, le dessin, les textes, le son
   - Tout dessin passe par theme.py (couleurs C, theme.font(role),
     theme.panel / button / medallion) : jamais de couleur ni de police en
@@ -597,6 +639,15 @@ La carte du depot (section 4) donne cet ordre en detail.
     un message qui revient chaque semaine garde UN nombre ("Famine : 3
     morts.") pour que le groupe en fasse la somme (0.32.0).
 
+  - TOUT ce qui est dessine par-dessus la carte declare sa place
+    (Renderer.cover, ou ses rectangles de clic) : Renderer.covered dit si
+    l'interface est sous la souris, et le clic droit, le clic gauche et le
+    survol le lisent avant de viser la carte ; une liste de boutons qui
+    peuvent avoir la meme action est une liste, pas un dict par action
+    (0.33.0).
+  - Un texte trop long se coupe par theme.fit (par moitie, garde) ; ce
+    qu'une image relit (une relation, un savoir a choisir, le journal) se
+    garde tant que rien ne change (0.33.0).
 4.11 Les notes
   - Une date se LIT (la machine, git), jamais ne s'invente ; une regle
     nouvelle va ICI, a son theme ; une note vivante ne cite que des
@@ -620,19 +671,20 @@ seulement si le decoupage rend le systeme plus simple a changer) :
 
 <<< auto : gros-modules >>>
   render.py              ~2000 lignes
-  situations.py          ~1800 lignes
+  situations.py          ~1900 lignes
+  events.py              ~1800 lignes
   tech.py                ~1700 lignes
-  events.py              ~1600 lignes
-  diplo.py               ~1500 lignes
+  diplo.py               ~1600 lignes
   battle.py              ~1400 lignes
   events_data.py         ~1400 lignes
   render_village.py      ~1400 lignes
+  villages.py            ~1400 lignes
   sim.py                 ~1300 lignes
+  goods.py               ~1300 lignes
   world.py               ~1300 lignes
-  villages.py            ~1300 lignes
-  goods.py               ~1200 lignes
+  decisions.py           ~1100 lignes
   globe_draw.py          ~1100 lignes
-  decisions.py           ~1000 lignes
+  ai.py                  ~1000 lignes
 <<< fin auto >>>
 
   - Les systemes de l'etage 5 forment encore un cercle (ils s'importent en

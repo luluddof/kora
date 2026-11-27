@@ -26,6 +26,7 @@ from __future__ import annotations
 from src.kora import approach, chiefdom, diplo, tech
 from src.kora.gamestate import is_human, note
 from src.kora.log import LogKind
+from src.kora import guerre
 
 KIND = "confederation"
 # Les pactes que partagent les confederes avec le dehors.
@@ -188,6 +189,9 @@ def form(state, actor: int, target: int) -> None:
             for m in group:
                 if m != inside and not diplo.has_pact(state, m, outside, p.kind):
                     diplo.add_pact(state, m, outside, p.kind, weeks, shared=False)
+    # Un seul pays : plus de guerre entre ses peuples (leurs tributaires
+    # compris).
+    guerre.end_inner_wars(state, actor)
     for side, other in ((before[0], before[1]), (before[1], before[0])):
         for t in side:
             if is_human(state, t):

@@ -19,9 +19,14 @@ ravage.py -, sieges, villages pris) decide si l'on peut exiger la soumission
 (weariness : +WEARY_STEP par saison, WEARY_CAP au plus) pousse a la paix
 blanche (truce_mood, lu par diplo.evaluate "treve") ; apres un an
 (long_war) la relation ne filtre plus les offres de paix. Une guerre sans
-combat depuis WAR_FADE_WEEKS s'eteint (fade_wars, chaque mois). end_war :
-la paix entre deux pays. Les pactes eux-memes (treve, alliance, tribut) :
-diplo.py. N'importe pas pygame.
+combat depuis WAR_FADE_WEEKS s'eteint (fade_wars, chaque mois). LA PAIX,
+une seule regle : make_peace (la guerre des deux pays tombe, une treve les
+lie ; traiter avec un tributaire, c'est traiter avec son suzerain) ; end_war
+ne fait que retirer la guerre. Pas de guerre dans un pays (end_inner_wars,
+apres une soumission ou une confederation). Ce qui lie au pays vise (bond :
+alliance, treve, tribut) empeche de declarer ; attack_block dit si une
+attaque sera une bataille (battle._will_fight). Les pactes eux-memes
+(treve, alliance, tribut) : diplo.py. N'importe pas pygame.
 """
 
 from __future__ import annotations
@@ -146,6 +151,27 @@ def may_start(state, a: int, b: int) -> str:
     return f"Un tributaire ne déclare pas la guerre : les {state.tribes[lords[-1]].name} ne combattent pas les {state.tribes[b].name}"
 
 
+def attack_block(state, a: int, b: int) -> str:
+    """Pourquoi une bande de a, lancee contre une bande de b, ne livrerait pas
+    bataille ("" : elle la livrera). La regle de la bataille (battle._will_fight)
+    : entre peuples qui ont la diplomatie, il faut une guerre DECLAREE (un
+    motif ou un raid recent, at_war, ne suffisent pas) ; et un tributaire ne
+    combat que ceux que son pays combat (may_start). L'ordre d'attaque
+    (commands), son apercu (orders.attack_preview) et la marche (sim) la
+    lisent : sans elle, la troupe attendait sans fin au contact."""
+    if a == b or a not in state.tribes or b not in state.tribes:
+        return ""
+    why = may_start(state, a, b)
+    if why:
+        return why
+    if needs_declaration(state, a, b) and not declared_war(state, a, b):
+        who = state.tribes[b].name
+        if motive_against(state, a, b):
+            return f"Vous avez un motif contre les {who}, mais pas de guerre déclarée : déclarez-leur d'abord la guerre (écran Peuples)"
+        return f"Vous êtes en paix avec les {who} : déclarez-leur d'abord la guerre (écran Peuples)"
+    return ""
+
+
 # --- motifs, buts de guerre, avantage -----------------------------------------------
 # Un MOTIF (casus) : declarer la guerre sans honte (pas de prestige perdu,
 # pas d'agresseur) ; l'IA s'en sert (casus.py fait naitre les motifs : la
@@ -260,23 +286,27 @@ def submit(state, actor: int, target: int, how: str = "soumission") -> None:
     il quitte l'ancien). La guerre entre eux finit ; l'ancien suzerain, qui
     a perdu son tributaire, fait la treve."""
     old = chiefdom.top_lord(state, target)
+    # Le but se lit avant : la soumission fait un seul pays, ses guerres
+    # internes et leurs buts tombent (end_inner_wars).
+    had = (actor, target) in diplo.of(state).goals
     chiefdom.make_vassal(state, actor, target, "force")
-    goal_done(state, actor, target, old if old != target else 0)
+    goal_done(state, actor, target, old if old != target else 0, had)
     if how == "soumission":
         tribe = state.tribes[actor]
         gain_prestige(state, tribe, 5)
 
 
-def goal_done(state, actor: int, target: int, old_lord: int = 0) -> None:
-    """Le but de guerre atteint : plus de guerre avec le pays vaincu."""
+def goal_done(state, actor: int, target: int, old_lord: int = 0, had: bool | None = None) -> None:
+    """Le but de guerre atteint : plus de guerre avec le pays vaincu (had :
+    actor avait pour but de soumettre target ; par defaut, lu ici)."""
     d = diplo.of(state)
-    had = (actor, target) in d.goals
+    if had is None:
+        had = (actor, target) in d.goals
     d.goals.pop((actor, target), None)
     for k in [k for k in d.scores if set(k) == {actor, target}]:
         d.scores.pop(k, None)
     if old_lord and old_lord in state.tribes and declared_war(state, actor, old_lord):
-        end_war(state, actor, old_lord)
-        diplo.add_pact(state, actor, old_lord, "treve", diplo.TRUCE_WEEKS)
+        make_peace(state, actor, old_lord)
         for me, other in ((actor, old_lord), (old_lord, actor)):
             if state.tribes[me].is_player:
                 note(state, LogKind.POLITIQUE, f"La guerre avec les {state.tribes[other].name} s'achève : les {state.tribes[target].name} ont changé de suzerain. Trêve de 2 ans.", to=me)
@@ -344,14 +374,36 @@ def fade_wars(state) -> None:
 
 def war_allies(state, target: int, actor: int) -> list[int]:
     """Ceux qui entreraient en guerre aux cotes de target : ses allies (et
-    leurs pays), qui ont la diplomatie, hors du pays de l'attaquant."""
+    leurs pays), qui ont la diplomatie, hors du pays de l'attaquant ; un
+    allie lie lui-meme a l'attaquant (alliance, treve, tribut : bond) reste
+    hors de la guerre."""
     out: set = set()
     mine = chiefdom.country(state, actor)
     for t in sorted(chiefdom.country(state, target)):
         for other in diplo.contacts_of(state, t):
-            if diplo.allied(state, t, other) and other not in mine and diplomatic(state, other):
+            if diplo.allied(state, t, other) and other not in mine and diplomatic(state, other) and not bond(state, actor, other):
                 out |= chiefdom.country(state, other)
     return sorted(out - chiefdom.country(state, target) - mine)
+
+
+# Les pactes qui lient l'attaquant au pays vise : une declaration de guerre
+# les ferait tomber en silence (drop_for_war) ; il faut les rompre d'abord.
+BONDS = {
+    "alliance": ("Vous êtes alliés : rompez d'abord l'alliance", "Vous êtes alliés des {who}, de leur pays : rompez d'abord l'alliance"),
+    "treve": ("Une trêve vous lie : rompez-la d'abord", "Une trêve vous lie aux {who}, de leur pays : rompez-la d'abord"),
+    "tribut": ("Un tribut vous lie : rompez-le d'abord", "Un tribut vous lie aux {who}, de leur pays : rompez-le d'abord"),
+}
+
+
+def bond(state, actor: int, target: int) -> str:
+    """Pourquoi actor ne peut pas declarer la guerre a target ("" : rien ne
+    le lie) : une alliance, une treve ou un tribut avec target, ou avec un
+    peuple de son pays (la guerre vise tout le pays)."""
+    for t in [target] + sorted(chiefdom.country(state, target) - {target}):
+        for kind, (direct, other) in BONDS.items():
+            if diplo.has_pact(state, actor, t, kind):
+                return direct if t == target else other.format(who=state.tribes[t].name)
+    return ""
 
 
 def war_pairs(state, actor: int, target: int) -> list[tuple[int, int]]:
@@ -374,10 +426,9 @@ def war_verdict(state, actor: int, target: int) -> diplo.Verdict:
     why = may_start(state, actor, target)
     if chiefdom.lords_of(state, actor):
         return diplo.Verdict(blocked=why or "Un tributaire ne déclare pas la guerre")
-    if diplo.allied(state, actor, target):
-        return diplo.Verdict(blocked="Vous êtes alliés : rompez d'abord l'alliance")
-    if diplo.has_pact(state, actor, target, "treve"):
-        return diplo.Verdict(blocked="Une trêve vous lie : rompez-la d'abord")
+    tie = bond(state, actor, target)
+    if tie:
+        return diplo.Verdict(blocked=tie)
     out = [(f"Relation {DECLARE_RELATION}", 0)]
     if chiefdom.has_chiefdom(state, actor) and chiefdom.has_chiefdom(state, target):
         out.append(("But : les soumettre (prendre leur village, ou exiger leur soumission)", 0))
@@ -404,6 +455,10 @@ def war_verdict(state, actor: int, target: int) -> diplo.Verdict:
     mine = sorted(chiefdom.country(state, actor) - {actor})
     if mine:
         out.append(("Votre pays vous suit : " + ", ".join(state.tribes[t].name for t in mine[:5]), 0))
+        # Les pactes de votre pays avec le leur tombent (drop_for_war) : le dire.
+        lost = [(x, y) for x, y in war_pairs(state, actor, target) if x != actor and any(p.kind in BONDS for p in diplo.pacts_between(state, x, y))]
+        if lost:
+            out.append(("Ces pactes tombent : " + ", ".join(f"{state.tribes[x].name} et {state.tribes[y].name}" for x, y in lost[:4]), 0))
     return diplo.Verdict(score=1, reasons=out)
 
 
@@ -457,18 +512,70 @@ def end_war(state, a: int, b: int) -> None:
                 diplo.of(state).pacts.pop(k, None)
 
 
+def make_peace(state, a: int, b: int) -> bool:
+    """LA PAIX entre deux pays, une seule regle (l'ecran Peuples :
+    diplo.perform "treve" ; la carte d'un evenement : events._eff_pact ; le
+    tribut de guerre : tribute_peace ; le suzerain qui perd son tributaire :
+    goal_done). Plus de guerre declaree entre aucun de leurs peuples
+    (end_war), plus de but ni d'avantage entre eux, et une TREVE
+    (diplo.TRUCE_WEEKS) entre les deux pays : entre chacun de leurs peuples
+    qui se connaissent (grands suzerains, confederes, tributaires ; ceux
+    qui etaient en guerre se connaissent tous), sauf ceux qu'un pacte de paix
+    lie deja. Traiter avec un tributaire, c'est donc traiter avec son grand
+    suzerain : sinon celui-ci redeclarerait la guerre la semaine suivante.
+    Rend True s'il y avait une guerre declaree entre les deux pays."""
+    d = diplo.of(state)
+    ca = sorted(chiefdom.country(state, a) | {a})
+    cb = sorted(chiefdom.country(state, b) | {b})
+    if a == b or b in ca:
+        # Un seul pays : pas de treve entre ses peuples.
+        end_inner_wars(state, a)
+        return False
+    fought = any(declared_war(state, x, y) for x in ca for y in cb)
+    end_war(state, a, b)
+    for x in ca:
+        for y in cb:
+            if x == y:
+                continue
+            for key in ((x, y), (y, x)):
+                d.goals.pop(key, None)
+                d.scores.pop(key, None)
+            if diplo.in_contact(state, x, y) and not diplo.peace_pact(state, x, y):
+                diplo.add_pact(state, x, y, "treve", diplo.TRUCE_WEEKS, shared=False)
+    return fought
+
+
 def tribute_peace(state, a: int, b: int) -> bool:
     """Le tribut de guerre : l'un paie, la guerre declaree entre les deux
-    pays finit (le but et l'avantage tombent). Rend True s'il y avait une
-    guerre."""
+    pays finit comme toute paix (make_peace : le but et l'avantage tombent,
+    une treve lie les deux pays). Rend True s'il y avait une guerre."""
     if not declared_war(state, a, b):
         return False
-    end_war(state, a, b)
-    d = diplo.of(state)
-    for key in ((a, b), (b, a)):
-        d.goals.pop(key, None)
-        d.scores.pop(key, None)
+    make_peace(state, a, b)
     return True
+
+
+def end_inner_wars(state, tid: int) -> None:
+    """Pas de guerre a l'interieur d'un pays : quand deux pays n'en font plus
+    qu'un (une soumission, une protection, une conquete : chiefdom.make_vassal
+    ; une confederation : confed.form), les guerres entre leurs peuples
+    tombent, avec leurs buts et leur avantage (sans treve : ils sont du meme
+    pays)."""
+    d = diplo.of(state)
+    members = sorted(chiefdom.country(state, tid))
+    for i, x in enumerate(members):
+        for y in members[i + 1 :]:
+            k = diplo.pair(x, y)
+            pacts = d.pacts.get(k)
+            if pacts and any(p.kind == WAR for p in pacts):
+                kept = [p for p in pacts if p.kind != WAR]
+                if kept:
+                    d.pacts[k] = kept
+                else:
+                    d.pacts.pop(k, None)
+            for key in ((x, y), (y, x)):
+                d.goals.pop(key, None)
+                d.scores.pop(key, None)
 
 
 def wars_of(state, tid: int) -> list[int]:
