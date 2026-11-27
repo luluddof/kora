@@ -1,0 +1,280 @@
+Kora - Revue de code : les bugs et ce qui est mal fait (0.32.0)
+==============================================================
+Date : 2026-11-27. Statut : PROPOSE (rien corrige ; en attente de son
+feu vert).
+
+Sa demande : "lance des sous-agents pour analyser et faire des reviews,
+trouver des bugs ou des trucs mal faits dans ce projet".
+
+
+1. LA METHODE
+-------------
+  Six relecteurs en parallele, chacun une partie du jeu, en lecture seule :
+  le determinisme et la sauvegarde ; le monde et sa geometrie ; les
+  villages et l'economie ; la guerre, la diplomatie et l'IA ; le contenu
+  (savoirs, evenements, decisions, situations) ; l'interface. Chacun a lu
+  le code ET lance des essais sur des copies de SES parties (l'an 48,
+  Utopie et Ilsen, 120 peuples ; l'an 3, sa bande de 42), jouees de 1 a 10
+  ans avec des sondes, des clics simules, des profils d'images.
+  Les trouvailles graves ont ete reverifiees a part (le code relu, les
+  essais cles relances : l'ordre de marche perdu, le clic droit qui
+  attaque a travers l'interface). PROUVE : un essai l'a montre ;
+  PROBABLE : lu dans le code, pas provoque.
+
+
+2. GRAVE (a corriger d'abord)
+-----------------------------
+  G1 UN ORDRE DE MARCHE LOINTAIN EST IGNORE SANS UN MOT. bands.set_goto
+     plafonne la recherche de chemin (min(1200, 18 d + 60) lieux
+     explores) alors que son estimation compte 6 par lieu (un lieu coute
+     10 a 20) : elle s'etale et bute. Sur sa planete, vers un lieu
+     atteignable : ordre perdu 7 % des fois a 3-9 lieues, 26 % a 10-17,
+     55 % a 18-25 ; la bande ne bouge pas, rien ne le dit. Une poursuite
+     (set_march_to_band) echoue pareil. PROUVE (relance). Correction : un
+     plafond a l'aire du disque (4 d^2 + 200), et dire "pas de chemin".
+  G2 UN CLIC DROIT A TRAVERS L'INTERFACE ATTAQUE. Partie_carte ne regarde,
+     au clic droit, que les onglets, les grands ecrans et la fiche du
+     tutoriel : sur la barre du haut, la fiche de la bande, la colonne de
+     gauche ou le bouton Carte, avec un etranger dessine dessous, deux
+     clics droits l'attaquent (une trahison s'il y a un pacte). PROUVE
+     (relance, ses deux parties). Correction : une seule fonction
+     "l'interface est sous la souris", nourrie par tout ce qui est dessine.
+  G3 UN CLIC GAUCHE A TRAVERS L'INTERFACE FAIT MARCHER LA BANDE : le corps
+     du chemin du premier village (0.32 : seul son titre prend le clic),
+     une nouvelle sans lieu, la fiche epinglee d'un lieu, les legendes des
+     cartes. Deux alertes au meme geste : la seconde ecrase la premiere
+     (render_objectifs : un dict par action), la premiere fait marcher.
+     PROUVE. Correction : la meme fonction ; les alertes en liste.
+  G4 DES PEUPLES SE BATTENT DANS LES DEUX CAMPS D'UNE BATAILLE.
+     battle.helpers_of compte comme renfort tout "village frere"
+     (chiefdom.kin_of : meme civilisation, pas de razzia depuis un an),
+     meme en guerre declaree. Sur 10 ans de sa partie : 14 batailles sur
+     63 avec une bande des deux cotes, 13 fois le defenseur lui-meme ; un
+     village pris par une bande qui se battait contre elle-meme. PROUVE.
+     Correction : kin_of sans les peuples en guerre ; helpers_of ecarte
+     l'ennemi et son pays ; un test (aucune bande dans les deux camps).
+  G5 UN VILLAGE PRIS ET SOUMIS PAR L'IA EST LIBERE LA MEME SEMAINE, ET LE
+     VAINQUEUR PASSE POUR TRAITRE. chiefdom.village_taken pose le serment
+     de tributaire, puis diplo.on_fight (appele apres) efface tout pacte
+     entre les deux, serment compris, et compte une trahison (prestige
+     -10, -50 de relation). PROUVE (semaine 2751, Mundi et les Tumakden).
+     Le joueur n'est pas touche (sa carte vient apres). Correction :
+     on_fight garde le pacte "vassal" ; ou l'appeler avant.
+  G6 DES GUERRES A L'INTERIEUR D'UN MEME PAYS. Soumettre un peuple
+     (guerre.submit, chiefdom.make_vassal) ne fait tomber que la guerre
+     vainqueur-vaincu : deux tributaires du meme suzerain continuent de se
+     ravager (80 paires-semaines en 10 ans). PROUVE. Correction : a la fin
+     de make_vassal et de confed.form, retirer les guerres internes.
+  G7 LA SEMAINE DE LA RECOLTE, ON MANGE AVANT DE RECOLTER. sim._week fait
+     collect_food (les repas, la faim) avant sites.update (la recolte) :
+     un village au grenier vide meurt de faim la semaine meme ou il
+     recolte. 351 morts en 2 ans, 22 % des morts de faim des villages.
+     PROUVE. Correction : les semailles et la recolte avant les repas.
+  G8 LA PREVISION DES VIVRES NE VOIT PAS LE CREUX DE L'HIVER.
+     villages.food_outlook dit ce qui restera LE JOUR de la recolte, pas
+     le point le plus bas avant : un hiver vide compense par un ete riche
+     passe pour sur. 68 % des semaines de faim de village avaient une
+     prevision positive la veille ; le rationnement de l'IA, l'achat de
+     grain, le secours du chef, la croissance et l'alerte du joueur s'y
+     fient. Avec le creux : 166 semaines de faim en 2 ans au lieu de 331.
+     PROUVE. Correction : rendre aussi le creux et s'en servir.
+  G9 DES SAVOIRS A JAMAIS INACCESSIBLES A UN PEUPLE FIXE. Un village
+     n'"apprend en vivant" que les sols a 3 lieux autour de lui
+     (villages.land_profile) : sans foret, l'arc (12 sem. en foret ou
+     jungle) ne viendra jamais (49 peuples fixes sur 102 a l'an 48, LE
+     SIEN compris : pas de torches, pas de siege) ; sans plaine, l'epieu
+     (15 peuples), donc l'elevage, donc LA CITE et LA STEPPE. Une des
+     causes des "69 peuples sans rien a apprendre". PROUVE (6 ans).
+     Correction : compter la zone d'influence du village, ou un voisin qui
+     sait.
+  G10 LES CARTES DE LA VIE DE BANDE NE CONNAISSENT QUE QUATRE SOLS
+     (events_data.HUNT_LAND : foret, plaine, colline, steppe ; et
+     quelques autres listes) : jungle, savane, cote, marais, toundra,
+     desert n'y sont jamais (arrives en 0.20). Sa bande de l'an 3 est en
+     jungle : loups, orage, troupeau, source, grotte impossibles ; 4
+     cartes en 8 ans. Une cause directe du debut qui n'accroche pas.
+     PROUVE. Correction : les ajouter ; un test (chaque sol vivable est
+     nomme par une carte).
+  G11 TROIS CONJONCTURES N'ONT QU'UN CANDIDAT AU MONDE. Les grands
+     travaux, la route du sel, l'essor des chefferies (situations.py)
+     s'arretent au premier peuple trouve ; s'il est au repos (10 a 15
+     ans), elles ne naissent plus nulle part. 0 en 6 ans. PROUVE.
+     Correction : tous les candidats, le premier qui n'est pas au repos.
+  G12 DEUX REGLES DE PAIX. La paix d'une carte d'evenement
+     (events._eff_pact "treve") ne fait que poser une treve : le joueur
+     reste en guerre avec les tributaires de l'ennemi (le journal dit "la
+     paix blanche est faite"). Par l'ecran Peuples, diplo.perform finit
+     la guerre des deux pays entiers, mais ne pose la treve qu'avec le
+     tributaire qui signe : le suzerain peut redeclarer la semaine
+     suivante (vu dans sa partie). PROUVE. Correction : une seule
+     fonction de paix ; traiter avec un tributaire, c'est traiter avec son
+     suzerain.
+  G13 LA DUREE D'UN TRAJET EST FAUSSE EN MONTAGNE. path.travel_weeks
+     s'arrete au premier pas qui coute plus qu'une semaine (une montagne
+     coute 54 a 67, une semaine 40) : "1 semaine" annoncee pour 21
+     reelles ; 39 chemins de montagne sur 45 trop courts. Lu par
+     l'etiquette du trajet, l'apercu d'attaque ("vos vivres ne tiendront
+     pas"), l'IA qui decide d'attaquer, le repli. PROUVE.
+
+
+3. MOYEN
+--------
+  Le monde
+  - Une unite peut finir sa semaine DANS L'EAU ou sur un sommet (la ligne
+    droite est verifiee par echantillons, points._leg) : 2 fois dans sa
+    partie de l'an 3 jouee 5 ans ; de la, tout nouvel ordre echoue. PROUVE.
+  - L'IA cherche les bandes proches dans un cercle TRONQUE en haut et en
+    bas (bands.bands_near, le defaut corrige pour la vue en 0.31) : elle
+    ne voit pas certaines menaces et proies. PROUVE.
+  - Un clic de marche perd son point exact une fois sur quatre (le lieu
+    vient de la forme deplacee, le point du globe non deplace). PROUVE.
+  - Une poursuite qui s'arrete dans le lieu de sa proie ne repart plus
+    (chemin vide). PROUVE sur une partie montee.
+  - Les cercles du jeu sont des ellipses sur le globe (1,2 fois plus
+    hauts que larges a l'equateur, 2,4 a 60 degres) : un choix a faire.
+  Le determinisme, la sauvegarde
+  - UNE PARTIE RECHARGEE NE FAIT PAS LA MEME SUITE : la sauvegarde trie
+    les pactes, la partie en cours garde leur ordre d'arrivee ; les
+    tributs se paient dans un autre ordre (diplo.monthly), les vivres
+    divergent a la 14e semaine. Le multijoueur n'est pas touche (l'hote
+    relit aussi). PROUVE.
+  - La memoire des bonnes terres de l'IA (ai._good_count, find_new_land)
+    depend du peuple qui a demande le premier (l'irrigation n'est pas
+    dans la cle). Trouve par deux relecteurs. PROUVE (la fonction).
+  - tools/empreinte.py ne voit pas l'argent, les lois, les decisions, les
+    points des unites, les sieges, les buts de guerre : "rien n'a change"
+    n'etait prouve que sur une partie de l'etat. PROUVE. Correction :
+    hacher session.sync_digest.
+  - La sauvegarde n'est pas atomique, et une erreur disque ferme le jeu
+    (persist.write_text direct, pas de try) : une coupure peut laisser
+    l'unique fichier de la partie tronque. PROBABLE.
+  L'economie
+  - LES ROUTES QUI CLIGNOTENT, la cause : l'IA ouvre une route sans
+    retrancher ce que ses autres routes du meme bien emportent deja, et
+    une route du vendeur lui laisse 4 semaines de reserve quand celle de
+    l'acheteur en exige 12 ; les routes en trop restent vides 4 mois,
+    sont fermees, rouvertes. 54 routes fermees sans avoir rien porte en 2
+    ans. PROUVE.
+  - L'ecran du village annonce la recolte 2 a 7 semaines trop tot
+    (villages.next_step compte au calendrier ; harvest_in, juste, n'est
+    pas lu). PROUVE.
+  - La fenetre "Fonder un village" promet le double de la premiere
+    recolte en ete (les semailles d'ete comptent pour moitie) et ne dit
+    pas "l'an prochain" en automne. PROUVE.
+  La guerre
+  - L'IA redeclare la guerre a un peuple qui lui paie encore le tribut
+    de guerre (le tribut ne bloque pas la declaration). PROUVE.
+  - Un ordre d'attaque accepte (un simple motif suffit) mais la bataille
+    n'a jamais lieu (elle exige une guerre declaree) : la troupe attend
+    sans fin. PROUVE.
+  - Declarer la guerre au tributaire d'un allie rompt l'alliance en
+    silence, sans trahison. PROUVE.
+  Le contenu
+  - Le pillage des routes de l'IA : la troupe est renvoyee au village des
+    son arrivee (ai._army_ai ignore Band.raid_route) ; 17 pillages pour
+    37 decisions. PROUVE.
+  - Deux cartes coupent un village en deux ("Les jeunes veulent partir",
+    "La fievre au village" 3e option), contre "un peuple = un village".
+    PROUVE.
+  - Un seul point de progres contourne le sort et l'arrivee des grands
+    tournants (learning.status) : un savoir "absent" ou une voie a 0 %
+    devient disponible. PROUVE.
+  - Les decisions de l'IA qui coutent des vivres (mariage, conseil) ne
+    regardent pas la soudure : 31 mariages sur 78 en pleine soudure.
+    PROUVE.
+  - A l'age tribal, toutes les decisions sont fermees (les vivres ne sont
+    comptes que dans un village) : dans sa partie de l'an 3, les 13 sont
+    impossibles, meme la grande chasse. PROUVE.
+  L'interface
+  - La fiche d'un combat est dessinee par-dessus la colonne de gauche,
+    mais la colonne prend le clic (Fermer ouvre un village). PROUVE.
+  - L'ARBRE DES SAVOIRS TOURNE A 8-10 IMAGES/S a l'an 3 (theme.fit retire
+    une lettre a la fois sur une ligne de 188 lettres) ; Peuples 48 ms par
+    image, commerce 32, tresor 29 (des calculs refaits a chaque image).
+    PROUVE (profils). Correction : fit par moitie ; garder ces calculs une
+    semaine.
+  - En 1024 x 640 : le savoir en cours couvre les vitesses 4 et 5 ; la
+    colonne de gauche passe sur la fiche de la bande rangee a gauche
+    (0.32). PROUVE.
+  - La touche L, dans l'ecran du village, ne leve pas ce que dit le
+    bouton "Lever la compagnie [L]". PROUVE.
+
+
+4. LEGER
+--------
+  - Textes : "{village} s'agité" (0.32 : l'outil des accents a change
+    "s'agite", non vu) ; "2 semaine" (le pluriel teste le nombre avant
+    l'arrondi) ; la jauge des vivres reste orange sous 2 semaines quand la
+    collecte ne suffit pas (la spec dit rouge) ; "relation +12" annonce,
+    rien d'applique (diplo.add_mod garde la plus forte raison "accueil") ;
+    le sens de quelques pastilles (payer pour qu'ils partent, une equipe de
+    mineurs, le tournant plus vite) ; deux drapeaux affiches "Rien de plus".
+  - Interface : les alertes gardees une semaine (un ordre en pause ne les
+    efface pas) ; la fiche d'un compte de la barre passe sous les
+    legendes ; l'alerte d'un clan qui part ferme le panneau s'il est
+    ouvert ; le glissement de la carte reste colle apres Echap.
+  - Economie : un tresor a -0,003 apres un achat de grain (arrondi) ; une
+    recolte qui deborde du grenier perd 1 % du grain sans le dire ; le
+    tribut recu au-dela de ce que porte la bande se perd ; quatre effets de
+    batiments affiches depuis la table mais calcules en dur ailleurs ; le
+    peage d'une route qui passe la couture du monde (sans effet
+    aujourd'hui).
+  - La guerre : les renforts en cours de bataille suivent une autre regle
+    qu'au depart (PROBABLE).
+  - Le contenu : "La fete des morts", l'IA ne la prend jamais (seuil sous
+    le culte qui la donne) ; le prestige des situations ignore les bonus
+    de prestige (PROBABLE).
+  - Le moteur : les biens arrondis a 3 decimales a la sauvegarde ; la
+    sauvegarde automatique toutes les 8 semaines de jeu (a la vitesse 5,
+    110 ms figees par seconde) ; l'empreinte du multijoueur coute 146 ms
+    (pas 50) ; les memoires de cercles prennent 68 Mo en un an ; la
+    recherche de chemin un peu chere pour les cavaliers ; du code mort
+    (sim.consume_ticks, persist.set_aside_save que sa docstring promet).
+
+
+5. LES EVENEMENTS QUI NE TOMBENT JAMAIS, ET POURQUOI
+---------------------------------------------------
+  Son peuple de l'an 48 en 6 ans : 11 cartes differentes sur 66 ; dans tout
+  le monde, 28 ne tombent nulle part.
+  A. Remplaces par une decision (poids 0) : ancien, rassemblement, et
+     fete_mariages (leur suite).
+  B. Exigent une bande nomade (102 peuples fixes sur 120) : loups,
+     troupeau, fievre, hiver_rude, orage et leurs suites.
+  C. Exigent un sol nomme (G10) : en jungle, savane, cote, marais,
+     toundra, desert, jamais loups, troupeau, orage, source, grotte.
+  D. Exigent deux clans d'un meme peuple : rivalite, querelle, clan_part,
+     succession_contestee, jeunes_partent.
+  E. Une troupe en marche en automne ou en hiver sur une terre de chasse :
+     loups_troupe (22 mois sur 9 360), louveteaux_troupe.
+  F. Un moment du monde (rares, pas morts) : etrangers et sa chaine,
+     cache_trouvee, conquete, succession, les offres de paix et de
+     protection, tournant_voyageurs, fourche.
+  G. Des conditions que son peuple ne remplit pas (calculatrice, pierre
+     blanche, colporteurs, nomades, grotte, enfant_prodige, les voies).
+  H. Trop rares (poids 0,01 a 0,03).
+
+
+6. CE QUI EST SAIN (verifie)
+----------------------------
+  Le hasard (aucun hasard hors des graines, des graines de hachage
+  differentes donnent la meme partie) ; tous les champs sauves et relus,
+  les nouveaux compris ; l'interface ne change la partie que par des
+  ordres ; les distances, les cercles, les chemins (contigus, jamais dans
+  l'eau, optimaux sans savoirs de cavalier), le passage de la ligne de
+  changement de date ; jamais de stock negatif (sauf l'argent, a 0,003),
+  les echanges conservent biens et vivres au vivre pres ; pas de
+  tributaire a deux suzerains, pas de pacte vers un peuple mort, pas de
+  guerre sans fin en 10 ans ; chaque effet de savoir est lu, chaque
+  condition et chaque effet de carte existe, chaque situation a une fin.
+
+
+7. CE QUE JE PROPOSE
+--------------------
+  Corriger dans cet ordre, en verifiant chaque fois dans SES parties :
+  1. les clics qui traversent l'interface (G2, G3, et la fiche de combat)
+     et l'ordre de marche perdu (G1) : ce qu'il subit en jouant ;
+  2. la faim (G7, G8) : la cause des morts de faim des villages ;
+  3. la guerre (G4, G5, G6, G12) : des resultats faux dans le monde ;
+  4. le debut et le contenu (G9, G10, G11, les decisions a l'age tribal) ;
+  5. le reste (MOYEN, puis LEGER), avec l'empreinte qui voit tout l'etat
+     d'abord (sinon "rien n'a change" ne prouve rien).

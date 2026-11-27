@@ -1,7 +1,7 @@
 KORA - LA VISION DU JEU (document de reference)
 ===============================================
 Tenu a jour a chaque chantier. A LIRE EN ENTIER avant de toucher au jeu.
-Derniere mise a jour : 2026-11-19.
+Derniere mise a jour : 2026-11-27.
 
 Ce document dit CE QUE LE JOUEUR (l'auteur du jeu) VEUT. Les specs de
 docs/superpowers/specs/ disent comment chaque chantier a ete fait ; la
@@ -1010,6 +1010,23 @@ lente, bandes dessinees petites a taille fixe.
     Village, l'icone sur le nom, la fiche de la bande sous le panneau
     Tribu, les noms du rail coupes). Pas fait, dit : le reglage de la
     taille de l'interface, les multiplicateurs du village.
+2026-11-27
+  - "Lance des sous-agents pour analyser et faire des reviews, trouver des
+    bugs ou des trucs mal faits dans ce projet." FAIT (propose ; spec
+    2026-11-27-revue-bugs.txt) : six relecteurs en parallele (le
+    determinisme et la sauvegarde, le monde, l'economie, la guerre, le
+    contenu, l'interface), essais sur ses parties, les graves reverifies.
+    Treize graves : un ordre de marche lointain ignore sans un mot (55 %
+    a 18-25 lieues) ; un clic droit a travers l'interface qui attaque, un
+    clic gauche qui fait marcher ; des peuples dans les deux camps d'une
+    bataille ; un village soumis par l'IA libere la meme semaine ; des
+    guerres dans un meme pays ; on mange avant de recolter (22 % des
+    morts de faim des villages) ; la prevision des vivres aveugle au creux
+    de l'hiver ; l'arc et l'epieu a jamais hors d'atteinte de peuples
+    fixes (le sien) ; les cartes de bande qui ignorent six sols ; trois
+    conjonctures bloquees ; deux regles de paix ; la duree d'un trajet en
+    montagne. Une trentaine de moyens et legers, la cause de chaque
+    evenement qui ne tombe jamais. Rien corrige : son feu vert attendu.
 
 
 4. REGLES DE TRAVAIL (POUR NE PLUS FAIRE LE MINIMUM)
@@ -1121,6 +1138,10 @@ LES PISTES OUVERTES (une seule liste ; chaque piste garde son identifiant)
                 (les repetitions). Reste (section 7 de la spec) : un reglage
                 de la taille de l'interface ; la consequence au lieu des
                 multiplicateurs dans le village.
+  En attente de SON feu vert :
+  - BUGS        la revue du 2026-11-27 : 13 graves, ~30 moyens et legers,
+                un ordre de correction propose (2026-11-27-revue-bugs.txt,
+                section 7).
   En attente de SON choix :
   - REWORK       les series 2 (les grands ecrans) et 3 du rework des
                 interfaces, a proposer (la serie 1 :
